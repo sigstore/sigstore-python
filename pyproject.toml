@@ -1,0 +1,19 @@
+[tool.isort]
+line_length = 100
+multi_line_output = 3
+known_first_party = "pysign"
+include_trailing_comma = true
+
+[tool.black]
+line-length = 100
+
+[tool.coverage.run]
+# don't attempt code coverage for the CLI entrypoints
+omit = ["pysign/_cli.py"]
+
+[tool.interrogate]
+# don't enforce documentation coverage for packaging, testing, the virtual
+# environment, or the CLI (which is documented separately).
+exclude = ["setup.py", "env", "test", "pysign/_cli.py", "pysign/_version.py"]
+ignore-semiprivate = true
+fail-under = 100
