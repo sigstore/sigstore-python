@@ -3,14 +3,14 @@
 from setuptools import find_packages, setup
 
 version = {}
-with open("./pysign/_version.py") as f:
+with open("./sigstore/_version.py") as f:
     exec(f.read(), version)
 
 with open("./README.md") as f:
     long_description = f.read()
 
 setup(
-    name="pysign",
+    name="sigstore",
     version=version["__version__"],
     license="Apache-2.0",
     author="William Woodruff",
@@ -18,11 +18,11 @@ setup(
     description="A tool for signing Python package distributions",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/trailofbits/pysign",
+    url="https://github.com/trailofbits/sigstore-python",
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "pysign = pysign._cli:main",
+            "sigstore = sigstore._cli:main",
         ]
     },
     platforms="any",

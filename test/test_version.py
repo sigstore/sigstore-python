@@ -1,5 +1,5 @@
-import pysign
+import sigstore
 
 
 def test_version():
-    assert isinstance(pysign.__version__, str)
+    assert isinstance(sigstore.__version__, str)

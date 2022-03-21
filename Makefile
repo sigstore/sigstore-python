@@ -1,4 +1,4 @@
-PY_MODULE := pysign
+PY_MODULE := sigstore
 
 ALL_PY_SRCS := setup.py \
 	$(shell find $(PY_MODULE) -name '*.py') \
