@@ -1,2 +1,5 @@
+from sigstore.pysign import pysign
+
+
 def main():
-    print("Nothing here yet.")
+    pysign()
