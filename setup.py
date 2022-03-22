@@ -26,8 +26,8 @@ setup(
         ]
     },
     platforms="any",
-    python_requires=">=3.6",
-    install_requires=[],
+    python_requires=">=3.7",
+    install_requires=["click>=8"],
     extras_require={
         "dev": [
             "bump",
@@ -39,8 +39,7 @@ setup(
             "pretend",
             "coverage[toml]",
             "interrogate",
-            # TODO: Remove this environment marker once 3.7 is our minimal version.
-            "pdoc3; python_version >= '3.7'",
+            "pdoc3",
             "mypy",
         ]
     },
@@ -48,7 +47,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
