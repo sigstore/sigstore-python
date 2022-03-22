@@ -27,7 +27,7 @@ setup(
     },
     platforms="any",
     python_requires=">=3.6",
-    install_requires=[],
+    install_requires=["click>=8"],
     extras_require={
         "dev": [
             "bump",
