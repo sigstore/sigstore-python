@@ -41,9 +41,10 @@ class FulcioClient:
 
     def signing_cert(self, req: CertificateRequest, token: str) -> CertificateResponse:
         """Get the signing certificate"""
+        cert_url = self.base_url + "/api/v1/signingCert"
         payload = json.dumps(req)
         response: requests.Response = requests.post(
-            url=self.base_url,
+            url=cert_url,
             data=payload,
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         )
