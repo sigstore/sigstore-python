@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import List
 
 import requests  # type: ignore
+from cryptography.hazmat.primitives.asymmetric import ec  # type: ignore
 from cryptography.x509 import Certificate, load_pem_x509_certificate  # type: ignore
 
 
@@ -14,7 +15,8 @@ from cryptography.x509 import Certificate, load_pem_x509_certificate  # type: ig
 class CertificateRequest:
     """Certificate request"""
 
-    pass
+    public_key: ec.EllipticCurvePublicKey
+    signed_email_address: str
 
 
 @dataclass(frozen=True)
