@@ -11,6 +11,10 @@ from cryptography.hazmat.primitives.asymmetric import ec  # type: ignore
 from cryptography.x509 import Certificate, load_pem_x509_certificate  # type: ignore
 from requests.models import Response  # type: ignore
 
+DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
+SIGNING_CERT_ENDPOINT = "/api/v1/signingCert"
+ROOT_CERT_ENDPOINT = "/api/v1/rootCert"
+
 
 @dataclass(frozen=True)
 class CertificateRequest:
@@ -54,13 +58,13 @@ PEM_BLOCK_DELIM = b"-----BEGIN CERTIFICATE-----"
 class FulcioClient:
     """The internal Fulcio client"""
 
-    def __init__(self, base_url: str = "https://fulcio.sigstore.dev") -> None:
+    def __init__(self, base_url: str = DEFAULT_FULCIO_URL) -> None:
         """Initialize the client"""
         self.base_url = base_url
 
     def signing_cert(self, req: CertificateRequest, token: str) -> CertificateResponse:
         """Get the signing certificate"""
-        cert_url = self.base_url + "/api/v1/signingCert"
+        cert_url = self.base_url + SIGNING_CERT_ENDPOINT
         response: requests.Response = requests.post(
             url=cert_url,
             data=req.json(),
@@ -84,7 +88,7 @@ class FulcioClient:
 
     def root_cert(self) -> RootResponse:
         """Get the root certificate"""
-        root_url = self.base_url + "/api/v1/rootCert"
+        root_url = self.base_url + ROOT_CERT_ENDPOINT
         response: Response = requests.get(root_url)
         if response.status_code != 201:
             raise FulcioClientError(f"Unexpected status code on Fulcio response: {response}")
