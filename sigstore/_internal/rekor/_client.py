@@ -3,14 +3,15 @@ Client implementation for interacting with Rekor.
 """
 
 import json
+from abc import ABC
 from urllib.parse import urljoin
 
-import requests
+import requests  # type: ignore
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v1/"
 
 
-class Endpoint:
+class Endpoint(ABC):
     def __init__(self, url, session):
         self.url = url
         self.session = session
