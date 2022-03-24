@@ -9,6 +9,7 @@ from typing import List
 import requests  # type: ignore
 from cryptography.hazmat.primitives.asymmetric import ec  # type: ignore
 from cryptography.x509 import Certificate, load_pem_x509_certificate  # type: ignore
+from requests.models import Response  # type: ignore
 
 
 @dataclass(frozen=True)
@@ -38,11 +39,16 @@ class CertificateResponse:
     sct: bytes
 
 
+@dataclass(frozen=True)
+class RootResponse:
+    root_cert: Certificate
+
+
 class FulcioError(Exception):
     pass
 
 
-PEM_DELIM = b"-----BEGIN CERTIFICATE-----"
+PEM_BLOCK_DELIM = b"-----BEGIN CERTIFICATE-----"
 
 
 class FulcioClient:
@@ -60,10 +66,6 @@ class FulcioClient:
             data=req.json(),
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         )
-        try:
-            response.raise_for_status()
-        except requests.HTTPError as http_error:
-            raise FulcioError from http_error
         if response.status_code != 201:
             raise FulcioError(f"Unexpected status code on Fulcio response: {response}")
         sct: bytes
@@ -71,7 +73,7 @@ class FulcioClient:
             sct = response.headers["SCT"]
         except IndexError as index_error:
             raise FulcioError from index_error
-        cert_data = response.raw.split(PEM_DELIM)
+        cert_data = response.raw.split(PEM_BLOCK_DELIM)
         assert not cert_data[0]
         cert_list: List[Certificate] = []
         cert_data = cert_data[1:]
@@ -79,3 +81,12 @@ class FulcioClient:
             cert: Certificate = load_pem_x509_certificate(cd)
             cert_list.append(cert)
         return CertificateResponse(cert_list, sct)
+
+    def root_cert(self) -> RootResponse:
+        """Get the root certificate"""
+        root_url = self.base_url + "/api/v1/rootCert"
+        response: Response = requests.get(root_url)
+        if response.status_code != 201:
+            raise FulcioError(f"Unexpected status code on Fulcio response: {response}")
+        root_cert: Certificate = load_pem_x509_certificate(response.raw)
+        return RootResponse(root_cert)
