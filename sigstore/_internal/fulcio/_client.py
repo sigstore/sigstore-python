@@ -44,7 +44,7 @@ class RootResponse:
     root_cert: Certificate
 
 
-class FulcioError(Exception):
+class FulcioClientError(Exception):
     pass
 
 
@@ -67,12 +67,12 @@ class FulcioClient:
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         )
         if response.status_code != 201:
-            raise FulcioError(f"Unexpected status code on Fulcio response: {response}")
+            raise FulcioClientError(f"Unexpected status code on Fulcio response: {response}")
         sct: bytes
         try:
             sct = response.headers["SCT"]
         except IndexError as index_error:
-            raise FulcioError from index_error
+            raise FulcioClientError from index_error
         cert_data = response.raw.split(PEM_BLOCK_DELIM)
         assert not cert_data[0]
         cert_list: List[Certificate] = []
@@ -87,6 +87,6 @@ class FulcioClient:
         root_url = self.base_url + "/api/v1/rootCert"
         response: Response = requests.get(root_url)
         if response.status_code != 201:
-            raise FulcioError(f"Unexpected status code on Fulcio response: {response}")
+            raise FulcioClientError(f"Unexpected status code on Fulcio response: {response}")
         root_cert: Certificate = load_pem_x509_certificate(response.raw)
         return RootResponse(root_cert)
