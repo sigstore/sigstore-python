@@ -18,6 +18,17 @@ class CertificateRequest:
     public_key: ec.EllipticCurvePublicKey
     signed_email_address: str
 
+    def json(self) -> str:
+        return json.dumps(
+            {
+                "publicKey": {
+                    "content": self.public_key.public_bytes,
+                    "algorithm": "EC",
+                },
+                "signedEmailAddress": self.signed_email_address,
+            }
+        )
+
 
 @dataclass(frozen=True)
 class CertificateResponse:
@@ -44,10 +55,9 @@ class FulcioClient:
     def signing_cert(self, req: CertificateRequest, token: str) -> CertificateResponse:
         """Get the signing certificate"""
         cert_url = self.base_url + "/api/v1/signingCert"
-        payload = json.dumps(req)
         response: requests.Response = requests.post(
             url=cert_url,
-            data=payload,
+            data=req.json(),
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         )
         try:
