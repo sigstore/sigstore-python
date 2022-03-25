@@ -2,14 +2,49 @@
 Client implementation for interacting with Rekor.
 """
 
+from __future__ import annotations
+
 import json
 from abc import ABC
-from typing import Any, Optional, Tuple
+from dataclasses import dataclass
+from typing import Optional
 from urllib.parse import urljoin
 
 import requests  # type: ignore
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v1/"
+
+
+@dataclass(frozen=True)
+class RekorEntry:
+    uuid: str
+    body: str
+    integrated_time: int
+    log_id: str
+    log_index: int
+    verification: dict
+
+    @classmethod
+    def from_response(cls, dict_) -> RekorEntry:
+        # Assumes we only get one entry back
+        entries = list(dict_.items())
+        if len(entries) != 1:
+            raise RekorClientError("Recieved multiple entries in response")
+
+        uuid, entry = entries[0]
+
+        return cls(
+            uuid=uuid,
+            body=entry["body"],
+            integrated_time=entry["integratedTime"],
+            log_id=entry["logID"],
+            log_index=entry["logIndex"],
+            verification=entry["verification"],
+        )
+
+
+class RekorClientError(Exception):
+    pass
 
 
 class Endpoint(ABC):
@@ -56,17 +91,20 @@ class RekorLog(Endpoint):
 
 
 class RekorEntries(Endpoint):
-    def get(self, uuid: str) -> Any:
+    def get(self, uuid: str) -> RekorEntry:
         resp: requests.Response = self.session.get(urljoin(self.url, uuid))
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
             raise RekorClientError from http_error
-        return resp.json()
+        return RekorEntry.from_response(resp.json())
 
     def post(
-        self, b64_artifact_signature: str, sha256_artifact_hash: str, encoded_public_key: str
-    ) -> Tuple[str, str]:
+        self,
+        b64_artifact_signature: str,
+        sha256_artifact_hash: str,
+        encoded_public_key: str,
+    ) -> RekorEntry:
         data = {
             "kind": "hashedrekord",
             "apiVersion": "0.0.1",
@@ -75,7 +113,9 @@ class RekorEntries(Endpoint):
                     "content": b64_artifact_signature,
                     "publicKey": {"content": encoded_public_key},
                 },
-                "data": {"hash": {"algorithm": "sha256", "value": sha256_artifact_hash}},
+                "data": {
+                    "hash": {"algorithm": "sha256", "value": sha256_artifact_hash}
+                },
             },
         }
 
@@ -84,13 +124,5 @@ class RekorEntries(Endpoint):
             resp.raise_for_status()
         except requests.HTTPError as http_error:
             raise RekorClientError from http_error
-        json_resp = resp.json()
 
-        # Assumes we only get one entry back
-        uuid, entry = list(json_resp.items())[0]
-
-        return uuid, entry
-
-
-class RekorClientError(Exception):
-    pass
+        return RekorEntry.from_response(resp.json())
