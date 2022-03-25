@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Optional
 from urllib.parse import urljoin
 
-import requests  # type: ignore
+import requests
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v1/"
 

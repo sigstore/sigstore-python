@@ -40,6 +40,7 @@ setup(
             "coverage[toml]",
             "pdoc3",
             "mypy",
+            "types-requests",
         ]
     },
     classifiers=[
