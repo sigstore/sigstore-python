@@ -57,7 +57,12 @@ class RekorLog(Endpoint):
 
 class RekorEntries(Endpoint):
     def get(self, uuid: str) -> Any:
-        return self.session.get(urljoin(self.url, uuid)).json()
+        resp: requests.Response = self.session.get(urljoin(self.url, uuid))
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as http_error:
+            raise RekorClientError from http_error
+        return resp.json()
 
     def post(
         self, b64_artifact_signature: str, sha256_artifact_hash: str, encoded_public_key: str
