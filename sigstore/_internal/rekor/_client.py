@@ -72,9 +72,18 @@ class RekorEntries(Endpoint):
             },
         }
 
-        resp = self.session.post(self.url, data=json.dumps(data)).json()
+        resp: requests.Response = self.session.post(self.url, data=json.dumps(data))
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as http_error:
+            raise RekorClientError from http_error
+        json_resp = resp.json()
 
         # Assumes we only get one entry back
-        uuid, entry = list(resp.items())[0]
+        uuid, entry = list(json_resp.items())[0]
 
         return uuid, entry
+
+
+class RekorClientError(Exception):
+    pass
