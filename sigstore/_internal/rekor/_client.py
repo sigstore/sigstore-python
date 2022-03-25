@@ -4,6 +4,7 @@ Client implementation for interacting with Rekor.
 
 import json
 from abc import ABC
+from typing import Optional
 from urllib.parse import urljoin
 
 import requests  # type: ignore
@@ -12,7 +13,7 @@ DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v1/"
 
 
 class Endpoint(ABC):
-    def __init__(self, url, session):
+    def __init__(self, url: str, session: requests.Session):
         self.url = url
         self.session = session
 
@@ -26,7 +27,7 @@ class Endpoint(ABC):
 class RekorClient:
     """The internal Rekor client"""
 
-    def __init__(self, url=DEFAULT_REKOR_URL):
+    def __init__(self, url: str = DEFAULT_REKOR_URL):
         self.url = url
         self.session = requests.Session()
         self.session.headers.update(
@@ -49,7 +50,7 @@ class RekorIndex(Endpoint):
 
 
 class RekorRetrieve(Endpoint):
-    def post(self, sha256_hash=None):
+    def post(self, sha256_hash: Optional[str] = None):
         data = {"hash": f"sha256:{sha256_hash}"}
         return self.session.post(self.url, data=data)
 
@@ -61,10 +62,10 @@ class RekorLog(Endpoint):
 
 
 class RekorEntries(Endpoint):
-    def get(self, uuid):
+    def get(self, uuid: str):
         return self.session.get(urljoin(self.url, uuid)).json()
 
-    def post(self, b64_artifact_signature, sha256_artifact_hash, encoded_public_key):
+    def post(self, b64_artifact_signature: str, sha256_artifact_hash: str, encoded_public_key: str):
         data = {
             "kind": "hashedrekord",
             "apiVersion": "0.0.1",
