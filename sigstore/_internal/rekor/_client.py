@@ -113,9 +113,7 @@ class RekorEntries(Endpoint):
                     "content": b64_artifact_signature,
                     "publicKey": {"content": encoded_public_key},
                 },
-                "data": {
-                    "hash": {"algorithm": "sha256", "value": sha256_artifact_hash}
-                },
+                "data": {"hash": {"algorithm": "sha256", "value": sha256_artifact_hash}},
             },
         }
 
