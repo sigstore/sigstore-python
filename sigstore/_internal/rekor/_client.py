@@ -17,12 +17,6 @@ class Endpoint(ABC):
         self.url = url
         self.session = session
 
-    def get(self):
-        raise NotImplementedError
-
-    def post(self):
-        raise NotImplementedError
-
 
 class RekorClient:
     """The internal Rekor client"""
