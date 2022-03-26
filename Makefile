@@ -44,7 +44,10 @@ lint:
 		black $(ALL_PY_SRCS) && \
 		isort $(ALL_PY_SRCS) && \
 		flake8 $(ALL_PY_SRCS) && \
-		mypy $(PY_MODULE) test/
+		mypy $(PY_MODULE) test/ \
+# TODO: Reenable interrogate
+#		interrogate -v -c pyproject.toml . && \
+#	        git diff --exit-code
 
 .PHONY: test
 test:
