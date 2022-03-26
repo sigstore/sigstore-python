@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from abc import ABC
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -79,9 +79,14 @@ class RekorIndex(Endpoint):
 
 
 class RekorRetrieve(Endpoint):
-    def post(self, sha256_hash: Optional[str] = None) -> requests.Response:
+    def post(self, sha256_hash: Optional[str] = None) -> List[str]:
         data = {"hash": f"sha256:{sha256_hash}"}
-        return self.session.post(self.url, data=data)
+        resp: requests.Response = self.session.post(self.url, data=data)
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as http_error:
+            raise RekorClientError from http_error
+        return resp.json()
 
 
 class RekorLog(Endpoint):
