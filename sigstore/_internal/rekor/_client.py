@@ -86,7 +86,7 @@ class RekorRetrieve(Endpoint):
             resp.raise_for_status()
         except requests.HTTPError as http_error:
             raise RekorClientError from http_error
-        return resp.json()
+        return list(resp.json())
 
 
 class RekorLog(Endpoint):
