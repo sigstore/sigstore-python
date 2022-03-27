@@ -38,6 +38,7 @@ setup(
             "pytest-cov",
             "pretend",
             "coverage[toml]",
+            "interrogate",
             "pdoc3",
             "mypy",
             "types-requests",
