@@ -96,12 +96,13 @@ class FulcioSigningCert(Endpoint):
             sct = resp.headers["SCT"]
         except IndexError as index_error:
             raise FulcioClientError from index_error
-        cert_data = resp.raw.split(PEM_BLOCK_DELIM)
-        assert not cert_data[0]
+        pem_blocks = resp.raw.split(PEM_BLOCK_DELIM)
+        if len(pem_blocks) != 3 or not pem_blocks[0]:
+            raise FulcioClientError(f"Unexpected number of PEM blocks in Fulcio response: {resp}")
+        pem_blocks = pem_blocks[1:]
         cert_list: List[Certificate] = []
-        cert_data = cert_data[1:]
-        for cd in cert_data:
-            cert: Certificate = load_pem_x509_certificate(cd)
+        for pem_block in pem_blocks:
+            cert: Certificate = load_pem_x509_certificate(pem_block)
             cert_list.append(cert)
         return CertificateResponse(cert_list, sct)
 
