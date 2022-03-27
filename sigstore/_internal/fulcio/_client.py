@@ -6,10 +6,9 @@ import json
 from dataclasses import dataclass
 from typing import List
 
-import requests  # type: ignore
-from cryptography.hazmat.primitives.asymmetric import ec  # type: ignore
-from cryptography.x509 import Certificate, load_pem_x509_certificate  # type: ignore
-from requests.models import Response  # type: ignore
+import requests
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509 import Certificate, load_pem_x509_certificate
 
 DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
 SIGNING_CERT_ENDPOINT = "/api/v1/signingCert"
@@ -40,7 +39,7 @@ class CertificateResponse:
     """Certificate response"""
 
     cert_list: List[Certificate]
-    sct: bytes
+    sct: str
 
 
 @dataclass(frozen=True)
@@ -72,7 +71,7 @@ class FulcioClient:
         )
         if response.status_code != 201:
             raise FulcioClientError(f"Unexpected status code on Fulcio response: {response}")
-        sct: bytes
+        sct: str
         try:
             sct = response.headers["SCT"]
         except IndexError as index_error:
@@ -89,7 +88,7 @@ class FulcioClient:
     def root_cert(self) -> RootResponse:
         """Get the root certificate"""
         root_url = self.base_url + ROOT_CERT_ENDPOINT
-        response: Response = requests.get(root_url)
+        response: requests.Response = requests.get(root_url)
         if response.status_code != 201:
             raise FulcioClientError(f"Unexpected status code on Fulcio response: {response}")
         root_cert: Certificate = load_pem_x509_certificate(response.raw)
