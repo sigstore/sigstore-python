@@ -41,8 +41,8 @@ setup(
             "interrogate",
             "pdoc3",
             "mypy",
-            "types-requests",
             "types-cryptography",
+            "types-requests",
         ]
     },
     classifiers=[
