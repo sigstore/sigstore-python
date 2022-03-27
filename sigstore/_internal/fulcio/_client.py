@@ -3,8 +3,10 @@ Client implementation for interacting with Fulcio.
 """
 
 import json
+from abc import ABC
 from dataclasses import dataclass
 from typing import List
+from urllib.parse import urljoin
 
 import requests
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -51,32 +53,50 @@ class FulcioClientError(Exception):
     pass
 
 
+class Endpoint(ABC):
+    def __init__(self, url: str, session: requests.Session) -> None:
+        self.url = url
+        self.session = session
+
+
 PEM_BLOCK_DELIM = b"-----BEGIN CERTIFICATE-----"
 
 
 class FulcioClient:
     """The internal Fulcio client"""
 
-    def __init__(self, base_url: str = DEFAULT_FULCIO_URL) -> None:
+    def __init__(self, url: str = DEFAULT_FULCIO_URL) -> None:
         """Initialize the client"""
-        self.base_url = base_url
+        self.url = url
+        self.session = requests.Session()
 
-    def signing_cert(self, req: CertificateRequest, token: str) -> CertificateResponse:
+    @property
+    def signing_cert(self) -> Endpoint:
+        return FulcioSigningCert(urljoin(self.url, SIGNING_CERT_ENDPOINT), session=self.session)
+
+    @property
+    def root_cert(self) -> Endpoint:
+        return FulcioRootCert(urljoin(self.url, ROOT_CERT_ENDPOINT), session=self.session)
+
+
+class FulcioSigningCert(Endpoint):
+    def post(self, req: CertificateRequest, token: str) -> CertificateResponse:
         """Get the signing certificate"""
-        cert_url = self.base_url + SIGNING_CERT_ENDPOINT
-        response: requests.Response = requests.post(
-            url=cert_url,
+        resp: requests.Response = self.session.post(
+            url=self.url,
             data=req.json(),
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         )
-        if response.status_code != 201:
-            raise FulcioClientError(f"Unexpected status code on Fulcio response: {response}")
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as http_error:
+            raise FulcioClientError from http_error
         sct: str
         try:
-            sct = response.headers["SCT"]
+            sct = resp.headers["SCT"]
         except IndexError as index_error:
             raise FulcioClientError from index_error
-        cert_data = response.raw.split(PEM_BLOCK_DELIM)
+        cert_data = resp.raw.split(PEM_BLOCK_DELIM)
         assert not cert_data[0]
         cert_list: List[Certificate] = []
         cert_data = cert_data[1:]
@@ -85,11 +105,14 @@ class FulcioClient:
             cert_list.append(cert)
         return CertificateResponse(cert_list, sct)
 
-    def root_cert(self) -> RootResponse:
+
+class FulcioRootCert(Endpoint):
+    def get(self) -> RootResponse:
         """Get the root certificate"""
-        root_url = self.base_url + ROOT_CERT_ENDPOINT
-        response: requests.Response = requests.get(root_url)
-        if response.status_code != 201:
-            raise FulcioClientError(f"Unexpected status code on Fulcio response: {response}")
-        root_cert: Certificate = load_pem_x509_certificate(response.raw)
+        resp: requests.Response = self.session.get(self.url)
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as http_error:
+            raise FulcioClientError from http_error
+        root_cert: Certificate = load_pem_x509_certificate(resp.raw)
         return RootResponse(root_cert)
