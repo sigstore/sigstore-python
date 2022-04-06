@@ -102,6 +102,7 @@ class FulcioSigningCert(Endpoint):
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
+            "Accept": "application/pem-certificate-chain",
         }
         resp: requests.Response = self.session.post(url=self.url, data=req.data, headers=headers)
         try:
