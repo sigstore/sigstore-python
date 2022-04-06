@@ -25,10 +25,18 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: deps
         run: make dev
-      - name: lint
-        run: make lint
       - name: test
         run: make test
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - name: deps
+        run: make dev
+      - name: lint
+        run: make lint
+
   # TODO: Enable once CLI development begins.
   # check-readme:
   #   runs-on: ubuntu-latest
