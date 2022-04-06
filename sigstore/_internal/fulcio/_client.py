@@ -18,7 +18,7 @@ ROOT_CERT_ENDPOINT = "/api/v1/rootCert"
 
 
 @dataclass(frozen=True)
-class CertificateRequest:
+class FulcioCertificateSigningRequest:
     """Certificate request"""
 
     public_key: ec.EllipticCurvePublicKey
@@ -37,7 +37,7 @@ class CertificateRequest:
 
 
 @dataclass(frozen=True)
-class CertificateResponse:
+class FulcioCertificateSigningResponse:
     """Certificate response"""
 
     cert_list: List[Certificate]
@@ -80,8 +80,20 @@ class FulcioClient:
 
 
 class FulcioSigningCert(Endpoint):
-    def post(self, req: CertificateRequest, token: str) -> CertificateResponse:
-        """Get the signing certificate"""
+    def post(
+        self, req: FulcioCertificateSigningRequest, token: str
+    ) -> FulcioCertificateSigningResponse:
+        """
+        Get the signing certificate.
+
+        Ideally, in the future, this could take an X.509 Certificate Signing
+        Request object instead [^1], but the Fulcio API doesn't currently
+        support this [^2].
+
+        [^1]: https://cryptography.io/en/latest/x509/reference/#x-509-csr-certificate-signing-request-object  # noqa
+        [^2]: https://github.com/sigstore/fulcio/issues/503
+
+        """
         resp: requests.Response = self.session.post(
             url=self.url,
             data=req.json(),
