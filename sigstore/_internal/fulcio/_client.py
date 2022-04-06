@@ -50,7 +50,9 @@ class FulcioCertificateSigningResponse:
 
 
 @dataclass(frozen=True)
-class RootResponse:
+class FulcioRootResponse:
+    """Root certificate response"""
+
     root_cert: Certificate
 
 
@@ -134,7 +136,7 @@ class FulcioSigningCert(Endpoint):
 
 
 class FulcioRootCert(Endpoint):
-    def get(self) -> RootResponse:
+    def get(self) -> FulcioRootResponse:
         """Get the root certificate"""
         resp: requests.Response = self.session.get(self.url)
         try:
@@ -142,4 +144,4 @@ class FulcioRootCert(Endpoint):
         except requests.HTTPError as http_error:
             raise FulcioClientError from http_error
         root_cert: Certificate = load_pem_x509_certificate(resp.content)
-        return RootResponse(root_cert)
+        return FulcioRootResponse(root_cert)
