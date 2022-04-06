@@ -27,7 +27,7 @@ setup(
     },
     platforms="any",
     python_requires=">=3.7",
-    install_requires=["click>=8", "cryptography", "pem", "requests"],
+    install_requires=["click>=8", "cryptography", "pem", "pyjwt", "requests"],
     extras_require={
         "dev": [
             "bump",
