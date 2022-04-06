@@ -126,7 +126,7 @@ class FulcioSigningCert(Endpoint):
         # https://github.com/pyca/cryptography/issues/2381
 
         pem_blocks = resp.text.split(CERT_START.decode())
-        if not pem_blocks:
+        if not pem_blocks or pem_blocks[0]:
             raise FulcioClientError(f"Unexpected number of PEM blocks in Fulcio response: {resp}")
         cert_list: List[Certificate] = [
             load_pem_x509_certificate(CERT_START + pem_block.encode())
