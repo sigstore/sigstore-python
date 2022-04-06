@@ -78,11 +78,15 @@ class FulcioClient:
 
     @property
     def signing_cert(self) -> Endpoint:
-        return FulcioSigningCert(urljoin(self.url, SIGNING_CERT_ENDPOINT), session=self.session)
+        return FulcioSigningCert(
+            urljoin(self.url, SIGNING_CERT_ENDPOINT), session=self.session
+        )
 
     @property
     def root_cert(self) -> Endpoint:
-        return FulcioRootCert(urljoin(self.url, ROOT_CERT_ENDPOINT), session=self.session)
+        return FulcioRootCert(
+            urljoin(self.url, ROOT_CERT_ENDPOINT), session=self.session
+        )
 
 
 class FulcioSigningCert(Endpoint):
@@ -105,7 +109,9 @@ class FulcioSigningCert(Endpoint):
             "Content-Type": "application/json",
             "Accept": "application/pem-certificate-chain",
         }
-        resp: requests.Response = self.session.post(url=self.url, data=req.data, headers=headers)
+        resp: requests.Response = self.session.post(
+            url=self.url, data=req.data, headers=headers
+        )
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
