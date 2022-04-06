@@ -2,6 +2,7 @@
 Client implementation for interacting with Fulcio.
 """
 
+import base64
 import json
 from abc import ABC
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from typing import List
 from urllib.parse import urljoin
 
 import requests
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import Certificate, load_pem_x509_certificate
 
@@ -25,15 +27,17 @@ class FulcioCertificateSigningRequest:
     signed_email_address: str
 
     def json(self) -> str:
-        return json.dumps(
-            {
-                "publicKey": {
-                    "content": self.public_key.public_bytes,
-                    "algorithm": "EC",
-                },
-                "signedEmailAddress": self.signed_email_address,
-            }
+        content = self.public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
         )
+        data = {
+            "publicKey": {
+                "content": base64.b64encode(content).decode(),
+            },
+            "signedEmailAddress": base64.b64encode(self.signed_email_address.encode()).decode(),
+        }
+        return json.dumps(data)
 
 
 @dataclass(frozen=True)
