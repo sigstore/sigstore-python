@@ -64,7 +64,7 @@ class Endpoint(ABC):
         self.session = session
 
 
-PEM_BLOCK_DELIM = b"-----BEGIN CERTIFICATE-----"
+CERT_START = b"-----BEGIN CERTIFICATE-----"
 
 
 class FulcioClient:
@@ -119,15 +119,18 @@ class FulcioSigningCert(Endpoint):
             sct = resp.headers["SCT"]
         except IndexError as index_error:
             raise FulcioClientError from index_error
-        pem_blocks = resp.raw.split(PEM_BLOCK_DELIM)
-        if len(pem_blocks) != 3 or not pem_blocks[0]:
+
+        # Cryptography doesn't have chain verification/building built in
+        # https://github.com/pyca/cryptography/issues/2381
+
+        pem_blocks = resp.text.split(CERT_START.decode())
+        if not pem_blocks:
             raise FulcioClientError(f"Unexpected number of PEM blocks in Fulcio response: {resp}")
-        pem_blocks = pem_blocks[1:]
-        cert_list: List[Certificate] = []
-        for pem_block in pem_blocks:
-            cert: Certificate = load_pem_x509_certificate(pem_block)
-            cert_list.append(cert)
-        return CertificateResponse(cert_list, sct)
+        cert_list: List[Certificate] = [
+            load_pem_x509_certificate(CERT_START + pem_block.encode())
+            for pem_block in pem_blocks[1:]
+        ]
+        return FulcioCertificateSigningResponse(cert_list, sct)
 
 
 class FulcioRootCert(Endpoint):
