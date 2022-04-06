@@ -141,5 +141,5 @@ class FulcioRootCert(Endpoint):
             resp.raise_for_status()
         except requests.HTTPError as http_error:
             raise FulcioClientError from http_error
-        root_cert: Certificate = load_pem_x509_certificate(resp.raw)
+        root_cert: Certificate = load_pem_x509_certificate(resp.content)
         return RootResponse(root_cert)
