@@ -108,7 +108,12 @@ class FulcioSigningCert(Endpoint):
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
-            raise FulcioClientError from http_error
+            try:
+                text = json.loads(http_error.response.text)
+                raise FulcioClientError(text["message"]) from http_error
+            except (AttributeError, KeyError):
+                raise FulcioClientError from http_error
+
         sct: str
         try:
             sct = resp.headers["SCT"]
