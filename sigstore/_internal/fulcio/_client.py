@@ -125,12 +125,12 @@ class FulcioSigningCert(Endpoint):
         # https://github.com/pyca/cryptography/issues/2381
         try:
             cert_pem, *chain_pems = pem.parse(resp.content)
-            cert_pem = load_pem_x509_certificate(cert_pem.as_bytes())
-            chain_pems = [load_pem_x509_certificate(cert.as_bytes()) for cert in chain_pems]
+            cert = load_pem_x509_certificate(cert_pem.as_bytes())
+            chain = [load_pem_x509_certificate(c.as_bytes()) for c in chain_pems]
         except ValueError:
             raise FulcioClientError(f"Did not find a cert in Fulcio response: {resp}")
 
-        return FulcioCertificateSigningResponse(cert_pem, chain_pems, sct)
+        return FulcioCertificateSigningResponse(cert, chain, sct)
 
 
 class FulcioRootCert(Endpoint):
