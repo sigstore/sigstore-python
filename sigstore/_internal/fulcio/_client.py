@@ -24,7 +24,7 @@ class FulcioCertificateSigningRequest:
     """Certificate request"""
 
     public_key: ec.EllipticCurvePublicKey
-    signed_email_address: str
+    signed_email_address: bytes
 
     @property
     def data(self) -> str:
@@ -36,7 +36,7 @@ class FulcioCertificateSigningRequest:
             "publicKey": {
                 "content": base64.b64encode(content).decode(),
             },
-            "signedEmailAddress": base64.b64encode(self.signed_email_address.encode()).decode(),
+            "signedEmailAddress": base64.b64encode(self.signed_email_address).decode(),
         }
         return json.dumps(data)
 
