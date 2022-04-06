@@ -3,6 +3,10 @@ APIs for interacting with Fulcio.
 """
 
 
-from ._client import FulcioClient
+from ._client import FulcioCertificateSigningRequest, FulcioCertificateSigningResponse, FulcioClient
 
-__all__ = ["FulcioClient"]
+__all__ = [
+    "FulcioCertificateSigningRequest",
+    "FulcioCertificateSigningResponse",
+    "FulcioClient",
+]
