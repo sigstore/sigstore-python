@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import List
 from urllib.parse import urljoin
 
+import pem
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -45,7 +46,8 @@ class FulcioCertificateSigningRequest:
 class FulcioCertificateSigningResponse:
     """Certificate response"""
 
-    cert_list: List[Certificate]
+    cert_pem: Certificate
+    chain_pems: List[Certificate]
     sct: str
 
 
@@ -64,9 +66,6 @@ class Endpoint(ABC):
     def __init__(self, url: str, session: requests.Session) -> None:
         self.url = url
         self.session = session
-
-
-CERT_START = b"-----BEGIN CERTIFICATE-----"
 
 
 class FulcioClient:
@@ -124,15 +123,14 @@ class FulcioSigningCert(Endpoint):
 
         # Cryptography doesn't have chain verification/building built in
         # https://github.com/pyca/cryptography/issues/2381
+        try:
+            cert_pem, *chain_pems = pem.parse(resp.content)
+            cert_pem = load_pem_x509_certificate(cert_pem.as_bytes())
+            chain_pems = [load_pem_x509_certificate(cert.as_bytes()) for cert in chain_pems]
+        except ValueError:
+            raise FulcioClientError(f"Did not find a cert in Fulcio response: {resp}")
 
-        pem_blocks = resp.text.split(CERT_START.decode())
-        if not pem_blocks or pem_blocks[0]:
-            raise FulcioClientError(f"Unexpected number of PEM blocks in Fulcio response: {resp}")
-        cert_list: List[Certificate] = [
-            load_pem_x509_certificate(CERT_START + pem_block.encode())
-            for pem_block in pem_blocks[1:]
-        ]
-        return FulcioCertificateSigningResponse(cert_list, sct)
+        return FulcioCertificateSigningResponse(cert_pem, chain_pems, sct)
 
 
 class FulcioRootCert(Endpoint):
