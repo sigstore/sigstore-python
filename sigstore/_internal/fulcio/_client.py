@@ -26,7 +26,8 @@ class FulcioCertificateSigningRequest:
     public_key: ec.EllipticCurvePublicKey
     signed_email_address: str
 
-    def json(self) -> str:
+    @property
+    def data(self) -> str:
         content = self.public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo,
@@ -98,11 +99,11 @@ class FulcioSigningCert(Endpoint):
         [^2]: https://github.com/sigstore/fulcio/issues/503
 
         """
-        resp: requests.Response = self.session.post(
-            url=self.url,
-            data=req.json(),
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        )
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+        resp: requests.Response = self.session.post(url=self.url, data=req.data, headers=headers)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
