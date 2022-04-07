@@ -3,6 +3,7 @@ Client implementation for interacting with Fulcio.
 """
 
 import base64
+import datetime
 import json
 from abc import ABC
 from dataclasses import dataclass
@@ -14,10 +15,54 @@ import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import Certificate, load_pem_x509_certificate
+from cryptography.x509.certificate_transparency import (
+    LogEntryType,
+    SignedCertificateTimestamp,
+    Version,
+)
 
 DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
 SIGNING_CERT_ENDPOINT = "/api/v1/signingCert"
 ROOT_CERT_ENDPOINT = "/api/v1/rootCert"
+
+
+class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
+    def __init__(self, b64_encoded_sct: str):
+        self.struct = json.loads(base64.b64decode(b64_encoded_sct).decode())
+        self.signature = self.struct["signature"]
+
+    @property
+    def version(self) -> Version:
+        """
+        Returns the SCT version.
+        """
+        if self.struct.get("sct_version") == 0:
+            return Version.v1
+        else:
+            raise Exception("Invalid SCT version")
+
+    @property
+    def log_id(self) -> bytes:
+        """
+        Returns an identifier indicating which log this SCT is for.
+        """
+        # The ID from fulcio is a base64 encoded bytestring of the SHA256 hash
+        # of the public cert. Call .hex() on this when displaying.
+        return base64.b64decode(self.struct.get("id"))
+
+    @property
+    def timestamp(self) -> datetime.datetime:
+        """
+        Returns the timestamp for this SCT.
+        """
+        return datetime.datetime.fromtimestamp(self.struct["timestamp"] / 1000.0)
+
+    @property
+    def entry_type(self) -> LogEntryType:
+        """
+        Returns whether this is an SCT for a certificate or pre-certificate.
+        """
+        return LogEntryType.X509_CERTIFICATE
 
 
 @dataclass(frozen=True)
@@ -46,9 +91,9 @@ class FulcioCertificateSigningRequest:
 class FulcioCertificateSigningResponse:
     """Certificate response"""
 
-    cert_pem: Certificate
-    chain_pems: List[Certificate]
-    sct: str
+    cert: Certificate
+    chain: List[Certificate]
+    sct: FulcioSignedCertificateTimestamp
 
 
 @dataclass(frozen=True)
@@ -121,9 +166,9 @@ class FulcioSigningCert(Endpoint):
             except (AttributeError, KeyError):
                 raise FulcioClientError from http_error
 
-        sct: str
+        sct: FulcioSignedCertificateTimestamp
         try:
-            sct = resp.headers["SCT"]
+            sct = FulcioSignedCertificateTimestamp(resp.headers["SCT"])
         except IndexError as index_error:
             raise FulcioClientError from index_error
 
