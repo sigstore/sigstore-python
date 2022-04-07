@@ -26,6 +26,45 @@ SIGNING_CERT_ENDPOINT = "/api/v1/signingCert"
 ROOT_CERT_ENDPOINT = "/api/v1/rootCert"
 
 
+class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
+    def __init__(self, b64_encoded_sct):
+        self.struct = json.loads(base64.b64decode(b64_encoded_sct).decode())
+        self.signature = self.struct["signature"]
+
+    @property
+    def version(self) -> Version:
+        """
+        Returns the SCT version.
+        """
+        if self.struct.get("sct_version") == 0:
+            return Version.v1
+        else:
+            raise Exception("Invalid SCT version")
+
+    @property
+    def log_id(self) -> bytes:
+        """
+        Returns an identifier indicating which log this SCT is for.
+        """
+        # The ID from fulcio is a base64 encoded bytestring of the SHA256 hash
+        # of the public cert. Call .hex() on this when displaying.
+        return base64.b64decode(self.struct.get("id"))
+
+    @property
+    def timestamp(self) -> datetime.datetime:
+        """
+        Returns the timestamp for this SCT.
+        """
+        return datetime.datetime.fromtimestamp(self.struct["timestamp"] / 1000.0)
+
+    @property
+    def entry_type(self) -> LogEntryType:
+        """
+        Returns whether this is an SCT for a certificate or pre-certificate.
+        """
+        return LogEntryType.X509_CERTIFICATE
+
+
 @dataclass(frozen=True)
 class FulcioCertificateSigningRequest:
     """Certificate request"""
@@ -54,7 +93,7 @@ class FulcioCertificateSigningResponse:
 
     cert: Certificate
     chain: List[Certificate]
-    sct: str
+    sct: FulcioSignedCertificateTimestamp
 
 
 @dataclass(frozen=True)
@@ -95,45 +134,6 @@ class FulcioClient:
         )
 
 
-class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
-    def __init__(self, b64_encoded_sct):
-        self.struct = json.loads(base64.b64decode(b64_encoded_sct).decode())
-        self.signature = self.struct["signature"]
-
-    @property
-    def version(self) -> Version:
-        """
-        Returns the SCT version.
-        """
-        if self.struct.get("sct_version") == 0:
-            return Version.v1
-        else:
-            raise Exception("Invalid SCT version")
-
-    @property
-    def log_id(self) -> bytes:
-        """
-        Returns an identifier indicating which log this SCT is for.
-        """
-        # The ID from fulcio is a base64 encoded bytestring of the SHA256 hash
-        # of the public cert. Call .hex() on this when displaying.
-        return base64.b64decode(self.struct.get("id"))
-
-    @property
-    def timestamp(self) -> datetime.datetime:
-        """
-        Returns the timestamp for this SCT.
-        """
-        return datetime.datetime.fromtimestamp(self.struct["timestamp"] / 1000.0)
-
-    @property
-    def entry_type(self) -> LogEntryType:
-        """
-        Returns whether this is an SCT for a certificate or pre-certificate.
-        """
-        return LogEntryType.X509_CERTIFICATE
-
-
 class FulcioSigningCert(Endpoint):
     def post(
         self, req: FulcioCertificateSigningRequest, token: str
@@ -166,7 +166,7 @@ class FulcioSigningCert(Endpoint):
             except (AttributeError, KeyError):
                 raise FulcioClientError from http_error
 
-        sct: str
+        sct: FulcioSignedCertificateTimestamp
         try:
             sct = FulcioSignedCertificateTimestamp(resp.headers["SCT"])
         except IndexError as index_error:
