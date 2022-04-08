@@ -10,6 +10,7 @@ from sigstore._internal.fulcio import (
     FulcioClient,
 )
 from sigstore._internal.rekor import RekorClient
+from sigstore._internal.oidc import Identity
 
 # from cryptography.x509 import load_pem_x509_certificate
 
@@ -40,8 +41,7 @@ def sign(file_, identity_token, output=_no_output):
     # fulcio = FulcioClient("http://localhost:5555")
     fulcio = FulcioClient()
 
-    oidc_token = jwt.decode(identity_token, options={"verify_signature": False})
-    email_address = oidc_token["email"]
+    oidc_identity = Identity(identity_token)
 
     # Build an X.509 Certificiate Signing Request - not currently supported
     """
@@ -61,12 +61,10 @@ def sign(file_, identity_token, output=_no_output):
     )
     certificate_request = builder.sign(private_key, hashes.SHA256())
     """
-    signed_email_address = private_key.sign(
-        email_address.encode(), ec.ECDSA(hashes.SHA256())
+    signed_proof = private_key.sign(
+        oidc_identity.proof.encode(), ec.ECDSA(hashes.SHA256())
     )
-    certificate_request = FulcioCertificateSigningRequest(
-        public_key, signed_email_address
-    )
+    certificate_request = FulcioCertificateSigningRequest(public_key, signed_proof)
 
     certificate_response = fulcio.signing_cert.post(certificate_request, identity_token)
 
