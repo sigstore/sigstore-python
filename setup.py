@@ -43,6 +43,7 @@ setup(
             "mypy",
             "types-cryptography",
             "types-requests",
+            "types-pyjwt",
         ]
     },
     classifiers=[
