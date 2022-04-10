@@ -20,7 +20,7 @@ class IdentityError(Exception):
 
 
 class Identity:
-    def __init__(self, identity_token):
+    def __init__(self, identity_token: str) -> None:
         identity_jwt = jwt.decode(identity_token, options={"verify_signature": False})
 
         if "iss" not in identity_jwt:
