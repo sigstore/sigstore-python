@@ -2,15 +2,9 @@ import jwt
 
 # From https://github.com/sigstore/fulcio/blob/b2186c01da1ddf807bde3ea8c450226d8e001d88/pkg/config/config.go#L182-L201  # noqa
 OIDC_ISSUERS = {
-    "https://accounts.google.com": {
-        "proof_claim": "email",
-    },
-    "https://oauth2.sigstore.dev/auth": {
-        "proof_claim": "email",
-    },
-    "https://token.actions.githubusercontent.com": {
-        "proof_claim": "sub",
-    },
+    "https://accounts.google.com": "email",
+    "https://oauth2.sigstore.dev/auth": "email",
+    "https://token.actions.githubusercontent.com": "sub",
 }
 AUDIENCE = "sigstore"
 
@@ -39,7 +33,7 @@ class Identity:
         if aud != AUDIENCE:
             raise IdentityError(f"Audience should be {AUDIENCE!r}, not {aud!r}")
 
-        proof_claim = OIDC_ISSUERS[iss]["proof_claim"]
+        proof_claim = OIDC_ISSUERS[iss]
         if proof_claim not in identity_jwt:
             raise IdentityError(
                 f"Identity token missing the required {proof_claim!r} claim"
