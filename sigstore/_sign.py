@@ -1,7 +1,6 @@
 import base64
 import hashlib
 
-import jwt
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
@@ -9,8 +8,8 @@ from sigstore._internal.fulcio import (
     FulcioCertificateSigningRequest,
     FulcioClient,
 )
-from sigstore._internal.rekor import RekorClient
 from sigstore._internal.oidc import Identity
+from sigstore._internal.rekor import RekorClient
 
 # from cryptography.x509 import load_pem_x509_certificate
 

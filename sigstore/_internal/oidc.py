@@ -39,4 +39,4 @@ class Identity:
                 f"Identity token missing the required {proof_claim!r} claim"
             )
 
-        self.proof = identity_jwt.get(proof_claim)
+        self.proof: str = str(identity_jwt.get(proof_claim))
