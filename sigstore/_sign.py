@@ -19,20 +19,20 @@ def _no_output(*a, **kw):
     pass
 
 
-def sign(file_, identity_token, ctfe_key, output=_no_output):
+def sign(file_, identity_token, ctfe_key_path, output=_no_output):
     """Public API for signing blobs"""
     # If the user hasn't supplied a CTFE key, use the one that comes bundled in the installation
     #
     # TODO(alex): Make sure this key gets included in the installation and that this code can still
     # find it.
-    if ctfe_key is None:
-        bundled_ctfe_key_path = Path(__file__).parent / "ctfe.pub"
-        if not bundled_ctfe_key_path.is_file():
-            # TODO(alex): Figure out errors
-            return
-        with bundled_ctfe_key_path.open() as f:
-            ctfe_pem: bytes = f.read().encode()
-            ctfe_key = load_pem_public_key(ctfe_pem)
+    if ctfe_key_path is None:
+        ctfe_key_path = Path(__file__).parent / "keys" / "ctfe.pub"
+    if not ctfe_key_path.is_file():
+        # TODO(alex): Figure out errors
+        raise Exception("CTFE key does not exist")
+    with ctfe_key_path.open() as f:
+        ctfe_pem: bytes = f.read().encode()
+        ctfe_key = load_pem_public_key(ctfe_pem)
 
     output(f"Using payload from: {file_.name}")
     artifact_contents = file_.read().encode()
