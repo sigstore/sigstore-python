@@ -4,7 +4,7 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509 import load_pem_public_key
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
 from sigstore._internal.fulcio import (
     FulcioCertificateSigningRequest,
