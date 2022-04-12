@@ -1,6 +1,5 @@
 import base64
 import hashlib
-from pathlib import Path
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -21,18 +20,6 @@ def _no_output(*a, **kw):
 
 def sign(file_, identity_token, ctfe_key_path, output=_no_output):
     """Public API for signing blobs"""
-    # If the user hasn't supplied a CTFE key, use the one that comes bundled in the installation
-    #
-    # TODO(alex): Make sure this key gets included in the installation and that this code can still
-    # find it.
-    if ctfe_key_path is None:
-        ctfe_key_path = Path(__file__).parent / "keys" / "ctfe.pub"
-    if not ctfe_key_path.is_file():
-        # TODO(alex): Figure out errors
-        raise Exception("CTFE key does not exist")
-    with ctfe_key_path.open() as f:
-        ctfe_pem: bytes = f.read().encode()
-        ctfe_key = load_pem_public_key(ctfe_pem)
 
     output(f"Using payload from: {file_.name}")
     artifact_contents = file_.read().encode()
@@ -76,6 +63,13 @@ def sign(file_, identity_token, ctfe_key_path, output=_no_output):
     # Verify the SCT
     sct = certificate_response.sct  # noqa
     cert = certificate_response.cert  # noqa
+    if not ctfe_key_path.is_file():
+        # TODO(alex): Figure out errors
+        raise Exception("CTFE key does not exist")
+    with ctfe_key_path.open() as f:
+        ctfe_pem: bytes = f.read().encode()
+        ctfe_key = load_pem_public_key(ctfe_pem)
+
     verify_sct(sct, cert, ctfe_key)
 
     output("Successfully verified SCT...")
