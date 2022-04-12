@@ -27,7 +27,14 @@ setup(
     },
     platforms="any",
     python_requires=">=3.7",
-    install_requires=["click>=8", "cryptography", "pem", "pyjwt", "requests"],
+    install_requires=[
+        "click>=8",
+        "cryptography",
+        "pem",
+        "pyjwt",
+        "pyOpenSSL",
+        "requests",
+    ],
     extras_require={
         "dev": [
             "bump",
@@ -43,6 +50,7 @@ setup(
             "mypy",
             "types-cryptography",
             "types-requests",
+            "types-pyOpenSSL",
             "types-pyjwt",
         ]
     },
