@@ -43,6 +43,23 @@ class RekorEntry:
         )
 
 
+@dataclass(frozen=True)
+class RekorInclusionProof:
+    log_index: int
+    root_hash: str
+    tree_size: int
+    hashes: List[str]
+
+    @classmethod
+    def from_dict(cls, dict_) -> RekorInclusionProof:
+        return cls(
+            log_index=dict_["logIndex"],
+            root_hash=dict_["rootHash"],
+            tree_size=dict_["treeSize"],
+            hashes=dict_["hashes"],
+        )
+
+
 class RekorClientError(Exception):
     pass
 

@@ -16,8 +16,8 @@ def _sign(file_, identity_token):
 
 
 @main.command("verify")
-@click.option("certificate_path", "--cert", type=click.Path())
-@click.option("signature_path", "--signature", type=click.Path())
+@click.option("certificate_path", "--cert", type=click.Path(), required=True)
+@click.option("signature_path", "--signature", type=click.Path(), required=True)
 @click.argument("file_", metavar="FILE", type=click.File("r"), required=True)
 def _verify(file_, certificate_path, signature_path):
     click.echo(
@@ -25,5 +25,6 @@ def _verify(file_, certificate_path, signature_path):
             filename=file_.name,
             certificate_path=certificate_path,
             signature_path=signature_path,
+            output=click.echo,
         )
     )
