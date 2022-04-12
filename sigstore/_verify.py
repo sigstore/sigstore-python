@@ -5,6 +5,7 @@ API for verifying artifact signatures.
 import base64
 import hashlib
 from pathlib import Path
+from typing import cast
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -36,8 +37,8 @@ FULCIO_ROOT_CERT = "fulcio.crt.pem"
 
 
 def verify(
-    filename, certificate_path, signature_path, cert_email, output=_no_output
-) -> None:
+    filename, certificate_path, signature_path, cert_email=None, output=_no_output
+):
     # Read the contents of the package to be verified
     artifact_contents = filename.read().encode()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
@@ -103,6 +104,7 @@ def verify(
 
     # 3) Verify that the signature was signed by the public key in the signing certificate
     signing_key = cert.public_key()
+    signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
     signing_key.verify(artifact_signature, artifact_contents, ec.ECDSA(hashes.SHA256()))
 
     # The log ID is a hash of a DER encoding of the signing certificate
