@@ -11,12 +11,6 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor import RekorClient
 
-# from cryptography.x509 import load_pem_x509_certificate
-
-
-REKOR_URL = "https://rekor.sigstore.dev"
-REKOR_API_HEADERS = {"Content-Type": "application/json", "Accept": "application/json"}
-
 
 def _no_output(*a, **kw):
     pass
