@@ -7,6 +7,7 @@ import hashlib
 from pathlib import Path
 
 from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
     ExtendedKeyUsage,
     KeyUsage,
@@ -85,19 +86,25 @@ def verify(
     if cert_email is not None:
         # Check usage is "digital signature"
         usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
-        assert usage_ext.value.digital_signature
+        if not usage_ext.value.digital_signature:
+            # Error
+            return None
 
         # Check that extended usage contains "code signing"
         extended_usage_ext = cert.extensions.get_extension_for_class(ExtendedKeyUsage)
-        assert ExtendedKeyUsageOID.CODE_SIGNING in extended_usage_ext.value
+        if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
+            # Error
+            return None
 
         # Check that SubjectAlternativeName contains signer identity
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-        assert cert_email in san_ext.value.get_values_for_type(RFC822Name)
+        if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
+            # Error
+            return None
 
     # 3) Verify that the signature was signed by the public key in the signing certificate
     signing_key = cert.public_key()
-    signing_key.verify(artifact_signature, artifact_contents, hashes.SHA256())
+    signing_key.verify(artifact_signature, artifact_contents, ec.ECDSA(hashes.SHA256()))
 
     # The log ID is a hash of a DER encoding of the signing certificate
     desired_log_id = hashlib.sha256(
