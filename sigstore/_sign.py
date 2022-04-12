@@ -30,36 +30,31 @@ def sign(file_, identity_token, output=_no_output):
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
     output("Generating ephemeral keys...")
-    # Generate the ephemeral private key
-    # private_key = Ed25519PrivateKey.generate()
-    # public_key = private_key.public_key()
     private_key = ec.generate_private_key(ec.SECP384R1())
     public_key = private_key.public_key()
 
     output("Retrieving signed certificate...")
-    # fulcio = FulcioClient("http://localhost:5555")
     fulcio = FulcioClient()
 
     oidc_identity = Identity(identity_token)
 
     # Build an X.509 Certificiate Signing Request - not currently supported
-    """
-    builder = (
-        x509.CertificateSigningRequestBuilder()
-        .subject_name(
-            x509.Name(
-                [
-                    x509.NameAttribute(NameOID.EMAIL_ADDRESS, email_address),
-                ]
-            )
-        )
-        .add_extension(
-            x509.BasicConstraints(ca=False, path_length=None),
-            critical=True,
-        )
-    )
-    certificate_request = builder.sign(private_key, hashes.SHA256())
-    """
+    # builder = (
+    #     x509.CertificateSigningRequestBuilder()
+    #     .subject_name(
+    #         x509.Name(
+    #             [
+    #                 x509.NameAttribute(NameOID.EMAIL_ADDRESS, email_address),
+    #             ]
+    #         )
+    #     )
+    #     .add_extension(
+    #         x509.BasicConstraints(ca=False, path_length=None),
+    #         critical=True,
+    #     )
+    # )
+    # certificate_request = builder.sign(private_key, hashes.SHA256())
+
     signed_proof = private_key.sign(
         oidc_identity.proof.encode(), ec.ECDSA(hashes.SHA256())
     )
