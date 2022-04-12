@@ -10,9 +10,17 @@ def main():
 
 @main.command("sign")
 @click.option("identity_token", "--identity-token", type=click.STRING)
+@click.option("ctfe_key_path", "--ctfe", type=click.File("r"))
 @click.argument("file_", metavar="FILE", type=click.File("r"), required=True)
-def _sign(file_, identity_token):
-    click.echo(sign(file_=file_, identity_token=identity_token, output=click.echo))
+def _sign(file_, identity_token, ctfe_key_path):
+    click.echo(
+        sign(
+            file_=file_,
+            identity_token=identity_token,
+            ctfe_key=ctfe_key_path,
+            output=click.echo,
+        )
+    )
 
 
 @main.command("verify")

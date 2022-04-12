@@ -1,8 +1,10 @@
 import base64
 import hashlib
+from pathlib import Path
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509 import load_pem_public_key
 
 from sigstore._internal.fulcio import (
     FulcioCertificateSigningRequest,
@@ -10,14 +12,27 @@ from sigstore._internal.fulcio import (
 )
 from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor import RekorClient
+from sigstore._internal.sct import verify_sct
 
 
 def _no_output(*a, **kw):
     pass
 
 
-def sign(file_, identity_token, output=_no_output):
+def sign(file_, identity_token, ctfe_key, output=_no_output):
     """Public API for signing blobs"""
+    # If the user hasn't supplied a CTFE key, use the one that comes bundled in the installation
+    #
+    # TODO(alex): Make sure this key gets included in the installation and that this code can still
+    # find it.
+    if ctfe_key is None:
+        bundled_ctfe_key_path = Path(__file__).parent / "ctfe.pub"
+        if not bundled_ctfe_key_path.is_file():
+            # TODO(alex): Figure out errors
+            return
+        with bundled_ctfe_key_path.open() as f:
+            ctfe_pem: bytes = f.read().encode()
+            ctfe_key = load_pem_public_key(ctfe_pem)
 
     output(f"Using payload from: {file_.name}")
     artifact_contents = file_.read().encode()
@@ -56,17 +71,13 @@ def sign(file_, identity_token, output=_no_output):
 
     certificate_response = fulcio.signing_cert.post(certificate_request, identity_token)
 
+    # TODO(alex): Retrieve the public key via TUF
+    #
     # Verify the SCT
-    # TODO TODO TODO
     sct = certificate_response.sct  # noqa
     cert = certificate_response.cert  # noqa
-    # certificate
-    # OCSP response
-    # public key of fulcio log
-    # - no api that exposes the public key, bake it in or get it via TUF
-    # - ecdsa PEM encoded key
-    # - https://storage.googleapis.com/sigstore-tuf-root
-    # - https://github.com/google/certificate-transparency-go/
+    verify_sct(sct, cert, ctfe_key)
+
     output("Successfully verified SCT...")
 
     # Output the ephemeral certificate
