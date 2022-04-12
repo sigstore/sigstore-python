@@ -113,27 +113,6 @@ class Endpoint(ABC):
         self.session = session
 
 
-class FulcioClient:
-    """The internal Fulcio client"""
-
-    def __init__(self, url: str = DEFAULT_FULCIO_URL) -> None:
-        """Initialize the client"""
-        self.url = url
-        self.session = requests.Session()
-
-    @property
-    def signing_cert(self) -> Endpoint:
-        return FulcioSigningCert(
-            urljoin(self.url, SIGNING_CERT_ENDPOINT), session=self.session
-        )
-
-    @property
-    def root_cert(self) -> Endpoint:
-        return FulcioRootCert(
-            urljoin(self.url, ROOT_CERT_ENDPOINT), session=self.session
-        )
-
-
 class FulcioSigningCert(Endpoint):
     def post(
         self, req: FulcioCertificateSigningRequest, token: str
@@ -194,3 +173,24 @@ class FulcioRootCert(Endpoint):
             raise FulcioClientError from http_error
         root_cert: Certificate = load_pem_x509_certificate(resp.content)
         return FulcioRootResponse(root_cert)
+
+
+class FulcioClient:
+    """The internal Fulcio client"""
+
+    def __init__(self, url: str = DEFAULT_FULCIO_URL) -> None:
+        """Initialize the client"""
+        self.url = url
+        self.session = requests.Session()
+
+    @property
+    def signing_cert(self) -> FulcioSigningCert:
+        return FulcioSigningCert(
+            urljoin(self.url, SIGNING_CERT_ENDPOINT), session=self.session
+        )
+
+    @property
+    def root_cert(self) -> FulcioRootCert:
+        return FulcioRootCert(
+            urljoin(self.url, ROOT_CERT_ENDPOINT), session=self.session
+        )

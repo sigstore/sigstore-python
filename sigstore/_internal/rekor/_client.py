@@ -53,28 +53,9 @@ class Endpoint(ABC):
         self.session = session
 
 
-class RekorClient:
-    """The internal Rekor client"""
-
-    def __init__(self, url: str = DEFAULT_REKOR_URL) -> None:
-        self.url = url
-        self.session = requests.Session()
-        self.session.headers.update(
-            {"Content-Type": "application/json", "Accept": "application/json"}
-        )
-
-    @property
-    def index(self) -> Endpoint:
-        return RekorIndex(urljoin(self.url, "index/"), session=self.session)
-
-    @property
-    def log(self) -> Endpoint:
-        return RekorLog(urljoin(self.url, "log/"), session=self.session)
-
-
 class RekorIndex(Endpoint):
     @property
-    def retrieve(self) -> Endpoint:
+    def retrieve(self) -> RekorRetrieve:
         return RekorRetrieve(urljoin(self.url, "retrieve/"), session=self.session)
 
 
@@ -91,7 +72,7 @@ class RekorRetrieve(Endpoint):
 
 class RekorLog(Endpoint):
     @property
-    def entries(self) -> Endpoint:
+    def entries(self) -> RekorEntries:
         return RekorEntries(urljoin(self.url, "entries/"), session=self.session)
 
 
@@ -131,3 +112,22 @@ class RekorEntries(Endpoint):
             raise RekorClientError from http_error
 
         return RekorEntry.from_response(resp.json())
+
+
+class RekorClient:
+    """The internal Rekor client"""
+
+    def __init__(self, url: str = DEFAULT_REKOR_URL) -> None:
+        self.url = url
+        self.session = requests.Session()
+        self.session.headers.update(
+            {"Content-Type": "application/json", "Accept": "application/json"}
+        )
+
+    @property
+    def index(self) -> RekorIndex:
+        return RekorIndex(urljoin(self.url, "index/"), session=self.session)
+
+    @property
+    def log(self) -> RekorLog:
+        return RekorLog(urljoin(self.url, "log/"), session=self.session)

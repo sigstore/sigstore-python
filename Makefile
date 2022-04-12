@@ -19,7 +19,8 @@ ifneq ($(TESTS),)
 	COV_ARGS :=
 else
 	TEST_ARGS :=
-	COV_ARGS := --fail-under 100
+# TODO: Reenable coverage testing
+#	COV_ARGS := --fail-under 100
 endif
 
 .PHONY: all
