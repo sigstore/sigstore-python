@@ -82,7 +82,6 @@ def verify(
     store_ctx.verify_certificate()
 
     # 2) Check that the signing certificate contains the proof claim as the subject
-
     if cert_email is not None:
         # Check usage is "digital signature"
         usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
