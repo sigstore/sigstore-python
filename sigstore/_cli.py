@@ -18,13 +18,15 @@ def _sign(file_, identity_token):
 @main.command("verify")
 @click.option("certificate_path", "--cert", type=click.Path(), required=True)
 @click.option("signature_path", "--signature", type=click.Path(), required=True)
+@click.option("cert_email", "--cert-email", type=str)
 @click.argument("file_", metavar="FILE", type=click.File("r"), required=True)
-def _verify(file_, certificate_path, signature_path):
+def _verify(file_, certificate_path, signature_path, cert_email):
     click.echo(
         verify(
             filename=file_.name,
             certificate_path=certificate_path,
             signature_path=signature_path,
+            cert_email=cert_email,
             output=click.echo,
         )
     )

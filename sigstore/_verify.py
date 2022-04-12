@@ -7,7 +7,14 @@ import hashlib
 from pathlib import Path
 
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.x509 import load_pem_x509_certificate
+from cryptography.x509 import (
+    ExtendedKeyUsage,
+    KeyUsage,
+    RFC822Name,
+    SubjectAlternativeName,
+    load_pem_x509_certificate,
+)
+from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import X509, X509Store, X509StoreContext
 
 from sigstore._internal.merkle import verify_merkle_inclusion
@@ -27,7 +34,9 @@ def _no_output(*a, **kw):
 FULCIO_ROOT_CERT = "fulcio.crt.pem"
 
 
-def verify(filename, certificate_path, signature_path, output=_no_output) -> None:
+def verify(
+    filename, certificate_path, signature_path, cert_email, output=_no_output
+) -> None:
     # Read the contents of the package to be verified
     artifact_contents = filename.read().encode()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
@@ -72,6 +81,19 @@ def verify(filename, certificate_path, signature_path, output=_no_output) -> Non
     store_ctx.verify_certificate()
 
     # 2) Check that the signing certificate contains the proof claim as the subject
+
+    if cert_email is not None:
+        # Check usage is "digital signature"
+        usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
+        assert usage_ext.value.digital_signature
+
+        # Check that extended usage contains "code signing"
+        extended_usage_ext = cert.extensions.get_extension_for_class(ExtendedKeyUsage)
+        assert ExtendedKeyUsageOID.CODE_SIGNING in extended_usage_ext.value
+
+        # Check that SubjectAlternativeName contains signer identity
+        san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
+        assert cert_email in san_ext.value.get_values_for_type(RFC822Name)
 
     # 3) Verify that the signature was signed by the public key in the signing certificate
     signing_key = cert.public_key()
