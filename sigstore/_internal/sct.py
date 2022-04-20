@@ -70,7 +70,7 @@ def verify_sct(
     digitally_signed = _pack_digitally_signed(sct, cert)
     try:
         ctfe_key.verify(
-            signature=sct.signature.encode(),
+            signature=sct.signature,
             data=digitally_signed,
             signature_algorithm=ec.ECDSA(hashes.SHA256()),
         )

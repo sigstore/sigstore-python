@@ -4,7 +4,6 @@ import click
 
 from sigstore import sign, verify
 
-
 BUNDLED_CTFE_KEY_PATH = Path(__file__).parent / "keys" / "ctfe.pub"
 
 
