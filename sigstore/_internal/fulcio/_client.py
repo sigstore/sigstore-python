@@ -29,7 +29,7 @@ ROOT_CERT_ENDPOINT = "/api/v1/rootCert"
 class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
     def __init__(self, b64_encoded_sct: str):
         self.struct = json.loads(base64.b64decode(b64_encoded_sct).decode())
-        self.signature = self.struct["signature"]
+        self.signature = base64.b64decode(self.struct["signature"])
 
     @property
     def version(self) -> Version:
