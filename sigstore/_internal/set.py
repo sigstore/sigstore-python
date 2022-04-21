@@ -1,4 +1,6 @@
-"""Utilities for verifying Signed Entry Timestamps."""
+"""
+Utilities for verifying Signed Entry Timestamps.
+"""
 
 from sigstore._internal.rekor import RekorEntry
 
