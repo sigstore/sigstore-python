@@ -68,7 +68,7 @@ def verify(
     root_cert_path = Path(__file__).parent / FULCIO_ROOT_CERT
     if not root_cert_path.is_file():
         # Error
-        return
+        return None
     pem_bytes = open(root_cert_path, "rb").read()
     root = load_pem_x509_certificate(pem_bytes)
 
