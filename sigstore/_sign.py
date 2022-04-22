@@ -18,7 +18,7 @@ def _no_output(*a, **kw):
     pass
 
 
-def sign(file_, identity_token, ctfe_key_path, output=_no_output):
+def sign(file_, identity_token: str, ctfe_pem: bytes, output=_no_output):
     """Public API for signing blobs"""
 
     output(f"Using payload from: {file_.name}")
@@ -63,12 +63,7 @@ def sign(file_, identity_token, ctfe_key_path, output=_no_output):
     # Verify the SCT
     sct = certificate_response.sct  # noqa
     cert = certificate_response.cert  # noqa
-    if not ctfe_key_path.is_file():
-        # TODO(alex): Figure out errors
-        raise Exception("CTFE key does not exist")
-    with ctfe_key_path.open() as f:
-        ctfe_pem: bytes = f.read().encode()
-        ctfe_key = load_pem_public_key(ctfe_pem)
+    ctfe_key = load_pem_public_key(ctfe_pem)
 
     verify_sct(sct, cert, ctfe_key)
 

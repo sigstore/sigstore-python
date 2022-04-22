@@ -4,7 +4,7 @@ API for verifying artifact signatures.
 
 import base64
 import hashlib
-from pathlib import Path
+from importlib import resources
 from typing import cast
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -33,7 +33,7 @@ def _no_output(*a, **kw):
     pass
 
 
-FULCIO_ROOT_CERT = "fulcio.crt.pem"
+FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
 
 
 def verify(file_, certificate_path, signature_path, cert_email=None, output=_no_output):
@@ -63,13 +63,7 @@ def verify(file_, certificate_path, signature_path, cert_email=None, output=_no_
 
     # 1) Verify that the signing certificate is signed by the root certificate and that the signing
     #    certificate was valid at the time of signing.
-    root_cert_path = Path(__file__).parent.parent / FULCIO_ROOT_CERT
-    if not root_cert_path.is_file():
-        # Error
-        output(f"Couldn't find root cert: {root_cert_path}")
-        return None
-    pem_bytes = open(root_cert_path, "rb").read()
-    root = load_pem_x509_certificate(pem_bytes)
+    root = load_pem_x509_certificate(FULCIO_ROOT_CERT)
 
     sign_date = cert.not_valid_before
     openssl_cert = X509.from_cryptography(cert)
