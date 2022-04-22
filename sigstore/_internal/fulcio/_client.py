@@ -91,7 +91,6 @@ class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
             hash_algo != SCTHashAlgorithm.SHA256
             or sig_algo != SCTSignatureAlgorithm.ECDSA
         ):
-            # TODO(ww): Needs a better exception.
             raise FulcioSCTError(
                 f"unexpected hash algorithm {hash_algo} or signature algorithm {sig_algo}"
             )
@@ -100,7 +99,6 @@ class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
         # We expect this to be the remainder of the `signature` blob above, but check it anyways.
         (sig_size,) = struct.unpack("!H", digitally_signed[2:4])
         if len(digitally_signed[4:]) != sig_size:
-            # TODO(ww): Needs a better exception.
             raise FulcioSCTError(
                 f"signature size mismatch: expected {sig_size} bytes, "
                 f"got {len(digitally_signed[4:])}"
@@ -217,11 +215,11 @@ class FulcioSigningCert(Endpoint):
             except (AttributeError, KeyError):
                 raise FulcioClientError from http_error
 
-        sct: FulcioSignedCertificateTimestamp
         try:
             sct = FulcioSignedCertificateTimestamp(resp.headers["SCT"])
-        except IndexError as index_error:
-            raise FulcioClientError from index_error
+        except Exception as exc:
+            # Ideally we'd catch something less generic here.
+            raise FulcioClientError from exc
 
         # Cryptography doesn't have chain verification/building built in
         # https://github.com/pyca/cryptography/issues/2381
