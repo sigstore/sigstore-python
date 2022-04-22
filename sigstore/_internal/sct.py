@@ -61,33 +61,19 @@ class InvalidSctError(Exception):
     pass
 
 
-TLS_SHA256_HASH_ALGORITHM = 0x4
-TLS_ECDSA_SIGNATURE_ALGORITHM = 0x3
-
-
 def verify_sct(
     sct: FulcioSignedCertificateTimestamp,
     cert: Certificate,
     ctfe_key: ec.EllipticCurvePublicKey,
 ) -> None:
     """Verify a signed certificate timestamp"""
-    if sct.signature[0] != TLS_SHA256_HASH_ALGORITHM:
-        raise InvalidSctError(
-            f"Unexpected hash algorithm value: expected {TLS_SHA256_HASH_ALGORITHM}, "
-            f"got {sct.signature[0]}"
-        )
-    if sct.signature[1] != TLS_ECDSA_SIGNATURE_ALGORITHM:
-        raise InvalidSctError(
-            f"Unexpected signature algorithm value: expected {TLS_ECDSA_SIGNATURE_ALGORITHM}, "
-            f"got {sct.signature[1]}"
-        )
     digitally_signed = _pack_digitally_signed(sct, cert)
     try:
         ctfe_key.verify(
             # The signature is prefixed with 2 bytes of data to describe the algorithms used to hash
             # and sign the data (described in IETF's RFC 5264) and 2 bytes containing the length of
             # the signature. So we should strip away the first 4 bytes before verifying.
-            signature=sct.signature[4:],
+            signature=sct.signature,
             data=digitally_signed,
             signature_algorithm=ec.ECDSA(hashes.SHA256()),
         )
