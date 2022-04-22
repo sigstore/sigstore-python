@@ -36,6 +36,7 @@ class SCTHashAlgorithm(IntEnum):
 
     See: https://datatracker.ietf.org/doc/html/rfc5246#section-7.4.1.4.1
     """
+
     NONE = 0
     MD5 = 1
     SHA1 = 2
@@ -53,15 +54,30 @@ class SCTSignatureAlgorithm(IntEnum):
 
     See: https://datatracker.ietf.org/doc/html/rfc5246#section-7.4.1.4.1
     """
+
     ANONYMOUS = 0
     RSA = 1
     DSA = 2
     ECDSA = 3
 
 
+class FulcioSCTError(Exception):
+    """
+    Raised on errors when constructing a `FulcioSignedCertificateTimestamp`.
+    """
+
+    pass
+
+
 class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
     def __init__(self, b64_encoded_sct: str):
         self.struct = json.loads(base64.b64decode(b64_encoded_sct).decode())
+
+        # Pull the SCT version out of the struct and pre-validate it.
+        try:
+            self._version = Version(self.struct.get("sct_version"))
+        except ValueError as exc:
+            raise FulcioSCTError("invalid SCT version") from exc
 
         # The "signature" here is really an RFC 5246 DigitallySigned struct;
         # we need to decompose it further to get the actual interior signature.
@@ -76,7 +92,7 @@ class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
             or sig_algo != SCTSignatureAlgorithm.ECDSA
         ):
             # TODO(ww): Needs a better exception.
-            raise Exception(
+            raise FulcioSCTError(
                 f"unexpected hash algorithm {hash_algo} or signature algorithm {sig_algo}"
             )
 
@@ -85,22 +101,17 @@ class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
         (sig_size,) = struct.unpack("!H", digitally_signed[2:4])
         if len(digitally_signed[4:]) != sig_size:
             # TODO(ww): Needs a better exception.
-            raise Exception(
+            raise FulcioSCTError(
                 f"signature size mismatch: expected {sig_size} bytes, "
                 f"got {len(digitally_signed[4:])}"
             )
 
+        # Finally, extract the underlying signature.
         self.signature: bytes = digitally_signed[4:]
 
     @property
-    def version(self) -> Version:
-        """
-        Returns the SCT version.
-        """
-        if self.struct.get("sct_version") == 0:
-            return Version.v1
-        else:
-            raise Exception("Invalid SCT version")
+    def version(self):
+        return self._version
 
     @property
     def log_id(self) -> bytes:
