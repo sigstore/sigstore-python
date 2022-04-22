@@ -36,15 +36,13 @@ def _no_output(*a, **kw):
 FULCIO_ROOT_CERT = "fulcio.crt.pem"
 
 
-def verify(
-    filename, certificate_path, signature_path, cert_email=None, output=_no_output
-):
+def verify(file_, certificate_path, signature_path, cert_email=None, output=_no_output):
     # Read the contents of the package to be verified
-    artifact_contents = filename.read().encode()
+    artifact_contents = file_.read().encode()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
     # Load the signing certificate
-    pem_data = certificate_path.read()
+    pem_data = certificate_path.read().encode()
     cert = load_pem_x509_certificate(pem_data)
 
     # Load the signature
@@ -65,9 +63,10 @@ def verify(
 
     # 1) Verify that the signing certificate is signed by the root certificate and that the signing
     #    certificate was valid at the time of signing.
-    root_cert_path = Path(__file__).parent / FULCIO_ROOT_CERT
+    root_cert_path = Path(__file__).parent.parent / FULCIO_ROOT_CERT
     if not root_cert_path.is_file():
         # Error
+        output(f"Couldn't find root cert: {root_cert_path}")
         return None
     pem_bytes = open(root_cert_path, "rb").read()
     root = load_pem_x509_certificate(pem_bytes)
@@ -83,23 +82,27 @@ def verify(
     store_ctx.verify_certificate()
 
     # 2) Check that the signing certificate contains the proof claim as the subject
+    # Check usage is "digital signature"
+    usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
+    if not usage_ext.value.digital_signature:
+        # Error
+        output("Key usage is not of type `digital signature`")
+        return None
+
+    # Check that extended usage contains "code signing"
+    extended_usage_ext = cert.extensions.get_extension_for_class(ExtendedKeyUsage)
+    if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
+        # Error
+        output("Extended usage does not contain `code signing`")
+        return None
+
     if cert_email is not None:
-        # Check usage is "digital signature"
-        usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
-        if not usage_ext.value.digital_signature:
-            # Error
-            return None
-
-        # Check that extended usage contains "code signing"
-        extended_usage_ext = cert.extensions.get_extension_for_class(ExtendedKeyUsage)
-        if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
-            # Error
-            return None
-
         # Check that SubjectAlternativeName contains signer identity
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
+        print(san_ext.value.get_values_for_type(RFC822Name))
         if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
             # Error
+            output(f"Subject name does not contain identity: {cert_email}")
             return None
 
     # 3) Verify that the signature was signed by the public key in the signing certificate
@@ -123,6 +126,7 @@ def verify(
             break
     if entry is None:
         # Error
+        output(f"Couldn't find Rekor entry with log id: {desired_log_id}")
         return None
 
     # 4) Verify the inclusion proof supplied by Rekor for this artifact
