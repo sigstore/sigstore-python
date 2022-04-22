@@ -3,6 +3,7 @@ import hashlib
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
 from sigstore._internal.fulcio import (
     FulcioCertificateSigningRequest,
@@ -10,13 +11,14 @@ from sigstore._internal.fulcio import (
 )
 from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor import RekorClient
+from sigstore._internal.sct import verify_sct
 
 
 def _no_output(*a, **kw):
     pass
 
 
-def sign(file_, identity_token, output=_no_output):
+def sign(file_, identity_token, ctfe_key_path, output=_no_output):
     """Public API for signing blobs"""
 
     output(f"Using payload from: {file_.name}")
@@ -56,17 +58,20 @@ def sign(file_, identity_token, output=_no_output):
 
     certificate_response = fulcio.signing_cert.post(certificate_request, identity_token)
 
+    # TODO(alex): Retrieve the public key via TUF
+    #
     # Verify the SCT
-    # TODO TODO TODO
     sct = certificate_response.sct  # noqa
     cert = certificate_response.cert  # noqa
-    # certificate
-    # OCSP response
-    # public key of fulcio log
-    # - no api that exposes the public key, bake it in or get it via TUF
-    # - ecdsa PEM encoded key
-    # - https://storage.googleapis.com/sigstore-tuf-root
-    # - https://github.com/google/certificate-transparency-go/
+    if not ctfe_key_path.is_file():
+        # TODO(alex): Figure out errors
+        raise Exception("CTFE key does not exist")
+    with ctfe_key_path.open() as f:
+        ctfe_pem: bytes = f.read().encode()
+        ctfe_key = load_pem_public_key(ctfe_pem)
+
+    verify_sct(sct, cert, ctfe_key)
+
     output("Successfully verified SCT...")
 
     # Output the ephemeral certificate
