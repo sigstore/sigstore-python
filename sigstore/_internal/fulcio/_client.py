@@ -5,8 +5,10 @@ Client implementation for interacting with Fulcio.
 import base64
 import datetime
 import json
+import struct
 from abc import ABC
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import List
 from urllib.parse import urljoin
 
@@ -26,20 +28,88 @@ SIGNING_CERT_ENDPOINT = "/api/v1/signingCert"
 ROOT_CERT_ENDPOINT = "/api/v1/rootCert"
 
 
+class SCTHashAlgorithm(IntEnum):
+    """
+    Hash algorithms that are valid for SCTs.
+
+    These are exactly the same as the HashAlgorithm enum in RFC 5246 (TLS 1.2).
+
+    See: https://datatracker.ietf.org/doc/html/rfc5246#section-7.4.1.4.1
+    """
+
+    NONE = 0
+    MD5 = 1
+    SHA1 = 2
+    SHA224 = 3
+    SHA256 = 4
+    SHA384 = 5
+    SHA512 = 6
+
+
+class SCTSignatureAlgorithm(IntEnum):
+    """
+    Signature algorithms that are valid for SCTs.
+
+    These are exactly the same as the SignatureAlgorithm enum in RFC 5246 (TLS 1.2).
+
+    See: https://datatracker.ietf.org/doc/html/rfc5246#section-7.4.1.4.1
+    """
+
+    ANONYMOUS = 0
+    RSA = 1
+    DSA = 2
+    ECDSA = 3
+
+
+class FulcioSCTError(Exception):
+    """
+    Raised on errors when constructing a `FulcioSignedCertificateTimestamp`.
+    """
+
+    pass
+
+
 class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
     def __init__(self, b64_encoded_sct: str):
         self.struct = json.loads(base64.b64decode(b64_encoded_sct).decode())
-        self.signature = self.struct["signature"]
+
+        # Pull the SCT version out of the struct and pre-validate it.
+        try:
+            self._version = Version(self.struct.get("sct_version"))
+        except ValueError as exc:
+            raise FulcioSCTError("invalid SCT version") from exc
+
+        # The "signature" here is really an RFC 5246 DigitallySigned struct;
+        # we need to decompose it further to get the actual interior signature.
+        # See: https://datatracker.ietf.org/doc/html/rfc5246#section-4.7
+        digitally_signed = base64.b64decode(self.struct["signature"])
+
+        # The first two bytes signify the hash and signature algorithms, respectively.
+        # We currently only accept SHA256 + ECDSA.
+        hash_algo, sig_algo = digitally_signed[0:2]
+        if (
+            hash_algo != SCTHashAlgorithm.SHA256
+            or sig_algo != SCTSignatureAlgorithm.ECDSA
+        ):
+            raise FulcioSCTError(
+                f"unexpected hash algorithm {hash_algo} or signature algorithm {sig_algo}"
+            )
+
+        # The next two bytes are the size of the signature, big-endian.
+        # We expect this to be the remainder of the `signature` blob above, but check it anyways.
+        (sig_size,) = struct.unpack("!H", digitally_signed[2:4])
+        if len(digitally_signed[4:]) != sig_size:
+            raise FulcioSCTError(
+                f"signature size mismatch: expected {sig_size} bytes, "
+                f"got {len(digitally_signed[4:])}"
+            )
+
+        # Finally, extract the underlying signature.
+        self.signature: bytes = digitally_signed[4:]
 
     @property
-    def version(self) -> Version:
-        """
-        Returns the SCT version.
-        """
-        if self.struct.get("sct_version") == 0:
-            return Version.v1
-        else:
-            raise Exception("Invalid SCT version")
+    def version(self):
+        return self._version
 
     @property
     def log_id(self) -> bytes:
@@ -145,11 +215,11 @@ class FulcioSigningCert(Endpoint):
             except (AttributeError, KeyError):
                 raise FulcioClientError from http_error
 
-        sct: FulcioSignedCertificateTimestamp
         try:
             sct = FulcioSignedCertificateTimestamp(resp.headers["SCT"])
-        except IndexError as index_error:
-            raise FulcioClientError from index_error
+        except Exception as exc:
+            # Ideally we'd catch something less generic here.
+            raise FulcioClientError from exc
 
         # Cryptography doesn't have chain verification/building built in
         # https://github.com/pyca/cryptography/issues/2381
