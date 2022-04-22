@@ -85,9 +85,8 @@ def verify_sct(
     try:
         ctfe_key.verify(
             # The signature is prefixed with 2 bytes of data to describe the algorithms used to hash
-            # and sign the data (described in IETF's RFC 5264). There also seems to be 2 bytes of
-            # padding leading the signature payload itself. So we should strip away the first 4
-            # bytes.
+            # and sign the data (described in IETF's RFC 5264) and 2 bytes containing the length of
+            # the signature. So we should strip away the first 4 bytes before verifying.
             signature=sct.signature[4:],
             data=digitally_signed,
             signature_algorithm=ec.ECDSA(hashes.SHA256()),
