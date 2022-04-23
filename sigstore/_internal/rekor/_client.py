@@ -77,8 +77,20 @@ class RekorIndex(Endpoint):
 
 
 class RekorRetrieve(Endpoint):
-    def post(self, sha256_hash: Optional[str] = None) -> List[str]:
-        data = {"hash": f"sha256:{sha256_hash}"}
+    def post(
+        self,
+        sha256_hash: Optional[str] = None,
+        encoded_public_key: Optional[str] = None,
+    ) -> List[str]:
+        data = dict()
+        if sha256_hash is not None:
+            data["hash"] = f"sha256:{sha256_hash}"
+        if encoded_public_key is not None:
+            data["publicKey"] = {"format": "x509", "content": encoded_public_key}
+        if not data:
+            raise RekorClientError(
+                "No parameters were provided to Rekor index retrieve query"
+            )
         resp: requests.Response = self.session.post(self.url, data=json.dumps(data))
         try:
             resp.raise_for_status()

@@ -104,32 +104,35 @@ def verify(file_, certificate_path, signature_path, cert_email=None, output=_no_
     signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
     signing_key.verify(artifact_signature, artifact_contents, ec.ECDSA(hashes.SHA256()))
 
-    # The log ID is a hash of a DER encoding of the signing certificate
-    desired_log_id = hashlib.sha256(
-        cert.public_bytes(encoding=serialization.Encoding.DER)
-    ).hexdigest()
+    # Get a base64 encoding of the signing key. We're going to use this in our Rekor query.
+    pub_b64 = base64.b64encode(
+        signing_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
 
     # Retrieve the relevant Rekor entry to verify the inclusion proof and SET
     rekor = RekorClient()
-    uuids = rekor.index.retrieve.post(sha256_artifact_hash)
-    entry = None
+    uuids = rekor.index.retrieve.post(sha256_artifact_hash, pub_b64.decode())
+
+    valid_sig_exists = False
     for uuid in uuids:
-        cur_entry: RekorEntry = rekor.log.entries.get(uuid)
-        if cur_entry.log_id == desired_log_id:
-            entry = cur_entry
-            break
-    if entry is None:
-        # Error
-        output(f"Couldn't find Rekor entry with log id: {desired_log_id}")
+        entry: RekorEntry = rekor.log.entries.get(uuid)
+
+        # 4) Verify the inclusion proof supplied by Rekor for this artifact
+        inclusion_proof = RekorInclusionProof.from_dict(
+            entry.verification.get("inclusionProof")
+        )
+        verify_merkle_inclusion(inclusion_proof)
+
+        # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
+        verify_set(entry)
+
+        valid_sig_exists = True
+
+    if not valid_sig_exists:
+        output("No valid Rekor entries were found")
         return None
-
-    # 4) Verify the inclusion proof supplied by Rekor for this artifact
-    inclusion_proof = RekorInclusionProof.from_dict(
-        entry.verification.get("inclusionProof")
-    )
-    verify_merkle_inclusion(inclusion_proof)
-
-    # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
-    verify_set(entry)
 
     return None
