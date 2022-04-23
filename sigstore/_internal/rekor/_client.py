@@ -79,7 +79,7 @@ class RekorIndex(Endpoint):
 class RekorRetrieve(Endpoint):
     def post(self, sha256_hash: Optional[str] = None) -> List[str]:
         data = {"hash": f"sha256:{sha256_hash}"}
-        resp: requests.Response = self.session.post(self.url, data=data)
+        resp: requests.Response = self.session.post(self.url, data=json.dumps(data))
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
