@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from abc import ABC
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -82,7 +82,7 @@ class RekorRetrieve(Endpoint):
         sha256_hash: Optional[str] = None,
         encoded_public_key: Optional[str] = None,
     ) -> List[str]:
-        data = dict()
+        data: Dict[str, Any] = dict()
         if sha256_hash is not None:
             data["hash"] = f"sha256:{sha256_hash}"
         if encoded_public_key is not None:
