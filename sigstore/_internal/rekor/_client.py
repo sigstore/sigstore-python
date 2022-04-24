@@ -24,6 +24,7 @@ class RekorEntry:
     log_id: str
     log_index: int
     verification: dict
+    raw_data: dict
 
     @classmethod
     def from_response(cls, dict_) -> RekorEntry:
@@ -41,6 +42,7 @@ class RekorEntry:
             log_id=entry["logID"],
             log_index=entry["logIndex"],
             verification=entry["verification"],
+            raw_data=entry,
         )
 
 

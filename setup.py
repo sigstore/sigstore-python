@@ -32,6 +32,7 @@ setup(
     install_requires=[
         "click>=8",
         "cryptography",
+        "jcs",
         "pem",
         "pydantic",
         "pyjwt",
