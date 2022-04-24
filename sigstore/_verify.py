@@ -37,15 +37,20 @@ FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
 
 
 def verify(file_, certificate_path, signature_path, cert_email=None, output=_no_output):
+    """Public API for verifying blobs"""
+
     # Read the contents of the package to be verified
+    output(f"Using payload from: {file_.name}")
     artifact_contents = file_.read().encode()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
     # Load the signing certificate
+    output(f"Using certificate from: {certificate_path.name}")
     pem_data = certificate_path.read().encode()
     cert = load_pem_x509_certificate(pem_data)
 
     # Load the signature
+    output(f"Using signature from: {signature_path.name}")
     b64_artifact_signature = signature_path.read().encode()
     artifact_signature = base64.b64decode(b64_artifact_signature)
 
@@ -99,10 +104,14 @@ def verify(file_, certificate_path, signature_path, cert_email=None, output=_no_
             output(f"Subject name does not contain identity: {cert_email}")
             return None
 
+    output("Successfully verified signing certificate validity...")
+
     # 3) Verify that the signature was signed by the public key in the signing certificate
     signing_key = cert.public_key()
     signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
     signing_key.verify(artifact_signature, artifact_contents, ec.ECDSA(hashes.SHA256()))
+
+    output("Successfully verified signature...")
 
     # Get a base64 encoding of the signing key. We're going to use this in our Rekor query.
     pub_b64 = base64.b64encode(
@@ -135,4 +144,5 @@ def verify(file_, certificate_path, signature_path, cert_email=None, output=_no_
         output("No valid Rekor entries were found")
         return None
 
+    output("Successfully verified Rekor entry...")
     return None
