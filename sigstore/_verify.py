@@ -25,7 +25,7 @@ from sigstore._internal.rekor import (
     RekorEntry,
     RekorInclusionProof,
 )
-from sigstore._internal.set import verify_set
+from sigstore._internal.set import InvalidSetError, verify_set
 
 
 # TODO(alex): Share this with `sign`
@@ -142,7 +142,11 @@ def verify(
         verify_merkle_inclusion(inclusion_proof)
 
         # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
-        verify_set(entry)
+        try:
+            verify_set(entry)
+        except InvalidSetError as inval_set:
+            output(f"Failed to validate Rekor entry's SET: {inval_set}")
+            continue
 
         valid_sig_exists = True
 
