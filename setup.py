@@ -33,6 +33,7 @@ setup(
         "click>=8",
         "cryptography",
         "pem",
+        "pydantic",
         "pyjwt",
         "pyOpenSSL",
         "requests",
