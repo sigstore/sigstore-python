@@ -130,7 +130,7 @@ def verify(file_, certificate_path, signature_path, cert_email=None, output=_no_
         entry: RekorEntry = rekor.log.entries.get(uuid)
 
         # 4) Verify the inclusion proof supplied by Rekor for this artifact
-        inclusion_proof = RekorInclusionProof.from_dict(
+        inclusion_proof = RekorInclusionProof.parse_obj(
             entry.verification.get("inclusionProof")
         )
         verify_merkle_inclusion(inclusion_proof)

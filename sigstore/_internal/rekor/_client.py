@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
+from pydantic import BaseModel, Field
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v1/"
 
@@ -43,21 +44,11 @@ class RekorEntry:
         )
 
 
-@dataclass(frozen=True)
-class RekorInclusionProof:
-    log_index: int
-    root_hash: str
-    tree_size: int
-    hashes: List[str]
-
-    @classmethod
-    def from_dict(cls, dict_) -> RekorInclusionProof:
-        return cls(
-            log_index=dict_["logIndex"],
-            root_hash=dict_["rootHash"],
-            tree_size=dict_["treeSize"],
-            hashes=dict_["hashes"],
-        )
+class RekorInclusionProof(BaseModel):
+    log_index: int = Field(..., alias="logIndex")
+    root_hash: str = Field(..., alias="rootHash")
+    tree_size: int = Field(..., alias="treeSize")
+    hashes: List[str] = Field(..., alias="hashes")
 
 
 class RekorClientError(Exception):
