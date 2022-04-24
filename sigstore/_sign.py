@@ -1,5 +1,6 @@
 import base64
 import hashlib
+from typing import BinaryIO, TextIO
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -18,7 +19,7 @@ def _no_output(*a, **kw):
     pass
 
 
-def sign(file_, identity_token: str, ctfe_pem: bytes, output=_no_output):
+def sign(file_: TextIO, identity_token: str, ctfe_pem: BinaryIO, output=_no_output):
     """Public API for signing blobs"""
 
     output(f"Using payload from: {file_.name}")
@@ -63,7 +64,7 @@ def sign(file_, identity_token: str, ctfe_pem: bytes, output=_no_output):
     # Verify the SCT
     sct = certificate_response.sct  # noqa
     cert = certificate_response.cert  # noqa
-    ctfe_key = load_pem_public_key(ctfe_pem)
+    ctfe_key = load_pem_public_key(ctfe_pem.read())
 
     verify_sct(sct, cert, ctfe_key)
 
