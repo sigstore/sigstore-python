@@ -5,7 +5,7 @@ API for verifying artifact signatures.
 import base64
 import hashlib
 from importlib import resources
-from typing import cast
+from typing import Optional, TextIO, cast
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -36,7 +36,13 @@ def _no_output(*a, **kw):
 FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
 
 
-def verify(file_, certificate_path, signature_path, cert_email=None, output=_no_output):
+def verify(
+    file_: TextIO,
+    certificate_path: TextIO,
+    signature_path: TextIO,
+    cert_email: Optional[str] = None,
+    output=_no_output,
+):
     """Public API for verifying blobs"""
 
     # Read the contents of the package to be verified
