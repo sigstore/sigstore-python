@@ -20,6 +20,8 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/trailofbits/sigstore-python",
     packages=find_packages(),
+    package_data={"sigstore": ["_store/*"]},
+    include_package_data=True,
     entry_points={
         "console_scripts": [
             "sigstore = sigstore._cli:main",
@@ -27,9 +29,18 @@ setup(
     },
     platforms="any",
     python_requires=">=3.7",
-    install_requires=["click>=8", "cryptography", "pem", "pyjwt", "requests"],
+    install_requires=[
+        "click>=8",
+        "cryptography",
+        "pem",
+        "pydantic",
+        "pyjwt",
+        "pyOpenSSL",
+        "requests",
+    ],
     extras_require={
         "dev": [
+            "build",
             "bump",
             "flake8",
             "black",
@@ -43,6 +54,7 @@ setup(
             "mypy",
             "types-cryptography",
             "types-requests",
+            "types-pyOpenSSL",
             "types-pyjwt",
         ]
     },

@@ -7,10 +7,11 @@ from __future__ import annotations
 import json
 from abc import ABC
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
+from pydantic import BaseModel, Field
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v1/"
 
@@ -43,6 +44,13 @@ class RekorEntry:
         )
 
 
+class RekorInclusionProof(BaseModel):
+    log_index: int = Field(..., alias="logIndex")
+    root_hash: str = Field(..., alias="rootHash")
+    tree_size: int = Field(..., alias="treeSize")
+    hashes: List[str] = Field(..., alias="hashes")
+
+
 class RekorClientError(Exception):
     pass
 
@@ -60,9 +68,21 @@ class RekorIndex(Endpoint):
 
 
 class RekorRetrieve(Endpoint):
-    def post(self, sha256_hash: Optional[str] = None) -> List[str]:
-        data = {"hash": f"sha256:{sha256_hash}"}
-        resp: requests.Response = self.session.post(self.url, data=data)
+    def post(
+        self,
+        sha256_hash: Optional[str] = None,
+        encoded_public_key: Optional[str] = None,
+    ) -> List[str]:
+        data: Dict[str, Any] = dict()
+        if sha256_hash is not None:
+            data["hash"] = f"sha256:{sha256_hash}"
+        if encoded_public_key is not None:
+            data["publicKey"] = {"format": "x509", "content": encoded_public_key}
+        if not data:
+            raise RekorClientError(
+                "No parameters were provided to Rekor index retrieve query"
+            )
+        resp: requests.Response = self.session.post(self.url, data=json.dumps(data))
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:

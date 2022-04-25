@@ -7,4 +7,9 @@ import sigstore
 @pytest.mark.xfail
 def test_verify():
     filename = pretend.stub()
-    assert sigstore.verify(filename) == "Nothing here yet"
+    certificate_path = pretend.stub()
+    signature_path = pretend.stub()
+    assert (
+        sigstore.verify(filename, certificate_path, signature_path)
+        == "Nothing here yet"
+    )
