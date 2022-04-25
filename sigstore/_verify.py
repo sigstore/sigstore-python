@@ -19,7 +19,10 @@ from cryptography.x509 import (
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import X509, X509Store, X509StoreContext
 
-from sigstore._internal.merkle import verify_merkle_inclusion
+from sigstore._internal.merkle import (
+    InvalidInclusionProofError,
+    verify_merkle_inclusion,
+)
 from sigstore._internal.rekor import (
     RekorClient,
     RekorEntry,
@@ -139,7 +142,13 @@ def verify(
         inclusion_proof = RekorInclusionProof.parse_obj(
             entry.verification.get("inclusionProof")
         )
-        verify_merkle_inclusion(inclusion_proof)
+        try:
+            verify_merkle_inclusion(inclusion_proof, entry)
+        except InvalidInclusionProofError as inval_inclusion_proof:
+            output(
+                f"Failed to validate Rekor entry's inclusion proof: {inval_inclusion_proof}"
+            )
+            continue
 
         # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         verify_set(entry)
