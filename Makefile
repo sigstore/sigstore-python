@@ -37,7 +37,7 @@ dev:
 
 .PHONY: run
 run:
-	@. env/bin/activate && pip-audit $(ARGS)
+	@. env/bin/activate && sigstore $(ARGS)
 
 .PHONY: lint
 lint:
