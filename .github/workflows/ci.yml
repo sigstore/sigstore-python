@@ -27,6 +27,7 @@ jobs:
         run: make dev
       - name: test
         run: make test
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -37,7 +38,6 @@ jobs:
       - name: lint
         run: make lint
 
-  TODO: Enable once CLI development begins.
   check-readme:
     runs-on: ubuntu-latest
     steps:
