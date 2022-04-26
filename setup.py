@@ -32,12 +32,12 @@ setup(
     install_requires=[
         "click>=8",
         "cryptography",
-        "jcs",
         "pem",
         "pydantic",
         "pyjwt",
         "pyOpenSSL",
         "requests",
+        "securesystemslib",
     ],
     extras_require={
         "dev": [

@@ -7,10 +7,10 @@ from importlib import resources
 from typing import cast
 
 import cryptography.hazmat.primitives.asymmetric.ec as ec
-import jcs  # type: ignore
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from securesystemslib.formats import encode_canonical  # type: ignore
 
 from sigstore._internal.rekor import RekorEntry
 
@@ -31,7 +31,7 @@ def verify_set(entry: RekorEntry) -> None:
     raw_data = entry.raw_data.copy()
     del raw_data["verification"]
     del raw_data["attestation"]
-    canon_data: bytes = jcs.canonicalize(raw_data)
+    canon_data: bytes = encode_canonical(raw_data).encode()
 
     # Decode the SET field
     signed_entry_ts: bytes = base64.b64decode(
