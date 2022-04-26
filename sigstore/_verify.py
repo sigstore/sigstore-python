@@ -155,7 +155,7 @@ def verify(
         integrated_time = datetime.datetime.utcfromtimestamp(entry.integrated_time)
         if (
             integrated_time < cert.not_valid_before
-            or integrated_time > cert.not_valid_after
+            or integrated_time >= cert.not_valid_after
         ):
             # No need to log anything here.
             #
