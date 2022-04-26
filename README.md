@@ -86,6 +86,10 @@ Options:
 
 `pip-audit` is licensed under the Apache 2.0 License.
 
+## Contributing
+
+See [the contributing docs](CONTRIBUTING.md) for details.
+
 ## Code of Conduct
 Everyone interacting with this project is expected to follow the
 [PSF Code of Conduct](https://github.com/pypa/.github/blob/main/CODE_OF_CONDUCT.md).
