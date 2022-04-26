@@ -158,6 +158,7 @@ def verify(
             continue
 
         valid_sig_exists = True
+        break
 
     if not valid_sig_exists:
         output("No valid Rekor entries were found")

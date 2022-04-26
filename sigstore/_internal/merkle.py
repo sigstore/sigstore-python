@@ -14,6 +14,10 @@ class InvalidInclusionProofError(Exception):
     pass
 
 
+LEAF_HASH_PREFIX = 0
+NODE_HASH_PREFIX = 1
+
+
 def _decomp_inclusion_proof(index: int, size: int) -> Tuple[int, int]:
     inner = (index ^ (size - 1)).bit_length()
     border = bin(index >> inner).count("1")
@@ -38,13 +42,13 @@ def _chain_border_right(seed: bytes, hashes: List[str]) -> bytes:
 
 def _hash_children(lhs: bytes, rhs: bytes) -> bytes:
     pattern = f"B{len(lhs)}s{len(rhs)}s"
-    data = struct.pack(pattern, 1, lhs, rhs)
+    data = struct.pack(pattern, NODE_HASH_PREFIX, lhs, rhs)
     return hashlib.sha256(data).digest()
 
 
 def _hash_leaf(leaf: bytes) -> bytes:
     pattern = f"B{len(leaf)}s"
-    data = struct.pack(pattern, 0, leaf)
+    data = struct.pack(pattern, LEAF_HASH_PREFIX, leaf)
     return hashlib.sha256(data).digest()
 
 
@@ -52,24 +56,6 @@ def verify_merkle_inclusion(
     inclusion_proof: RekorInclusionProof, entry: RekorEntry
 ) -> None:
     """Verify the Merkle Inclusion Proof for a given Rekor entry"""
-    leaf_hash: bytes = _hash_leaf(base64.b64decode(entry.body))
-
-    # TODO(alex): Use pydantic for this
-    if inclusion_proof.log_index < 0:
-        raise InvalidInclusionProofError(
-            f"Inclusion proof has invalid log index: {inclusion_proof.log_index} < 0"
-        )
-
-    if inclusion_proof.tree_size < 0:
-        raise InvalidInclusionProofError(
-            f"Inclusion proof has invalid tree size: {inclusion_proof.tree_size} < 0"
-        )
-
-    if inclusion_proof.log_index >= inclusion_proof.tree_size:
-        raise InvalidInclusionProofError(
-            f"Inclusion proof has log index greater than tree size: {inclusion_proof.log_index} >= "
-            f"{inclusion_proof.tree_size}"
-        )
 
     inner, border = _decomp_inclusion_proof(
         inclusion_proof.log_index, inclusion_proof.tree_size
@@ -81,12 +67,16 @@ def verify_merkle_inclusion(
             f"{len(inclusion_proof.hashes)}"
         )
 
+    leaf_hash: bytes = _hash_leaf(base64.b64decode(entry.body))
+
     intermediate_result: bytes = _chain_inner(
         leaf_hash, inclusion_proof.hashes[:inner], inclusion_proof.log_index
     )
+
     calc_hash: str = _chain_border_right(
         intermediate_result, inclusion_proof.hashes[inner:]
     ).hex()
+
     if calc_hash != inclusion_proof.root_hash:
         raise InvalidInclusionProofError(
             f"Inclusion proof contains invalid root hash: expected {inclusion_proof}, calculated "
