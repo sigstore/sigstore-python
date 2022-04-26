@@ -5,7 +5,7 @@ sigstore-python
 ![CI](https://github.com/trailofbits/sigstore-python/workflows/CI/badge.svg)
 <!--- @end-badges@ --->
 
-⚠️ This project is not ready for use! ⚠️
+⚠️ This project is not ready for general-purpose use! ⚠️
 
 `sigstore` is a tool for signing and verifying Python package distributions.
 
@@ -14,13 +14,8 @@ support from Google. This is not an official Google product.
 
 ## Features
 
-### Signing
-
 * Support for signing Python package distributions using an OpenID Connect identity
 * Support for publishing signatures to a [Rekor](https://github.com/sigstore/rekor) instance
-
-### Verifying
-
 * Support for verifying signatures on Python package distributions
 
 ## Installation
