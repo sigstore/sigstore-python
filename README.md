@@ -1,6 +1,10 @@
 sigstore-python
 ===============
 
+<!--- @begin-badges@ --->
+![CI](https://github.com/trailofbits/sigstore-python/workflows/CI/badge.svg)
+<!--- @end-badges@ --->
+
 ⚠️ This project is not ready for use! ⚠️
 
 `sigstore` is a tool for signing and verifying Python package distributions.
