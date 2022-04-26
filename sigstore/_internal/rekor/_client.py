@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v1/"
 
@@ -51,6 +51,27 @@ class RekorInclusionProof(BaseModel):
     root_hash: str = Field(..., alias="rootHash")
     tree_size: int = Field(..., alias="treeSize")
     hashes: List[str] = Field(..., alias="hashes")
+
+    @validator("log_index")
+    def log_index_positive(cls, v):
+        if v < 0:
+            raise ValueError(f"Inclusion proof has invalid log index: {v} < 0")
+        return v
+
+    @validator("tree_size")
+    def tree_size_positive(cls, v):
+        if v < 0:
+            raise ValueError(f"Inclusion proof has invalid tree size: {v} < 0")
+        return v
+
+    @validator("tree_size")
+    def log_index_within_tree_size(cls, v, values, **kwargs):
+        if v <= values["log_index"]:
+            raise ValueError(
+                "Inclusion proof has log index greater than or equal to tree size: "
+                f"{v} <= {values['log_index']}"
+            )
+        return v
 
 
 class RekorClientError(Exception):
