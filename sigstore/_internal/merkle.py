@@ -44,6 +44,7 @@ def _chain_inner(seed: bytes, hashes: List[str], log_index: int) -> bytes:
     are ordered from lower levels to upper, and |seed| is the initial subtree/leaf hash on the path
     located at the specified |index| on its level.
     """
+
     for i in range(len(hashes)):
         h = bytes.fromhex(hashes[i])
         if (log_index >> i) & 1 == 0:
@@ -58,6 +59,7 @@ def _chain_border_right(seed: bytes, hashes: List[str]) -> bytes:
     Chains proof hashes along tree borders. This differs from inner chaining because |proof|
     contains only left-side subtree hashes.
     """
+
     for h in hashes:
         seed = _hash_children(bytes.fromhex(h), seed)
     return seed
