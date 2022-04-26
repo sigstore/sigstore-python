@@ -152,7 +152,7 @@ def verify(
             continue
 
         # 6) Verify that the signing certificate was valid at the time of signing
-        integrated_time = datetime.datetime.fromtimestamp(entry.integrated_time)
+        integrated_time = datetime.datetime.utcfromtimestamp(entry.integrated_time)
         if (
             integrated_time < cert.not_valid_before
             or integrated_time > cert.not_valid_after
