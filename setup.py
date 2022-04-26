@@ -37,6 +37,7 @@ setup(
         "pyjwt",
         "pyOpenSSL",
         "requests",
+        "securesystemslib",
     ],
     extras_require={
         "dev": [
