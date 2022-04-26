@@ -3,6 +3,7 @@ API for verifying artifact signatures.
 """
 
 import base64
+import datetime
 import hashlib
 from importlib import resources
 from typing import Optional, TextIO, cast
@@ -74,6 +75,8 @@ def verify(
     #
     # 4) Verify the inclusion proof supplied by Rekor for this artifact
     # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
+    # 6) Verify that the signing certificate was valid at the time of signing by comparing the
+    #    expiry against the integrated timestamp
 
     # 1) Verify that the signing certificate is signed by the root certificate and that the signing
     #    certificate was valid at the time of signing.
@@ -155,6 +158,18 @@ def verify(
             verify_set(entry)
         except InvalidSetError as inval_set:
             output(f"Failed to validate Rekor entry's SET: {inval_set}")
+            continue
+
+        # 6) Verify that the signing certificate was valid at the time of signing
+        integrated_time = datetime.datetime.utcfromtimestamp(entry.integrated_time)
+        if (
+            integrated_time < cert.not_valid_before
+            or integrated_time >= cert.not_valid_after
+        ):
+            # No need to log anything here.
+            #
+            # If an artifact has been signed multiple times, this will happen so it's not really an
+            # error case.
             continue
 
         valid_sig_exists = True
