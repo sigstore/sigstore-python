@@ -23,7 +23,7 @@ def _decomp_inclusion_proof(index: int, size: int) -> Tuple[int, int]:
 def _chain_inner(seed: bytes, hashes: List[str], log_index: int) -> bytes:
     for i in range(len(hashes)):
         h = bytes.fromhex(hashes[i])
-        if (log_index >> i) & 1:
+        if (log_index >> i) & 1 == 0:
             seed = _hash_children(seed, h)
         else:
             seed = _hash_children(h, seed)
@@ -42,11 +42,17 @@ def _hash_children(lhs: bytes, rhs: bytes) -> bytes:
     return hashlib.sha256(data).digest()
 
 
+def _hash_leaf(leaf: bytes) -> bytes:
+    pattern = f"B{len(leaf)}s"
+    data = struct.pack(pattern, 0, leaf)
+    return hashlib.sha256(data).digest()
+
+
 def verify_merkle_inclusion(
     inclusion_proof: RekorInclusionProof, entry: RekorEntry
 ) -> None:
     """Verify the Merkle Inclusion Proof for a given Rekor entry"""
-    leaf_hash = hashlib.sha256(base64.b64decode(entry.body)).digest()
+    leaf_hash: bytes = _hash_leaf(base64.b64decode(entry.body))
 
     # TODO(alex): Use pydantic for this
     if inclusion_proof.log_index < 0:
@@ -75,9 +81,14 @@ def verify_merkle_inclusion(
             f"{len(inclusion_proof.hashes)}"
         )
 
-    result = _chain_inner(
+    intermediate_result: bytes = _chain_inner(
         leaf_hash, inclusion_proof.hashes[:inner], inclusion_proof.log_index
     )
-    result = _chain_border_right(result, inclusion_proof.hashes[inner:])
-    print(f"Calculated a root hash of {result.hex()}")
-    print(f"Proof: {inclusion_proof}")
+    calc_hash: str = _chain_border_right(
+        intermediate_result, inclusion_proof.hashes[inner:]
+    ).hex()
+    if calc_hash != inclusion_proof.root_hash:
+        raise InvalidInclusionProofError(
+            f"Inclusion proof contains invalid root hash: expected {inclusion_proof}, calculated "
+            f"{calc_hash}"
+        )
