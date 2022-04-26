@@ -1,5 +1,10 @@
 """
 Utilities for verifying proof-of-inclusion within Rekor's Merkle Tree.
+
+This code is based off Google's Trillian Merkle Tree implementation which Cosign uses to validate
+Rekor entries.
+
+The data format for the Merkle tree nodes is described in IETF's RFC 6962.
 """
 
 import base64
@@ -19,12 +24,26 @@ NODE_HASH_PREFIX = 1
 
 
 def _decomp_inclusion_proof(index: int, size: int) -> Tuple[int, int]:
+    """
+    Breaks down inclusion proof for a leaf at the specified |index| in a tree of the specified
+    |size| into 2 components. The splitting point between them is where paths to leaves |index| and
+    |size-1| diverge.
+
+    Returns lengths of the bottom and upper proof parts correspondingly. The sum of the two
+    determines the correct length of the inclusion proof.
+    """
+
     inner = (index ^ (size - 1)).bit_length()
     border = bin(index >> inner).count("1")
     return inner, border
 
 
 def _chain_inner(seed: bytes, hashes: List[str], log_index: int) -> bytes:
+    """
+    Computes a subtree hash for a node on or below the tree's right border. Assumes |proof| hashes
+    are ordered from lower levels to upper, and |seed| is the initial subtree/leaf hash on the path
+    located at the specified |index| on its level.
+    """
     for i in range(len(hashes)):
         h = bytes.fromhex(hashes[i])
         if (log_index >> i) & 1 == 0:
@@ -35,6 +54,10 @@ def _chain_inner(seed: bytes, hashes: List[str], log_index: int) -> bytes:
 
 
 def _chain_border_right(seed: bytes, hashes: List[str]) -> bytes:
+    """
+    Chains proof hashes along tree borders. This differs from inner chaining because |proof|
+    contains only left-side subtree hashes.
+    """
     for h in hashes:
         seed = _hash_children(bytes.fromhex(h), seed)
     return seed
@@ -57,18 +80,24 @@ def verify_merkle_inclusion(
 ) -> None:
     """Verify the Merkle Inclusion Proof for a given Rekor entry"""
 
+    # Figure out which subset of hashes corresponds to the inner and border nodes.
     inner, border = _decomp_inclusion_proof(
         inclusion_proof.log_index, inclusion_proof.tree_size
     )
 
+    # Check against the number of hashes.
     if len(inclusion_proof.hashes) != (inner + border):
         raise InvalidInclusionProofError(
             f"Inclusion proof has wrong size: expected {inner + border}, got "
             f"{len(inclusion_proof.hashes)}"
         )
 
+    # The new entry's hash isn't included in the inclusion proof so we should calculate this
+    # ourselves.
     leaf_hash: bytes = _hash_leaf(base64.b64decode(entry.body))
 
+    # Now chain the hashes belonging to the inner and border portions. We should expect the
+    # calculated hash to match the root hash.
     intermediate_result: bytes = _chain_inner(
         leaf_hash, inclusion_proof.hashes[:inner], inclusion_proof.log_index
     )
