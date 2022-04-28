@@ -20,7 +20,7 @@ import base64
 import datetime
 import hashlib
 from importlib import resources
-from typing import Optional, TextIO, cast
+from typing import BinaryIO, Optional, TextIO, cast
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -55,7 +55,7 @@ FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
 
 
 def verify(
-    file_: TextIO,
+    file: BinaryIO,
     certificate_path: TextIO,
     signature_path: TextIO,
     cert_email: Optional[str] = None,
@@ -64,8 +64,8 @@ def verify(
     """Public API for verifying blobs"""
 
     # Read the contents of the package to be verified
-    output(f"Using payload from: {file_.name}")
-    artifact_contents = file_.read().encode()
+    output(f"Using payload from: {file.name}")
+    artifact_contents = file.read()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
     # Load the signing certificate

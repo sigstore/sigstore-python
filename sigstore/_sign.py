@@ -14,7 +14,7 @@
 
 import base64
 import hashlib
-from typing import BinaryIO, TextIO
+from typing import BinaryIO
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -33,11 +33,11 @@ def _no_output(*a, **kw):
     pass
 
 
-def sign(file_: TextIO, identity_token: str, ctfe_pem: BinaryIO, output=_no_output):
+def sign(file: BinaryIO, identity_token: str, ctfe_pem: BinaryIO, output=_no_output):
     """Public API for signing blobs"""
 
-    output(f"Using payload from: {file_.name}")
-    artifact_contents = file_.read().encode()
+    output(f"Using payload from: {file.name}")
+    artifact_contents = file.read()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
     output("Generating ephemeral keys...")
