@@ -51,7 +51,7 @@ Signing:
 
 <!-- @begin-sigstore-sign-help@ -->
 ```
-Usage: sigstore sign [OPTIONS] FILE
+Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 
 Options:
   --identity-token TEXT
@@ -64,7 +64,7 @@ Verifying
 
 <!-- @begin-sigstore-verify-help@ -->
 ```
-Usage: sigstore verify [OPTIONS] FILE
+Usage: sigstore verify [OPTIONS] FILE [FILE ...]
 
 Options:
   --cert FILENAME       [required]
