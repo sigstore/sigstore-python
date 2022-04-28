@@ -33,7 +33,7 @@ def _no_output(*a, **kw):
     pass
 
 
-def sign(file: BinaryIO, identity_token: str, ctfe_pem: BinaryIO, output=_no_output):
+def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes, output=_no_output):
     """Public API for signing blobs"""
 
     output(f"Using payload from: {file.name}")
@@ -78,7 +78,7 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: BinaryIO, output=_no_out
     # Verify the SCT
     sct = certificate_response.sct  # noqa
     cert = certificate_response.cert  # noqa
-    ctfe_key = load_pem_public_key(ctfe_pem.read())
+    ctfe_key = load_pem_public_key(ctfe_pem)
 
     verify_sct(sct, cert, ctfe_key)
 
