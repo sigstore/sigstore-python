@@ -5,6 +5,10 @@ on:
 
 name: release
 
+# Needed to access the workflow's OIDC identity.
+permissions:
+  id-token: write
+
 jobs:
   pypi:
     name: upload release to PyPI
@@ -19,6 +23,20 @@ jobs:
 
     - name: build
       run: python -m build
+
+    - name: sign
+      run: |
+        # use the latest sigstore release, rather than the current dev changes
+        python -m pip install sigstore
+
+        # retrieve the OIDC identity
+        identity_token=$( \
+          curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" \
+            | jq .value \
+        )
+
+        # sign all package distributions using the OIDC identity
+        python -m sigstore sign --identity-token=${identity_token} dist/*
 
     - name: publish
       uses: pypa/gh-action-pypi-publish@master
