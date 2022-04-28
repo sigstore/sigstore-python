@@ -22,7 +22,7 @@ below. But this isn't required; all steps can be done without Make.
 First, clone this repository:
 
 ```bash
-git clone https://github.com/trailofbits/sigstore
+git clone https://github.com/sigstore/sigstore-python
 cd sigstore
 ```
 
