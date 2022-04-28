@@ -26,8 +26,9 @@ jobs:
 
     - name: sign
       run: |
-        # use the latest sigstore release, rather than the current dev changes
-        python -m pip install sigstore
+        # use the latest development changes for sigstore, at least
+        # until things are stabilized further
+        make dev && source env/bin/activate
 
         # retrieve the OIDC identity
         identity_token=$( \
