@@ -84,10 +84,6 @@ make doc
 `sigstore` uses [`pdoc3`](https://github.com/pdoc3/pdoc) to generate HTML documentation for
 the public Python APIs.
 
-Live documentation for the `main` branch is hosted
-[here](https://trailofbits.github.io/sigstore/). Only the public APIs are
-documented, all undocumented APIs are **intentionally private and unstable.**
-
 ### Releasing
 
 **NOTE**: If you're a non-maintaining contributor, you don't need the steps
