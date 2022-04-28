@@ -22,7 +22,7 @@ below. But this isn't required; all steps can be done without Make.
 First, clone this repository:
 
 ```bash
-git clone https://github.com/trailofbits/sigstore
+git clone https://github.com/sigstore/sigstore-python
 cd sigstore
 ```
 
@@ -83,10 +83,6 @@ make doc
 
 `sigstore` uses [`pdoc3`](https://github.com/pdoc3/pdoc) to generate HTML documentation for
 the public Python APIs.
-
-Live documentation for the `main` branch is hosted
-[here](https://trailofbits.github.io/sigstore/). Only the public APIs are
-documented, all undocumented APIs are **intentionally private and unstable.**
 
 ### Releasing
 

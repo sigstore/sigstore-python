@@ -2,15 +2,12 @@ sigstore-python
 ===============
 
 <!--- @begin-badges@ --->
-![CI](https://github.com/trailofbits/sigstore-python/workflows/CI/badge.svg)
+![CI](https://github.com/sigstore/sigstore-python/workflows/CI/badge.svg)
 <!--- @end-badges@ --->
 
 ⚠️ This project is not ready for general-purpose use! ⚠️
 
 `sigstore` is a tool for signing and verifying Python package distributions.
-
-This project is developed by [Trail of Bits](https://www.trailofbits.com/) with
-support from Google. This is not an official Google product.
 
 ## Features
 
@@ -54,7 +51,7 @@ Signing:
 
 <!-- @begin-sigstore-sign-help@ -->
 ```
-Usage: sigstore sign [OPTIONS] FILE
+Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 
 Options:
   --identity-token TEXT
@@ -67,7 +64,7 @@ Verifying
 
 <!-- @begin-sigstore-verify-help@ -->
 ```
-Usage: sigstore verify [OPTIONS] FILE
+Usage: sigstore verify [OPTIONS] FILE [FILE ...]
 
 Options:
   --cert FILENAME       [required]
@@ -83,9 +80,20 @@ Options:
 
 ## Contributing
 
-See [the contributing docs](CONTRIBUTING.md) for details.
+See [the contributing docs](https://github.com/sigstore/.github/blob/main/CONTRIBUTING.md) for details.
 
 ## Code of Conduct
 Everyone interacting with this project is expected to follow the
-[PSF Code of Conduct](https://github.com/pypa/.github/blob/main/CODE_OF_CONDUCT.md).
+[sigstore Code of Conduct](https://github.com/sigstore/.github/blob/main/CODE_OF_CONDUCT.md).
 
+## Security
+
+Should you discover any security issues, please refer to sigstore's [security
+process](https://github.com/sigstore/.github/blob/main/SECURITY.md).
+
+## Info
+
+`sigstore-python` is developed as part of the [`sigstore`](https://sigstore.dev) project.
+
+We also use a [slack channel](https://sigstore.slack.com)!
+Click [here](https://join.slack.com/t/sigstore/shared_invite/zt-mhs55zh0-XmY3bcfWn4XEyMqUUutbUQ) for the invite link.
