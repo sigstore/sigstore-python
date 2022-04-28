@@ -40,6 +40,7 @@ def _sign(files, identity_token, ctfe_pem):
         click.echo("Error: missing identity token for signing", err=True)
         raise click.Abort
 
+    ctfe_pem = ctfe_pem.read()
     for file in files:
         click.echo(
             sign(
@@ -52,19 +53,27 @@ def _sign(files, identity_token, ctfe_pem):
 
 
 @main.command("verify")
-@click.option("certificate_path", "--cert", type=click.File("r"), required=True)
-@click.option("signature_path", "--signature", type=click.File("r"), required=True)
+@click.option("certificate_path", "--cert", type=click.File("rb"), required=True)
+@click.option("signature_path", "--signature", type=click.File("rb"), required=True)
 @click.option("cert_email", "--cert-email", type=str)
 @click.argument(
     "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
 )
 def _verify(files, certificate_path, signature_path, cert_email):
+    # Load the signing certificate
+    click.echo(f"Using certificate from: {certificate_path.name}")
+    certificate = certificate_path.read()
+
+    # Load the signature
+    click.echo(f"Using signature from: {signature_path.name}")
+    signature = signature_path.read()
+
     for file in files:
         click.echo(
             verify(
                 file=file,
-                certificate_path=certificate_path,
-                signature_path=signature_path,
+                certificate=certificate,
+                signature=signature,
                 cert_email=cert_email,
                 output=click.echo,
             )
