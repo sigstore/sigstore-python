@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   pypi:
-    name: upload release to PyPI
+    name: Build, sign and publish release to PyPI
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
