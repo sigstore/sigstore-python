@@ -28,7 +28,7 @@ jobs:
       run: |
         # use the latest development changes for sigstore, at least
         # until things are stabilized further
-        make dev && source env/bin/activate
+        python -m pip install .
 
         # retrieve the OIDC identity
         identity_token=$( \
