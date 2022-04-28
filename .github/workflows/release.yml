@@ -35,7 +35,7 @@ jobs:
           curl -H \
             "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" \
-          | jq .value \
+          | jq -r .value \
         )
 
         # sign all package distributions using the OIDC identity
