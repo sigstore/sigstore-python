@@ -32,8 +32,10 @@ jobs:
 
         # retrieve the OIDC identity
         identity_token=$( \
-          curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" \
-            | jq .value \
+          curl -H \
+            "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" \
+          | jq .value \
         )
 
         # sign all package distributions using the OIDC identity
