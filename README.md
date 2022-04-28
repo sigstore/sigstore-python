@@ -3,6 +3,7 @@ sigstore-python
 
 <!--- @begin-badges@ --->
 ![CI](https://github.com/sigstore/sigstore-python/workflows/CI/badge.svg)
+[![PyPI version](https://badge.fury.io/py/sigstore.svg)](https://pypi.org/project/sigstore)
 <!--- @end-badges@ --->
 
 ⚠️ This project is not ready for general-purpose use! ⚠️

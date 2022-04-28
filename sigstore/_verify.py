@@ -20,7 +20,7 @@ import base64
 import datetime
 import hashlib
 from importlib import resources
-from typing import BinaryIO, Optional, TextIO, cast
+from typing import BinaryIO, Optional, cast
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -56,8 +56,8 @@ FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
 
 def verify(
     file: BinaryIO,
-    certificate_path: TextIO,
-    signature_path: TextIO,
+    certificate: bytes,
+    signature: bytes,
     cert_email: Optional[str] = None,
     output=_no_output,
 ):
@@ -68,14 +68,9 @@ def verify(
     artifact_contents = file.read()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
-    # Load the signing certificate
-    output(f"Using certificate from: {certificate_path.name}")
-    pem_data = certificate_path.read().encode()
-    cert = load_pem_x509_certificate(pem_data)
+    cert = load_pem_x509_certificate(certificate)
 
-    # Load the signature
-    output(f"Using signature from: {signature_path.name}")
-    b64_artifact_signature = signature_path.read().encode()
+    b64_artifact_signature = signature
     artifact_signature = base64.b64decode(b64_artifact_signature)
 
     # In order to verify an artifact, we need to achieve the following:
