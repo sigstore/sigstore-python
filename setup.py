@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 version = {}
 with open("./sigstore/_version.py") as f:
-    exec(f.read(), version)
+    exec(f.read(), version) # nosec
 
 with open("./README.md") as f:
     long_description = f.read()
