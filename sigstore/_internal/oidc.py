@@ -177,7 +177,7 @@ def get_identity_token() -> str:
     code: str
     with RedirectServer() as server:
         # Launch web browser
-        if not webbrowser.open(server.base_uri):
+        if webbrowser.open(server.base_uri):
             print(f"Your browser will now be opened to:\n{server.auth_request()}\n")
         else:
             server.enable_oob()
