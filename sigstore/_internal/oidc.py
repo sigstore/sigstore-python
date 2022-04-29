@@ -17,6 +17,7 @@ import hashlib
 import http.server
 import os
 import threading
+import time
 import urllib.parse
 import uuid
 import webbrowser
@@ -115,8 +116,6 @@ class RedirectServer(http.server.HTTPServer):
         self.auth_response = None
         self.__port: int = self.socket.getsockname()[1]
         self.is_oob = False
-        # Make the timeout short so we can shutdown the server thread in a timely manner
-        self.timeout = 1
 
     @property
     def active(self) -> bool:
@@ -173,7 +172,7 @@ class RedirectServer(http.server.HTTPServer):
 
 def get_identity_token() -> str:
     """
-    Retrieve an OpenID Connect token from the Sigstore provider.
+    Retrieve an OpenID Connect token from the Sigstore provider
 
     This function and the components that it relies on are based off of:
     https://github.com/psteniusubi/python-sample
@@ -190,29 +189,16 @@ def get_identity_token() -> str:
                 f"Go to the following link in a browser:\n\n\t{server.auth_request()}"
             )
 
-        def handle_requests(server: RedirectServer, done: threading.Event) -> None:
-            # Continue processing HTTP requests until authorization response is received or the user
-            # has manually supplied the code in the out-of-band case.
-            while server.active and not done.is_set():
-                server.handle_request()
-
-        done = threading.Event()
         thread = threading.Thread(
-            target=handle_requests,
-            args=(
-                server,
-                done,
-            ),
+            target=lambda server: server.serve_forever(),
+            args=(server,),
         )
         thread.start()
 
         if not server.is_oob:
-            # In the normal case, we should join immediately and block until our server gets the
-            # token
-            thread.join()
-
-            # When the thread terminates, the response cannot be None
-            server.auth_response = cast(dict, server.auth_response)
+            # Wait until the redirect server populates the response
+            while server.auth_response is None:
+                time.sleep(0.1)
             auth_error = server.auth_response.get("error")
             if auth_error is not None:
                 raise IdentityError(
@@ -221,12 +207,10 @@ def get_identity_token() -> str:
             code = server.auth_response["code"][0]
         else:
             # In the out-of-band case, we wait until the user provides the code
-            #
-            # Once that is done, we need to manually signal to the redirect server that it should
-            # stop and THEN join
             code = input("Enter verification code: ")
-            done.set()
-            thread.join()
+
+        server.shutdown()
+        thread.join()
 
     # Provide code to token endpoint
     data = {
