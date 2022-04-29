@@ -17,6 +17,7 @@ from importlib import resources
 import click
 
 from sigstore import sign, verify
+from sigstore._internal.oidc import get_identity_token
 
 
 @click.group()
@@ -37,8 +38,7 @@ def main():
 )
 def _sign(files, identity_token, ctfe_pem):
     if not identity_token:
-        click.echo("Error: missing identity token for signing", err=True)
-        raise click.Abort
+        identity_token = get_identity_token()
 
     ctfe_pem = ctfe_pem.read()
     for file in files:

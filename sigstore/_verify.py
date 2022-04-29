@@ -119,7 +119,6 @@ def verify(
     if cert_email is not None:
         # Check that SubjectAlternativeName contains signer identity
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-        print(san_ext.value.get_values_for_type(RFC822Name))
         if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
             # Error
             output(f"Subject name does not contain identity: {cert_email}")
