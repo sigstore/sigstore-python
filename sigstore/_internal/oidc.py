@@ -114,7 +114,7 @@ class RedirectServer(http.server.HTTPServer):
         self.state = None
         self.nonce = None
         self.auth_response = None
-        self.__port: int = self.socket.getsockname()[1]
+        self._port: int = self.socket.getsockname()[1]
         self.is_oob = False
 
     @property
@@ -122,12 +122,8 @@ class RedirectServer(http.server.HTTPServer):
         return self.auth_response is None
 
     @property
-    def port(self) -> int:
-        return self.__port
-
-    @property
     def base_uri(self) -> str:
-        return f"http://localhost:{self.port}"
+        return f"http://localhost:{self._port}"
 
     @property
     def redirect_path(self) -> str:
