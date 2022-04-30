@@ -86,9 +86,6 @@ def detect_github() -> Optional[str]:
         raise AmbientCredentialError(
             f"GitHub: OIDC token request failed (code={resp.status_code})"
         ) from http_error
-        raise AmbientCredentialError(
-            f"GitHub: OIDC token request failed (code={resp.status_code})"
-        )
 
     try:
         body = resp.json()
