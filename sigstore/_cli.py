@@ -17,6 +17,7 @@ from importlib import resources
 import click
 
 from sigstore import sign, verify
+from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.oauth import get_identity_token
 
 
@@ -37,8 +38,15 @@ def main():
     "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
 )
 def _sign(files, identity_token, ctfe_pem):
+    # The order of precedence is as follows:
+    #
+    # 1) Explicitly supplied identity token
+    # 2) Ambient credential detected in the environment
+    # 3) Interactive OAuth flow
     if not identity_token:
-        identity_token = get_identity_token()
+        identity_token = detect_credential()
+        if not identity_token:
+            identity_token = get_identity_token()
 
     ctfe_pem = ctfe_pem.read()
     for file in files:
