@@ -17,7 +17,7 @@ import importlib
 
 from setuptools import find_packages, setup
 
-version = importlib.import_module("._version", package="sigstore")
+version = importlib.import_module("sigstore._version")
 
 with open("./README.md") as f:
     long_description = f.read()
