@@ -79,7 +79,11 @@ def detect_github() -> Optional[str]:
             "GitHub: missing or insufficient OIDC token permissions?"
         )
 
-    resp = requests.get(req_url, headers={"Authorization": f"bearer {req_token}"})
+    resp = requests.get(
+        req_url,
+        params={"audience": "sigstore"},
+        headers={"Authorization": f"bearer {req_token}"},
+    )
     try:
         resp.raise_for_status()
     except requests.HTTPError as http_error:

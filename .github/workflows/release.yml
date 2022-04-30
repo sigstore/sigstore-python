@@ -30,16 +30,8 @@ jobs:
         # until things are stabilized further
         python -m pip install .
 
-        # retrieve the OIDC identity
-        identity_token=$( \
-          curl -H \
-            "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" \
-          | jq -r .value \
-        )
-
-        # sign all package distributions using the OIDC identity
-        python -m sigstore sign --identity-token=${identity_token} dist/*
+        # sign all package distributions using the ambient OIDC identity
+        python -m sigstore sign dist/*
 
     - name: publish
       uses: pypa/gh-action-pypi-publish@master
