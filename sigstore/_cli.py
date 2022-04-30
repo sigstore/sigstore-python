@@ -45,8 +45,8 @@ def _sign(files, identity_token, ctfe_pem):
     # 3) Interactive OAuth flow
     if not identity_token:
         identity_token = detect_credential()
-        if not identity_token:
-            identity_token = get_identity_token()
+    if not identity_token:
+        identity_token = get_identity_token()
 
     ctfe_pem = ctfe_pem.read()
     for file in files:
