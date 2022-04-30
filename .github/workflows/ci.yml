@@ -91,3 +91,13 @@ jobs:
             <( \
               make run ARGS="verify --help" \
             )
+
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - name: deps
+        run: make dev
+      - name: sign license
+        run: make run ARGS="sign LICENSE"
