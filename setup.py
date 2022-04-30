@@ -13,19 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 
 from setuptools import find_packages, setup
 
-version = {}
-with open("./sigstore/_version.py") as f:
-    exec(f.read(), version)  # nosec B102
+version = importlib.import_module("._version", package="sigstore")
 
 with open("./README.md") as f:
     long_description = f.read()
 
 setup(
     name="sigstore",
-    version=version["__version__"],
+    version=version.__version__,
     license="Apache-2.0",
     author="Sigstore Authors",
     author_email="sigstore-dev@googlegroups.com",
