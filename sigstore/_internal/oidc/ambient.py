@@ -84,7 +84,8 @@ def detect_github() -> Optional[str]:
         resp.raise_for_status()
     except requests.HTTPError as http_error:
         raise AmbientCredentialError(
-            f"GitHub: OIDC token request failed (code={resp.status_code})") from http_error
+            f"GitHub: OIDC token request failed (code={resp.status_code})"
+        ) from http_error
         raise AmbientCredentialError(
             f"GitHub: OIDC token request failed (code={resp.status_code})"
         )

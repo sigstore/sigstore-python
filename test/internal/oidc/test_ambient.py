@@ -1,5 +1,6 @@
 import pretend
 import pytest
+from requests import HTTPError
 
 from sigstore._internal.oidc import ambient
 
@@ -54,8 +55,10 @@ def test_detect_github_request_fails(monkeypatch):
     monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "faketoken")
     monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "fakeurl")
 
-    resp = pretend.stub(ok=False, status_code=999)
-    requests = pretend.stub(get=pretend.call_recorder(lambda url, **kw: resp))
+    resp = pretend.stub(raise_for_status=pretend.raiser(HTTPError), status_code=999)
+    requests = pretend.stub(
+        get=pretend.call_recorder(lambda url, **kw: resp), HTTPError=HTTPError
+    )
     monkeypatch.setattr(ambient, "requests", requests)
 
     with pytest.raises(
@@ -73,7 +76,9 @@ def test_detect_github_bad_payload(monkeypatch):
     monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "faketoken")
     monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "fakeurl")
 
-    resp = pretend.stub(ok=True, json=pretend.call_recorder(lambda: {}))
+    resp = pretend.stub(
+        raise_for_status=lambda: None, json=pretend.call_recorder(lambda: {})
+    )
     requests = pretend.stub(get=pretend.call_recorder(lambda url, **kw: resp))
     monkeypatch.setattr(ambient, "requests", requests)
 
@@ -94,7 +99,8 @@ def test_detect_github(monkeypatch):
     monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "fakeurl")
 
     resp = pretend.stub(
-        ok=True, json=pretend.call_recorder(lambda: {"value": "fakejwt"})
+        raise_for_status=lambda: None,
+        json=pretend.call_recorder(lambda: {"value": "fakejwt"}),
     )
     requests = pretend.stub(get=pretend.call_recorder(lambda url, **kw: resp))
     monkeypatch.setattr(ambient, "requests", requests)
