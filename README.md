@@ -55,12 +55,12 @@ Signing:
 Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 
 Options:
-  --identity-token TEXT
+  --identity-token TOKEN
   --ctfe FILENAME
-  --oidc-client-id TEXT
-  --oidc-client-secret TEXT
-  --oidc-issuer TEXT
-  --help                     Show this message and exit.
+  --oidc-client-id ID
+  --oidc-client-secret SECRET
+  --oidc-issuer URL
+  --help                       Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->
 

@@ -28,7 +28,7 @@ def main():
 
 
 @main.command("sign")
-@click.option("identity_token", "--identity-token", type=click.STRING)
+@click.option("identity_token", "--identity-token", metavar="TOKEN", type=click.STRING)
 @click.option(
     "ctfe_pem",
     "--ctfe",
@@ -36,14 +36,23 @@ def main():
     default=resources.open_binary("sigstore._store", "ctfe.pub"),
 )
 @click.option(
-    "oidc_client_id", "--oidc-client-id", type=click.STRING, default="sigstore"
+    "oidc_client_id",
+    "--oidc-client-id",
+    metavar="ID",
+    type=click.STRING,
+    default="sigstore",
 )
 @click.option(
-    "oidc_client_secret", "--oidc-client-secret", type=click.STRING, default=str()
+    "oidc_client_secret",
+    "--oidc-client-secret",
+    metavar="SECRET",
+    type=click.STRING,
+    default=str(),
 )
 @click.option(
     "oidc_issuer",
     "--oidc-issuer",
+    metavar="URL",
     type=click.STRING,
     default="https://oauth2.sigstore.dev/auth",
 )
