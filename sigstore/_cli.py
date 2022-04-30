@@ -18,6 +18,7 @@ import click
 
 from sigstore import sign, verify
 from sigstore._internal.oidc.ambient import detect_credential
+from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import get_identity_token
 
 
@@ -34,10 +35,24 @@ def main():
     type=click.File("rb"),
     default=resources.open_binary("sigstore._store", "ctfe.pub"),
 )
+@click.option(
+    "oidc_client_id", "--oidc-client-id", type=click.STRING, default="sigstore"
+)
+@click.option(
+    "oidc_client_secret", "--oidc-client-secret", type=click.STRING, default=str()
+)
+@click.option(
+    "oidc_issuer",
+    "--oidc-issuer",
+    type=click.STRING,
+    default="https://oauth2.sigstore.dev/auth",
+)
 @click.argument(
     "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
 )
-def _sign(files, identity_token, ctfe_pem):
+def _sign(
+    files, identity_token, ctfe_pem, oidc_client_id, oidc_client_secret, oidc_issuer
+):
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
@@ -46,7 +61,12 @@ def _sign(files, identity_token, ctfe_pem):
     if not identity_token:
         identity_token = detect_credential()
     if not identity_token:
-        identity_token = get_identity_token()
+        issuer = Issuer(oidc_issuer)
+        identity_token = get_identity_token(
+            oidc_client_id,
+            oidc_client_secret,
+            issuer,
+        )
 
     ctfe_pem = ctfe_pem.read()
     for file in files:
