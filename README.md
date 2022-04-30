@@ -57,7 +57,10 @@ Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 Options:
   --identity-token TEXT
   --ctfe FILENAME
-  --help                 Show this message and exit.
+  --oidc-client-id TEXT
+  --oidc-client-secret TEXT
+  --oidc-issuer TEXT
+  --help                     Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->
 
