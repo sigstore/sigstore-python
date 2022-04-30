@@ -16,9 +16,10 @@ from importlib import resources
 
 import click
 
-from sigstore import sign, verify
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.oauth import get_identity_token
+from sigstore._sign import sign
+from sigstore._verify import verify
 
 
 @click.group()
