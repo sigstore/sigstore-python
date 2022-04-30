@@ -67,7 +67,9 @@ def test_detect_github_request_fails(monkeypatch):
     ):
         ambient.detect_github()
     assert requests.get.calls == [
-        pretend.call("fakeurl", headers={"Authorization": "bearer faketoken"})
+        pretend.call(
+            "fakeurl&audience=sigstore", headers={"Authorization": "bearer faketoken"}
+        )
     ]
 
 
@@ -88,7 +90,9 @@ def test_detect_github_bad_payload(monkeypatch):
     ):
         ambient.detect_github()
     assert requests.get.calls == [
-        pretend.call("fakeurl", headers={"Authorization": "bearer faketoken"})
+        pretend.call(
+            "fakeurl&audience=sigstore", headers={"Authorization": "bearer faketoken"}
+        )
     ]
     assert resp.json.calls == [pretend.call()]
 
@@ -107,6 +111,8 @@ def test_detect_github(monkeypatch):
 
     assert ambient.detect_github() == "fakejwt"
     assert requests.get.calls == [
-        pretend.call("fakeurl", headers={"Authorization": "bearer faketoken"})
+        pretend.call(
+            "fakeurl&audience=sigstore", headers={"Authorization": "bearer faketoken"}
+        )
     ]
     assert resp.json.calls == [pretend.call()]
