@@ -31,6 +31,7 @@ jobs:
   licenses:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       # adapted from Warehouse's bin/licenses
       - run: |
           for fn in $(find . -type f -name "*.py"); do
