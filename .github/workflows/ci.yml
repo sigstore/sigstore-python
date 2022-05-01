@@ -35,7 +35,6 @@ jobs:
       # adapted from Warehouse's bin/licenses
       - run: |
           for fn in $(find . -type f -name "*.py"); do
-            echo "license: ${fn}"
             if [[ ! "$(head -5 $fn | grep "^ *\(#\|\*\|\/\/\) .* License\(d*\)")" ]]; then
               echo "${fn} is missing a license"
               exit 1
