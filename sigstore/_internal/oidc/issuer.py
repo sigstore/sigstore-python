@@ -37,18 +37,18 @@ class Issuer:
         except requests.HTTPError as http_error:
             raise IssuerError from http_error
 
-        self.struct = resp.json()
+        struct = resp.json()
 
         try:
-            self.auth_endpoint: str = self.struct["authorization_endpoint"]
+            self.auth_endpoint: str = struct["authorization_endpoint"]
         except KeyError as key_error:
             raise IssuerError(
-                f"OIDC configuration does not contain authorization endpoint: {self.struct}"
+                f"OIDC configuration does not contain authorization endpoint: {struct}"
             ) from key_error
 
         try:
-            self.token_endpoint: str = self.struct["token_endpoint"]
+            self.token_endpoint: str = struct["token_endpoint"]
         except KeyError as key_error:
             raise IssuerError(
-                f"OIDC configuration does not contain token endpoint: {self.struct}"
+                f"OIDC configuration does not contain token endpoint: {struct}"
             ) from key_error
