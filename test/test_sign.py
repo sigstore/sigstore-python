@@ -15,7 +15,7 @@
 import pretend
 import pytest
 
-import sigstore
+from sigstore._sign import sign
 
 
 @pytest.mark.xfail
@@ -24,4 +24,4 @@ def test_sign():
     identity_token = pretend.stub()
     output = pretend.call_recorder(lambda s: None)
 
-    assert sigstore.sign(file_, identity_token, output) == "Nothing here yet"
+    assert sign(file_, identity_token, output) == "Nothing here yet"
