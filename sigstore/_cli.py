@@ -60,12 +60,12 @@ def _sign(files, identity_token, ctfe_pem):
             ctfe_pem=ctfe_pem,
         )
 
-        click.echo(f"Signature: {result.b64_signature}")
         click.echo("Using ephemeral certificate:")
         click.echo(result.cert_pem)
         click.echo(
             f"Transparency log entry created at index: {result.log_entry.log_index}"
         )
+        click.echo(f"Signature: {result.b64_signature}")
 
 
 @main.command("verify")
