@@ -14,37 +14,58 @@
 
 import base64
 import hashlib
+import logging
 from typing import BinaryIO
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from pydantic import BaseModel
 
 from sigstore._internal.fulcio import (
     FulcioCertificateSigningRequest,
     FulcioClient,
 )
 from sigstore._internal.oidc import Identity
-from sigstore._internal.rekor import RekorClient
+from sigstore._internal.rekor import RekorClient, RekorEntry
 from sigstore._internal.sct import verify_sct
 
-
-def _no_output(*a, **kw):
-    pass
+logger = logging.getLogger(__name__)
 
 
-def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes, output=_no_output):
+class SigningResult(BaseModel):
+    """
+    Represents the artifacts of a signing operation.
+    """
+
+    cert_pem: str
+    """
+    The PEM-encoded public half of the certificate used for signing.
+    """
+
+    b64_signature: str
+    """
+    The base64-encoded signature.
+    """
+
+    log_entry: RekorEntry
+    """
+    A record of the Rekor log entry for the signing operation.
+    """
+
+
+def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
     """Public API for signing blobs"""
 
-    output(f"Using payload from: {file.name}")
+    logger.debug(f"Using payload from: {file.name}")
     artifact_contents = file.read()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
-    output("Generating ephemeral keys...")
+    logger.debug("Generating ephemeral keys...")
     private_key = ec.generate_private_key(ec.SECP384R1())
     public_key = private_key.public_key()
 
-    output("Retrieving signed certificate...")
+    logger.debug("Retrieving signed certificate...")
     fulcio = FulcioClient()
 
     oidc_identity = Identity(identity_token)
@@ -82,11 +103,7 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes, output=_no_output
 
     verify_sct(sct, cert, ctfe_key)
 
-    output("Successfully verified SCT...")
-
-    # Output the ephemeral certificate
-    output("Using ephemeral certificate:")
-    output(cert.public_bytes(encoding=serialization.Encoding.PEM))
+    logger.debug("Successfully verified SCT...")
 
     # Sign artifact
     artifact_signature = private_key.sign(artifact_contents, ec.ECDSA(hashes.SHA256()))
@@ -108,10 +125,10 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes, output=_no_output
         encoded_public_key=pub_b64.decode(),
     )
 
-    output(f"Transparency log entry created with index: {entry.log_index}")
+    logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
-    # Output the signature
-    output(f"Signature: {b64_artifact_signature}")
-
-    # Determine what to return here
-    return None
+    return SigningResult(
+        cert_pem=cert.public_bytes(encoding=serialization.Encoding.PEM).decode(),
+        b64_signature=b64_artifact_signature,
+        log_entry=entry,
+    )
