@@ -110,19 +110,14 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
     b64_artifact_signature = base64.b64encode(artifact_signature).decode()
 
     # Prepare inputs
-    pub_b64 = base64.b64encode(
-        public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        )
-    )
+    b64_cert = base64.b64encode(cert.public_bytes(encoding=serialization.Encoding.PEM))
 
     # Create the transparency log entry
     rekor = RekorClient()
     entry = rekor.log.entries.post(
         b64_artifact_signature=b64_artifact_signature,
         sha256_artifact_hash=sha256_artifact_hash,
-        encoded_public_key=pub_b64.decode(),
+        b64_cert=b64_cert.decode(),
     )
 
     logger.debug(f"Transparency log entry created with index: {entry.log_index}")
