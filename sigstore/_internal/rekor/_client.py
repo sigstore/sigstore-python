@@ -146,7 +146,7 @@ class RekorEntries(Endpoint):
         self,
         b64_artifact_signature: str,
         sha256_artifact_hash: str,
-        encoded_public_key: str,
+        b64_cert: str,
     ) -> RekorEntry:
         data = {
             "kind": "hashedrekord",
@@ -154,7 +154,7 @@ class RekorEntries(Endpoint):
             "spec": {
                 "signature": {
                     "content": b64_artifact_signature,
-                    "publicKey": {"content": encoded_public_key},
+                    "publicKey": {"content": b64_cert},
                 },
                 "data": {
                     "hash": {"algorithm": "sha256", "value": sha256_artifact_hash}
