@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from importlib import resources
 
 import click
@@ -20,6 +21,8 @@ from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.oauth import get_identity_token
 from sigstore._sign import sign
 from sigstore._verify import verify
+
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -51,13 +54,17 @@ def _sign(files, identity_token, ctfe_pem):
 
     ctfe_pem = ctfe_pem.read()
     for file in files:
+        result = sign(
+            file=file,
+            identity_token=identity_token,
+            ctfe_pem=ctfe_pem,
+        )
+
+        click.echo(f"Signature: {result.b64_signature}")
+        click.echo("Using ephemeral certificate:")
+        click.echo(result.cert_pem)
         click.echo(
-            sign(
-                file=file,
-                identity_token=identity_token,
-                ctfe_pem=ctfe_pem,
-                output=click.echo,
-            )
+            f"Transparency log entry created at index: {result.log_entry.log_index}"
         )
 
 
@@ -70,11 +77,11 @@ def _sign(files, identity_token, ctfe_pem):
 )
 def _verify(files, certificate_path, signature_path, cert_email):
     # Load the signing certificate
-    click.echo(f"Using certificate from: {certificate_path.name}")
+    logger.debug(f"Using certificate from: {certificate_path.name}")
     certificate = certificate_path.read()
 
     # Load the signature
-    click.echo(f"Using signature from: {signature_path.name}")
+    logger.debug(f"Using signature from: {signature_path.name}")
     signature = signature_path.read()
 
     for file in files:
