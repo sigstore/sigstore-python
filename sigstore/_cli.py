@@ -81,7 +81,13 @@ def main():
     required=True,
 )
 def _sign(
-    files, identity_token, ctfe_pem, oidc_client_id, oidc_client_secret, oidc_issuer, oidc_disable_ambient_providers
+    files,
+    identity_token,
+    ctfe_pem,
+    oidc_client_id,
+    oidc_client_secret,
+    oidc_issuer,
+    oidc_disable_ambient_providers,
 ):
     # The order of precedence is as follows:
     #
@@ -97,7 +103,6 @@ def _sign(
             oidc_client_secret,
             issuer,
         )
-        identity_token = get_identity_token()
     if not identity_token:
         click.echo("No identity token supplied or detected!", err=True)
         raise click.Abort
