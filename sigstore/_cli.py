@@ -51,6 +51,7 @@ def main():
     metavar="ID",
     type=click.STRING,
     default="sigstore",
+    help="The custom OpenID Connect client ID to use",
 )
 @click.option(
     "oidc_client_secret",
@@ -58,6 +59,7 @@ def main():
     metavar="SECRET",
     type=click.STRING,
     default=str(),
+    help="The custom OpenID Connect client secret to use",
 )
 @click.option(
     "oidc_issuer",
@@ -65,6 +67,7 @@ def main():
     metavar="URL",
     type=click.STRING,
     default="https://oauth2.sigstore.dev/auth",
+    help="The custom OpenID Connect issuer to use",
 )
 @click.option(
     "oidc_disable_ambient_providers",

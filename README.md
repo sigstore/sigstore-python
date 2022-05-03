@@ -57,9 +57,10 @@ Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 Options:
   --identity-token TOKEN          the OIDC identity token to use
   --ctfe FILENAME
-  --oidc-client-id ID
-  --oidc-client-secret SECRET
-  --oidc-issuer URL
+  --oidc-client-id ID             The custom OpenID Connect client ID to use
+  --oidc-client-secret SECRET     The custom OpenID Connect client secret to
+                                  use
+  --oidc-issuer URL               The custom OpenID Connect issuer to use
   --oidc-disable-ambient-providers
                                   Disable ambient OIDC detection (e.g. on
                                   GitHub Actions)
