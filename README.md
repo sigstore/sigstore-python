@@ -55,12 +55,15 @@ Signing:
 Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 
 Options:
-  --identity-token TOKEN
+  --identity-token TOKEN          the OIDC identity token to use
   --ctfe FILENAME
   --oidc-client-id ID
   --oidc-client-secret SECRET
   --oidc-issuer URL
-  --help                       Show this message and exit.
+  --oidc-disable-ambient-providers
+                                  Disable ambient OIDC detection (e.g. on
+                                  GitHub Actions)
+  --help                          Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->
 

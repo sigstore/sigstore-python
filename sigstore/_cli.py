@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from importlib import resources
 
 import click
 
-from sigstore import sign, verify
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import get_identity_token
+from sigstore._sign import sign
+from sigstore._verify import verify
+
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -28,7 +32,13 @@ def main():
 
 
 @main.command("sign")
-@click.option("identity_token", "--identity-token", metavar="TOKEN", type=click.STRING)
+@click.option(
+    "identity_token",
+    "--identity-token",
+    metavar="TOKEN",
+    type=click.STRING,
+    help="the OIDC identity token to use",
+)
 @click.option(
     "ctfe_pem",
     "--ctfe",
@@ -56,18 +66,29 @@ def main():
     type=click.STRING,
     default="https://oauth2.sigstore.dev/auth",
 )
+@click.option(
+    "oidc_disable_ambient_providers",
+    "--oidc-disable-ambient-providers",
+    is_flag=True,
+    default=False,
+    help="Disable ambient OIDC detection (e.g. on GitHub Actions)",
+)
 @click.argument(
-    "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
+    "files",
+    metavar="FILE [FILE ...]",
+    type=click.File("rb"),
+    nargs=-1,
+    required=True,
 )
 def _sign(
-    files, identity_token, ctfe_pem, oidc_client_id, oidc_client_secret, oidc_issuer
+    files, identity_token, ctfe_pem, oidc_client_id, oidc_client_secret, oidc_issuer, oidc_disable_ambient_providers
 ):
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
-    # 2) Ambient credential detected in the environment
+    # 2) Ambient credential detected in the environment, unless disabled
     # 3) Interactive OAuth flow
-    if not identity_token:
+    if not identity_token and not oidc_disable_ambient_providers:
         identity_token = detect_credential()
     if not identity_token:
         issuer = Issuer(oidc_issuer)
@@ -76,17 +97,25 @@ def _sign(
             oidc_client_secret,
             issuer,
         )
+        identity_token = get_identity_token()
+    if not identity_token:
+        click.echo("No identity token supplied or detected!", err=True)
+        raise click.Abort
 
     ctfe_pem = ctfe_pem.read()
     for file in files:
-        click.echo(
-            sign(
-                file=file,
-                identity_token=identity_token,
-                ctfe_pem=ctfe_pem,
-                output=click.echo,
-            )
+        result = sign(
+            file=file,
+            identity_token=identity_token,
+            ctfe_pem=ctfe_pem,
         )
+
+        click.echo("Using ephemeral certificate:")
+        click.echo(result.cert_pem)
+        click.echo(
+            f"Transparency log entry created at index: {result.log_entry.log_index}"
+        )
+        click.echo(f"Signature: {result.b64_signature}")
 
 
 @main.command("verify")
@@ -98,11 +127,11 @@ def _sign(
 )
 def _verify(files, certificate_path, signature_path, cert_email):
     # Load the signing certificate
-    click.echo(f"Using certificate from: {certificate_path.name}")
+    logger.debug(f"Using certificate from: {certificate_path.name}")
     certificate = certificate_path.read()
 
     # Load the signature
-    click.echo(f"Using signature from: {signature_path.name}")
+    logger.debug(f"Using signature from: {signature_path.name}")
     signature = signature_path.read()
 
     for file in files:
