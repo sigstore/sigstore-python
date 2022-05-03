@@ -31,26 +31,45 @@ def main():
 
 
 @main.command("sign")
-@click.option("identity_token", "--identity-token", type=click.STRING)
+@click.option(
+    "identity_token",
+    "--identity-token",
+    type=click.STRING,
+    help="the OIDC identity token to use",
+)
 @click.option(
     "ctfe_pem",
     "--ctfe",
     type=click.File("rb"),
     default=resources.open_binary("sigstore._store", "ctfe.pub"),
 )
-@click.argument(
-    "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
+@click.option(
+    "oidc_disable_ambient_providers",
+    "--oidc-disable-ambient-providers",
+    is_flag=True,
+    default=False,
+    help="Disable ambient OIDC detection (e.g. on GitHub Actions)",
 )
-def _sign(files, identity_token, ctfe_pem):
+@click.argument(
+    "files",
+    metavar="FILE [FILE ...]",
+    type=click.File("rb"),
+    nargs=-1,
+    required=True,
+)
+def _sign(files, identity_token, ctfe_pem, oidc_disable_ambient_providers):
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
-    # 2) Ambient credential detected in the environment
+    # 2) Ambient credential detected in the environment, unless disabled
     # 3) Interactive OAuth flow
-    if not identity_token:
+    if not identity_token and not oidc_disable_ambient_providers:
         identity_token = detect_credential()
     if not identity_token:
         identity_token = get_identity_token()
+    if not identity_token:
+        click.echo("No identity token supplied or detected!", err=True)
+        raise click.Abort
 
     ctfe_pem = ctfe_pem.read()
     for file in files:
