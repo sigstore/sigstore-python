@@ -44,6 +44,7 @@ def main():
     "--ctfe",
     type=click.File("rb"),
     default=resources.open_binary("sigstore._store", "ctfe.pub"),
+    help="A PEM-encoded public key for the CT log"
 )
 @click.option(
     "oidc_client_id",

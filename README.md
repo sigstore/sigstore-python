@@ -56,7 +56,7 @@ Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 
 Options:
   --identity-token TOKEN          the OIDC identity token to use
-  --ctfe FILENAME
+  --ctfe FILENAME                 A PEM-encoded public key for the CT log
   --oidc-client-id ID             The custom OpenID Connect client ID to use
   --oidc-client-secret SECRET     The custom OpenID Connect client secret to
                                   use
