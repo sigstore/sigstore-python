@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "sigstore"
 dynamic = ["version"]
@@ -60,15 +64,14 @@ dev = [
   "types-pyjwt",
 ]
 
-[build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [tool.setuptools]
 packages = ["sigstore"]
 
 [tool.setuptools.dynamic]
 version = { attr = "sigstore.__version__" }
+
+[tool.setuptools.package-data]
+sigstore = ["_store/*"]
 
 [tool.isort]
 multi_line_output = 3
