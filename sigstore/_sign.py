@@ -87,6 +87,13 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
     # )
     # certificate_request = builder.sign(private_key, hashes.SHA256())
 
+    # NOTE: The proof here is not a proof of identity, but solely
+    # a proof that we possess the private key. Fulcio verifies this
+    # signature using the public key we give it and the "subject",
+    # which is a function of one or more claims in the identity token.
+    # An identity token whose issuer is unknown to Fulcio will fail this
+    # test, since Fulcio won't know how to construct the subject.
+    # See: https://github.com/sigstore/fulcio/blob/f6016fd/pkg/challenges/challenges.go#L437-L478
     signed_proof = private_key.sign(
         oidc_identity.proof.encode(), ec.ECDSA(hashes.SHA256())
     )
