@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Shim for editble installs."""
+"""Shim for editable installs."""
 from setuptools import setup
 
 setup()
