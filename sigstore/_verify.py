@@ -19,6 +19,7 @@ API for verifying artifact signatures.
 import base64
 import datetime
 import hashlib
+import logging
 from importlib import resources
 from typing import BinaryIO, Optional, cast
 
@@ -45,10 +46,7 @@ from sigstore._internal.rekor import (
 )
 from sigstore._internal.set import InvalidSetError, verify_set
 
-
-# TODO(alex): Share this with `sign`
-def _no_output(*a, **kw):
-    pass
+logger = logging.getLogger(__name__)
 
 
 FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
@@ -59,12 +57,11 @@ def verify(
     certificate: bytes,
     signature: bytes,
     cert_email: Optional[str] = None,
-    output=_no_output,
-):
+) -> bool:
     """Public API for verifying blobs"""
 
     # Read the contents of the package to be verified
-    output(f"Using payload from: {file.name}")
+    logger.debug(f"Using payload from: {file.name}")
     artifact_contents = file.read()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
@@ -106,32 +103,32 @@ def verify(
     usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
     if not usage_ext.value.digital_signature:
         # Error
-        output("Key usage is not of type `digital signature`")
-        return None
+        logger.error("Key usage is not of type `digital signature`")
+        return False
 
     # Check that extended usage contains "code signing"
     extended_usage_ext = cert.extensions.get_extension_for_class(ExtendedKeyUsage)
     if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
         # Error
-        output("Extended usage does not contain `code signing`")
-        return None
+        logger.error("Extended usage does not contain `code signing`")
+        return False
 
     if cert_email is not None:
         # Check that SubjectAlternativeName contains signer identity
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
         if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
             # Error
-            output(f"Subject name does not contain identity: {cert_email}")
-            return None
+            logger.error(f"Subject name does not contain identity: {cert_email}")
+            return False
 
-    output("Successfully verified signing certificate validity...")
+    logger.debug("Successfully verified signing certificate validity...")
 
     # 3) Verify that the signature was signed by the public key in the signing certificate
     signing_key = cert.public_key()
     signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
     signing_key.verify(artifact_signature, artifact_contents, ec.ECDSA(hashes.SHA256()))
 
-    output("Successfully verified signature...")
+    logger.debug("Successfully verified signature...")
 
     # Get a base64 encoding of the signing key. We're going to use this in our Rekor query.
     pub_b64 = base64.b64encode(
@@ -156,7 +153,7 @@ def verify(
         try:
             verify_merkle_inclusion(inclusion_proof, entry)
         except InvalidInclusionProofError as inval_inclusion_proof:
-            output(
+            logger.error(
                 f"Failed to validate Rekor entry's inclusion proof: {inval_inclusion_proof}"
             )
             continue
@@ -165,7 +162,7 @@ def verify(
         try:
             verify_set(entry)
         except InvalidSetError as inval_set:
-            output(f"Failed to validate Rekor entry's SET: {inval_set}")
+            logger.error(f"Failed to validate Rekor entry's SET: {inval_set}")
             continue
 
         # 6) Verify that the signing certificate was valid at the time of signing
@@ -180,11 +177,13 @@ def verify(
             # error case.
             continue
 
+        # TODO: Does it make sense to collect all valid Rekor entries?
         valid_sig_exists = True
+        break
 
     if not valid_sig_exists:
-        output("No valid Rekor entries were found")
-        return None
+        logger.error("No valid Rekor entries were found")
+    else:
+        logger.debug("Successfully verified Rekor entry...")
 
-    output("Successfully verified Rekor entry...")
-    return None
+    return valid_sig_exists
