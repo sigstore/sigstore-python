@@ -18,6 +18,7 @@ from importlib import resources
 import click
 
 from sigstore._internal.oidc.ambient import detect_credential
+from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import get_identity_token
 from sigstore._sign import sign
 from sigstore._verify import verify
@@ -34,6 +35,7 @@ def main():
 @click.option(
     "identity_token",
     "--identity-token",
+    metavar="TOKEN",
     type=click.STRING,
     help="the OIDC identity token to use",
 )
@@ -42,6 +44,31 @@ def main():
     "--ctfe",
     type=click.File("rb"),
     default=resources.open_binary("sigstore._store", "ctfe.pub"),
+    help="A PEM-encoded public key for the CT log",
+)
+@click.option(
+    "oidc_client_id",
+    "--oidc-client-id",
+    metavar="ID",
+    type=click.STRING,
+    default="sigstore",
+    help="The custom OpenID Connect client ID to use",
+)
+@click.option(
+    "oidc_client_secret",
+    "--oidc-client-secret",
+    metavar="SECRET",
+    type=click.STRING,
+    default=str(),
+    help="The custom OpenID Connect client secret to use",
+)
+@click.option(
+    "oidc_issuer",
+    "--oidc-issuer",
+    metavar="URL",
+    type=click.STRING,
+    default="https://oauth2.sigstore.dev/auth",
+    help="The custom OpenID Connect issuer to use",
 )
 @click.option(
     "oidc_disable_ambient_providers",
@@ -57,7 +84,15 @@ def main():
     nargs=-1,
     required=True,
 )
-def _sign(files, identity_token, ctfe_pem, oidc_disable_ambient_providers):
+def _sign(
+    files,
+    identity_token,
+    ctfe_pem,
+    oidc_client_id,
+    oidc_client_secret,
+    oidc_issuer,
+    oidc_disable_ambient_providers,
+):
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
@@ -66,7 +101,12 @@ def _sign(files, identity_token, ctfe_pem, oidc_disable_ambient_providers):
     if not identity_token and not oidc_disable_ambient_providers:
         identity_token = detect_credential()
     if not identity_token:
-        identity_token = get_identity_token()
+        issuer = Issuer(oidc_issuer)
+        identity_token = get_identity_token(
+            oidc_client_id,
+            oidc_client_secret,
+            issuer,
+        )
     if not identity_token:
         click.echo("No identity token supplied or detected!", err=True)
         raise click.Abort
