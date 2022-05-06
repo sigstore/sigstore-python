@@ -85,7 +85,8 @@ def verify(
 
     `cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
 
-    Returns a `VerificationResult` if verification succeeds, or `None` if it fails.
+    Returns a `VerificationResult` which will be truthy or falsey depending on
+    success.
     """
 
     # Read the contents of the package to be verified
