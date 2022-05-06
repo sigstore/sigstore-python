@@ -54,7 +54,19 @@ FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
 
 
 class VerificationResult(BaseModel):
-    pass
+    success: bool
+
+    def __bool__(self):
+        return self.success
+
+
+class VerificationSuccess(VerificationResult):
+    success: bool = True
+
+
+class VerificationFailure(VerificationResult):
+    success: bool = False
+    reason: str
 
 
 def verify(
@@ -62,7 +74,7 @@ def verify(
     certificate: bytes,
     signature: bytes,
     cert_email: Optional[str] = None,
-) -> Optional[VerificationResult]:
+) -> VerificationResult:
     """Public API for verifying files.
 
     `file` is the file to verify.
@@ -116,24 +128,24 @@ def verify(
     # Check usage is "digital signature"
     usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
     if not usage_ext.value.digital_signature:
-        # Error
-        logger.error("Key usage is not of type `digital signature`")
-        return None
+        return VerificationFailure(
+            reason="Key usage is not of type `digital signature`"
+        )
 
     # Check that extended usage contains "code signing"
     extended_usage_ext = cert.extensions.get_extension_for_class(ExtendedKeyUsage)
     if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
-        # Error
-        logger.error("Extended usage does not contain `code signing`")
-        return None
+        return VerificationFailure(
+            reason="Extended usage does not contain `code signing`"
+        )
 
     if cert_email is not None:
         # Check that SubjectAlternativeName contains signer identity
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
         if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
-            # Error
-            logger.error(f"Subject name does not contain identity: {cert_email}")
-            return None
+            return VerificationFailure(
+                reason=f"Subject name does not contain identity: {cert_email}"
+            )
 
     logger.debug("Successfully verified signing certificate validity...")
 
@@ -167,7 +179,7 @@ def verify(
         try:
             verify_merkle_inclusion(inclusion_proof, entry)
         except InvalidInclusionProofError as inval_inclusion_proof:
-            logger.error(
+            logger.warning(
                 f"Failed to validate Rekor entry's inclusion proof: {inval_inclusion_proof}"
             )
             continue
@@ -176,7 +188,7 @@ def verify(
         try:
             verify_set(entry)
         except InvalidSetError as inval_set:
-            logger.error(f"Failed to validate Rekor entry's SET: {inval_set}")
+            logger.warning(f"Failed to validate Rekor entry's SET: {inval_set}")
             continue
 
         # 6) Verify that the signing certificate was valid at the time of signing
@@ -196,8 +208,7 @@ def verify(
         break
 
     if not valid_sig_exists:
-        logger.error("No valid Rekor entries were found")
-        return None
+        return VerificationFailure(reason="No valid Rekor entries were found")
 
     logger.debug("Successfully verified Rekor entry...")
-    return VerificationResult()
+    return VerificationSuccess()

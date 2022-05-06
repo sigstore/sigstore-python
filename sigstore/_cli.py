@@ -150,7 +150,7 @@ def _verify(files, certificate_path, signature_path, cert_email):
             certificate=certificate,
             signature=signature,
             cert_email=cert_email,
-        ) is not None:
+        ):
             click.echo(f"OK: {file.name}")
         else:
             click.echo(f"FAIL: {file.name}")
