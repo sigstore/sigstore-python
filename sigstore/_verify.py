@@ -34,6 +34,7 @@ from cryptography.x509 import (
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import X509, X509Store, X509StoreContext
+from pydantic import BaseModel
 
 from sigstore._internal.merkle import (
     InvalidInclusionProofError,
@@ -52,13 +53,28 @@ logger = logging.getLogger(__name__)
 FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
 
 
+class VerificationResult(BaseModel):
+    pass
+
+
 def verify(
     file: BinaryIO,
     certificate: bytes,
     signature: bytes,
     cert_email: Optional[str] = None,
-) -> bool:
-    """Public API for verifying blobs"""
+) -> Optional[VerificationResult]:
+    """Public API for verifying files.
+
+    `file` is the file to verify.
+
+    `certificate` is the PEM-encoded signing certificate.
+
+    `signature` is a base64-encoded signature for `file`.
+
+    `cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
+
+    Returns a `VerificationResult` if verification succeeds, or `None` if it fails.
+    """
 
     # Read the contents of the package to be verified
     logger.debug(f"Using payload from: {file.name}")
@@ -66,9 +82,7 @@ def verify(
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
     cert = load_pem_x509_certificate(certificate)
-
-    b64_artifact_signature = signature
-    artifact_signature = base64.b64decode(b64_artifact_signature)
+    artifact_signature = base64.b64decode(signature)
 
     # In order to verify an artifact, we need to achieve the following:
     #
@@ -104,14 +118,14 @@ def verify(
     if not usage_ext.value.digital_signature:
         # Error
         logger.error("Key usage is not of type `digital signature`")
-        return False
+        return None
 
     # Check that extended usage contains "code signing"
     extended_usage_ext = cert.extensions.get_extension_for_class(ExtendedKeyUsage)
     if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
         # Error
         logger.error("Extended usage does not contain `code signing`")
-        return False
+        return None
 
     if cert_email is not None:
         # Check that SubjectAlternativeName contains signer identity
@@ -119,7 +133,7 @@ def verify(
         if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
             # Error
             logger.error(f"Subject name does not contain identity: {cert_email}")
-            return False
+            return None
 
     logger.debug("Successfully verified signing certificate validity...")
 
@@ -183,7 +197,7 @@ def verify(
 
     if not valid_sig_exists:
         logger.error("No valid Rekor entries were found")
-    else:
-        logger.debug("Successfully verified Rekor entry...")
+        return None
 
-    return valid_sig_exists
+    logger.debug("Successfully verified Rekor entry...")
+    return VerificationResult()
