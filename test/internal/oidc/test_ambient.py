@@ -20,8 +20,9 @@ from sigstore._internal.oidc import ambient
 
 
 def test_detect_credential_none(monkeypatch):
-    detect_github = pretend.call_recorder(lambda: None)
-    monkeypatch.setattr(ambient, "detect_github", detect_github)
+    detect_noop = pretend.call_recorder(lambda: None)
+    for detector in ["detect_github", "detect_circleci"]:
+        monkeypatch.setattr(ambient, detector, detect_noop)
     assert ambient.detect_credential() is None
 
 
@@ -32,7 +33,7 @@ def test_detect_credential(monkeypatch):
     assert ambient.detect_credential() == "fakejwt"
 
 
-def test_detect_github_bad_env(monkeypatch):
+def test_detect_github_wrong_env(monkeypatch):
     # We might actually be running in a CI, so explicitly remove this.
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
@@ -56,7 +57,7 @@ def test_detect_github_bad_permissions(monkeypatch):
 
     with pytest.raises(
         ambient.AmbientCredentialError,
-        match="GitHub: missing or insufficient OIDC token permissions?",
+        match="GitHub: missing or insufficient OIDC token permissions",
     ):
         ambient.detect_github()
     assert logger.debug.calls == [
@@ -136,3 +137,21 @@ def test_detect_github(monkeypatch):
         )
     ]
     assert resp.json.calls == [pretend.call()]
+
+
+def test_detect_circleci_wrong_env(monkeypatch):
+    # We might actually be running in a CI, so explicitly remove this.
+    monkeypatch.delenv("CIRCLECI", raising=False)
+
+    assert ambient.detect_circleci() is None
+
+
+def test_detect_circleci_bad_permissions(monkeypatch):
+    monkeypatch.setenv("CIRCLECI", "true")
+    monkeypatch.delenv("CIRCLE_OIDC_TOKEN", raising=False)
+
+    with pytest.raises(
+        ambient.AmbientCredentialError,
+        match="CircleCI: missing or insufficient OIDC token permissions",
+    ):
+        ambient.detect_circleci()

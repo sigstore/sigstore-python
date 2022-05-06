@@ -45,7 +45,7 @@ def detect_credential() -> Optional[str]:
     Raises `AmbientCredentialError` if any detector fails internally (i.e.
     detects a credential, but cannot retrieve it).
     """
-    detectors: List[Callable[..., Optional[str]]] = [detect_github]
+    detectors: List[Callable[..., Optional[str]]] = [detect_github, detect_circleci]
     for detector in detectors:
         credential = detector()
         if credential is not None:
@@ -76,7 +76,7 @@ def detect_github() -> Optional[str]:
     req_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
     if not req_token or not req_url:
         raise AmbientCredentialError(
-            "GitHub: missing or insufficient OIDC token permissions?"
+            "GitHub: missing or insufficient OIDC token permissions"
         )
 
     resp = requests.get(
@@ -96,3 +96,19 @@ def detect_github() -> Optional[str]:
         return _GitHubTokenPayload(**body).value
     except Exception as e:
         raise AmbientCredentialError("GitHub: malformed or incomplete JSON") from e
+
+
+def detect_circleci() -> Optional[str]:
+    logger.debug("CircleCI: looking for OIDC credentials")
+
+    if not os.getenv("CIRCLECI"):
+        logger.debug("CircleCI: environment doesn't look right; giving up")
+        return None
+
+    token = os.getenv("CIRCLE_OIDC_TOKEN")
+    if not token:
+        raise AmbientCredentialError(
+            "CircleCI: missing or insufficient OIDC token permissions"
+        )
+
+    return token
