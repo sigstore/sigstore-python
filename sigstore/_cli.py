@@ -143,13 +143,18 @@ def _verify(files, certificate_path, signature_path, cert_email):
     logger.debug(f"Using signature from: {signature_path.name}")
     signature = signature_path.read()
 
+    verified = True
     for file in files:
-        click.echo(
-            verify(
-                file=file,
-                certificate=certificate,
-                signature=signature,
-                cert_email=cert_email,
-                output=click.echo,
-            )
-        )
+        if verify(
+            file=file,
+            certificate=certificate,
+            signature=signature,
+            cert_email=cert_email,
+        ):
+            click.echo(f"OK: {file.name}")
+        else:
+            click.echo(f"FAIL: {file.name}")
+            verified = False
+
+    if not verified:
+        raise click.Abort

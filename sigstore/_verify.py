@@ -19,6 +19,7 @@ API for verifying artifact signatures.
 import base64
 import datetime
 import hashlib
+import logging
 from importlib import resources
 from typing import BinaryIO, Optional, cast
 
@@ -33,6 +34,7 @@ from cryptography.x509 import (
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import X509, X509Store, X509StoreContext
+from pydantic import BaseModel
 
 from sigstore._internal.merkle import (
     InvalidInclusionProofError,
@@ -45,13 +47,26 @@ from sigstore._internal.rekor import (
 )
 from sigstore._internal.set import InvalidSetError, verify_set
 
-
-# TODO(alex): Share this with `sign`
-def _no_output(*a, **kw):
-    pass
+logger = logging.getLogger(__name__)
 
 
 FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
+
+
+class VerificationResult(BaseModel):
+    success: bool
+
+    def __bool__(self):
+        return self.success
+
+
+class VerificationSuccess(VerificationResult):
+    success: bool = True
+
+
+class VerificationFailure(VerificationResult):
+    success: bool = False
+    reason: str
 
 
 def verify(
@@ -59,19 +74,28 @@ def verify(
     certificate: bytes,
     signature: bytes,
     cert_email: Optional[str] = None,
-    output=_no_output,
-):
-    """Public API for verifying blobs"""
+) -> VerificationResult:
+    """Public API for verifying files.
+
+    `file` is the file to verify.
+
+    `certificate` is the PEM-encoded signing certificate.
+
+    `signature` is a base64-encoded signature for `file`.
+
+    `cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
+
+    Returns a `VerificationResult` which will be truthy or falsey depending on
+    success.
+    """
 
     # Read the contents of the package to be verified
-    output(f"Using payload from: {file.name}")
+    logger.debug(f"Using payload from: {file.name}")
     artifact_contents = file.read()
     sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
 
     cert = load_pem_x509_certificate(certificate)
-
-    b64_artifact_signature = signature
-    artifact_signature = base64.b64decode(b64_artifact_signature)
+    artifact_signature = base64.b64decode(signature)
 
     # In order to verify an artifact, we need to achieve the following:
     #
@@ -105,33 +129,33 @@ def verify(
     # Check usage is "digital signature"
     usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
     if not usage_ext.value.digital_signature:
-        # Error
-        output("Key usage is not of type `digital signature`")
-        return None
+        return VerificationFailure(
+            reason="Key usage is not of type `digital signature`"
+        )
 
     # Check that extended usage contains "code signing"
     extended_usage_ext = cert.extensions.get_extension_for_class(ExtendedKeyUsage)
     if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
-        # Error
-        output("Extended usage does not contain `code signing`")
-        return None
+        return VerificationFailure(
+            reason="Extended usage does not contain `code signing`"
+        )
 
     if cert_email is not None:
         # Check that SubjectAlternativeName contains signer identity
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
         if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
-            # Error
-            output(f"Subject name does not contain identity: {cert_email}")
-            return None
+            return VerificationFailure(
+                reason=f"Subject name does not contain identity: {cert_email}"
+            )
 
-    output("Successfully verified signing certificate validity...")
+    logger.debug("Successfully verified signing certificate validity...")
 
     # 3) Verify that the signature was signed by the public key in the signing certificate
     signing_key = cert.public_key()
     signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
     signing_key.verify(artifact_signature, artifact_contents, ec.ECDSA(hashes.SHA256()))
 
-    output("Successfully verified signature...")
+    logger.debug("Successfully verified signature...")
 
     # Get a base64 encoding of the signing key. We're going to use this in our Rekor query.
     pub_b64 = base64.b64encode(
@@ -156,7 +180,7 @@ def verify(
         try:
             verify_merkle_inclusion(inclusion_proof, entry)
         except InvalidInclusionProofError as inval_inclusion_proof:
-            output(
+            logger.warning(
                 f"Failed to validate Rekor entry's inclusion proof: {inval_inclusion_proof}"
             )
             continue
@@ -165,7 +189,7 @@ def verify(
         try:
             verify_set(entry)
         except InvalidSetError as inval_set:
-            output(f"Failed to validate Rekor entry's SET: {inval_set}")
+            logger.warning(f"Failed to validate Rekor entry's SET: {inval_set}")
             continue
 
         # 6) Verify that the signing certificate was valid at the time of signing
@@ -180,11 +204,12 @@ def verify(
             # error case.
             continue
 
+        # TODO: Does it make sense to collect all valid Rekor entries?
         valid_sig_exists = True
+        break
 
     if not valid_sig_exists:
-        output("No valid Rekor entries were found")
-        return None
+        return VerificationFailure(reason="No valid Rekor entries were found")
 
-    output("Successfully verified Rekor entry...")
-    return None
+    logger.debug("Successfully verified Rekor entry...")
+    return VerificationSuccess()
