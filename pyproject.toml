@@ -29,7 +29,7 @@ dependencies = [
   "cryptography",
   "pem",
   "pydantic",
-  "pyjwt>=2.3",
+  "pyjwt>=2.1",
   "pyOpenSSL",
   "requests",
   "securesystemslib",
