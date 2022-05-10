@@ -27,6 +27,11 @@ from sigstore._internal.oidc import _AUDIENCE, IdentityError
 
 logger = logging.getLogger(__name__)
 
+GCP_PRODUCT_NAME_FILE = "/sys/class/dmi/id/product_name"
+GCP_ID_TOKEN_REQUEST_URL = (
+    "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"
+)
+
 
 class AmbientCredentialError(IdentityError):
     """
@@ -45,7 +50,7 @@ def detect_credential() -> Optional[str]:
     Raises `AmbientCredentialError` if any detector fails internally (i.e.
     detects a credential, but cannot retrieve it).
     """
-    detectors: List[Callable[..., Optional[str]]] = [detect_github]
+    detectors: List[Callable[..., Optional[str]]] = [detect_github, detect_gcp]
     for detector in detectors:
         credential = detector()
         if credential is not None:
@@ -100,3 +105,35 @@ def detect_github() -> Optional[str]:
 
     logger.debug("GCP: successfully requested OIDC token")
     return payload.value
+
+
+def detect_gcp() -> Optional[str]:
+    logger.debug("GCP: looking for OIDC credentials")
+    try:
+        with open(GCP_PRODUCT_NAME_FILE) as f:
+            name = f.read().strip()
+    except OSError:
+        logger.debug("GCP: environment doesn't have GCP product name file; giving up")
+        return None
+
+    if name not in {"Google", "Google Compute Engine"}:
+        raise AmbientCredentialError(
+            f"GCP: product name file exists, but product name is {name!r}; giving up"
+        )
+
+    logger.debug("GCP: requesting OIDC token")
+    resp = requests.get(
+        GCP_ID_TOKEN_REQUEST_URL,
+        params={"audience": _AUDIENCE, "format": "full"},
+        headers={"Metadata-Flavor": "Google"},
+    )
+
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError as http_error:
+        raise AmbientCredentialError(
+            f"GCP: OIDC token request failed (code={resp.status_code})"
+        ) from http_error
+
+    logger.debug("GCP: successfully requested OIDC token")
+    return resp.text
