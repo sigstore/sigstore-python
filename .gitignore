@@ -15,3 +15,7 @@ build
 *.pem
 *.sh
 *.pub
+
+# Don't ignore these files when we intend to include them
+!sigstore/_store/*.crt
+!sigstore/_store/*.pem
