@@ -40,7 +40,8 @@ Top-level:
 Usage: sigstore [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --help  Show this message and exit.
+  --version  Show the version and exit.
+  --help     Show this message and exit.
 
 Commands:
   sign
