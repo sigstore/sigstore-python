@@ -14,9 +14,14 @@ jobs:
     name: Build, sign and publish release to PyPI
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: Harden Runner
+      uses: step-security/harden-runner@248ae51c2e8cc9622ecf50685c8bf7150c6e8813
+      with:
+        egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
 
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+
+    - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
 
     - name: deps
       run: python -m pip install -U build
@@ -34,7 +39,7 @@ jobs:
         python -m sigstore sign dist/*
 
     - name: publish
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@717ba43cfbb0387f6ce311b169a825772f54d295
       with:
         user: __token__
         password: ${{ secrets.PYPI_TOKEN }}

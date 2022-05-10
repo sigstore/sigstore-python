@@ -19,8 +19,13 @@ jobs:
           - "3.10"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@248ae51c2e8cc9622ecf50685c8bf7150c6e8813
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
         with:
           python-version: ${{ matrix.python }}
       - name: deps
@@ -31,7 +36,12 @@ jobs:
   licenses:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@248ae51c2e8cc9622ecf50685c8bf7150c6e8813
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
       # adapted from Warehouse's bin/licenses
       - run: |
           for fn in $(find . -type f -name "*.py"); do
@@ -44,8 +54,13 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@248ae51c2e8cc9622ecf50685c8bf7150c6e8813
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
       - name: deps
         run: make dev
       - name: lint
@@ -54,9 +69,14 @@ jobs:
   security-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Harden Runner
+        uses: step-security/harden-runner@248ae51c2e8cc9622ecf50685c8bf7150c6e8813
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - uses: actions/checkout@d0651293c4a5a52e711f25b41b05b2212f385d28
       - name: Bandit Security Lint
-        uses: akaihola/bandit-report-artifacts@use-config
+        uses: akaihola/bandit-report-artifacts@322bc2533bbbedd33255a24b1d438f815725393e
         with:
           project_path: .
           config_file: ./.bandit.yaml
@@ -64,8 +84,13 @@ jobs:
   check-readme:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@248ae51c2e8cc9622ecf50685c8bf7150c6e8813
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
       - name: deps
         run: make dev
       - name: check-readme
