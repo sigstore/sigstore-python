@@ -23,7 +23,7 @@ from typing import Callable, List, Optional
 import requests
 from pydantic import BaseModel
 
-from sigstore._internal.oidc import IdentityError
+from sigstore._internal.oidc import _AUDIENCE, IdentityError
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ def detect_github() -> Optional[str]:
 
     resp = requests.get(
         req_url,
-        params={"audience": "sigstore"},
+        params={"audience": _AUDIENCE},
         headers={"Authorization": f"bearer {req_token}"},
     )
     try:
