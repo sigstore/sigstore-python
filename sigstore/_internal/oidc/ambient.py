@@ -79,6 +79,7 @@ def detect_github() -> Optional[str]:
             "GitHub: missing or insufficient OIDC token permissions?"
         )
 
+    logger.debug("GitHub: requesting OIDC token")
     resp = requests.get(
         req_url,
         params={"audience": _AUDIENCE},
@@ -93,6 +94,9 @@ def detect_github() -> Optional[str]:
 
     try:
         body = resp.json()
-        return _GitHubTokenPayload(**body).value
+        payload = _GitHubTokenPayload(**body)
     except Exception as e:
         raise AmbientCredentialError("GitHub: malformed or incomplete JSON") from e
+
+    logger.debug("GCP: successfully requested OIDC token")
+    return payload.value
