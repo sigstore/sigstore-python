@@ -16,18 +16,25 @@
 Utilities for verifying signed certificate timestamps.
 """
 
+import hashlib
 import struct
+from typing import Optional
 
-import cryptography.hazmat.primitives.asymmetric.ec as ec
+import cryptography.hazmat.primitives.asymmetric.padding as padding
+import cryptography.hazmat.primitives.asymmetric.rsa as rsa
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509 import Certificate
-
-from sigstore._internal.fulcio import FulcioSignedCertificateTimestamp
+from cryptography.x509.certificate_transparency import (
+    SignedCertificateTimestamp,
+)
 
 
 def _pack_digitally_signed(
-    sct: FulcioSignedCertificateTimestamp, cert: Certificate
+    sct: SignedCertificateTimestamp,
+    cert: Certificate,
+    ctfe_key: rsa.RSAPublicKey,
+    precert_issuer: Optional[bytes] = None,
 ) -> bytes:
     """
     The format of the digitally signed data is described in IETF's RFC 6962.
@@ -42,7 +49,7 @@ def _pack_digitally_signed(
     """
 
     # The digitally signed format requires the certificate in DER format.
-    cert_der: bytes = cert.public_bytes(encoding=serialization.Encoding.DER)
+    cert_der: bytes = cert.tbs_precertificate_bytes(precert_issuer)
 
     # The length should then be split into three bytes.
     unused, len1, len2, len3 = struct.unpack(
@@ -54,18 +61,24 @@ def _pack_digitally_signed(
 
     # Assemble a format string with the certificate length baked in and then pack the digitally
     # signed data
-    pattern = "!BBQhBBB%ssh" % len(cert_der)
+    pattern = "!BBQh32sBBB%ssh" % len(cert_der)
     data = struct.pack(
         pattern,
-        sct.struct["sct_version"],
+        sct.version._value_,
         0,  # Signature Type
-        sct.struct["timestamp"],
-        0,  # Entry Type
+        int(sct.timestamp.timestamp()) * 1000,
+        sct.entry_type._value_,
+        hashlib.sha256(
+            ctfe_key.public_bytes(
+                serialization.Encoding.DER,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+        ).digest(),
         len1,
         len2,
         len3,
         cert_der,
-        len(sct.struct["extensions"]),
+        0,  # Extension Length
     )
 
     return data
@@ -76,17 +89,19 @@ class InvalidSctError(Exception):
 
 
 def verify_sct(
-    sct: FulcioSignedCertificateTimestamp,
+    sct: SignedCertificateTimestamp,
     cert: Certificate,
-    ctfe_key: ec.EllipticCurvePublicKey,
+    ctfe_key: rsa.RSAPublicKey,
+    precert_issuer: Optional[bytes] = None,
 ) -> None:
     """Verify a signed certificate timestamp"""
-    digitally_signed = _pack_digitally_signed(sct, cert)
+    digitally_signed = _pack_digitally_signed(sct, cert, ctfe_key, precert_issuer)
     try:
         ctfe_key.verify(
             signature=sct.signature,
             data=digitally_signed,
-            signature_algorithm=ec.ECDSA(hashes.SHA256()),
+            padding=padding.PKCS1v15(),
+            algorithm=hashes.SHA256(),
         )
     except InvalidSignature as inval_sig:
         raise InvalidSctError from inval_sig

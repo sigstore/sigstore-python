@@ -17,9 +17,7 @@ Client implementation for interacting with Fulcio.
 """
 
 import base64
-import datetime
 import json
-import struct
 from abc import ABC
 from dataclasses import dataclass
 from enum import IntEnum
@@ -32,9 +30,10 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import Certificate, load_pem_x509_certificate
 from cryptography.x509.certificate_transparency import (
-    LogEntryType,
     SignedCertificateTimestamp,
-    Version,
+)
+from cryptography.x509.extensions import (
+    PrecertificateSignedCertificateTimestamps,
 )
 
 DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
@@ -83,72 +82,6 @@ class FulcioSCTError(Exception):
     pass
 
 
-class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
-    def __init__(self, b64_encoded_sct: str):
-        self.struct = json.loads(base64.b64decode(b64_encoded_sct).decode())
-
-        # Pull the SCT version out of the struct and pre-validate it.
-        try:
-            self._version = Version(self.struct.get("sct_version"))
-        except ValueError as exc:
-            raise FulcioSCTError("invalid SCT version") from exc
-
-        # The "signature" here is really an RFC 5246 DigitallySigned struct;
-        # we need to decompose it further to get the actual interior signature.
-        # See: https://datatracker.ietf.org/doc/html/rfc5246#section-4.7
-        digitally_signed = base64.b64decode(self.struct["signature"])
-
-        # The first two bytes signify the hash and signature algorithms, respectively.
-        # We currently only accept SHA256 + ECDSA.
-        hash_algo, sig_algo = digitally_signed[0:2]
-        if (
-            hash_algo != SCTHashAlgorithm.SHA256
-            or sig_algo != SCTSignatureAlgorithm.ECDSA
-        ):
-            raise FulcioSCTError(
-                f"unexpected hash algorithm {hash_algo} or signature algorithm {sig_algo}"
-            )
-
-        # The next two bytes are the size of the signature, big-endian.
-        # We expect this to be the remainder of the `signature` blob above, but check it anyways.
-        (sig_size,) = struct.unpack("!H", digitally_signed[2:4])
-        if len(digitally_signed[4:]) != sig_size:
-            raise FulcioSCTError(
-                f"signature size mismatch: expected {sig_size} bytes, "
-                f"got {len(digitally_signed[4:])}"
-            )
-
-        # Finally, extract the underlying signature.
-        self.signature: bytes = digitally_signed[4:]
-
-    @property
-    def version(self):
-        return self._version
-
-    @property
-    def log_id(self) -> bytes:
-        """
-        Returns an identifier indicating which log this SCT is for.
-        """
-        # The ID from fulcio is a base64 encoded bytestring of the SHA256 hash
-        # of the public cert. Call .hex() on this when displaying.
-        return base64.b64decode(self.struct.get("id"))
-
-    @property
-    def timestamp(self) -> datetime.datetime:
-        """
-        Returns the timestamp for this SCT.
-        """
-        return datetime.datetime.fromtimestamp(self.struct["timestamp"] / 1000.0)
-
-    @property
-    def entry_type(self) -> LogEntryType:
-        """
-        Returns whether this is an SCT for a certificate or pre-certificate.
-        """
-        return LogEntryType.X509_CERTIFICATE
-
-
 @dataclass(frozen=True)
 class FulcioCertificateSigningRequest:
     """Certificate request"""
@@ -177,7 +110,7 @@ class FulcioCertificateSigningResponse:
 
     cert: Certificate
     chain: List[Certificate]
-    sct: FulcioSignedCertificateTimestamp
+    sct: SignedCertificateTimestamp
 
 
 @dataclass(frozen=True)
@@ -229,12 +162,6 @@ class FulcioSigningCert(Endpoint):
             except (AttributeError, KeyError):
                 raise FulcioClientError from http_error
 
-        try:
-            sct = FulcioSignedCertificateTimestamp(resp.headers["SCT"])
-        except Exception as exc:
-            # Ideally we'd catch something less generic here.
-            raise FulcioClientError from exc
-
         # Cryptography doesn't have chain verification/building built in
         # https://github.com/pyca/cryptography/issues/2381
         try:
@@ -243,6 +170,15 @@ class FulcioSigningCert(Endpoint):
             chain = [load_pem_x509_certificate(c.as_bytes()) for c in chain_pems]
         except ValueError:
             raise FulcioClientError(f"Did not find a cert in Fulcio response: {resp}")
+
+        precert_sct_extension = cert.extensions.get_extension_for_class(
+            PrecertificateSignedCertificateTimestamps
+        ).value
+        if len(precert_sct_extension) != 1:
+            raise FulcioClientError(
+                f"Found unexpected number of embedded SCTs in signing cert: {resp}"
+            )
+        sct = precert_sct_extension[0]
 
         return FulcioCertificateSigningResponse(cert, chain, sct)
 

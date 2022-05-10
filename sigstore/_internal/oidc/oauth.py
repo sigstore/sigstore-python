@@ -119,7 +119,7 @@ class RedirectServer(http.server.HTTPServer):
 
     def auth_request(self) -> str:
         params = self.auth_request_params()
-        return "https://oauth2.sigstore.dev/auth/auth?" + urllib.parse.urlencode(params)
+        return "https://oauth2.sigstage.dev/auth/auth?" + urllib.parse.urlencode(params)
 
     def enable_oob(self) -> None:
         self.is_oob = True
@@ -179,7 +179,7 @@ def get_identity_token() -> str:
         "",  # Client secret
     )
     resp: requests.Response = requests.post(
-        "https://oauth2.sigstore.dev/auth/token",
+        "https://oauth2.sigstage.dev/auth/token",
         data=data,
         auth=auth,
     )

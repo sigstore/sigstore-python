@@ -66,7 +66,7 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
     public_key = private_key.public_key()
 
     logger.debug("Retrieving signed certificate...")
-    fulcio = FulcioClient()
+    fulcio = FulcioClient("https://fulcio.sigstage.dev")
 
     oidc_identity = Identity(identity_token)
 
@@ -101,9 +101,14 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
     cert = certificate_response.cert  # noqa
     ctfe_key = load_pem_public_key(ctfe_pem)
 
+    # TODO(alex): Pass the issuer here
     verify_sct(sct, cert, ctfe_key)
 
     logger.debug("Successfully verified SCT...")
+
+    import sys
+
+    sys.exit(1)
 
     # Sign artifact
     artifact_signature = private_key.sign(artifact_contents, ec.ECDSA(hashes.SHA256()))
