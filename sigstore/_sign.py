@@ -17,14 +17,15 @@ import hashlib
 import logging
 from typing import BinaryIO
 
-import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
-from cryptography.x509.oid import NameOID
 from pydantic import BaseModel
 
-from sigstore._internal.fulcio import FulcioClient
+from sigstore._internal.fulcio import (
+    FulcioCertificateSigningRequest,
+    FulcioClient,
+)
 from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor import RekorClient, RekorEntry
 from sigstore._internal.sct import verify_sct
@@ -62,28 +63,41 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
 
     logger.debug("Generating ephemeral keys...")
     private_key = ec.generate_private_key(ec.SECP384R1())
+    public_key = private_key.public_key()
 
     logger.debug("Retrieving signed certificate...")
     fulcio = FulcioClient()
 
     oidc_identity = Identity(identity_token)
 
-    # Build an X.509 Certificiate Signing Request
-    builder = (
-        x509.CertificateSigningRequestBuilder()
-        .subject_name(
-            x509.Name(
-                [
-                    x509.NameAttribute(NameOID.EMAIL_ADDRESS, oidc_identity.proof),
-                ]
-            )
-        )
-        .add_extension(
-            x509.BasicConstraints(ca=False, path_length=None),
-            critical=True,
-        )
+    # Build an X.509 Certificiate Signing Request - not currently supported
+    # builder = (
+    #     x509.CertificateSigningRequestBuilder()
+    #     .subject_name(
+    #         x509.Name(
+    #             [
+    #                 x509.NameAttribute(NameOID.EMAIL_ADDRESS, email_address),
+    #             ]
+    #         )
+    #     )
+    #     .add_extension(
+    #         x509.BasicConstraints(ca=False, path_length=None),
+    #         critical=True,
+    #     )
+    # )
+    # certificate_request = builder.sign(private_key, hashes.SHA256())
+
+    # NOTE: The proof here is not a proof of identity, but solely
+    # a proof that we possess the private key. Fulcio verifies this
+    # signature using the public key we give it and the "subject",
+    # which is a function of one or more claims in the identity token.
+    # An identity token whose issuer is unknown to Fulcio will fail this
+    # test, since Fulcio won't know how to construct the subject.
+    # See: https://github.com/sigstore/fulcio/blob/f6016fd/pkg/challenges/challenges.go#L437-L478
+    signed_proof = private_key.sign(
+        oidc_identity.proof.encode(), ec.ECDSA(hashes.SHA256())
     )
-    certificate_request = builder.sign(private_key, hashes.SHA256())
+    certificate_request = FulcioCertificateSigningRequest(public_key, signed_proof)
 
     certificate_response = fulcio.signing_cert.post(certificate_request, identity_token)
 
