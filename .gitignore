@@ -6,11 +6,12 @@ __pycache__/
 html/
 dist/
 .python-version
+build
 
 # Ignore some file types that may litter the root directory
-./*.txt
-./*.crt
-./*.sig
-./*.pem
-./*.sh
-./*.pub
+*.txt
+*.crt
+*.sig
+*.pem
+*.sh
+*.pub
