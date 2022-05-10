@@ -29,11 +29,8 @@ from urllib.parse import urljoin
 import pem
 import requests
 from cryptography.hazmat.primitives import serialization
-from cryptography.x509 import (
-    Certificate,
-    CertificateSigningRequest,
-    load_pem_x509_certificate,
-)
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509 import Certificate, load_pem_x509_certificate
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
     SignedCertificateTimestamp,
@@ -153,6 +150,28 @@ class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
 
 
 @dataclass(frozen=True)
+class FulcioCertificateSigningRequest:
+    """Certificate request"""
+
+    public_key: ec.EllipticCurvePublicKey
+    signed_proof: bytes
+
+    @property
+    def data(self) -> str:
+        content = self.public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        data = {
+            "publicKey": {
+                "content": base64.b64encode(content).decode(),
+            },
+            "signedEmailAddress": base64.b64encode(self.signed_proof).decode(),
+        }
+        return json.dumps(data)
+
+
+@dataclass(frozen=True)
 class FulcioCertificateSigningResponse:
     """Certificate response"""
 
@@ -178,18 +197,9 @@ class Endpoint(ABC):
         self.session = session
 
 
-def _serialize_cert_request(req: CertificateSigningRequest) -> str:
-    data = {
-        "certificateSigningRequest": base64.b64encode(
-            req.public_bytes(serialization.Encoding.PEM)
-        ).decode()
-    }
-    return json.dumps(data)
-
-
 class FulcioSigningCert(Endpoint):
     def post(
-        self, req: CertificateSigningRequest, token: str
+        self, req: FulcioCertificateSigningRequest, token: str
     ) -> FulcioCertificateSigningResponse:
         """
         Get the signing certificate.
@@ -208,7 +218,7 @@ class FulcioSigningCert(Endpoint):
             "Accept": "application/pem-certificate-chain",
         }
         resp: requests.Response = self.session.post(
-            url=self.url, data=_serialize_cert_request(req), headers=headers
+            url=self.url, data=req.data, headers=headers
         )
         try:
             resp.raise_for_status()
