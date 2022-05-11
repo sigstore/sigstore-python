@@ -59,7 +59,7 @@ jobs:
         uses: akaihola/bandit-report-artifacts@use-config
         with:
           project_path: .
-          config_file: ./.bandit.yaml
+          config_file: pyproject.toml
 
   check-readme:
     runs-on: ubuntu-latest
