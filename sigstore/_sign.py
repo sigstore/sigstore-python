@@ -99,10 +99,10 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
     # Verify the SCT
     sct = certificate_response.sct  # noqa
     cert = certificate_response.cert  # noqa
+    chain = certificate_response.chain
     ctfe_key = load_pem_public_key(ctfe_pem)
 
-    # TODO(alex): Pass the issuer here
-    verify_sct(sct, cert, ctfe_key)
+    verify_sct(sct, cert, chain, ctfe_key)
 
     logger.debug("Successfully verified SCT...")
 

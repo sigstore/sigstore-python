@@ -18,13 +18,13 @@ Utilities for verifying signed certificate timestamps.
 
 import hashlib
 import struct
-from typing import Optional
+from typing import List
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
 import cryptography.hazmat.primitives.asymmetric.rsa as rsa
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.x509 import Certificate
+from cryptography.x509 import Certificate, ExtendedKeyUsage, ObjectIdentifier
 from cryptography.x509.certificate_transparency import (
     SignedCertificateTimestamp,
 )
@@ -33,8 +33,8 @@ from cryptography.x509.certificate_transparency import (
 def _pack_digitally_signed(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
+    issuer_cert: Certificate,
     ctfe_key: rsa.RSAPublicKey,
-    precert_issuer: Optional[bytes] = None,
 ) -> bytes:
     """
     The format of the digitally signed data is described in IETF's RFC 6962.
@@ -49,7 +49,12 @@ def _pack_digitally_signed(
     """
 
     # The digitally signed format requires the certificate in DER format.
-    cert_der: bytes = cert.tbs_precertificate_bytes(precert_issuer)
+    cert_der: bytes = cert.tbs_precertificate_bytes
+
+    issuer_key: bytes = issuer_cert.public_key().public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
 
     # The length should then be split into three bytes.
     unused, len1, len2, len3 = struct.unpack(
@@ -66,14 +71,9 @@ def _pack_digitally_signed(
         pattern,
         sct.version._value_,
         0,  # Signature Type
-        int(sct.timestamp.timestamp()) * 1000,
+        int(sct.timestamp.timestamp() * 1e3),
         sct.entry_type._value_,
-        hashlib.sha256(
-            ctfe_key.public_bytes(
-                serialization.Encoding.DER,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo,
-            )
-        ).digest(),
+        hashlib.sha256(issuer_key).digest(),
         len1,
         len2,
         len3,
@@ -84,6 +84,21 @@ def _pack_digitally_signed(
     return data
 
 
+CERTIFICATE_TRANSPARENCY_OID = ObjectIdentifier("1.3.6.1.4.1.11129.2.4.4")
+
+
+def _is_preissuer(issuer: Certificate) -> bool:
+    ext_key_usage = issuer.extensions.get_extension_for_class(ExtendedKeyUsage)
+    return CERTIFICATE_TRANSPARENCY_OID in ext_key_usage.value
+
+
+def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
+    issuer = chain[0]
+    if _is_preissuer(issuer):
+        issuer = chain[1]
+    return issuer
+
+
 class InvalidSctError(Exception):
     pass
 
@@ -91,11 +106,12 @@ class InvalidSctError(Exception):
 def verify_sct(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
+    chain: List[Certificate],
     ctfe_key: rsa.RSAPublicKey,
-    precert_issuer: Optional[bytes] = None,
 ) -> None:
     """Verify a signed certificate timestamp"""
-    digitally_signed = _pack_digitally_signed(sct, cert, ctfe_key, precert_issuer)
+    issuer_cert = _get_issuer_cert(chain)
+    digitally_signed = _pack_digitally_signed(sct, cert, issuer_cert, ctfe_key)
     try:
         ctfe_key.verify(
             signature=sct.signature,
