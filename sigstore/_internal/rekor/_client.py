@@ -80,7 +80,7 @@ class RekorInclusionProof(BaseModel):
 
     @validator("tree_size")
     def log_index_within_tree_size(
-        cls, v: int, values: Dict[str, Any], **_kwargs: Any
+        cls, v: int, values: Dict[str, Any], **kwargs: Any
     ) -> int:
         if v <= values["log_index"]:
             raise ValueError(
