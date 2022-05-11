@@ -24,7 +24,7 @@ import cryptography.hazmat.primitives.asymmetric.ec as ec
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
-from securesystemslib.formats import encode_canonical  # type: ignore
+from securesystemslib.formats import encode_canonical
 
 from sigstore._internal.rekor import RekorEntry
 
