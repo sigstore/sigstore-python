@@ -35,7 +35,7 @@ jobs:
 
           python -m sigstore sign dist/*
 
-          python -m pip uninstall sigstore
+          python -m pip uninstall --yes sigstore
         done
 
     # - name: publish
