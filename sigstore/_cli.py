@@ -17,6 +17,7 @@ from importlib import resources
 
 import click
 
+from sigstore import __version__
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import get_identity_token
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 @click.group()
+@click.version_option(version=__version__)
 def main():
     pass
 
