@@ -14,9 +14,11 @@
 
 import logging
 from importlib import resources
+from typing import BinaryIO, List, Optional
 
 import click
 
+from sigstore import __version__
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import get_identity_token
@@ -27,7 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 @click.group()
-def main():
+@click.version_option(version=__version__)
+def main() -> None:
     pass
 
 
@@ -85,14 +88,14 @@ def main():
     required=True,
 )
 def _sign(
-    files,
-    identity_token,
-    ctfe_pem,
-    oidc_client_id,
-    oidc_client_secret,
-    oidc_issuer,
-    oidc_disable_ambient_providers,
-):
+    files: List[BinaryIO],
+    identity_token: Optional[str],
+    ctfe_pem: BinaryIO,
+    oidc_client_id: str,
+    oidc_client_secret: str,
+    oidc_issuer: str,
+    oidc_disable_ambient_providers: bool,
+) -> None:
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
@@ -134,7 +137,12 @@ def _sign(
 @click.argument(
     "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
 )
-def _verify(files, certificate_path, signature_path, cert_email):
+def _verify(
+    files: List[BinaryIO],
+    certificate_path: BinaryIO,
+    signature_path: BinaryIO,
+    cert_email: Optional[str],
+) -> None:
     # Load the signing certificate
     logger.debug(f"Using certificate from: {certificate_path.name}")
     certificate = certificate_path.read()
