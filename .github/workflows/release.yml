@@ -1,7 +1,8 @@
 on:
-  release:
-    types:
-      - published
+  pull_request:
+  # release:
+  #   types:
+  #     - published
 
 name: release
 
@@ -38,8 +39,8 @@ jobs:
           rm -rf smoketest-env
         done
 
-    - name: publish
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
+    # - name: publish
+    #   uses: pypa/gh-action-pypi-publish@master
+    #   with:
+    #     user: __token__
+    #     password: ${{ secrets.PYPI_TOKEN }}
