@@ -122,7 +122,7 @@ class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
         self.signature: bytes = digitally_signed[4:]
 
     @property
-    def version(self):
+    def version(self) -> Version:
         return self._version
 
     @property

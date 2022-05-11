@@ -56,7 +56,7 @@ FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
 class VerificationResult(BaseModel):
     success: bool
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.success
 
 

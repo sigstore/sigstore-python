@@ -41,11 +41,11 @@ class RekorEntry:
     raw_data: dict
 
     @classmethod
-    def from_response(cls, dict_) -> RekorEntry:
+    def from_response(cls, dict_: Dict[str, Any]) -> RekorEntry:
         # Assumes we only get one entry back
         entries = list(dict_.items())
         if len(entries) != 1:
-            raise RekorClientError("Recieved multiple entries in response")
+            raise RekorClientError("Received multiple entries in response")
 
         uuid, entry = entries[0]
 
@@ -67,19 +67,21 @@ class RekorInclusionProof(BaseModel):
     hashes: List[str] = Field(..., alias="hashes")
 
     @validator("log_index")
-    def log_index_positive(cls, v):
+    def log_index_positive(cls, v: int) -> int:
         if v < 0:
             raise ValueError(f"Inclusion proof has invalid log index: {v} < 0")
         return v
 
     @validator("tree_size")
-    def tree_size_positive(cls, v):
+    def tree_size_positive(cls, v: int) -> int:
         if v < 0:
             raise ValueError(f"Inclusion proof has invalid tree size: {v} < 0")
         return v
 
     @validator("tree_size")
-    def log_index_within_tree_size(cls, v, values, **kwargs):
+    def log_index_within_tree_size(
+        cls, v: int, values: Dict[str, Any], **_kwargs: Any
+    ) -> int:
         if v <= values["log_index"]:
             raise ValueError(
                 "Inclusion proof has log index greater than or equal to tree size: "

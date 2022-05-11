@@ -21,7 +21,7 @@ import time
 import urllib.parse
 import uuid
 import webbrowser
-from typing import Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import requests
 
@@ -40,10 +40,10 @@ AUTH_SUCCESS_HTML = """
 
 
 class RedirectHandler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, format, *args):
+    def log_message(self, _format: str, *_args: Any) -> None:
         pass
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         server = cast(RedirectServer, self.server)
         r = urllib.parse.urlsplit(self.path)
 
@@ -56,7 +56,7 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             server.auth_response = urllib.parse.parse_qs(r.query)
-            return
+            return None
 
         # Any other request generates an auth request
         url = server.auth_request()
