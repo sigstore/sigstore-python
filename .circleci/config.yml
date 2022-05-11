@@ -1,0 +1,21 @@
+version: 2.1
+
+workflows:
+  ci:
+    jobs:
+      - test:
+          context:
+            - sigstore-python
+
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.10.4
+    steps:
+      - checkout
+      - run:
+          name: Test signing with ambient credentials
+          command: |
+            python -m pip install -U pip
+            python -m pip install -e .
+            python -m sigstore sign README.md
