@@ -1,7 +1,8 @@
 on:
-  release:
-    types:
-      - published
+  workflow_dispatch:
+  # release:
+  #   types:
+  #     - published
 
 name: release
 
@@ -26,15 +27,19 @@ jobs:
 
     - name: sign
       run: |
-        # use the latest development changes for sigstore, at least
-        # until things are stabilized further
-        python -m pip install .
+        # we smoke-test sigstore by installing each of the distributions
+        # we've built and using it to sign for all distributions,
+        # using the ambient OIDC identity
+        for dist in dist/*; do
+          python -m pip install "${dist}"
 
-        # sign all package distributions using the ambient OIDC identity
-        python -m sigstore sign dist/*
+          python -m sigstore sign dist/*
 
-    - name: publish
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
+          python -m pip uninstall sigstore
+        done
+
+    # - name: publish
+    #   uses: pypa/gh-action-pypi-publish@master
+    #   with:
+    #     user: __token__
+    #     password: ${{ secrets.PYPI_TOKEN }}
