@@ -27,12 +27,12 @@ jobs:
     - name: sign
       run: |
         # we smoke-test sigstore by installing each of the distributions
-        # we've built and using it to sign for all distributions,
-        # using the ambient OIDC identity
+        # we've built and using each to sign for itself, using the ambient
+        # OIDC identity
         for dist in dist/*; do
           python -m pip install "${dist}"
 
-          python -m sigstore sign dist/*
+          python -m sigstore sign "${dist}"
 
           python -m pip uninstall --yes sigstore
         done
