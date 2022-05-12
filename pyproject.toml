@@ -46,6 +46,7 @@ Source = "https://github.com/sigstore/sigstore-python"
 
 [project.optional-dependencies]
 dev = [
+  "bandit",
   "build",
   "bump",
   "flake8",
