@@ -76,7 +76,7 @@ omit = ["sigstore/_cli.py"]
 [tool.interrogate]
 # don't enforce documentation coverage for packaging, testing, the virtual
 # environment, or the CLI (which is documented separately).
-exclude = ["setup.py", "env", "test", "sigstore/_cli.py", "sigstore/_version.py"]
+exclude = ["env", "test", "sigstore/_cli.py"]
 ignore-semiprivate = true
 fail-under = 100
 
