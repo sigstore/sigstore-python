@@ -51,16 +51,6 @@ jobs:
       - name: lint
         run: make lint
 
-  security-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Bandit Security Lint
-        uses: akaihola/bandit-report-artifacts@use-config
-        with:
-          project_path: .
-          config_file: ./.bandit.yaml
-
   check-readme:
     runs-on: ubuntu-latest
     steps:
