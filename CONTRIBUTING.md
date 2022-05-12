@@ -47,6 +47,7 @@ make lint
 * [`isort`](https://github.com/PyCQA/isort): Import sorting, ordering
 * [`flake8`](https://flake8.pycqa.org/en/latest/): PEP-8 linting, style enforcement
 * [`mypy`](https://mypy.readthedocs.io/en/stable/): Static type checking
+* [`bandit`](https://github.com/PyCQA/bandit): Security issue scanning
 * [`interrogate`](https://interrogate.readthedocs.io/en/latest/): Documentation coverage
 
 
