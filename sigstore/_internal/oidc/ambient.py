@@ -23,7 +23,7 @@ from typing import Callable, List, Optional
 import requests
 from pydantic import BaseModel
 
-from sigstore._internal.oidc import _AUDIENCE, IdentityError
+from sigstore._internal.oidc import DEFAULT_AUDIENCE, IdentityError
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ def detect_github() -> Optional[str]:
     logger.debug("GitHub: requesting OIDC token")
     resp = requests.get(
         req_url,
-        params={"audience": _AUDIENCE},
+        params={"audience": DEFAULT_AUDIENCE},
         headers={"Authorization": f"bearer {req_token}"},
     )
     try:
@@ -124,7 +124,7 @@ def detect_gcp() -> Optional[str]:
     logger.debug("GCP: requesting OIDC token")
     resp = requests.get(
         GCP_ID_TOKEN_REQUEST_URL,
-        params={"audience": _AUDIENCE, "format": "full"},
+        params={"audience": DEFAULT_AUDIENCE, "format": "full"},
         headers={"Metadata-Flavor": "Google"},
     )
 

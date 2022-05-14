@@ -20,7 +20,7 @@ _KNOWN_OIDC_ISSUERS = {
     "https://oauth2.sigstore.dev/auth": "email",
     "https://token.actions.githubusercontent.com": "sub",
 }
-_AUDIENCE = "sigstore"
+DEFAULT_AUDIENCE = "sigstore"
 
 
 class IdentityError(Exception):
@@ -40,8 +40,8 @@ class Identity:
 
         aud = identity_jwt.get("aud")
 
-        if aud != _AUDIENCE:
-            raise IdentityError(f"Audience should be {_AUDIENCE!r}, not {aud!r}")
+        if aud != DEFAULT_AUDIENCE:
+            raise IdentityError(f"Audience should be {DEFAULT_AUDIENCE!r}, not {aud!r}")
 
         # When verifying the private key possession proof, Fulcio uses
         # different claims depending on the token's issuer.
