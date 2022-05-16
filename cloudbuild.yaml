@@ -1,0 +1,15 @@
+steps:
+  # Install dependencies
+  - name: python
+    entrypoint: python
+    args: ["-m", "pip", "install", ".", "--user"]
+
+  # Sign with ambient GCP credentials
+  - name: python
+    entrypoint: python
+    args: ["-m", "sigstore", "sign", "README.md"]
+    env:
+      - "GOOGLE_SERVICE_ACCOUNT_NAME=sigstore-python-test@projectsigstore.iam.gserviceaccount.com"
+
+#options:
+#  logging: CLOUD_LOGGING_ONLY
