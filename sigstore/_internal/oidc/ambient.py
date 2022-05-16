@@ -28,7 +28,7 @@ from sigstore._internal.oidc import DEFAULT_AUDIENCE, IdentityError
 logger = logging.getLogger(__name__)
 
 GCP_PRODUCT_NAME_FILE = "/sys/class/dmi/id/product_name"
-GCP_ID_TOKEN_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"  # noqa # nosec
+GCP_ID_TOKEN_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"  # noqa # nosec B105
 
 
 class AmbientCredentialError(IdentityError):
