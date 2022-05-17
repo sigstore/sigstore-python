@@ -66,6 +66,9 @@ class RekorInclusionProof(BaseModel):
     tree_size: int = Field(..., alias="treeSize")
     hashes: List[str] = Field(..., alias="hashes")
 
+    class Config:
+        allow_population_by_field_name = True
+
     @validator("log_index")
     def log_index_positive(cls, v: int) -> int:
         if v < 0:
@@ -82,7 +85,7 @@ class RekorInclusionProof(BaseModel):
     def log_index_within_tree_size(
         cls, v: int, values: Dict[str, Any], **kwargs: Any
     ) -> int:
-        if v <= values["log_index"]:
+        if "log_index" in values and v <= values["log_index"]:
             raise ValueError(
                 "Inclusion proof has log index greater than or equal to tree size: "
                 f"{v} <= {values['log_index']}"
