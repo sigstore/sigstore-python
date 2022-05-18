@@ -21,12 +21,12 @@ from .client import (
     FulcioCertificateSigningRequest,
     FulcioCertificateSigningResponse,
     FulcioClient,
-    FulcioSignedCertificateTimestamp,
+    FulcioSCT,
 )
 
 __all__ = [
     "FulcioCertificateSigningRequest",
     "FulcioCertificateSigningResponse",
     "FulcioClient",
-    "FulcioSignedCertificateTimestamp",
+    "FulcioSCT",
 ]
