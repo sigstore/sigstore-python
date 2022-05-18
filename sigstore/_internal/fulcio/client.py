@@ -96,20 +96,20 @@ class FulcioSCT(BaseModel):
         arbitrary_types_allowed = True
 
     @validator("digitally_signed", pre=True)
-    def _validate_digitally_signed(cls, v: str) -> bytes:
+    def _validate_digitally_signed(cls, v: bytes) -> bytes:
         digitally_signed = base64.b64decode(v)
 
-        if len(digitally_signed) < 4:
+        if len(digitally_signed) <= 4:
             raise ValueError("impossibly small digitally-signed struct")
 
         return digitally_signed
 
     @validator("log_id", pre=True)
-    def _validate_log_id(cls, v: str) -> bytes:
+    def _validate_log_id(cls, v: bytes) -> bytes:
         return base64.b64decode(v)
 
     @validator("extensions", pre=True)
-    def _validate_extensions(cls, v: str) -> bytes:
+    def _validate_extensions(cls, v: bytes) -> bytes:
         return base64.b64decode(v)
 
     @property
@@ -122,10 +122,14 @@ class FulcioSCT(BaseModel):
 
     @property
     def signature_hash_algorithm(self) -> int:
+        # TODO(ww): This should become a cryptography `Hash` subclass
+        # instance once cryptography adds this API.
         return self.digitally_signed[0]
 
     @property
     def signature_algorithm(self) -> int:
+        # TODO(ww): This should become a SignatureAlgorithm variant
+        # once cryptography adds this API.
         return self.digitally_signed[1]
 
     @property
