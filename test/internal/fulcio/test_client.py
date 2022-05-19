@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from base64 import b64encode as enc
+import json
+from base64 import b64encode
 from datetime import datetime
 
 import pytest
@@ -24,6 +25,10 @@ from cryptography.x509.certificate_transparency import (
 from pydantic import ValidationError
 
 from sigstore._internal.fulcio import client
+
+
+def enc(v: bytes) -> str:
+    return b64encode(v).decode()
 
 
 class TestDetachedFulcioSCT:
@@ -60,6 +65,23 @@ class TestDetachedFulcioSCT:
         assert sct.signature_algorithm == sct.digitally_signed[1]
         assert sct.signature == sct.digitally_signed[4:] == b"abcd"
 
+    def test_constructor_equivalence(self):
+        blob = enc(b"this is a base64-encoded blob")
+        now = datetime.now()
+        payload = dict(
+            version=0,
+            log_id=blob,
+            timestamp=int(now.timestamp() * 1000),
+            digitally_signed=enc(b"\x00\x00\x00\x04abcd"),
+            extensions=blob,
+        )
+
+        sct1 = client.DetachedFulcioSCT(**payload)
+        sct2 = client.DetachedFulcioSCT.parse_obj(payload)
+        sct3 = client.DetachedFulcioSCT.parse_raw(json.dumps(payload))
+
+        assert sct1 == sct2 == sct3
+
     @pytest.mark.parametrize("version", [-1, 1, 2, 3])
     def test_invalid_version(self, version):
         with pytest.raises(
@@ -85,14 +107,19 @@ class TestDetachedFulcioSCT:
         ],
     )
     def test_digitally_signed_invalid(self, digitally_signed, reason):
+        payload = dict(
+            version=0,
+            log_id=enc(b"fakeid"),
+            timestamp=1,
+            digitally_signed=digitally_signed,
+            extensions=b"",
+        )
+
         with pytest.raises(ValidationError, match=reason):
-            client.DetachedFulcioSCT(
-                version=0,
-                log_id=enc(b"fakeid"),
-                timestamp=1,
-                digitally_signed=digitally_signed,
-                extensions=b"",
-            )
+            client.DetachedFulcioSCT(**payload)
+
+        with pytest.raises(ValidationError, match=reason):
+            client.DetachedFulcioSCT.parse_obj(payload)
 
     def test_log_id_invalid(self):
         with pytest.raises(ValidationError, match="Invalid base64-encoded string"):
