@@ -30,15 +30,16 @@ import pem
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509 import Certificate, load_pem_x509_certificate
+from cryptography.x509 import (
+    Certificate,
+    ExtensionNotFound,
+    PrecertificateSignedCertificateTimestamps,
+    load_pem_x509_certificate,
+)
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
     SignedCertificateTimestamp,
     Version,
-)
-from cryptography.x509.extensions import (
-    ExtensionNotFound,
-    PrecertificateSignedCertificateTimestamps,
 )
 from pydantic import BaseModel, Field, validator
 
