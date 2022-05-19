@@ -32,10 +32,11 @@ class TestDetachedFulcioSCT:
 
     def test_fields(self):
         blob = enc(b"this is a base64-encoded blob")
+        now = datetime.now()
         sct = client.DetachedFulcioSCT(
             version=0,
             log_id=blob,
-            timestamp=1000,
+            timestamp=int(now.timestamp() * 1000),
             digitally_signed=enc(b"\x00\x00\x00\x04abcd"),
             extensions=blob,
         )
@@ -45,14 +46,15 @@ class TestDetachedFulcioSCT:
         # Each of these fields is transformed, as expected.
         assert sct.version == Version.v1
         assert enc(sct.log_id) == blob
+        # NOTE: We only preserve the millisecond fidelity for timestamps,
+        # since that's what CT needs. So we need to convert both sides
+        # into millisecond timestamps before comparing, to avoid
+        # failing on microseconds.
+        assert int(sct.timestamp.timestamp() * 1000) == int(now.timestamp() * 1000)
         assert sct.digitally_signed == b"\x00\x00\x00\x04abcd"
         assert enc(sct.extensions) == blob
 
-        # No transformation on the raw timestamp, which is in MS.
-        assert sct.raw_timestamp == 1000
-
         # Computed fields are also correct.
-        assert sct.timestamp == datetime.fromtimestamp(1)
         assert sct.entry_type == LogEntryType.X509_CERTIFICATE
         assert sct.signature_hash_algorithm == sct.digitally_signed[0]
         assert sct.signature_algorithm == sct.digitally_signed[1]

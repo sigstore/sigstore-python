@@ -57,7 +57,7 @@ def _pack_digitally_signed(sct: DetachedFulcioSCT, cert: Certificate) -> bytes:
         pattern,
         sct.version.value,
         0,  # Signature Type
-        sct.raw_timestamp,
+        int(sct.timestamp.timestamp() * 1000),
         0,  # Entry Type
         len1,
         len2,

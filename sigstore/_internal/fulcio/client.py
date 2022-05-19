@@ -91,7 +91,7 @@ class DetachedFulcioSCT(BaseModel):
 
     version: Version = Field(..., alias="sct_version")
     log_id: bytes = Field(..., alias="id")
-    raw_timestamp: int = Field(..., alias="timestamp")
+    timestamp: datetime.datetime
     digitally_signed: bytes = Field(..., alias="signature")
     extensions: bytes
 
@@ -115,10 +115,6 @@ class DetachedFulcioSCT(BaseModel):
     @validator("extensions", pre=True)
     def _validate_extensions(cls, v: bytes) -> bytes:
         return base64.b64decode(v)
-
-    @property
-    def timestamp(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(self.raw_timestamp / 1000)
 
     @property
     def entry_type(self) -> LogEntryType:
