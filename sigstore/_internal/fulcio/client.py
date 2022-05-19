@@ -84,7 +84,11 @@ class FulcioSCTError(Exception):
     pass
 
 
-class FulcioSCT(BaseModel):
+class DetachedFulcioSCT(BaseModel):
+    """
+    Represents a "detached" SignedCertificateTimestamp from Fulcio.
+    """
+
     version: Version = Field(..., alias="sct_version")
     log_id: bytes = Field(..., alias="id")
     raw_timestamp: int = Field(..., alias="timestamp")
@@ -143,9 +147,9 @@ class FulcioSCT(BaseModel):
         return self.digitally_signed[4:]
 
 
-# SignedCertificateTimestamp is an ABC, so register our FulcioSCT as
+# SignedCertificateTimestamp is an ABC, so register our DetachedFulcioSCT as
 # virtual subclass.
-SignedCertificateTimestamp.register(FulcioSCT)
+SignedCertificateTimestamp.register(DetachedFulcioSCT)
 
 
 @dataclass(frozen=True)
@@ -176,7 +180,7 @@ class FulcioCertificateSigningResponse:
 
     cert: Certificate
     chain: List[Certificate]
-    sct: FulcioSCT
+    sct: DetachedFulcioSCT
 
 
 @dataclass(frozen=True)
@@ -241,7 +245,7 @@ class FulcioSigningCert(Endpoint):
             raise FulcioClientError from exc
 
         try:
-            sct = FulcioSCT.parse_obj(sct_json)
+            sct = DetachedFulcioSCT.parse_obj(sct_json)
         except Exception as exc:
             # Ideally we'd catch something less generic here.
             raise FulcioClientError from exc

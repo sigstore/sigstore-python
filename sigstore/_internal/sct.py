@@ -23,10 +23,10 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509 import Certificate
 
-from sigstore._internal.fulcio import FulcioSCT
+from sigstore._internal.fulcio import DetachedFulcioSCT
 
 
-def _pack_digitally_signed(sct: FulcioSCT, cert: Certificate) -> bytes:
+def _pack_digitally_signed(sct: DetachedFulcioSCT, cert: Certificate) -> bytes:
     """
     The format of the digitally signed data is described in IETF's RFC 6962.
 
@@ -74,7 +74,7 @@ class InvalidSctError(Exception):
 
 
 def verify_sct(
-    sct: FulcioSCT,
+    sct: DetachedFulcioSCT,
     cert: Certificate,
     ctfe_key: ec.EllipticCurvePublicKey,
 ) -> None:

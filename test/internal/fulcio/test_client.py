@@ -26,13 +26,13 @@ from pydantic import ValidationError
 from sigstore._internal.fulcio import client
 
 
-class TestFulcioSCT:
+class TestDetachedFulcioSCT:
     def test_fulcio_sct_virtual_subclass(self):
-        assert issubclass(client.FulcioSCT, SignedCertificateTimestamp)
+        assert issubclass(client.DetachedFulcioSCT, SignedCertificateTimestamp)
 
     def test_fields(self):
         blob = enc(b"this is a base64-encoded blob")
-        sct = client.FulcioSCT(
+        sct = client.DetachedFulcioSCT(
             version=0,
             log_id=blob,
             timestamp=1000,
@@ -63,7 +63,7 @@ class TestFulcioSCT:
         with pytest.raises(
             ValidationError, match="value is not a valid enumeration member"
         ):
-            client.FulcioSCT(
+            client.DetachedFulcioSCT(
                 version=version,
                 log_id=enc(b"fakeid"),
                 timestamp=1,
@@ -84,7 +84,7 @@ class TestFulcioSCT:
     )
     def test_digitally_signed_invalid(self, digitally_signed, reason):
         with pytest.raises(ValidationError, match=reason):
-            client.FulcioSCT(
+            client.DetachedFulcioSCT(
                 version=0,
                 log_id=enc(b"fakeid"),
                 timestamp=1,
@@ -94,7 +94,7 @@ class TestFulcioSCT:
 
     def test_log_id_invalid(self):
         with pytest.raises(ValidationError, match="Invalid base64-encoded string"):
-            client.FulcioSCT(
+            client.DetachedFulcioSCT(
                 version=0,
                 log_id=b"invalid base64",
                 timestamp=1,
@@ -104,7 +104,7 @@ class TestFulcioSCT:
 
     def test_extensions_invalid(self):
         with pytest.raises(ValidationError, match="Invalid base64-encoded string"):
-            client.FulcioSCT(
+            client.DetachedFulcioSCT(
                 version=0,
                 log_id=enc(b"fakeid"),
                 timestamp=1,
@@ -113,7 +113,7 @@ class TestFulcioSCT:
             )
 
     def test_digitally_signed_invalid_size(self):
-        sct = client.FulcioSCT(
+        sct = client.DetachedFulcioSCT(
             version=0,
             log_id=enc(b"fakeid"),
             timestamp=1,
