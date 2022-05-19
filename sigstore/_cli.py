@@ -14,10 +14,13 @@
 
 import logging
 from importlib import resources
+from typing import BinaryIO, List, Optional
 
 import click
 
+from sigstore import __version__
 from sigstore._internal.oidc.ambient import detect_credential
+from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import get_identity_token
 from sigstore._sign import sign
 from sigstore._verify import verify
@@ -26,7 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 @click.group()
-def main():
+@click.version_option(version=__version__)
+def main() -> None:
     pass
 
 
@@ -34,6 +38,7 @@ def main():
 @click.option(
     "identity_token",
     "--identity-token",
+    metavar="TOKEN",
     type=click.STRING,
     help="the OIDC identity token to use",
 )
@@ -42,6 +47,31 @@ def main():
     "--ctfe",
     type=click.File("rb"),
     default=resources.open_binary("sigstore._store", "ctfe.pub"),
+    help="A PEM-encoded public key for the CT log",
+)
+@click.option(
+    "oidc_client_id",
+    "--oidc-client-id",
+    metavar="ID",
+    type=click.STRING,
+    default="sigstore",
+    help="The custom OpenID Connect client ID to use",
+)
+@click.option(
+    "oidc_client_secret",
+    "--oidc-client-secret",
+    metavar="SECRET",
+    type=click.STRING,
+    default=str(),
+    help="The custom OpenID Connect client secret to use",
+)
+@click.option(
+    "oidc_issuer",
+    "--oidc-issuer",
+    metavar="URL",
+    type=click.STRING,
+    default="https://oauth2.sigstore.dev/auth",
+    help="The custom OpenID Connect issuer to use",
 )
 @click.option(
     "oidc_disable_ambient_providers",
@@ -57,7 +87,15 @@ def main():
     nargs=-1,
     required=True,
 )
-def _sign(files, identity_token, ctfe_pem, oidc_disable_ambient_providers):
+def _sign(
+    files: List[BinaryIO],
+    identity_token: Optional[str],
+    ctfe_pem: BinaryIO,
+    oidc_client_id: str,
+    oidc_client_secret: str,
+    oidc_issuer: str,
+    oidc_disable_ambient_providers: bool,
+) -> None:
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
@@ -66,7 +104,12 @@ def _sign(files, identity_token, ctfe_pem, oidc_disable_ambient_providers):
     if not identity_token and not oidc_disable_ambient_providers:
         identity_token = detect_credential()
     if not identity_token:
-        identity_token = get_identity_token()
+        issuer = Issuer(oidc_issuer)
+        identity_token = get_identity_token(
+            oidc_client_id,
+            oidc_client_secret,
+            issuer,
+        )
     if not identity_token:
         click.echo("No identity token supplied or detected!", err=True)
         raise click.Abort
@@ -94,7 +137,12 @@ def _sign(files, identity_token, ctfe_pem, oidc_disable_ambient_providers):
 @click.argument(
     "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
 )
-def _verify(files, certificate_path, signature_path, cert_email):
+def _verify(
+    files: List[BinaryIO],
+    certificate_path: BinaryIO,
+    signature_path: BinaryIO,
+    cert_email: Optional[str],
+) -> None:
     # Load the signing certificate
     logger.debug(f"Using certificate from: {certificate_path.name}")
     certificate = certificate_path.read()
@@ -103,13 +151,18 @@ def _verify(files, certificate_path, signature_path, cert_email):
     logger.debug(f"Using signature from: {signature_path.name}")
     signature = signature_path.read()
 
+    verified = True
     for file in files:
-        click.echo(
-            verify(
-                file=file,
-                certificate=certificate,
-                signature=signature,
-                cert_email=cert_email,
-                output=click.echo,
-            )
-        )
+        if verify(
+            file=file,
+            certificate=certificate,
+            signature=signature,
+            cert_email=cert_email,
+        ):
+            click.echo(f"OK: {file.name}")
+        else:
+            click.echo(f"FAIL: {file.name}")
+            verified = False
+
+    if not verified:
+        raise click.Abort

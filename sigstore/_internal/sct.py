@@ -69,16 +69,16 @@ def _pack_digitally_signed(
     pattern = "!BBQh32sBBB%ssh" % len(cert_der)
     data = struct.pack(
         pattern,
-        sct.version._value_,
+        sct.version.value,
         0,  # Signature Type
-        int(sct.timestamp.timestamp() * 1e3),
-        sct.entry_type._value_,
+        int(sct.timestamp.timestamp() * 1000),
+        sct.entry_type.value,  # Entry Type
         hashlib.sha256(issuer_key).digest(),
         len1,
         len2,
         len3,
         cert_der,
-        0,  # Extension Length
+        len(sct.extensions),
     )
 
     return data

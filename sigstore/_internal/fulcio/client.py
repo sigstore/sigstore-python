@@ -17,7 +17,9 @@ Client implementation for interacting with Fulcio.
 """
 
 import base64
+import datetime
 import json
+import struct
 from abc import ABC
 from dataclasses import dataclass
 from enum import IntEnum
@@ -30,11 +32,15 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import Certificate, load_pem_x509_certificate
 from cryptography.x509.certificate_transparency import (
+    LogEntryType,
     SignedCertificateTimestamp,
+    Version,
 )
 from cryptography.x509.extensions import (
+    ExtensionNotFound,
     PrecertificateSignedCertificateTimestamps,
 )
+from pydantic import BaseModel, Field, validator
 
 DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
 SIGNING_CERT_ENDPOINT = "/api/v1/signingCert"
@@ -80,6 +86,70 @@ class FulcioSCTError(Exception):
     """
 
     pass
+
+
+class DetachedFulcioSCT(BaseModel):
+    """
+    Represents a "detached" SignedCertificateTimestamp from Fulcio.
+    """
+
+    version: Version = Field(..., alias="sct_version")
+    log_id: bytes = Field(..., alias="id")
+    timestamp: datetime.datetime
+    digitally_signed: bytes = Field(..., alias="signature")
+    extensions: bytes
+
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+
+    @validator("digitally_signed", pre=True)
+    def _validate_digitally_signed(cls, v: bytes) -> bytes:
+        digitally_signed = base64.b64decode(v)
+
+        if len(digitally_signed) <= 4:
+            raise ValueError("impossibly small digitally-signed struct")
+
+        return digitally_signed
+
+    @validator("log_id", pre=True)
+    def _validate_log_id(cls, v: bytes) -> bytes:
+        return base64.b64decode(v)
+
+    @validator("extensions", pre=True)
+    def _validate_extensions(cls, v: bytes) -> bytes:
+        return base64.b64decode(v)
+
+    @property
+    def entry_type(self) -> LogEntryType:
+        return LogEntryType.X509_CERTIFICATE
+
+    @property
+    def signature_hash_algorithm(self) -> int:
+        # TODO(ww): This should become a cryptography `Hash` subclass
+        # instance once cryptography adds this API.
+        return self.digitally_signed[0]
+
+    @property
+    def signature_algorithm(self) -> int:
+        # TODO(ww): This should become a SignatureAlgorithm variant
+        # once cryptography adds this API.
+        return self.digitally_signed[1]
+
+    @property
+    def signature(self) -> bytes:
+        (sig_size,) = struct.unpack("!H", self.digitally_signed[2:4])
+        if len(self.digitally_signed[4:]) != sig_size:
+            raise FulcioSCTError(
+                f"signature size mismatch: expected {sig_size} bytes, "
+                f"got {len(self.digitally_signed[4:])}"
+            )
+        return self.digitally_signed[4:]
+
+
+# SignedCertificateTimestamp is an ABC, so register our DetachedFulcioSCT as
+# virtual subclass.
+SignedCertificateTimestamp.register(DetachedFulcioSCT)
 
 
 @dataclass(frozen=True)
@@ -171,14 +241,39 @@ class FulcioSigningCert(Endpoint):
         except ValueError:
             raise FulcioClientError(f"Did not find a cert in Fulcio response: {resp}")
 
-        precert_sct_extension = cert.extensions.get_extension_for_class(
-            PrecertificateSignedCertificateTimestamps
-        ).value
-        if len(precert_sct_extension) != 1:
-            raise FulcioClientError(
-                f"Found unexpected number of embedded SCTs in signing cert: {resp}"
-            )
-        sct = precert_sct_extension[0]
+        try:
+            # Try to retrieve the embedded SCTs within the cert.
+            precert_scts_extension = cert.extensions.get_extension_for_class(
+                PrecertificateSignedCertificateTimestamps
+            ).value
+
+            if len(precert_scts_extension) != 1:
+                raise FulcioClientError(
+                    f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
+                )
+
+            sct = precert_scts_extension[0]
+        except ExtensionNotFound:
+            # If we don't have any embedded SCTs, then we might be dealing
+            # with a Fulcio instance that provides detached SCTs.
+
+            # The SCT header is a base64-encoded payload, which in turn
+            # is a JSON representation of the SignedCertificateTimestamp
+            # in RFC 6962 (subsec. 3.2).
+            sct_b64 = resp.headers.get("SCT")
+            if sct_b64 is None:
+                raise FulcioClientError("Fulcio response did not include a SCT header")
+
+            try:
+                sct_json = json.loads(base64.b64decode(sct_b64).decode())
+            except ValueError as exc:
+                raise FulcioClientError from exc
+
+            try:
+                sct = DetachedFulcioSCT.parse_obj(sct_json)
+            except Exception as exc:
+                # Ideally we'd catch something less generic here.
+                raise FulcioClientError from exc
 
         return FulcioCertificateSigningResponse(cert, chain, sct)
 

@@ -1,3 +1,70 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "sigstore"
+dynamic = ["version"]
+description = "A tool for signing Python package distributions"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Sigstore Authors", email = "sigstore-dev@googlegroups.com" }
+]
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Topic :: Security",
+  "Topic :: Security :: Cryptography",
+]
+dependencies = [
+  "click>=8",
+  "cryptography",
+  "pem",
+  "pydantic",
+  "pyjwt>=2.1",
+  "pyOpenSSL",
+  "requests",
+  "securesystemslib",
+]
+requires-python = ">=3.7"
+
+[project.scripts]
+sigstore = "sigstore._cli:main"
+
+[project.urls]
+Homepage = "https://pypi.org/project/sigstore/"
+Issues = "https://github.com/sigstore/sigstore-python/issues"
+Source = "https://github.com/sigstore/sigstore-python"
+
+[project.optional-dependencies]
+dev = [
+  "bandit",
+  "build",
+  "bump",
+  "flake8",
+  "black",
+  "isort",
+  "pytest",
+  "pytest-cov",
+  "pretend",
+  "coverage[toml]",
+  "interrogate",
+  "pdoc3",
+  "mypy",
+  "types-cryptography",
+  "types-requests",
+  "types-pyOpenSSL",
+  "types-pyjwt",
+]
+
 [tool.isort]
 multi_line_output = 3
 known_first_party = "sigstore"
@@ -10,6 +77,26 @@ omit = ["sigstore/_cli.py"]
 [tool.interrogate]
 # don't enforce documentation coverage for packaging, testing, the virtual
 # environment, or the CLI (which is documented separately).
-exclude = ["setup.py", "env", "test", "sigstore/_cli.py", "sigstore/_version.py"]
+exclude = ["env", "test", "sigstore/_cli.py"]
 ignore-semiprivate = true
 fail-under = 100
+
+[tool.mypy]
+allow_redefinition = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[tool.bandit]
+exclude_dirs = ["./test"]

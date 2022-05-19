@@ -20,8 +20,9 @@ from sigstore._internal.oidc import ambient
 
 
 def test_detect_credential_none(monkeypatch):
-    detect_github = pretend.call_recorder(lambda: None)
-    monkeypatch.setattr(ambient, "detect_github", detect_github)
+    detect_none = pretend.call_recorder(lambda: None)
+    monkeypatch.setattr(ambient, "detect_github", detect_none)
+    monkeypatch.setattr(ambient, "detect_gcp", detect_none)
     assert ambient.detect_credential() is None
 
 
@@ -136,3 +137,263 @@ def test_detect_github(monkeypatch):
         )
     ]
     assert resp.json.calls == [pretend.call()]
+
+
+def test_gcp_impersonation_access_token_request_fail(monkeypatch):
+    monkeypatch.setenv(
+        "GOOGLE_SERVICE_ACCOUNT_NAME", "identity@project.iam.gserviceaccount.com"
+    )
+
+    logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
+    monkeypatch.setattr(ambient, "logger", logger)
+
+    resp = pretend.stub(raise_for_status=pretend.raiser(HTTPError), status_code=999)
+    requests = pretend.stub(
+        get=pretend.call_recorder(lambda url, **kw: resp), HTTPError=HTTPError
+    )
+    monkeypatch.setattr(ambient, "requests", requests)
+
+    with pytest.raises(
+        ambient.AmbientCredentialError,
+        match=r"GCP: access token request failed \(code=999\)",
+    ):
+        ambient.detect_gcp()
+
+    assert logger.debug.calls == [
+        pretend.call("GCP: looking for OIDC credentials"),
+        pretend.call("GCP: GOOGLE_SERVICE_ACCOUNT_NAME set; attempting impersonation"),
+        pretend.call("GCP: requesting access token"),
+    ]
+
+
+def test_gcp_impersonation_access_token_missing(monkeypatch):
+    monkeypatch.setenv(
+        "GOOGLE_SERVICE_ACCOUNT_NAME", "identity@project.iam.gserviceaccount.com"
+    )
+
+    logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
+    monkeypatch.setattr(ambient, "logger", logger)
+
+    resp = pretend.stub(raise_for_status=lambda: None, json=lambda: {})
+    requests = pretend.stub(get=pretend.call_recorder(lambda url, **kw: resp))
+    monkeypatch.setattr(ambient, "requests", requests)
+
+    with pytest.raises(
+        ambient.AmbientCredentialError,
+        match=r"GCP: access token missing from response",
+    ):
+        ambient.detect_gcp()
+
+    assert logger.debug.calls == [
+        pretend.call("GCP: looking for OIDC credentials"),
+        pretend.call("GCP: GOOGLE_SERVICE_ACCOUNT_NAME set; attempting impersonation"),
+        pretend.call("GCP: requesting access token"),
+    ]
+
+
+def test_gcp_impersonation_identity_token_request_fail(monkeypatch):
+    monkeypatch.setenv(
+        "GOOGLE_SERVICE_ACCOUNT_NAME", "identity@project.iam.gserviceaccount.com"
+    )
+
+    logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
+    monkeypatch.setattr(ambient, "logger", logger)
+
+    access_token = pretend.stub()
+    get_resp = pretend.stub(
+        raise_for_status=lambda: None, json=lambda: {"access_token": access_token}
+    )
+    post_resp = pretend.stub(
+        raise_for_status=pretend.raiser(HTTPError), status_code=999
+    )
+    requests = pretend.stub(
+        get=pretend.call_recorder(lambda url, **kw: get_resp),
+        post=pretend.call_recorder(lambda url, **kw: post_resp),
+        HTTPError=HTTPError,
+    )
+    monkeypatch.setattr(ambient, "requests", requests)
+
+    with pytest.raises(
+        ambient.AmbientCredentialError,
+        match=r"GCP: OIDC token request failed \(code=999\)",
+    ):
+        ambient.detect_gcp()
+
+    assert logger.debug.calls == [
+        pretend.call("GCP: looking for OIDC credentials"),
+        pretend.call("GCP: GOOGLE_SERVICE_ACCOUNT_NAME set; attempting impersonation"),
+        pretend.call("GCP: requesting access token"),
+        pretend.call("GCP: requesting OIDC token"),
+    ]
+
+
+def test_gcp_impersonation_identity_token_missing(monkeypatch):
+    monkeypatch.setenv(
+        "GOOGLE_SERVICE_ACCOUNT_NAME", "identity@project.iam.gserviceaccount.com"
+    )
+
+    logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
+    monkeypatch.setattr(ambient, "logger", logger)
+
+    access_token = pretend.stub()
+    get_resp = pretend.stub(
+        raise_for_status=lambda: None, json=lambda: {"access_token": access_token}
+    )
+    post_resp = pretend.stub(raise_for_status=lambda: None, json=lambda: {})
+    requests = pretend.stub(
+        get=pretend.call_recorder(lambda url, **kw: get_resp),
+        post=pretend.call_recorder(lambda url, **kw: post_resp),
+        HTTPError=HTTPError,
+    )
+    monkeypatch.setattr(ambient, "requests", requests)
+
+    with pytest.raises(
+        ambient.AmbientCredentialError,
+        match=r"GCP: OIDC token missing from response",
+    ):
+        ambient.detect_gcp()
+
+    assert logger.debug.calls == [
+        pretend.call("GCP: looking for OIDC credentials"),
+        pretend.call("GCP: GOOGLE_SERVICE_ACCOUNT_NAME set; attempting impersonation"),
+        pretend.call("GCP: requesting access token"),
+        pretend.call("GCP: requesting OIDC token"),
+    ]
+
+
+def test_gcp_impersonation_succeeds(monkeypatch):
+    monkeypatch.setenv(
+        "GOOGLE_SERVICE_ACCOUNT_NAME", "identity@project.iam.gserviceaccount.com"
+    )
+
+    logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
+    monkeypatch.setattr(ambient, "logger", logger)
+
+    access_token = pretend.stub()
+    oidc_token = pretend.stub()
+    get_resp = pretend.stub(
+        raise_for_status=lambda: None, json=lambda: {"access_token": access_token}
+    )
+    post_resp = pretend.stub(
+        raise_for_status=lambda: None, json=lambda: {"token": oidc_token}
+    )
+    requests = pretend.stub(
+        get=pretend.call_recorder(lambda url, **kw: get_resp),
+        post=pretend.call_recorder(lambda url, **kw: post_resp),
+        HTTPError=HTTPError,
+    )
+    monkeypatch.setattr(ambient, "requests", requests)
+
+    assert ambient.detect_gcp() == oidc_token
+
+    assert logger.debug.calls == [
+        pretend.call("GCP: looking for OIDC credentials"),
+        pretend.call("GCP: GOOGLE_SERVICE_ACCOUNT_NAME set; attempting impersonation"),
+        pretend.call("GCP: requesting access token"),
+        pretend.call("GCP: requesting OIDC token"),
+        pretend.call("GCP: successfully requested OIDC token"),
+    ]
+
+
+def test_gcp_bad_env(monkeypatch):
+    oserror = pretend.raiser(OSError)
+    monkeypatch.setitem(ambient.__builtins__, "open", oserror)  # type: ignore
+
+    logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
+    monkeypatch.setattr(ambient, "logger", logger)
+
+    assert ambient.detect_gcp() is None
+    assert logger.debug.calls == [
+        pretend.call("GCP: looking for OIDC credentials"),
+        pretend.call(
+            "GCP: GOOGLE_SERVICE_ACCOUNT_NAME not set; skipping impersonation"
+        ),
+        pretend.call("GCP: environment doesn't have GCP product name file; giving up"),
+    ]
+
+
+def test_gcp_wrong_product(monkeypatch):
+    stub_file = pretend.stub(
+        __enter__=lambda *a: pretend.stub(read=lambda: "Unsupported Product"),
+        __exit__=lambda *a: None,
+    )
+    monkeypatch.setitem(ambient.__builtins__, "open", lambda fn: stub_file)  # type: ignore
+
+    logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
+    monkeypatch.setattr(ambient, "logger", logger)
+
+    with pytest.raises(
+        ambient.AmbientCredentialError,
+        match="GCP: product name file exists, but product name is 'Unsupported Product'; giving up",
+    ):
+        ambient.detect_gcp()
+
+    assert logger.debug.calls == [
+        pretend.call("GCP: looking for OIDC credentials"),
+        pretend.call(
+            "GCP: GOOGLE_SERVICE_ACCOUNT_NAME not set; skipping impersonation"
+        ),
+    ]
+
+
+def test_detect_gcp_request_fails(monkeypatch):
+    stub_file = pretend.stub(
+        __enter__=lambda *a: pretend.stub(read=lambda: "Google"),
+        __exit__=lambda *a: None,
+    )
+    monkeypatch.setitem(ambient.__builtins__, "open", lambda fn: stub_file)  # type: ignore
+
+    resp = pretend.stub(raise_for_status=pretend.raiser(HTTPError), status_code=999)
+    requests = pretend.stub(
+        get=pretend.call_recorder(lambda url, **kw: resp), HTTPError=HTTPError
+    )
+    monkeypatch.setattr(ambient, "requests", requests)
+
+    with pytest.raises(
+        ambient.AmbientCredentialError,
+        match=r"GCP: OIDC token request failed \(code=999\)",
+    ):
+        ambient.detect_gcp()
+    assert requests.get.calls == [
+        pretend.call(
+            ambient.GCP_IDENTITY_REQUEST_URL,
+            params={"audience": "sigstore", "format": "full"},
+            headers={"Metadata-Flavor": "Google"},
+        )
+    ]
+
+
+@pytest.mark.parametrize("product_name", ("Google", "Google Compute Engine"))
+def test_detect_gcp(monkeypatch, product_name):
+    stub_file = pretend.stub(
+        __enter__=lambda *a: pretend.stub(read=lambda: product_name),
+        __exit__=lambda *a: None,
+    )
+    monkeypatch.setitem(ambient.__builtins__, "open", lambda fn: stub_file)  # type: ignore
+
+    logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
+    monkeypatch.setattr(ambient, "logger", logger)
+
+    resp = pretend.stub(
+        raise_for_status=lambda: None,
+        text="fakejwt",
+    )
+    requests = pretend.stub(get=pretend.call_recorder(lambda url, **kw: resp))
+    monkeypatch.setattr(ambient, "requests", requests)
+
+    assert ambient.detect_gcp() == "fakejwt"
+    assert requests.get.calls == [
+        pretend.call(
+            ambient.GCP_IDENTITY_REQUEST_URL,
+            params={"audience": "sigstore", "format": "full"},
+            headers={"Metadata-Flavor": "Google"},
+        )
+    ]
+    assert logger.debug.calls == [
+        pretend.call("GCP: looking for OIDC credentials"),
+        pretend.call(
+            "GCP: GOOGLE_SERVICE_ACCOUNT_NAME not set; skipping impersonation"
+        ),
+        pretend.call("GCP: requesting OIDC token"),
+        pretend.call("GCP: successfully requested OIDC token"),
+    ]

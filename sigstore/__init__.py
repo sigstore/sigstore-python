@@ -16,6 +16,4 @@
 The `sigstore` APIs.
 """
 
-from sigstore._version import __version__
-
-__all__ = ["__version__"]
+__version__ = "0.4.2"

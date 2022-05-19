@@ -21,11 +21,12 @@ import time
 import urllib.parse
 import uuid
 import webbrowser
-from typing import Dict, cast
+from typing import Any, Dict, List, Optional, cast
 
 import requests
 
 from sigstore._internal.oidc import IdentityError
+from sigstore._internal.oidc.issuer import Issuer
 
 AUTH_SUCCESS_HTML = """
 <html>
@@ -39,10 +40,10 @@ AUTH_SUCCESS_HTML = """
 
 
 class RedirectHandler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, format, *args):
+    def log_message(self, _format: str, *_args: Any) -> None:
         pass
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         server = cast(RedirectServer, self.server)
         r = urllib.parse.urlsplit(self.path)
 
@@ -55,7 +56,7 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             server.auth_response = urllib.parse.parse_qs(r.query)
-            return
+            return None
 
         # Any other request generates an auth request
         url = server.auth_request()
@@ -68,13 +69,16 @@ OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
 
 
 class RedirectServer(http.server.HTTPServer):
-    def __init__(self):
+    def __init__(self, client_id: str, client_secret: str, issuer: Issuer) -> None:
         super().__init__(("127.0.0.1", 0), RedirectHandler)
-        self.state = None
-        self.nonce = None
-        self.auth_response = None
-        self._port: int = self.socket.getsockname()[1]
+        self.state: Optional[str] = None
+        self.nonce: Optional[str] = None
+        self.auth_response: Optional[Dict[str, List[str]]] = None
         self.is_oob = False
+        self._port: int = self.socket.getsockname()[1]
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._issuer = issuer
 
     @property
     def active(self) -> bool:
@@ -108,7 +112,8 @@ class RedirectServer(http.server.HTTPServer):
         self.nonce = str(uuid.uuid4())
         return {
             "response_type": "code",
-            "client_id": "sigstore",
+            "client_id": self._client_id,
+            "client_secret": self._client_secret,
             "scope": "openid email",
             "redirect_uri": self.redirect_uri,
             "code_challenge": code_challenge.decode("utf-8"),
@@ -119,13 +124,13 @@ class RedirectServer(http.server.HTTPServer):
 
     def auth_request(self) -> str:
         params = self.auth_request_params()
-        return "https://oauth2.sigstage.dev/auth/auth?" + urllib.parse.urlencode(params)
+        return f"{self._issuer.auth_endpoint}?{urllib.parse.urlencode(params)}"
 
     def enable_oob(self) -> None:
         self.is_oob = True
 
 
-def get_identity_token() -> str:
+def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> str:
     """
     Retrieve an OpenID Connect token from the Sigstore provider
 
@@ -134,7 +139,7 @@ def get_identity_token() -> str:
     """
 
     code: str
-    with RedirectServer() as server:
+    with RedirectServer(client_id, client_secret, issuer) as server:
         # Launch web browser
         if webbrowser.open(server.base_uri):
             print(f"Your browser will now be opened to:\n{server.auth_request()}\n")
@@ -175,11 +180,11 @@ def get_identity_token() -> str:
         "code_verifier": server.code_verifier.decode("utf-8"),
     }
     auth = (
-        "sigstore",
-        "",  # Client secret
+        client_id,
+        client_secret,
     )
     resp: requests.Response = requests.post(
-        "https://oauth2.sigstage.dev/auth/token",
+        issuer.token_endpoint,
         data=data,
         auth=auth,
     )

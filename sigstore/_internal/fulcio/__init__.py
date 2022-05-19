@@ -17,7 +17,8 @@ APIs for interacting with Fulcio.
 """
 
 
-from ._client import (
+from .client import (
+    DetachedFulcioSCT,
     FulcioCertificateSigningRequest,
     FulcioCertificateSigningResponse,
     FulcioClient,
@@ -27,4 +28,5 @@ __all__ = [
     "FulcioCertificateSigningRequest",
     "FulcioCertificateSigningResponse",
     "FulcioClient",
+    "DetachedFulcioSCT",
 ]
