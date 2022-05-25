@@ -64,22 +64,31 @@ def _pack_digitally_signed(
     if unused:
         raise InvalidSctError(f"Unexpectedly large certificate length: {len(cert_der)}")
 
+    # No extensions are currently specified.
+    if len(sct.extension_bytes) != 0:
+        raise InvalidSctError("Unexpected trailing extension bytes")
+
+    # NOTE(ww): This is incorrect for non-embedded SCTs, since it unconditionally
+    # embeds the issuer_key_hash.
+
     # Assemble a format string with the certificate length baked in and then pack the digitally
     # signed data
+    # fmt: off
     pattern = "!BBQh32sBBB%ssh" % len(cert_der)
     data = struct.pack(
         pattern,
-        sct.version.value,
-        0,  # Signature Type
-        int(sct.timestamp.timestamp() * 1000),
-        sct.entry_type.value,  # Entry Type
-        hashlib.sha256(issuer_key).digest(),
-        len1,
-        len2,
-        len3,
-        cert_der,
-        len(sct.extension_bytes),
+        sct.version.value,                      # sct_version
+        0,                                      # signature_type (certificate_timestamp(0))
+        int(sct.timestamp.timestamp() * 1000),  # timestamp (milliseconds)
+        sct.entry_type.value,                   # entry_type (x509_entry(0) | precert_entry(1))
+        hashlib.sha256(issuer_key).digest(),    # issuer_key_hash[32]
+        len1,                                   # \
+        len2,                                   # | opaque TBSCertificate<1..2^24-1> OR
+        len3,                                   # | opaque ASN.1Cert<1..2^24-1>
+        cert_der,                               # /
+        len(sct.extension_bytes),               # extensions (opaque CtExtensions<0..2^16-1>)
     )
+    # fmt: on
 
     return data
 
