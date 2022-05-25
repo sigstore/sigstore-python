@@ -19,6 +19,7 @@ Client implementation for interacting with Fulcio.
 import base64
 import datetime
 import json
+import logging
 import struct
 from abc import ABC
 from dataclasses import dataclass
@@ -42,6 +43,8 @@ from cryptography.x509.certificate_transparency import (
     Version,
 )
 from pydantic import BaseModel, Field, validator
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
 SIGNING_CERT_ENDPOINT = "/api/v1/signingCert"
@@ -296,6 +299,7 @@ class FulcioClient:
 
     def __init__(self, url: str = DEFAULT_FULCIO_URL) -> None:
         """Initialize the client"""
+        logger.debug(f"Fulcio client using URL: {url}")
         self.url = url
         self.session = requests.Session()
 

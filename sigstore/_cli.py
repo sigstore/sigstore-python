@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from importlib import resources
 from typing import BinaryIO, List, Optional
 
@@ -26,6 +27,7 @@ from sigstore._sign import sign
 from sigstore._verify import verify
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
 
 
 @click.group()
