@@ -78,7 +78,7 @@ def _pack_digitally_signed(
         len2,
         len3,
         cert_der,
-        len(sct.extensions),
+        len(sct.extension_bytes),
     )
 
     return data
