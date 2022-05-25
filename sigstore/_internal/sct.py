@@ -17,6 +17,7 @@ Utilities for verifying signed certificate timestamps.
 """
 
 import hashlib
+import logging
 import struct
 from typing import List
 
@@ -28,6 +29,14 @@ from cryptography.x509 import Certificate, ExtendedKeyUsage, ObjectIdentifier
 from cryptography.x509.certificate_transparency import (
     SignedCertificateTimestamp,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _cryptography_hash_to_enum(hash_: hashes.HashAlgorithm) -> int:
+    if type(hash_) is hashes.SHA256:
+        return 4
+    raise InvalidSctError(f"unexpected hash algorithm: {hash_!r}")
 
 
 def _pack_digitally_signed(
@@ -47,6 +56,8 @@ def _pack_digitally_signed(
     X Certificate Data
     2 Extensions Length
     """
+
+    logger.debug(f"packing SCT: {sct.version=} {sct.entry_type=}")
 
     # The digitally signed format requires the certificate in DER format.
     cert_der: bytes = cert.tbs_precertificate_bytes
@@ -74,7 +85,7 @@ def _pack_digitally_signed(
     # Assemble a format string with the certificate length baked in and then pack the digitally
     # signed data
     # fmt: off
-    pattern = "!BBQh32sBBB%ssh" % len(cert_der)
+    pattern = "!BBQH32sBBB%ssH" % len(cert_der)
     data = struct.pack(
         pattern,
         sct.version.value,                      # sct_version
@@ -89,6 +100,15 @@ def _pack_digitally_signed(
         len(sct.extension_bytes),               # extensions (opaque CtExtensions<0..2^16-1>)
     )
     # fmt: on
+
+    # digitally_signed_pattern = "!BBH%ss" % len(data)
+    # digitally_signed = struct.pack(
+    #     digitally_signed_pattern,
+    #     _cryptography_hash_to_enum(sct.signature_hash_algorithm),
+    #     sct.signature_algorithm.value,
+    #     len(data),
+    #     data,
+    # )
 
     return data
 

@@ -29,7 +29,7 @@ from urllib.parse import urljoin
 
 import pem
 import requests
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
     Certificate,
@@ -39,6 +39,7 @@ from cryptography.x509 import (
 )
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
+    SignatureAlgorithm,
     SignedCertificateTimestamp,
     Version,
 )
@@ -68,20 +69,11 @@ class SCTHashAlgorithm(IntEnum):
     SHA384 = 5
     SHA512 = 6
 
+    def to_cryptography(self) -> hashes.HashAlgorithm:
+        if self != SCTHashAlgorithm.SHA256:
+            raise FulcioSCTError(f"unexpected hash algorithm: {self!r}")
 
-class SCTSignatureAlgorithm(IntEnum):
-    """
-    Signature algorithms that are valid for SCTs.
-
-    These are exactly the same as the SignatureAlgorithm enum in RFC 5246 (TLS 1.2).
-
-    See: https://datatracker.ietf.org/doc/html/rfc5246#section-7.4.1.4.1
-    """
-
-    ANONYMOUS = 0
-    RSA = 1
-    DSA = 2
-    ECDSA = 3
+        return hashes.SHA256()
 
 
 class FulcioSCTError(Exception):
@@ -129,16 +121,15 @@ class DetachedFulcioSCT(BaseModel):
         return LogEntryType.X509_CERTIFICATE
 
     @property
-    def signature_hash_algorithm(self) -> int:
-        # TODO(ww): This should become a cryptography `Hash` subclass
-        # instance once cryptography adds this API.
-        return self.digitally_signed[0]
+    def signature_hash_algorithm(self) -> hashes.HashAlgorithm:
+        hash_ = SCTHashAlgorithm(self.digitally_signed[0])
+        return hash_.to_cryptography()
 
     @property
-    def signature_algorithm(self) -> int:
+    def signature_algorithm(self) -> SignatureAlgorithm:
         # TODO(ww): This should become a SignatureAlgorithm variant
         # once cryptography adds this API.
-        return self.digitally_signed[1]
+        return SignatureAlgorithm(self.digitally_signed[1])
 
     @property
     def signature(self) -> bytes:
