@@ -19,12 +19,12 @@ Utilities for verifying signed certificate timestamps.
 import hashlib
 import logging
 import struct
-from typing import List
+from typing import List, Union
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
-import cryptography.hazmat.primitives.asymmetric.rsa as rsa
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import Certificate, ExtendedKeyUsage, ObjectIdentifier
 from cryptography.x509.certificate_transparency import (
     SignedCertificateTimestamp,
@@ -46,14 +46,6 @@ def _pack_digitally_signed(
 ) -> bytes:
     """
     The format of the digitally signed data is described in IETF's RFC 6962.
-
-    1 SCT Version
-    1 Signature Type
-    8 Timestamp
-    2 Entry Type
-    3 Certificate Length
-    X Certificate Data
-    2 Extensions Length
     """
 
     # The digitally signed format requires the certificate in DER format.
@@ -129,17 +121,25 @@ def verify_sct(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
     chain: List[Certificate],
-    ctfe_key: rsa.RSAPublicKey,
+    ctfe_key: Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey],
 ) -> None:
     """Verify a signed certificate timestamp"""
+
     issuer_key_hash = _issuer_key_hash(_get_issuer_cert(chain))
     digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_hash)
     try:
-        ctfe_key.verify(
-            signature=sct.signature,
-            data=digitally_signed,
-            padding=padding.PKCS1v15(),
-            algorithm=hashes.SHA256(),
-        )
+        if isinstance(ctfe_key, rsa.RSAPublicKey):
+            ctfe_key.verify(
+                signature=sct.signature,
+                data=digitally_signed,
+                padding=padding.PKCS1v15(),
+                algorithm=hashes.SHA256(),
+            )
+        else:
+            ctfe_key.verify(
+                signature=sct.signature,
+                data=digitally_signed,
+                signature_algorithm=ec.ECDSA(hashes.SHA256()),
+            )
     except InvalidSignature as inval_sig:
         raise InvalidSctError from inval_sig
