@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import datetime
+import hashlib
 import struct
 
 import pretend
 import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 
 from sigstore._internal import sct
 
@@ -33,7 +36,7 @@ from sigstore._internal import sct
 def test_pack_digitally_signed(precert_bytes):
     mock_sct = pretend.stub(
         version=pretend.stub(value=0),
-        timestamp=datetime.datetime.fromtimestamp(0x00000000000004D2 / 1000.0),
+        timestamp=datetime.datetime.fromtimestamp(1234 / 1000.0),
         entry_type=pretend.stub(value=1),
         extension_bytes=b"",
     )
@@ -56,3 +59,35 @@ def test_pack_digitally_signed(precert_bytes):
         + b"\x00\x00"  # extensions length
         + b""  # extensions
     )
+
+
+def test_issuer_key_hash():
+    # Taken from certificate-transparency-go:
+    # https://github.com/google/certificate-transparency-go/blob/88227ce0/trillian/ctfe/testonly/certificates.go#L213-L231
+    precert_pem = b"""-----BEGIN CERTIFICATE-----
+MIIC3zCCAkigAwIBAgIBBzANBgkqhkiG9w0BAQUFADBVMQswCQYDVQQGEwJHQjEk
+MCIGA1UEChMbQ2VydGlmaWNhdGUgVHJhbnNwYXJlbmN5IENBMQ4wDAYDVQQIEwVX
+YWxlczEQMA4GA1UEBxMHRXJ3IFdlbjAeFw0xMjA2MDEwMDAwMDBaFw0yMjA2MDEw
+MDAwMDBaMFIxCzAJBgNVBAYTAkdCMSEwHwYDVQQKExhDZXJ0aWZpY2F0ZSBUcmFu
+c3BhcmVuY3kxDjAMBgNVBAgTBVdhbGVzMRAwDgYDVQQHEwdFcncgV2VuMIGfMA0G
+CSqGSIb3DQEBAQUAA4GNADCBiQKBgQC+75jnwmh3rjhfdTJaDB0ym+3xj6r015a/
+BH634c4VyVui+A7kWL19uG+KSyUhkaeb1wDDjpwDibRc1NyaEgqyHgy0HNDnKAWk
+EM2cW9tdSSdyba8XEPYBhzd+olsaHjnu0LiBGdwVTcaPfajjDK8VijPmyVCfSgWw
+FAn/Xdh+tQIDAQABo4HBMIG+MB0GA1UdDgQWBBQgMVQa8lwF/9hli2hDeU9ekDb3
+tDB9BgNVHSMEdjB0gBRfnYgNyHPmVNT4DdjmsMEktEfDVaFZpFcwVTELMAkGA1UE
+BhMCR0IxJDAiBgNVBAoTG0NlcnRpZmljYXRlIFRyYW5zcGFyZW5jeSBDQTEOMAwG
+A1UECBMFV2FsZXMxEDAOBgNVBAcTB0VydyBXZW6CAQAwCQYDVR0TBAIwADATBgor
+BgEEAdZ5AgQDAQH/BAIFADANBgkqhkiG9w0BAQUFAAOBgQACocOeAVr1Tf8CPDNg
+h1//NDdVLx8JAb3CVDFfM3K3I/sV+87MTfRxoM5NjFRlXYSHl/soHj36u0YtLGhL
+BW/qe2O0cP8WbjLURgY1s9K8bagkmyYw5x/DTwjyPdTuIo+PdPY9eGMR3QpYEUBf
+kGzKLC0+6/yBmWTr2M98CIY/vg==
+    -----END CERTIFICATE-----"""
+
+    precert = x509.load_pem_x509_certificate(precert_pem)
+
+    public_key = precert.public_key().public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    assert sct._issuer_key_hash(precert) == hashlib.sha256(public_key).digest()
