@@ -42,8 +42,7 @@ def _cryptography_hash_to_enum(hash_: hashes.HashAlgorithm) -> int:
 def _pack_digitally_signed(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
-    issuer_cert: Certificate,
-    ctfe_key: rsa.RSAPublicKey,
+    issuer_key_hash: bytes,
 ) -> bytes:
     """
     The format of the digitally signed data is described in IETF's RFC 6962.
@@ -57,17 +56,11 @@ def _pack_digitally_signed(
     2 Extensions Length
     """
 
-    logger.debug(f"packing SCT: {sct.version=} {sct.entry_type=}")
-
     # The digitally signed format requires the certificate in DER format.
     cert_der: bytes = cert.tbs_precertificate_bytes
 
-    issuer_key: bytes = issuer_cert.public_key().public_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-
-    # The length should then be split into three bytes.
+    # The length is a u24, which isn't directly supported. So we have to
+    # decompose it into 3 bytes.
     unused, len1, len2, len3 = struct.unpack(
         "!4B",
         struct.pack("!I", len(cert_der)),
@@ -92,7 +85,7 @@ def _pack_digitally_signed(
         0,                                      # signature_type (certificate_timestamp(0))
         int(sct.timestamp.timestamp() * 1000),  # timestamp (milliseconds)
         sct.entry_type.value,                   # entry_type (x509_entry(0) | precert_entry(1))
-        hashlib.sha256(issuer_key).digest(),    # issuer_key_hash[32]
+        issuer_key_hash,                        # issuer_key_hash[32]
         len1,                                   # \
         len2,                                   # | opaque TBSCertificate<1..2^24-1> OR
         len3,                                   # | opaque ASN.1Cert<1..2^24-1>
@@ -100,15 +93,6 @@ def _pack_digitally_signed(
         len(sct.extension_bytes),               # extensions (opaque CtExtensions<0..2^16-1>)
     )
     # fmt: on
-
-    # digitally_signed_pattern = "!BBH%ss" % len(data)
-    # digitally_signed = struct.pack(
-    #     digitally_signed_pattern,
-    #     _cryptography_hash_to_enum(sct.signature_hash_algorithm),
-    #     sct.signature_algorithm.value,
-    #     len(data),
-    #     data,
-    # )
 
     return data
 
@@ -128,6 +112,15 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
     return issuer
 
 
+def _issuer_key_hash(cert: Certificate) -> bytes:
+    issuer_key: bytes = cert.public_key().public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    return hashlib.sha256(issuer_key).digest()
+
+
 class InvalidSctError(Exception):
     pass
 
@@ -139,8 +132,8 @@ def verify_sct(
     ctfe_key: rsa.RSAPublicKey,
 ) -> None:
     """Verify a signed certificate timestamp"""
-    issuer_cert = _get_issuer_cert(chain)
-    digitally_signed = _pack_digitally_signed(sct, cert, issuer_cert, ctfe_key)
+    issuer_key_hash = _issuer_key_hash(_get_issuer_cert(chain))
+    digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_hash)
     try:
         ctfe_key.verify(
             signature=sct.signature,
