@@ -39,14 +39,19 @@ def _pack_digitally_signed(
     issuer_key_hash: bytes,
 ) -> bytes:
     """
+    Packs the contents of `cert` (and some pieces of `sct`) into a structured
+    blob, one that forms the signature body of the "digitally-signed" struct
+    for an SCT.
+
     The format of the digitally signed data is described in IETF's RFC 6962.
     """
 
-    # The digitally signed format requires the certificate in DER format.
+    # The digitally signed format requires the certificate in DER format,
+    # and with any SCTs (embedded as X.509v3 extensions) filtered out.
     cert_der: bytes = cert.tbs_precertificate_bytes
 
-    # The length is a u24, which isn't directly supported. So we have to
-    # decompose it into 3 bytes.
+    # The length is a u24, which isn't directly supported by `struct`.
+    # So we have to decompose it into 3 bytes.
     unused, len1, len2, len3 = struct.unpack(
         "!4B",
         struct.pack("!I", len(cert_der)),
@@ -54,7 +59,8 @@ def _pack_digitally_signed(
     if unused:
         raise InvalidSctError(f"Unexpectedly large certificate length: {len(cert_der)}")
 
-    # No extensions are currently specified.
+    # No extensions are currently specified, so we treat the presence
+    # of any extension bytes as suspicious.
     if len(sct.extension_bytes) != 0:
         raise InvalidSctError("Unexpected trailing extension bytes")
 
