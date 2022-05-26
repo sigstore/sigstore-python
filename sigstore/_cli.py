@@ -72,7 +72,7 @@ def main() -> None:
     "--oidc-issuer",
     metavar="URL",
     type=click.STRING,
-    default="https://oauth2.sigstore.dev/auth",
+    default="https://oauth2.sigstage.dev/auth",
     help="The custom OpenID Connect issuer to use",
 )
 @click.option(
