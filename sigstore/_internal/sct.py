@@ -33,12 +33,6 @@ from cryptography.x509.certificate_transparency import (
 logger = logging.getLogger(__name__)
 
 
-def _cryptography_hash_to_enum(hash_: hashes.HashAlgorithm) -> int:
-    if type(hash_) is hashes.SHA256:
-        return 4
-    raise InvalidSctError(f"unexpected hash algorithm: {hash_!r}")
-
-
 def _pack_digitally_signed(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
