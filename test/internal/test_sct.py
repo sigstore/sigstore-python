@@ -91,3 +91,7 @@ kGzKLC0+6/yBmWTr2M98CIY/vg==
     )
 
     assert sct._issuer_key_hash(precert) == hashlib.sha256(public_key).digest()
+    assert (
+        hashlib.sha256(public_key).hexdigest()
+        == "086c0ea25b60e3c44a994d0d5f40b81a0d44f21d63df19315e6ddfbe47373817"
+    )
