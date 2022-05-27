@@ -20,7 +20,7 @@ import hashlib
 import logging
 import struct
 from datetime import timezone
-from typing import List, Union
+from typing import List, Optional, Union
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 def _pack_digitally_signed(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
-    issuer_key_hash: bytes,
+    issuer_key_hash: Optional[bytes],
 ) -> bytes:
     """
     Packs the contents of `cert` (and some pieces of `sct`) into a structured

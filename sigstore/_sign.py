@@ -54,7 +54,9 @@ class SigningResult(BaseModel):
     """
 
 
-def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
+def sign(
+    fulcio_url: str, file: BinaryIO, identity_token: str, ctfe_pem: bytes
+) -> SigningResult:
     """Public API for signing blobs"""
 
     logger.debug(f"Using payload from: {file.name}")
@@ -66,7 +68,7 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
     public_key = private_key.public_key()
 
     logger.debug("Retrieving signed certificate...")
-    fulcio = FulcioClient("https://fulcio.sigstage.dev")
+    fulcio = FulcioClient(fulcio_url)
 
     oidc_identity = Identity(identity_token)
 

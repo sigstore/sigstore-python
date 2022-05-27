@@ -36,7 +36,9 @@ from sigstore._internal import sct
 def test_pack_digitally_signed(precert_bytes):
     mock_sct = pretend.stub(
         version=pretend.stub(value=0),
-        timestamp=datetime.datetime.fromtimestamp(1234 / 1000.0),
+        timestamp=datetime.datetime.fromtimestamp(
+            1234 / 1000.0, tz=datetime.timezone.utc
+        ),
         entry_type=pretend.stub(value=1),
         extension_bytes=b"",
     )

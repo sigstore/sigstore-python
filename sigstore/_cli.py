@@ -20,9 +20,17 @@ from typing import BinaryIO, List, Optional
 import click
 
 from sigstore import __version__
+from sigstore._internal.fulcio.client import (
+    DEFAULT_FULCIO_URL,
+    STAGING_FULCIO_URL,
+)
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
-from sigstore._internal.oidc.oauth import get_identity_token
+from sigstore._internal.oidc.oauth import (
+    DEFAULT_OAUTH_ISSUER,
+    STAGING_OAUTH_ISSUER,
+    get_identity_token,
+)
 from sigstore._sign import sign
 from sigstore._verify import verify
 
@@ -49,7 +57,7 @@ def main() -> None:
     "--ctfe",
     type=click.File("rb"),
     default=resources.open_binary("sigstore._store", "ctfe.pub"),
-    help="A PEM-encoded public key for the CT log",
+    help="A PEM-encoded public key for the CT log (conflicts with --staging)",
 )
 @click.option(
     "oidc_client_id",
@@ -72,8 +80,18 @@ def main() -> None:
     "--oidc-issuer",
     metavar="URL",
     type=click.STRING,
-    default="https://oauth2.sigstage.dev/auth",
-    help="The custom OpenID Connect issuer to use",
+    default=DEFAULT_OAUTH_ISSUER,
+    help="The custom OpenID Connect issuer to use (conflicts with --staging)",
+)
+@click.option(
+    "staging",
+    "--staging",
+    is_flag=True,
+    default=False,
+    help=(
+        "Use the sigstore project's staging instances, "
+        "instead of the default production instances"
+    )
 )
 @click.option(
     "oidc_disable_ambient_providers",
@@ -81,6 +99,15 @@ def main() -> None:
     is_flag=True,
     default=False,
     help="Disable ambient OIDC detection (e.g. on GitHub Actions)",
+)
+@click.option(
+    "fulcio_url",
+    "--fulcio-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_FULCIO_URL,
+    show_default=True,
+    help="The Fulcio instance to use (conflicts with --staging)",
 )
 @click.argument(
     "files",
@@ -97,7 +124,16 @@ def _sign(
     oidc_client_secret: str,
     oidc_issuer: str,
     oidc_disable_ambient_providers: bool,
+    fulcio_url: str,
+    staging: bool,
 ) -> None:
+    # If the user has explicitly requested the staging instance,
+    # we need to override some of the CLI's defaults.
+    if staging:
+        oidc_issuer = STAGING_OAUTH_ISSUER
+        ctfe_pem = resources.open_binary("sigstore._store", "ctfe.staging.pub")
+        fulcio_url = STAGING_FULCIO_URL
+
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
@@ -119,6 +155,7 @@ def _sign(
     ctfe_pem = ctfe_pem.read()
     for file in files:
         result = sign(
+            fulcio_url=fulcio_url,
             file=file,
             identity_token=identity_token,
             ctfe_pem=ctfe_pem,
