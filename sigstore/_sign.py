@@ -113,10 +113,6 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
 
     logger.debug("Successfully verified SCT...")
 
-    import sys
-
-    sys.exit(1)
-
     # Sign artifact
     artifact_signature = private_key.sign(artifact_contents, ec.ECDSA(hashes.SHA256()))
     b64_artifact_signature = base64.b64encode(artifact_signature).decode()
