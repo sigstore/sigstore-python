@@ -128,6 +128,10 @@ def verify_sct(
 
     issuer_key_hash = _issuer_key_hash(_get_issuer_cert(chain))
     digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_hash)
+
+    logger.debug(f"signature = {sct.signature}")
+    logger.debug(f"data = {digitally_signed}")
+
     try:
         if isinstance(ctfe_key, rsa.RSAPublicKey):
             ctfe_key.verify(
