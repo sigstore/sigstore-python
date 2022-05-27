@@ -70,7 +70,8 @@ def _pack_digitally_signed(
     # Assemble a format string with the certificate length baked in and then pack the digitally
     # signed data
     # fmt: off
-    pattern = "!BBQH32sBBB%ssH" % len(cert_der)
+    pattern = "!BBQH32sBBB%dsH" % len(cert_der)
+    logger.debug(f"packing using pattern: {pattern}")
     data = struct.pack(
         pattern,
         sct.version.value,                      # sct_version
