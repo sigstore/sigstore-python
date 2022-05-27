@@ -28,10 +28,52 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import Certificate, ExtendedKeyUsage, ObjectIdentifier
 from cryptography.x509.certificate_transparency import (
+    LogEntryType,
     SignedCertificateTimestamp,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _pack_signed_entry(
+    sct: SignedCertificateTimestamp, cert: Certificate, issuer_key_hash: Optional[bytes]
+) -> bytes:
+    fields = []
+    if sct.entry_type == LogEntryType.X509_CERTIFICATE:
+        # When dealing with a "normal" certificate, our signed entry looks like this:
+        #
+        # [0]: opaque ASN.1Cert<1..2^24-1>
+        pack_format = "!BBB{cert_der_len}s"
+        cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
+    elif sct.entry_type == LogEntryType.PRE_CERTIFICATE:
+        if not issuer_key_hash or len(issuer_key_hash) != 32:
+            raise InvalidSctError("API misuse: issuer key hash missing")
+
+        # When dealing with a precertificate, our signed entry looks like this:
+        #
+        # [0]: issuer_key_hash[32]
+        # [1]: opaque TBSCertificate<1..2^24-1>
+        pack_format = "!32sBBB{cert_der_len}s"
+
+        # Precertificates must have their SCT list extension filtered out.
+        cert_der = cert.tbs_precertificate_bytes
+        fields.append(issuer_key_hash)
+    else:
+        raise InvalidSctError(f"unknown SCT log entry type: {sct.entry_type!r}")
+
+    # The `opaque` length is a u24, which isn't directly supported by `struct`.
+    # So we have to decompose it into 3 bytes.
+    unused, len1, len2, len3 = struct.unpack(
+        "!4B",
+        struct.pack("!I", len(cert_der)),
+    )
+    if unused:
+        raise InvalidSctError(f"Unexpectedly large certificate length: {len(cert_der)}")
+
+    pack_format = pack_format.format(cert_der_len=len(cert_der))
+    fields.extend((len1, len2, len3, cert_der))
+
+    return struct.pack(pack_format, *fields)
 
 
 def _pack_digitally_signed(
@@ -47,31 +89,20 @@ def _pack_digitally_signed(
     The format of the digitally signed data is described in IETF's RFC 6962.
     """
 
-    # The digitally signed format requires the certificate in DER format,
-    # and with any SCTs (embedded as X.509v3 extensions) filtered out.
-    cert_der: bytes = cert.tbs_precertificate_bytes
-
-    # The length is a u24, which isn't directly supported by `struct`.
-    # So we have to decompose it into 3 bytes.
-    unused, len1, len2, len3 = struct.unpack(
-        "!4B",
-        struct.pack("!I", len(cert_der)),
-    )
-    if unused:
-        raise InvalidSctError(f"Unexpectedly large certificate length: {len(cert_der)}")
-
     # No extensions are currently specified, so we treat the presence
     # of any extension bytes as suspicious.
     if len(sct.extension_bytes) != 0:
         raise InvalidSctError("Unexpected trailing extension bytes")
 
-    # NOTE(ww): This is incorrect for non-embedded SCTs, since it unconditionally
-    # embeds the issuer_key_hash.
+    # This constructs the "core" `signed_entry` field, which is either
+    # the public bytes of the cert *or* the TBSPrecertificate (with some
+    # filtering), depending on whether our SCT is for a precertificate.
+    signed_entry = _pack_signed_entry(sct, cert, issuer_key_hash)
 
     # Assemble a format string with the certificate length baked in and then pack the digitally
     # signed data
     # fmt: off
-    pattern = "!BBQH32sBBB%dsH" % len(cert_der)
+    pattern = "!BBQH%dsH" % len(signed_entry)
     timestamp = sct.timestamp.replace(tzinfo=timezone.utc)
     data = struct.pack(
         pattern,
@@ -79,11 +110,7 @@ def _pack_digitally_signed(
         0,                                  # signature_type (certificate_timestamp(0))
         int(timestamp.timestamp() * 1000),  # timestamp (milliseconds)
         sct.entry_type.value,               # entry_type (x509_entry(0) | precert_entry(1))
-        issuer_key_hash,                    # issuer_key_hash[32]
-        len1,                               # \
-        len2,                               # | opaque TBSCertificate<1..2^24-1> OR
-        len3,                               # | opaque ASN.1Cert<1..2^24-1>
-        cert_der,                           # /
+        signed_entry,                       # select(entry_type) -> signed_entry (see above)
         len(sct.extension_bytes),           # extensions (opaque CtExtensions<0..2^16-1>)
     )
     # fmt: on
@@ -127,7 +154,14 @@ def verify_sct(
 ) -> None:
     """Verify a signed certificate timestamp"""
 
-    issuer_key_hash = _issuer_key_hash(_get_issuer_cert(chain))
+    issuer_key_hash = None
+    if sct.entry_type == LogEntryType.PRE_CERTIFICATE:
+        # If we're verifying an SCT for a precertificate, we need to
+        # find its issuer in the chain and calculate a hash over
+        # its public key information, as part of the "binding" proof
+        # that ties the issuer to the final certificate.
+        issuer_key_hash = _issuer_key_hash(_get_issuer_cert(chain))
+
     digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_hash)
 
     try:

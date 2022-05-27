@@ -91,7 +91,7 @@ def main() -> None:
     help=(
         "Use the sigstore project's staging instances, "
         "instead of the default production instances"
-    )
+    ),
 )
 @click.option(
     "oidc_disable_ambient_providers",
@@ -130,6 +130,7 @@ def _sign(
     # If the user has explicitly requested the staging instance,
     # we need to override some of the CLI's defaults.
     if staging:
+        logger.debug("sign: staging instances requested")
         oidc_issuer = STAGING_OAUTH_ISSUER
         ctfe_pem = resources.open_binary("sigstore._store", "ctfe.staging.pub")
         fulcio_url = STAGING_FULCIO_URL

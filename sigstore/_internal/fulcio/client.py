@@ -94,7 +94,7 @@ class DetachedFulcioSCT(BaseModel):
     log_id: bytes = Field(..., alias="id")
     timestamp: datetime.datetime
     digitally_signed: bytes = Field(..., alias="signature")
-    extensions: bytes
+    extension_bytes: bytes = Field(..., alias="extensions")
 
     class Config:
         allow_population_by_field_name = True
@@ -113,7 +113,7 @@ class DetachedFulcioSCT(BaseModel):
     def _validate_log_id(cls, v: bytes) -> bytes:
         return base64.b64decode(v)
 
-    @validator("extensions", pre=True)
+    @validator("extension_bytes", pre=True)
     def _validate_extensions(cls, v: bytes) -> bytes:
         return base64.b64decode(v)
 
