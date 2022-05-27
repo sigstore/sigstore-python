@@ -19,6 +19,7 @@ Utilities for verifying signed certificate timestamps.
 import hashlib
 import logging
 import struct
+from datetime import timezone
 from typing import List, Union
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
@@ -71,19 +72,19 @@ def _pack_digitally_signed(
     # signed data
     # fmt: off
     pattern = "!BBQH32sBBB%dsH" % len(cert_der)
-    logger.debug(f"packing using pattern: {pattern}")
+    timestamp = sct.timestamp.replace(tzinfo=timezone.utc)
     data = struct.pack(
         pattern,
-        sct.version.value,                      # sct_version
-        0,                                      # signature_type (certificate_timestamp(0))
-        int(sct.timestamp.timestamp() * 1000),  # timestamp (milliseconds)
-        sct.entry_type.value,                   # entry_type (x509_entry(0) | precert_entry(1))
-        issuer_key_hash,                        # issuer_key_hash[32]
-        len1,                                   # \
-        len2,                                   # | opaque TBSCertificate<1..2^24-1> OR
-        len3,                                   # | opaque ASN.1Cert<1..2^24-1>
-        cert_der,                               # /
-        len(sct.extension_bytes),               # extensions (opaque CtExtensions<0..2^16-1>)
+        sct.version.value,                  # sct_version
+        0,                                  # signature_type (certificate_timestamp(0))
+        int(timestamp.timestamp() * 1000),  # timestamp (milliseconds)
+        sct.entry_type.value,               # entry_type (x509_entry(0) | precert_entry(1))
+        issuer_key_hash,                    # issuer_key_hash[32]
+        len1,                               # \
+        len2,                               # | opaque TBSCertificate<1..2^24-1> OR
+        len3,                               # | opaque ASN.1Cert<1..2^24-1>
+        cert_der,                           # /
+        len(sct.extension_bytes),           # extensions (opaque CtExtensions<0..2^16-1>)
     )
     # fmt: on
 
@@ -128,9 +129,6 @@ def verify_sct(
 
     issuer_key_hash = _issuer_key_hash(_get_issuer_cert(chain))
     digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_hash)
-
-    logger.debug(f"signature = {sct.signature}")
-    logger.debug(f"data = {digitally_signed}")
 
     try:
         if isinstance(ctfe_key, rsa.RSAPublicKey):
