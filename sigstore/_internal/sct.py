@@ -27,11 +27,12 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import Certificate, ExtendedKeyUsage
-from cryptography.x509.oid import ExtendedKeyUsageOID
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
+    SignatureAlgorithm,
     SignedCertificateTimestamp,
 )
+from cryptography.x509.oid import ExtendedKeyUsageOID
 
 logger = logging.getLogger(__name__)
 
@@ -163,18 +164,27 @@ def verify_sct(
     digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_hash)
 
     try:
-        if isinstance(ctfe_key, rsa.RSAPublicKey):
+        if sct.signature_algorithm == SignatureAlgorithm.RSA and isinstance(
+            ctfe_key, rsa.RSAPublicKey
+        ):
             ctfe_key.verify(
                 signature=sct.signature,
                 data=digitally_signed,
                 padding=padding.PKCS1v15(),
                 algorithm=hashes.SHA256(),
             )
-        else:
+        elif sct.signature_algorithm == SignatureAlgorithm.ECDSA and isinstance(
+            ctfe_key, ec.EllipticCurvePublicKey
+        ):
             ctfe_key.verify(
                 signature=sct.signature,
                 data=digitally_signed,
                 signature_algorithm=ec.ECDSA(hashes.SHA256()),
+            )
+        else:
+            raise InvalidSctError(
+                "Found unexpected signature type in SCT: signature type of"
+                f"{sct.signature_algorithm} and CTFE key type of {type(ctfe_key)}"
             )
     except InvalidSignature as inval_sig:
         raise InvalidSctError from inval_sig
