@@ -26,8 +26,8 @@ import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from cryptography.x509 import Certificate, ExtendedKeyUsage, ObjectIdentifier
-from cryptography.x509.oid import ExtensionOID
+from cryptography.x509 import Certificate, ExtendedKeyUsage
+from cryptography.x509.oid import ExtendedKeyUsageOID
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
     SignedCertificateTimestamp,
@@ -121,7 +121,7 @@ def _pack_digitally_signed(
 
 def _is_preissuer(issuer: Certificate) -> bool:
     ext_key_usage = issuer.extensions.get_extension_for_class(ExtendedKeyUsage)
-    return ExtensionOID.CERTIFICATE_TRANSPARENCY in ext_key_usage.value
+    return ExtendedKeyUsageOID.CERTIFICATE_TRANSPARENCY in ext_key_usage.value
 
 
 def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
