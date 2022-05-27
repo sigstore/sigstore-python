@@ -322,16 +322,15 @@ def test_gcp_wrong_product(monkeypatch):
     logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
     monkeypatch.setattr(ambient, "logger", logger)
 
-    with pytest.raises(
-        ambient.AmbientCredentialError,
-        match="GCP: product name file exists, but product name is 'Unsupported Product'; giving up",
-    ):
-        ambient.detect_gcp()
+    assert ambient.detect_gcp() is None
 
     assert logger.debug.calls == [
         pretend.call("GCP: looking for OIDC credentials"),
         pretend.call(
             "GCP: GOOGLE_SERVICE_ACCOUNT_NAME not set; skipping impersonation"
+        ),
+        pretend.call(
+            "GCP: product name file exists, but product name is 'Unsupported Product'; giving up"
         ),
     ]
 
