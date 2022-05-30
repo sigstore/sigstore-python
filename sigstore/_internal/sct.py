@@ -163,7 +163,7 @@ def verify_sct(
 
     digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_hash)
 
-    if sct.signature_hash_algorithm == hashes.SHA256():
+    if sct.signature_hash_algorithm.name != hashes.SHA256().name:
         raise InvalidSctError(
             "Found unexpected hash algorithm in SCT: only SHA256 is supported"
         )
