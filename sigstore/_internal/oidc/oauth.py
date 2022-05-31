@@ -163,7 +163,7 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
 
         if not server.is_oob:
             # Wait until the redirect server populates the response
-            while server.active:
+            while server.auth_response is None:
                 time.sleep(0.1)
             auth_error = server.auth_response.get("error")
             if auth_error is not None:
