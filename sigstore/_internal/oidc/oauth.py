@@ -49,7 +49,7 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
         # If the auth response has already been populated, the main thread will be stopping this
         # thread and accessing the auth response shortly so we should stop servicing any requests.
         if not server.active:
-            return
+            return None
 
         r = urllib.parse.urlsplit(self.path)
 
@@ -62,7 +62,7 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             server.auth_response = urllib.parse.parse_qs(r.query)
-            return
+            return None
 
         # Any other request generates an auth request
         url = server.auth_request()
