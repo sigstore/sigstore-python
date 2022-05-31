@@ -172,7 +172,7 @@ def _sign(
 
         cert_output: TextIO
         if multiple_inputs and output_certificate == "":
-            cert_output = open(f"{file.name}.cert", "w")
+            cert_output = open(f"{file.name}.crt", "w")
         elif output_certificate:
             cert_output = open(output_certificate, "w")
         else:
