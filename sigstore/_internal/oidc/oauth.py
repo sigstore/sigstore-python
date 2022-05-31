@@ -45,6 +45,12 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         server = cast(RedirectServer, self.server)
+
+        # If the auth response has already been populated, the main thread will be stopping this
+        # thread and accessing the auth response shortly so we should stop servicing any requests.
+        if not server.active:
+            return
+
         r = urllib.parse.urlsplit(self.path)
 
         # Handle auth response
@@ -56,7 +62,7 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             server.auth_response = urllib.parse.parse_qs(r.query)
-            return None
+            return
 
         # Any other request generates an auth request
         url = server.auth_request()
@@ -157,7 +163,7 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
 
         if not server.is_oob:
             # Wait until the redirect server populates the response
-            while server.auth_response is None:
+            while server.active:
                 time.sleep(0.1)
             auth_error = server.auth_response.get("error")
             if auth_error is not None:
