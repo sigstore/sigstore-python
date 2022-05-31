@@ -45,6 +45,12 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         server = cast(RedirectServer, self.server)
+
+        # If the auth response has already been populated, the main thread will be stopping this
+        # thread and accessing the auth response shortly so we should stop servicing any requests.
+        if not server.active:
+            return None
+
         r = urllib.parse.urlsplit(self.path)
 
         # Handle auth response
