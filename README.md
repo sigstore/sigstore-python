@@ -73,7 +73,6 @@ Options:
                                   value, write each signing certificate to
                                   {input}.cert
   --help                          Show this message and exit.
-
 ```
 <!-- @end-sigstore-sign-help@ -->
 
