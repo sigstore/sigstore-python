@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import logging
+import sys
 from importlib import resources
-from typing import BinaryIO, List, Optional
+from typing import BinaryIO, List, Optional, TextIO
 
 import click
 
@@ -80,6 +81,30 @@ def main() -> None:
     default=False,
     help="Disable ambient OIDC detection (e.g. on GitHub Actions)",
 )
+@click.option(
+    "output_signature",
+    "--output-signature",
+    is_flag=False,
+    flag_value=str(),
+    metavar="FILE",
+    type=click.STRING,
+    help=(
+        "With a value, write a single signature to the given file; "
+        "without a value, write each signing result to {input}.sig"
+    ),
+)
+@click.option(
+    "output_certificate",
+    "--output-certificate",
+    is_flag=False,
+    flag_value=str(),
+    metavar="FILE",
+    type=click.STRING,
+    help=(
+        "With a value, write a single signing certificate to the given file; "
+        "without a value, write each signing certificate to {input}.cert"
+    ),
+)
 @click.argument(
     "files",
     metavar="FILE [FILE ...]",
@@ -95,7 +120,22 @@ def _sign(
     oidc_client_secret: str,
     oidc_issuer: str,
     oidc_disable_ambient_providers: bool,
+    output_signature: Optional[str],
+    output_certificate: Optional[str],
 ) -> None:
+    # Fail if `--output-signature` or `--output-certificate` is specified with
+    # a value *and* we have more than one input. If passed without values,
+    # then treat them as an instruction to generate default {input}.sig and
+    # {input}.cert outputs for each {input}.
+    multiple_inputs = len(files) > 1
+    if (output_signature or output_certificate) and multiple_inputs:
+        click.echo(
+            "Error: --output-signature and --output-certificate can't be used with "
+            "explicit outputs for multiple inputs",
+            err=True,
+        )
+        raise click.Abort
+
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
@@ -122,12 +162,28 @@ def _sign(
             ctfe_pem=ctfe_pem,
         )
 
-        click.echo("Using ephemeral certificate:")
-        click.echo(result.cert_pem)
+        sig_output: TextIO
+        if multiple_inputs and output_signature == "":
+            sig_output = open(f"{file.name}.sig", "w")
+        elif output_signature:
+            sig_output = open(output_signature, "w")
+        else:
+            sig_output = sys.stdout
+
+        cert_output: TextIO
+        if multiple_inputs and output_certificate == "":
+            cert_output = open(f"{file.name}.cert", "w")
+        elif output_certificate:
+            cert_output = open(output_certificate, "w")
+        else:
+            cert_output = sys.stdout
+
         click.echo(
             f"Transparency log entry created at index: {result.log_entry.log_index}"
         )
-        click.echo(f"Signature: {result.b64_signature}")
+
+        print(result.cert_pem, file=cert_output)
+        print(result.b64_signature, file=sig_output)
 
 
 @main.command("verify")
