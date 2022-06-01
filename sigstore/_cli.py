@@ -19,6 +19,7 @@ from typing import BinaryIO, List, Optional
 import click
 
 from sigstore import __version__
+from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import get_identity_token
@@ -80,6 +81,15 @@ def main() -> None:
     default=False,
     help="Disable ambient OIDC detection (e.g. on GitHub Actions)",
 )
+@click.option(
+    "fulcio_url",
+    "--fulcio-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_FULCIO_URL,
+    show_default=True,
+    help="The Fulcio instance to use",
+)
 @click.argument(
     "files",
     metavar="FILE [FILE ...]",
@@ -95,6 +105,7 @@ def _sign(
     oidc_client_secret: str,
     oidc_issuer: str,
     oidc_disable_ambient_providers: bool,
+    fulcio_url: str,
 ) -> None:
     # The order of precedence is as follows:
     #
@@ -117,6 +128,7 @@ def _sign(
     ctfe_pem = ctfe_pem.read()
     for file in files:
         result = sign(
+            fulcio_url=fulcio_url,
             file=file,
             identity_token=identity_token,
             ctfe_pem=ctfe_pem,
