@@ -162,28 +162,31 @@ def _sign(
             ctfe_pem=ctfe_pem,
         )
 
-        sig_output: TextIO
-        if output_signature == "":
-            sig_output = open(f"{file.name}.sig", "w")
-        elif output_signature:
-            sig_output = open(output_signature, "w")
-        else:
-            sig_output = sys.stdout
-
-        cert_output: TextIO
-        if output_certificate == "":
-            cert_output = open(f"{file.name}.crt", "w")
-        elif output_certificate:
-            cert_output = open(output_certificate, "w")
-        else:
-            cert_output = sys.stdout
+        click.echo("Using ephemeral certificate:")
+        click.echo(result.cert_pem)
 
         click.echo(
             f"Transparency log entry created at index: {result.log_entry.log_index}"
         )
 
-        print(result.cert_pem, file=cert_output)
+        sig_output: TextIO
+        if output_signature is None:
+            sig_output = sys.stdout
+        else:
+            if output_signature == "":
+                output_signature = f"{file.name}.sig"
+            sig_output = open(output_signature, "w")
+
         print(result.b64_signature, file=sig_output)
+        if output_signature:
+            click.echo(f"Signature written to file {output_signature}")
+
+        if output_certificate is not None:
+            if output_certificate == "":
+                output_certificate = f"{file.name}.crt"
+            cert_output = open(output_certificate, "w")
+            print(result.cert_pem, file=cert_output)
+            click.echo(f"Certificate written to file {output_certificate}")
 
 
 @main.command("verify")
