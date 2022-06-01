@@ -21,12 +21,16 @@ import time
 import urllib.parse
 import uuid
 import webbrowser
-from typing import Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import requests
 
 from sigstore._internal.oidc import IdentityError
 from sigstore._internal.oidc.issuer import Issuer
+
+DEFAULT_OAUTH_ISSUER = "https://oauth2.sigstore.dev/auth"
+STAGING_OAUTH_ISSUER = "https://oauth2.sigstage.dev/auth"
+
 
 AUTH_SUCCESS_HTML = """
 <html>
@@ -40,11 +44,17 @@ AUTH_SUCCESS_HTML = """
 
 
 class RedirectHandler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, format, *args):
+    def log_message(self, _format: str, *_args: Any) -> None:
         pass
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         server = cast(RedirectServer, self.server)
+
+        # If the auth response has already been populated, the main thread will be stopping this
+        # thread and accessing the auth response shortly so we should stop servicing any requests.
+        if not server.active:
+            return None
+
         r = urllib.parse.urlsplit(self.path)
 
         # Handle auth response
@@ -56,7 +66,7 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             server.auth_response = urllib.parse.parse_qs(r.query)
-            return
+            return None
 
         # Any other request generates an auth request
         url = server.auth_request()

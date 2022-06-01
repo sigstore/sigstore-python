@@ -58,18 +58,36 @@ Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 Options:
   --identity-token TOKEN          the OIDC identity token to use
   --ctfe FILENAME                 A PEM-encoded public key for the CT log
+                                  (conflicts with --staging)
   --oidc-client-id ID             The custom OpenID Connect client ID to use
   --oidc-client-secret SECRET     The custom OpenID Connect client secret to
                                   use
   --oidc-issuer URL               The custom OpenID Connect issuer to use
+                                  (conflicts with --staging)
+  --staging                       Use the sigstore project's staging
+                                  instances, instead of the default production
+                                  instances
   --oidc-disable-ambient-providers
                                   Disable ambient OIDC detection (e.g. on
                                   GitHub Actions)
+  --output-signature FILE         With a value, write a single signature to
+                                  the given file; without a value, write each
+                                  signing result to {input}.sig
+  --output-certificate FILE       With a value, write a single signing
+                                  certificate to the given file; without a
+                                  value, write each signing certificate to
+                                  {input}.cert
+  --fulcio-url URL                The Fulcio instance to use (conflicts with
+                                  --staging)  [default:
+                                  https://fulcio.sigstore.dev]
+  --rekor-url URL                 The Rekor instance to use (conflicts with
+                                  --staging)  [default:
+                                  https://rekor.sigstore.dev]
   --help                          Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->
 
-Verifying
+Verifying:
 
 <!-- @begin-sigstore-verify-help@ -->
 ```
@@ -79,9 +97,25 @@ Options:
   --cert FILENAME       [required]
   --signature FILENAME  [required]
   --cert-email TEXT
+  --staging             Use the sigstore project's staging instances, instead
+                        of the default production instances
+  --rekor-url URL       The Rekor instance to use (conflicts with --staging)
+                        [default: https://rekor.sigstore.dev]
   --help                Show this message and exit.
 ```
 <!-- @end-sigstore-verify-help@ -->
+
+### Ambient credential detection
+
+For environments that support OIDC natively, `sigstore` supports automatic ambient credential detection:
+
+- GitHub:
+  - Actions: requires setting the `id-token` permission, see https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect. An example is [here](https://github.com/sigstore/sigstore-python/blob/main/.github/workflows/release.yml).
+- Google Cloud:
+  - Compute Engine: automatic
+  - Cloud Build: requires setting `GOOGLE_SERVICE_ACCOUNT_NAME` to an appropriately configured service account name, see https://cloud.google.com/iam/docs/creating-short-lived-service-account-credentials#sa-credentials-direct. An example is [here](https://github.com/sigstore/sigstore-python/blob/main/cloudbuild.yaml)
+- GitLab: planned, see https://github.com/sigstore/sigstore-python/issues/31
+- CircleCI: planned, see https://github.com/sigstore/sigstore-python/issues/31
 
 ## Licensing
 

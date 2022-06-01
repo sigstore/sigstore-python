@@ -23,12 +23,10 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509 import Certificate
 
-from sigstore._internal.fulcio import FulcioSignedCertificateTimestamp
+from sigstore._internal.fulcio import DetachedFulcioSCT
 
 
-def _pack_digitally_signed(
-    sct: FulcioSignedCertificateTimestamp, cert: Certificate
-) -> bytes:
+def _pack_digitally_signed(sct: DetachedFulcioSCT, cert: Certificate) -> bytes:
     """
     The format of the digitally signed data is described in IETF's RFC 6962.
 
@@ -57,15 +55,15 @@ def _pack_digitally_signed(
     pattern = "!BBQhBBB%ssh" % len(cert_der)
     data = struct.pack(
         pattern,
-        sct.struct["sct_version"],
+        sct.version.value,
         0,  # Signature Type
-        sct.struct["timestamp"],
+        int(sct.timestamp.timestamp() * 1000),
         0,  # Entry Type
         len1,
         len2,
         len3,
         cert_der,
-        len(sct.struct["extensions"]),
+        len(sct.extensions),
     )
 
     return data
@@ -76,7 +74,7 @@ class InvalidSctError(Exception):
 
 
 def verify_sct(
-    sct: FulcioSignedCertificateTimestamp,
+    sct: DetachedFulcioSCT,
     cert: Certificate,
     ctfe_key: ec.EllipticCurvePublicKey,
 ) -> None:

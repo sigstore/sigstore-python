@@ -13,14 +13,27 @@
 # limitations under the License.
 
 import logging
+import sys
 from importlib import resources
+from typing import BinaryIO, List, Optional, TextIO
 
 import click
 
 from sigstore import __version__
+from sigstore._internal.fulcio.client import (
+    DEFAULT_FULCIO_URL,
+    STAGING_FULCIO_URL,
+)
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
-from sigstore._internal.oidc.oauth import get_identity_token
+from sigstore._internal.oidc.oauth import (
+    STAGING_OAUTH_ISSUER,
+    get_identity_token,
+)
+from sigstore._internal.rekor.client import (
+    DEFAULT_REKOR_URL,
+    STAGING_REKOR_URL,
+)
 from sigstore._sign import sign
 from sigstore._verify import verify
 
@@ -29,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 @click.group()
 @click.version_option(version=__version__)
-def main():
+def main() -> None:
     pass
 
 
@@ -46,7 +59,7 @@ def main():
     "--ctfe",
     type=click.File("rb"),
     default=resources.open_binary("sigstore._store", "ctfe.pub"),
-    help="A PEM-encoded public key for the CT log",
+    help="A PEM-encoded public key for the CT log (conflicts with --staging)",
 )
 @click.option(
     "oidc_client_id",
@@ -70,7 +83,17 @@ def main():
     metavar="URL",
     type=click.STRING,
     default="https://oauth2.sigstore.dev/auth",
-    help="The custom OpenID Connect issuer to use",
+    help="The custom OpenID Connect issuer to use (conflicts with --staging)",
+)
+@click.option(
+    "staging",
+    "--staging",
+    is_flag=True,
+    default=False,
+    help=(
+        "Use the sigstore project's staging instances, "
+        "instead of the default production instances"
+    ),
 )
 @click.option(
     "oidc_disable_ambient_providers",
@@ -78,6 +101,47 @@ def main():
     is_flag=True,
     default=False,
     help="Disable ambient OIDC detection (e.g. on GitHub Actions)",
+)
+@click.option(
+    "output_signature",
+    "--output-signature",
+    is_flag=False,
+    flag_value=str(),
+    metavar="FILE",
+    type=click.STRING,
+    help=(
+        "With a value, write a single signature to the given file; "
+        "without a value, write each signing result to {input}.sig"
+    ),
+)
+@click.option(
+    "output_certificate",
+    "--output-certificate",
+    is_flag=False,
+    flag_value=str(),
+    metavar="FILE",
+    type=click.STRING,
+    help=(
+        "With a value, write a single signing certificate to the given file; "
+        "without a value, write each signing certificate to {input}.cert"
+    ),
+)
+@click.option(
+    "--fulcio-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_FULCIO_URL,
+    show_default=True,
+    help="The Fulcio instance to use (conflicts with --staging)",
+)
+@click.option(
+    "rekor_url",
+    "--rekor-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_REKOR_URL,
+    show_default=True,
+    help="The Rekor instance to use (conflicts with --staging)",
 )
 @click.argument(
     "files",
@@ -87,14 +151,41 @@ def main():
     required=True,
 )
 def _sign(
-    files,
-    identity_token,
-    ctfe_pem,
-    oidc_client_id,
-    oidc_client_secret,
-    oidc_issuer,
-    oidc_disable_ambient_providers,
-):
+    files: List[BinaryIO],
+    identity_token: Optional[str],
+    ctfe_pem: BinaryIO,
+    oidc_client_id: str,
+    oidc_client_secret: str,
+    oidc_issuer: str,
+    oidc_disable_ambient_providers: bool,
+    output_signature: Optional[str],
+    output_certificate: Optional[str],
+    fulcio_url: str,
+    rekor_url: str,
+    staging: bool,
+) -> None:
+    # Fail if `--output-signature` or `--output-certificate` is specified with
+    # a value *and* we have more than one input. If passed without values,
+    # then treat them as an instruction to generate default {input}.sig and
+    # {input}.cert outputs for each {input}.
+    multiple_inputs = len(files) > 1
+    if (output_signature or output_certificate) and multiple_inputs:
+        click.echo(
+            "Error: --output-signature and --output-certificate can't be used with "
+            "explicit outputs for multiple inputs",
+            err=True,
+        )
+        raise click.Abort
+
+    # If the user has explicitly requested the staging instance,
+    # we need to override some of the CLI's defaults.
+    if staging:
+        logger.debug("sign: staging instances requested")
+        oidc_issuer = STAGING_OAUTH_ISSUER
+        ctfe_pem = resources.open_binary("sigstore._store", "ctfe.staging.pub")
+        fulcio_url = STAGING_FULCIO_URL
+        rekor_url = STAGING_REKOR_URL
+
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
@@ -116,6 +207,8 @@ def _sign(
     ctfe_pem = ctfe_pem.read()
     for file in files:
         result = sign(
+            fulcio_url=fulcio_url,
+            rekor_url=rekor_url,
             file=file,
             identity_token=identity_token,
             ctfe_pem=ctfe_pem,
@@ -123,20 +216,71 @@ def _sign(
 
         click.echo("Using ephemeral certificate:")
         click.echo(result.cert_pem)
+
         click.echo(
             f"Transparency log entry created at index: {result.log_entry.log_index}"
         )
-        click.echo(f"Signature: {result.b64_signature}")
+
+        sig_output: TextIO
+        if output_signature is None:
+            sig_output = sys.stdout
+        else:
+            if output_signature == "":
+                output_signature = f"{file.name}.sig"
+            sig_output = open(output_signature, "w")
+
+        print(result.b64_signature, file=sig_output)
+        if output_signature:
+            click.echo(f"Signature written to file {output_signature}")
+
+        if output_certificate is not None:
+            if output_certificate == "":
+                output_certificate = f"{file.name}.crt"
+            cert_output = open(output_certificate, "w")
+            print(result.cert_pem, file=cert_output)
+            click.echo(f"Certificate written to file {output_certificate}")
 
 
 @main.command("verify")
 @click.option("certificate_path", "--cert", type=click.File("rb"), required=True)
 @click.option("signature_path", "--signature", type=click.File("rb"), required=True)
 @click.option("cert_email", "--cert-email", type=str)
+@click.option(
+    "staging",
+    "--staging",
+    is_flag=True,
+    default=False,
+    help=(
+        "Use the sigstore project's staging instances, "
+        "instead of the default production instances"
+    ),
+)
+@click.option(
+    "rekor_url",
+    "--rekor-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_REKOR_URL,
+    show_default=True,
+    help="The Rekor instance to use (conflicts with --staging)",
+)
 @click.argument(
     "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
 )
-def _verify(files, certificate_path, signature_path, cert_email):
+def _verify(
+    files: List[BinaryIO],
+    certificate_path: BinaryIO,
+    signature_path: BinaryIO,
+    cert_email: Optional[str],
+    rekor_url: str,
+    staging: bool,
+) -> None:
+    # If the user has explicitly requested the staging instance,
+    # we need to override some of the CLI's defaults.
+    if staging:
+        logger.debug("sign: staging instances requested")
+        rekor_url = STAGING_REKOR_URL
+
     # Load the signing certificate
     logger.debug(f"Using certificate from: {certificate_path.name}")
     certificate = certificate_path.read()
@@ -148,6 +292,7 @@ def _verify(files, certificate_path, signature_path, cert_email):
     verified = True
     for file in files:
         if verify(
+            rekor_url=rekor_url,
             file=file,
             certificate=certificate,
             signature=signature,

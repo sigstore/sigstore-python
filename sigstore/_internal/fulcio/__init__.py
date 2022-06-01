@@ -17,14 +17,14 @@ APIs for interacting with Fulcio.
 """
 
 
-from ._client import (
+from .client import (
+    DetachedFulcioSCT,
     FulcioCertificateSigningResponse,
     FulcioClient,
-    FulcioSignedCertificateTimestamp,
 )
 
 __all__ = [
+    "DetachedFulcioSCT",
     "FulcioCertificateSigningResponse",
     "FulcioClient",
-    "FulcioSignedCertificateTimestamp",
 ]

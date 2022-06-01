@@ -14,9 +14,9 @@ jobs:
     name: Build, sign and publish release to PyPI
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
 
-    - uses: actions/setup-python@v2
+    - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
 
     - name: deps
       run: python -m pip install -U build
@@ -26,15 +26,20 @@ jobs:
 
     - name: sign
       run: |
-        # use the latest development changes for sigstore, at least
-        # until things are stabilized further
-        python -m pip install .
+        # we smoke-test sigstore by installing each of the distributions
+        # we've built in a fresh environment and using each to sign for itself,
+        # using the ambient OIDC identity
+        for dist in dist/*; do
+          python -m venv smoketest-env
 
-        # sign all package distributions using the ambient OIDC identity
-        python -m sigstore sign dist/*
+          ./smoketest-env/bin/python -m pip install "${dist}"
+          ./smoketest-env/bin/python -m sigstore sign "${dist}"
+
+          rm -rf smoketest-env
+        done
 
     - name: publish
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@717ba43cfbb0387f6ce311b169a825772f54d295
       with:
         user: __token__
         password: ${{ secrets.PYPI_TOKEN }}

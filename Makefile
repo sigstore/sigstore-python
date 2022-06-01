@@ -1,7 +1,6 @@
 PY_MODULE := sigstore
 
-ALL_PY_SRCS := setup.py \
-	$(shell find $(PY_MODULE) -name '*.py') \
+ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
 	$(shell find test -name '*.py')
 
 # Optionally overridden by the user in the `release` target.
@@ -27,7 +26,7 @@ endif
 all:
 	@echo "Run my targets individually!"
 
-env/pyvenv.cfg: setup.py pyproject.toml
+env/pyvenv.cfg: pyproject.toml
 	# Create our Python 3 virtual environment
 	rm -rf env
 	python3 -m venv env
@@ -47,7 +46,8 @@ lint:
 		black $(ALL_PY_SRCS) && \
 		isort $(ALL_PY_SRCS) && \
 		flake8 $(ALL_PY_SRCS) && \
-		mypy $(PY_MODULE) test/ \
+		mypy $(PY_MODULE) && \
+		bandit -c pyproject.toml -r $(PY_MODULE)
 # TODO: Reenable interrogate
 #		interrogate -v -c pyproject.toml . && \
 #	        git diff --exit-code

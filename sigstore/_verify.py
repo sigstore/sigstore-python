@@ -56,7 +56,7 @@ FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
 class VerificationResult(BaseModel):
     success: bool
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.success
 
 
@@ -70,6 +70,7 @@ class VerificationFailure(VerificationResult):
 
 
 def verify(
+    rekor_url: str,
     file: BinaryIO,
     certificate: bytes,
     signature: bytes,
@@ -166,7 +167,7 @@ def verify(
     )
 
     # Retrieve the relevant Rekor entry to verify the inclusion proof and SET
-    rekor = RekorClient()
+    rekor = RekorClient(rekor_url)
     uuids = rekor.index.retrieve.post(sha256_artifact_hash, pub_b64.decode())
 
     valid_sig_exists = False

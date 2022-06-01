@@ -39,8 +39,10 @@ from cryptography.x509.certificate_transparency import (
     SignedCertificateTimestamp,
     Version,
 )
+from pydantic import BaseModel, Field, validator
 
 DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
+STAGING_FULCIO_URL = "https://fulcio.sigstage.dev"
 SIGNING_CERT_ENDPOINT = "/api/v1/signingCert"
 ROOT_CERT_ENDPOINT = "/api/v1/rootCert"
 
@@ -86,70 +88,68 @@ class FulcioSCTError(Exception):
     pass
 
 
-class FulcioSignedCertificateTimestamp(SignedCertificateTimestamp):
-    def __init__(self, b64_encoded_sct: str):
-        self.struct = json.loads(base64.b64decode(b64_encoded_sct).decode())
+class DetachedFulcioSCT(BaseModel):
+    """
+    Represents a "detached" SignedCertificateTimestamp from Fulcio.
+    """
 
-        # Pull the SCT version out of the struct and pre-validate it.
-        try:
-            self._version = Version(self.struct.get("sct_version"))
-        except ValueError as exc:
-            raise FulcioSCTError("invalid SCT version") from exc
+    version: Version = Field(..., alias="sct_version")
+    log_id: bytes = Field(..., alias="id")
+    timestamp: datetime.datetime
+    digitally_signed: bytes = Field(..., alias="signature")
+    extensions: bytes
 
-        # The "signature" here is really an RFC 5246 DigitallySigned struct;
-        # we need to decompose it further to get the actual interior signature.
-        # See: https://datatracker.ietf.org/doc/html/rfc5246#section-4.7
-        digitally_signed = base64.b64decode(self.struct["signature"])
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
 
-        # The first two bytes signify the hash and signature algorithms, respectively.
-        # We currently only accept SHA256 + ECDSA.
-        hash_algo, sig_algo = digitally_signed[0:2]
-        if (
-            hash_algo != SCTHashAlgorithm.SHA256
-            or sig_algo != SCTSignatureAlgorithm.ECDSA
-        ):
-            raise FulcioSCTError(
-                f"unexpected hash algorithm {hash_algo} or signature algorithm {sig_algo}"
-            )
+    @validator("digitally_signed", pre=True)
+    def _validate_digitally_signed(cls, v: bytes) -> bytes:
+        digitally_signed = base64.b64decode(v)
 
-        # The next two bytes are the size of the signature, big-endian.
-        # We expect this to be the remainder of the `signature` blob above, but check it anyways.
-        (sig_size,) = struct.unpack("!H", digitally_signed[2:4])
-        if len(digitally_signed[4:]) != sig_size:
-            raise FulcioSCTError(
-                f"signature size mismatch: expected {sig_size} bytes, "
-                f"got {len(digitally_signed[4:])}"
-            )
+        if len(digitally_signed) <= 4:
+            raise ValueError("impossibly small digitally-signed struct")
 
-        # Finally, extract the underlying signature.
-        self.signature: bytes = digitally_signed[4:]
+        return digitally_signed
 
-    @property
-    def version(self):
-        return self._version
+    @validator("log_id", pre=True)
+    def _validate_log_id(cls, v: bytes) -> bytes:
+        return base64.b64decode(v)
 
-    @property
-    def log_id(self) -> bytes:
-        """
-        Returns an identifier indicating which log this SCT is for.
-        """
-        # The ID from fulcio is a base64 encoded bytestring of the SHA256 hash
-        # of the public cert. Call .hex() on this when displaying.
-        return base64.b64decode(self.struct.get("id"))
-
-    @property
-    def timestamp(self) -> datetime.datetime:
-        """
-        Returns the timestamp for this SCT.
-        """
-        return datetime.datetime.fromtimestamp(self.struct["timestamp"] / 1000.0)
+    @validator("extensions", pre=True)
+    def _validate_extensions(cls, v: bytes) -> bytes:
+        return base64.b64decode(v)
 
     @property
     def entry_type(self) -> LogEntryType:
-        """
-        Returns whether this is an SCT for a certificate or pre-certificate.
-        """
         return LogEntryType.X509_CERTIFICATE
+
+    @property
+    def signature_hash_algorithm(self) -> int:
+        # TODO(ww): This should become a cryptography `Hash` subclass
+        # instance once cryptography adds this API.
+        return self.digitally_signed[0]
+
+    @property
+    def signature_algorithm(self) -> int:
+        # TODO(ww): This should become a SignatureAlgorithm variant
+        # once cryptography adds this API.
+        return self.digitally_signed[1]
+
+    @property
+    def signature(self) -> bytes:
+        (sig_size,) = struct.unpack("!H", self.digitally_signed[2:4])
+        if len(self.digitally_signed[4:]) != sig_size:
+            raise FulcioSCTError(
+                f"signature size mismatch: expected {sig_size} bytes, "
+                f"got {len(self.digitally_signed[4:])}"
+            )
+        return self.digitally_signed[4:]
+
+
+# SignedCertificateTimestamp is an ABC, so register our DetachedFulcioSCT as
+# virtual subclass.
+SignedCertificateTimestamp.register(DetachedFulcioSCT)
 
 
 @dataclass(frozen=True)
@@ -158,7 +158,7 @@ class FulcioCertificateSigningResponse:
 
     cert: Certificate
     chain: List[Certificate]
-    sct: FulcioSignedCertificateTimestamp
+    sct: DetachedFulcioSCT
 
 
 @dataclass(frozen=True)
@@ -219,8 +219,20 @@ class FulcioSigningCert(Endpoint):
             except (AttributeError, KeyError):
                 raise FulcioClientError from http_error
 
+        # The SCT header is a base64-encoded payload, which in turn
+        # is a JSON representation of the SignedCertificateTimestamp
+        # in RFC 6962 (subsec. 3.2).
+        sct_b64 = resp.headers.get("SCT")
+        if sct_b64 is None:
+            raise FulcioClientError("Fulcio response did not include a SCT header")
+
         try:
-            sct = FulcioSignedCertificateTimestamp(resp.headers["SCT"])
+            sct_json = json.loads(base64.b64decode(sct_b64).decode())
+        except ValueError as exc:
+            raise FulcioClientError from exc
+
+        try:
+            sct = DetachedFulcioSCT.parse_obj(sct_json)
         except Exception as exc:
             # Ideally we'd catch something less generic here.
             raise FulcioClientError from exc

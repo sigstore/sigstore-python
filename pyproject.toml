@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 [project]
 name = "sigstore"
@@ -46,6 +46,7 @@ Source = "https://github.com/sigstore/sigstore-python"
 
 [project.optional-dependencies]
 dev = [
+  "bandit",
   "build",
   "bump",
   "flake8",
@@ -64,15 +65,6 @@ dev = [
   "types-pyjwt",
 ]
 
-[tool.setuptools]
-packages = ["sigstore"]
-
-[tool.setuptools.dynamic]
-version = { attr = "sigstore.__version__" }
-
-[tool.setuptools.package-data]
-sigstore = ["_store/*"]
-
 [tool.isort]
 multi_line_output = 3
 known_first_party = "sigstore"
@@ -85,6 +77,26 @@ omit = ["sigstore/_cli.py"]
 [tool.interrogate]
 # don't enforce documentation coverage for packaging, testing, the virtual
 # environment, or the CLI (which is documented separately).
-exclude = ["setup.py", "env", "test", "sigstore/_cli.py", "sigstore/_version.py"]
+exclude = ["env", "test", "sigstore/_cli.py"]
 ignore-semiprivate = true
 fail-under = 100
+
+[tool.mypy]
+allow_redefinition = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+
+[tool.bandit]
+exclude_dirs = ["./test"]
