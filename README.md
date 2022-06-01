@@ -65,6 +65,10 @@ Options:
   --oidc-disable-ambient-providers
                                   Disable ambient OIDC detection (e.g. on
                                   GitHub Actions)
+  --fulcio-url URL                The Fulcio instance to use  [default:
+                                  https://fulcio.sigstore.dev]
+  --rekor-url URL                 The Rekor instance to use  [default:
+                                  https://rekor.sigstore.dev/api/v1/]
   --help                          Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->
@@ -79,6 +83,8 @@ Options:
   --cert FILENAME       [required]
   --signature FILENAME  [required]
   --cert-email TEXT
+  --rekor-url URL       The Rekor instance to use  [default:
+                        https://rekor.sigstore.dev/api/v1/]
   --help                Show this message and exit.
 ```
 <!-- @end-sigstore-verify-help@ -->
