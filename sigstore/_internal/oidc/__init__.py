@@ -18,6 +18,7 @@ import jwt
 _KNOWN_OIDC_ISSUERS = {
     "https://accounts.google.com": "email",
     "https://oauth2.sigstore.dev/auth": "email",
+    "https://oauth2.sigstage.dev/auth": "email",
     "https://token.actions.githubusercontent.com": "sub",
 }
 DEFAULT_AUDIENCE = "sigstore"
