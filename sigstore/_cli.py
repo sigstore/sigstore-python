@@ -23,6 +23,7 @@ from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import get_identity_token
+from sigstore._internal.rekor.client import DEFAULT_REKOR_URL
 from sigstore._sign import sign
 from sigstore._verify import verify
 
@@ -90,6 +91,15 @@ def main() -> None:
     show_default=True,
     help="The Fulcio instance to use",
 )
+@click.option(
+    "rekor_url",
+    "--rekor-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_REKOR_URL,
+    show_default=True,
+    help="The Rekor instance to use",
+)
 @click.argument(
     "files",
     metavar="FILE [FILE ...]",
@@ -106,6 +116,7 @@ def _sign(
     oidc_issuer: str,
     oidc_disable_ambient_providers: bool,
     fulcio_url: str,
+    rekor_url: str,
 ) -> None:
     # The order of precedence is as follows:
     #
@@ -129,6 +140,7 @@ def _sign(
     for file in files:
         result = sign(
             fulcio_url=fulcio_url,
+            rekor_url=rekor_url,
             file=file,
             identity_token=identity_token,
             ctfe_pem=ctfe_pem,
