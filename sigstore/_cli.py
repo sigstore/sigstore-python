@@ -246,13 +246,23 @@ def _sign(
 @click.option("signature_path", "--signature", type=click.File("rb"), required=True)
 @click.option("cert_email", "--cert-email", type=str)
 @click.option(
+    "staging",
+    "--staging",
+    is_flag=True,
+    default=False,
+    help=(
+        "Use the sigstore project's staging instances, "
+        "instead of the default production instances"
+    ),
+)
+@click.option(
     "rekor_url",
     "--rekor-url",
     metavar="URL",
     type=click.STRING,
     default=DEFAULT_REKOR_URL,
     show_default=True,
-    help="The Rekor instance to use",
+    help="The Rekor instance to use (conflicts with --staging)",
 )
 @click.argument(
     "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
@@ -263,7 +273,14 @@ def _verify(
     signature_path: BinaryIO,
     cert_email: Optional[str],
     rekor_url: str,
+    staging: bool,
 ) -> None:
+    # If the user has explicitly requested the staging instance,
+    # we need to override some of the CLI's defaults.
+    if staging:
+        logger.debug("sign: staging instances requested")
+        rekor_url = STAGING_REKOR_URL
+
     # Load the signing certificate
     logger.debug(f"Using certificate from: {certificate_path.name}")
     certificate = certificate_path.read()
