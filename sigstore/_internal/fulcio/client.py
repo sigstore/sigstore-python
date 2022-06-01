@@ -39,6 +39,7 @@ from cryptography.x509.certificate_transparency import (
 from pydantic import BaseModel, Field, validator
 
 DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
+STAGING_FULCIO_URL = "https://fulcio.sigstage.dev"
 SIGNING_CERT_ENDPOINT = "/api/v1/signingCert"
 ROOT_CERT_ENDPOINT = "/api/v1/rootCert"
 
