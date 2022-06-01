@@ -72,6 +72,10 @@ Options:
                                   certificate to the given file; without a
                                   value, write each signing certificate to
                                   {input}.cert
+  --fulcio-url URL                The Fulcio instance to use  [default:
+                                  https://fulcio.sigstore.dev]
+  --rekor-url URL                 The Rekor instance to use  [default:
+                                  https://rekor.sigstore.dev]
   --help                          Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->
@@ -86,6 +90,8 @@ Options:
   --cert FILENAME       [required]
   --signature FILENAME  [required]
   --cert-email TEXT
+  --rekor-url URL       The Rekor instance to use  [default:
+                        https://rekor.sigstore.dev]
   --help                Show this message and exit.
 ```
 <!-- @end-sigstore-verify-help@ -->

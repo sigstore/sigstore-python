@@ -20,9 +20,11 @@ from typing import BinaryIO, List, Optional, TextIO
 import click
 
 from sigstore import __version__
+from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import get_identity_token
+from sigstore._internal.rekor.client import DEFAULT_REKOR_URL
 from sigstore._sign import sign
 from sigstore._verify import verify
 
@@ -105,6 +107,23 @@ def main() -> None:
         "without a value, write each signing certificate to {input}.cert"
     ),
 )
+@click.option(
+    "--fulcio-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_FULCIO_URL,
+    show_default=True,
+    help="The Fulcio instance to use",
+)
+@click.option(
+    "rekor_url",
+    "--rekor-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_REKOR_URL,
+    show_default=True,
+    help="The Rekor instance to use",
+)
 @click.argument(
     "files",
     metavar="FILE [FILE ...]",
@@ -122,6 +141,8 @@ def _sign(
     oidc_disable_ambient_providers: bool,
     output_signature: Optional[str],
     output_certificate: Optional[str],
+    fulcio_url: str,
+    rekor_url: str,
 ) -> None:
     # Fail if `--output-signature` or `--output-certificate` is specified with
     # a value *and* we have more than one input. If passed without values,
@@ -157,6 +178,8 @@ def _sign(
     ctfe_pem = ctfe_pem.read()
     for file in files:
         result = sign(
+            fulcio_url=fulcio_url,
+            rekor_url=rekor_url,
             file=file,
             identity_token=identity_token,
             ctfe_pem=ctfe_pem,
@@ -193,6 +216,15 @@ def _sign(
 @click.option("certificate_path", "--cert", type=click.File("rb"), required=True)
 @click.option("signature_path", "--signature", type=click.File("rb"), required=True)
 @click.option("cert_email", "--cert-email", type=str)
+@click.option(
+    "rekor_url",
+    "--rekor-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_REKOR_URL,
+    show_default=True,
+    help="The Rekor instance to use",
+)
 @click.argument(
     "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
 )
@@ -201,6 +233,7 @@ def _verify(
     certificate_path: BinaryIO,
     signature_path: BinaryIO,
     cert_email: Optional[str],
+    rekor_url: str,
 ) -> None:
     # Load the signing certificate
     logger.debug(f"Using certificate from: {certificate_path.name}")
@@ -213,6 +246,7 @@ def _verify(
     verified = True
     for file in files:
         if verify(
+            rekor_url=rekor_url,
             file=file,
             certificate=certificate,
             signature=signature,

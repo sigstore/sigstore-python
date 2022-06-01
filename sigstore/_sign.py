@@ -54,7 +54,13 @@ class SigningResult(BaseModel):
     """
 
 
-def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
+def sign(
+    fulcio_url: str,
+    rekor_url: str,
+    file: BinaryIO,
+    identity_token: str,
+    ctfe_pem: bytes,
+) -> SigningResult:
     """Public API for signing blobs"""
 
     logger.debug(f"Using payload from: {file.name}")
@@ -66,7 +72,7 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
     public_key = private_key.public_key()
 
     logger.debug("Retrieving signed certificate...")
-    fulcio = FulcioClient()
+    fulcio = FulcioClient(fulcio_url)
 
     oidc_identity = Identity(identity_token)
 
@@ -120,7 +126,7 @@ def sign(file: BinaryIO, identity_token: str, ctfe_pem: bytes) -> SigningResult:
     b64_cert = base64.b64encode(cert.public_bytes(encoding=serialization.Encoding.PEM))
 
     # Create the transparency log entry
-    rekor = RekorClient()
+    rekor = RekorClient(rekor_url)
     entry = rekor.log.entries.post(
         b64_artifact_signature=b64_artifact_signature,
         sha256_artifact_hash=sha256_artifact_hash,
