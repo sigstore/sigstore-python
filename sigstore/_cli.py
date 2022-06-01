@@ -158,6 +158,15 @@ def _sign(
 @click.option("certificate_path", "--cert", type=click.File("rb"), required=True)
 @click.option("signature_path", "--signature", type=click.File("rb"), required=True)
 @click.option("cert_email", "--cert-email", type=str)
+@click.option(
+    "rekor_url",
+    "--rekor-url",
+    metavar="URL",
+    type=click.STRING,
+    default=DEFAULT_REKOR_URL,
+    show_default=True,
+    help="The Rekor instance to use",
+)
 @click.argument(
     "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
 )
@@ -166,6 +175,7 @@ def _verify(
     certificate_path: BinaryIO,
     signature_path: BinaryIO,
     cert_email: Optional[str],
+    rekor_url: str,
 ) -> None:
     # Load the signing certificate
     logger.debug(f"Using certificate from: {certificate_path.name}")
@@ -178,6 +188,7 @@ def _verify(
     verified = True
     for file in files:
         if verify(
+            rekor_url=rekor_url,
             file=file,
             certificate=certificate,
             signature=signature,
