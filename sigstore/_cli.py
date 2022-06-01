@@ -163,7 +163,7 @@ def _sign(
         )
 
         sig_output: TextIO
-        if multiple_inputs and output_signature == "":
+        if output_signature == "":
             sig_output = open(f"{file.name}.sig", "w")
         elif output_signature:
             sig_output = open(output_signature, "w")
@@ -171,7 +171,7 @@ def _sign(
             sig_output = sys.stdout
 
         cert_output: TextIO
-        if multiple_inputs and output_certificate == "":
+        if output_certificate == "":
             cert_output = open(f"{file.name}.crt", "w")
         elif output_certificate:
             cert_output = open(output_certificate, "w")
