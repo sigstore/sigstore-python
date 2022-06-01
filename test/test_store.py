@@ -29,11 +29,3 @@ def test_store_reads_ctfe_pub():
 
     assert lines[0].startswith("-----BEGIN PUBLIC KEY-----")
     assert lines[-1].startswith("-----END PUBLIC KEY-----")
-
-
-def test_store_reads_ctfe_staging_pub():
-    ctfe_pub = resources.read_text("sigstore._store", "ctfe.staging.pub").strip()
-    lines = ctfe_pub.split("\n")
-
-    assert lines[0].startswith("-----BEGIN RSA PUBLIC KEY-----")
-    assert lines[-1].startswith("-----END RSA PUBLIC KEY-----")

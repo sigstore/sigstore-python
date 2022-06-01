@@ -29,7 +29,6 @@ from sigstore._internal.oidc import IdentityError
 from sigstore._internal.oidc.issuer import Issuer
 
 DEFAULT_OAUTH_ISSUER = "https://oauth2.sigstore.dev/auth"
-STAGING_OAUTH_ISSUER = "https://oauth2.sigstage.dev/auth"
 
 
 AUTH_SUCCESS_HTML = """

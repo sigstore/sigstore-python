@@ -22,13 +22,11 @@ import click
 from sigstore import __version__
 from sigstore._internal.fulcio.client import (
     DEFAULT_FULCIO_URL,
-    STAGING_FULCIO_URL,
 )
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import (
     DEFAULT_OAUTH_ISSUER,
-    STAGING_OAUTH_ISSUER,
     get_identity_token,
 )
 from sigstore._sign import sign
@@ -57,7 +55,7 @@ def main() -> None:
     "--ctfe",
     type=click.File("rb"),
     default=resources.open_binary("sigstore._store", "ctfe.pub"),
-    help="A PEM-encoded public key for the CT log (conflicts with --staging)",
+    help="A PEM-encoded public key for the CT log",
 )
 @click.option(
     "oidc_client_id",
@@ -81,17 +79,7 @@ def main() -> None:
     metavar="URL",
     type=click.STRING,
     default=DEFAULT_OAUTH_ISSUER,
-    help="The custom OpenID Connect issuer to use (conflicts with --staging)",
-)
-@click.option(
-    "staging",
-    "--staging",
-    is_flag=True,
-    default=False,
-    help=(
-        "Use the sigstore project's staging instances, "
-        "instead of the default production instances"
-    ),
+    help="The custom OpenID Connect issuer to use",
 )
 @click.option(
     "oidc_disable_ambient_providers",
@@ -107,7 +95,7 @@ def main() -> None:
     type=click.STRING,
     default=DEFAULT_FULCIO_URL,
     show_default=True,
-    help="The Fulcio instance to use (conflicts with --staging)",
+    help="The Fulcio instance to use",
 )
 @click.argument(
     "files",
@@ -125,16 +113,7 @@ def _sign(
     oidc_issuer: str,
     oidc_disable_ambient_providers: bool,
     fulcio_url: str,
-    staging: bool,
 ) -> None:
-    # If the user has explicitly requested the staging instance,
-    # we need to override some of the CLI's defaults.
-    if staging:
-        logger.debug("sign: staging instances requested")
-        oidc_issuer = STAGING_OAUTH_ISSUER
-        ctfe_pem = resources.open_binary("sigstore._store", "ctfe.staging.pub")
-        fulcio_url = STAGING_FULCIO_URL
-
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
