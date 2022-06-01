@@ -28,6 +28,7 @@ import requests
 from pydantic import BaseModel, Field, validator
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
+STAGING_REKOR_URL = "https://rekor.sigstage.dev"
 
 
 @dataclass(frozen=True)
