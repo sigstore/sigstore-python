@@ -65,6 +65,13 @@ Options:
   --oidc-disable-ambient-providers
                                   Disable ambient OIDC detection (e.g. on
                                   GitHub Actions)
+  --output-signature FILE         With a value, write a single signature to
+                                  the given file; without a value, write each
+                                  signing result to {input}.sig
+  --output-certificate FILE       With a value, write a single signing
+                                  certificate to the given file; without a
+                                  value, write each signing certificate to
+                                  {input}.cert
   --fulcio-url URL                The Fulcio instance to use  [default:
                                   https://fulcio.sigstore.dev]
   --rekor-url URL                 The Rekor instance to use  [default:

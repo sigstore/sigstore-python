@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import logging
+import sys
 from importlib import resources
-from typing import BinaryIO, List, Optional
+from typing import BinaryIO, List, Optional, TextIO
 
 import click
 
@@ -83,7 +84,30 @@ def main() -> None:
     help="Disable ambient OIDC detection (e.g. on GitHub Actions)",
 )
 @click.option(
-    "fulcio_url",
+    "output_signature",
+    "--output-signature",
+    is_flag=False,
+    flag_value=str(),
+    metavar="FILE",
+    type=click.STRING,
+    help=(
+        "With a value, write a single signature to the given file; "
+        "without a value, write each signing result to {input}.sig"
+    ),
+)
+@click.option(
+    "output_certificate",
+    "--output-certificate",
+    is_flag=False,
+    flag_value=str(),
+    metavar="FILE",
+    type=click.STRING,
+    help=(
+        "With a value, write a single signing certificate to the given file; "
+        "without a value, write each signing certificate to {input}.cert"
+    ),
+)
+@click.option(
     "--fulcio-url",
     metavar="URL",
     type=click.STRING,
@@ -115,9 +139,24 @@ def _sign(
     oidc_client_secret: str,
     oidc_issuer: str,
     oidc_disable_ambient_providers: bool,
+    output_signature: Optional[str],
+    output_certificate: Optional[str],
     fulcio_url: str,
     rekor_url: str,
 ) -> None:
+    # Fail if `--output-signature` or `--output-certificate` is specified with
+    # a value *and* we have more than one input. If passed without values,
+    # then treat them as an instruction to generate default {input}.sig and
+    # {input}.cert outputs for each {input}.
+    multiple_inputs = len(files) > 1
+    if (output_signature or output_certificate) and multiple_inputs:
+        click.echo(
+            "Error: --output-signature and --output-certificate can't be used with "
+            "explicit outputs for multiple inputs",
+            err=True,
+        )
+        raise click.Abort
+
     # The order of precedence is as follows:
     #
     # 1) Explicitly supplied identity token
@@ -148,10 +187,29 @@ def _sign(
 
         click.echo("Using ephemeral certificate:")
         click.echo(result.cert_pem)
+
         click.echo(
             f"Transparency log entry created at index: {result.log_entry.log_index}"
         )
-        click.echo(f"Signature: {result.b64_signature}")
+
+        sig_output: TextIO
+        if output_signature is None:
+            sig_output = sys.stdout
+        else:
+            if output_signature == "":
+                output_signature = f"{file.name}.sig"
+            sig_output = open(output_signature, "w")
+
+        print(result.b64_signature, file=sig_output)
+        if output_signature:
+            click.echo(f"Signature written to file {output_signature}")
+
+        if output_certificate is not None:
+            if output_certificate == "":
+                output_certificate = f"{file.name}.crt"
+            cert_output = open(output_certificate, "w")
+            print(result.cert_pem, file=cert_output)
+            click.echo(f"Certificate written to file {output_certificate}")
 
 
 @main.command("verify")
