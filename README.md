@@ -65,6 +65,13 @@ Options:
   --oidc-disable-ambient-providers
                                   Disable ambient OIDC detection (e.g. on
                                   GitHub Actions)
+  --output-signature FILE         With a value, write a single signature to
+                                  the given file; without a value, write each
+                                  signing result to {input}.sig
+  --output-certificate FILE       With a value, write a single signing
+                                  certificate to the given file; without a
+                                  value, write each signing certificate to
+                                  {input}.cert
   --help                          Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->
