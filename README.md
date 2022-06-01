@@ -68,7 +68,7 @@ Options:
   --fulcio-url URL                The Fulcio instance to use  [default:
                                   https://fulcio.sigstore.dev]
   --rekor-url URL                 The Rekor instance to use  [default:
-                                  https://rekor.sigstore.dev/api/v1/]
+                                  https://rekor.sigstore.dev]
   --help                          Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->
@@ -84,7 +84,7 @@ Options:
   --signature FILENAME  [required]
   --cert-email TEXT
   --rekor-url URL       The Rekor instance to use  [default:
-                        https://rekor.sigstore.dev/api/v1/]
+                        https://rekor.sigstore.dev]
   --help                Show this message and exit.
 ```
 <!-- @end-sigstore-verify-help@ -->
