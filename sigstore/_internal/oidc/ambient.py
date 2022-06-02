@@ -169,9 +169,10 @@ def detect_gcp() -> Optional[str]:
             return None
 
         if name not in {"Google", "Google Compute Engine"}:
-            raise AmbientCredentialError(
+            logger.debug(
                 f"GCP: product name file exists, but product name is {name!r}; giving up"
             )
+            return None
 
         logger.debug("GCP: requesting OIDC token")
         resp = requests.get(

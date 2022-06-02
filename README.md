@@ -58,13 +58,31 @@ Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 Options:
   --identity-token TOKEN          the OIDC identity token to use
   --ctfe FILENAME                 A PEM-encoded public key for the CT log
+                                  (conflicts with --staging)
   --oidc-client-id ID             The custom OpenID Connect client ID to use
   --oidc-client-secret SECRET     The custom OpenID Connect client secret to
                                   use
   --oidc-issuer URL               The custom OpenID Connect issuer to use
+                                  (conflicts with --staging)
+  --staging                       Use the sigstore project's staging
+                                  instances, instead of the default production
+                                  instances
   --oidc-disable-ambient-providers
                                   Disable ambient OIDC detection (e.g. on
                                   GitHub Actions)
+  --output-signature FILE         With a value, write a single signature to
+                                  the given file; without a value, write each
+                                  signing result to {input}.sig
+  --output-certificate FILE       With a value, write a single signing
+                                  certificate to the given file; without a
+                                  value, write each signing certificate to
+                                  {input}.cert
+  --fulcio-url URL                The Fulcio instance to use (conflicts with
+                                  --staging)  [default:
+                                  https://fulcio.sigstore.dev]
+  --rekor-url URL                 The Rekor instance to use (conflicts with
+                                  --staging)  [default:
+                                  https://rekor.sigstore.dev]
   --help                          Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->
@@ -79,6 +97,10 @@ Options:
   --cert FILENAME       [required]
   --signature FILENAME  [required]
   --cert-email TEXT
+  --staging             Use the sigstore project's staging instances, instead
+                        of the default production instances
+  --rekor-url URL       The Rekor instance to use (conflicts with --staging)
+                        [default: https://rekor.sigstore.dev]
   --help                Show this message and exit.
 ```
 <!-- @end-sigstore-verify-help@ -->

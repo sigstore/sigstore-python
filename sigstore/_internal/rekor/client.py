@@ -27,7 +27,8 @@ from urllib.parse import urljoin
 import requests
 from pydantic import BaseModel, Field, validator
 
-DEFAULT_REKOR_URL = "https://rekor.sigstore.dev/api/v1/"
+DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
+STAGING_REKOR_URL = "https://rekor.sigstage.dev"
 
 
 @dataclass(frozen=True)
@@ -180,7 +181,7 @@ class RekorClient:
     """The internal Rekor client"""
 
     def __init__(self, url: str = DEFAULT_REKOR_URL) -> None:
-        self.url = url
+        self.url = urljoin(url, "api/v1/")
         self.session = requests.Session()
         self.session.headers.update(
             {"Content-Type": "application/json", "Accept": "application/json"}
