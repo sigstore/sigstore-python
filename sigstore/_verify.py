@@ -91,6 +91,8 @@ def verify(
 
     `cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
 
+    `cert_oidc_issuer` is the expected Organization Name of the issuer of `certificate`.
+
     Returns a `VerificationResult` which will be truthy or falsey depending on
     success.
     """
