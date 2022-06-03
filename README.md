@@ -102,10 +102,14 @@ Verifying:
 Usage: sigstore verify [OPTIONS] FILE [FILE ...]
 
 Options:
-  --cert FILENAME          [required]
-  --signature FILENAME     [required]
-  --cert-email TEXT
-  --cert-oidc-issuer TEXT
+  --cert FILENAME          The PEM-encoded certificate to verify against
+                           [required]
+  --signature FILENAME     The signature to verify against  [required]
+  --cert-email TEXT        The email address (or other identity string) to
+                           check for in the certificate's Subject Alternative
+                           Name
+  --cert-oidc-issuer TEXT  The OIDC issuer URL to check for in the
+                           certificate's OIDC issuer extension
   --staging                Use the sigstore project's staging instances,
                            instead of the default production instances
   --rekor-url URL          The Rekor instance to use (conflicts with
