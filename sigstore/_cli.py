@@ -280,12 +280,6 @@ def _verify(
     rekor_url: str,
     staging: bool,
 ) -> None:
-    if cert_email and not cert_oidc_issuer:
-        click.echo(
-            "--cert-oidc-issuer is required if --cert-email is provided", err=True
-        )
-        raise click.Abort
-
     # If the user has explicitly requested the staging instance,
     # we need to override some of the CLI's defaults.
     if staging:
