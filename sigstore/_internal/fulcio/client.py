@@ -30,9 +30,9 @@ from urllib.parse import urljoin
 import pem
 import requests
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
     Certificate,
+    CertificateSigningRequest,
     ExtensionNotFound,
     PrecertificateSignedCertificateTimestamps,
     load_pem_x509_certificate,
@@ -149,28 +149,6 @@ SignedCertificateTimestamp.register(DetachedFulcioSCT)
 
 
 @dataclass(frozen=True)
-class FulcioCertificateSigningRequest:
-    """Certificate request"""
-
-    public_key: ec.EllipticCurvePublicKey
-    signed_proof: bytes
-
-    @property
-    def data(self) -> str:
-        content = self.public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        )
-        data = {
-            "publicKey": {
-                "content": base64.b64encode(content).decode(),
-            },
-            "signedEmailAddress": base64.b64encode(self.signed_proof).decode(),
-        }
-        return json.dumps(data)
-
-
-@dataclass(frozen=True)
 class FulcioCertificateSigningResponse:
     """Certificate response"""
 
@@ -198,20 +176,22 @@ class Endpoint(ABC):
         self.session = session
 
 
+def _serialize_cert_request(req: CertificateSigningRequest) -> str:
+    data = {
+        "certificateSigningRequest": base64.b64encode(
+            req.public_bytes(serialization.Encoding.PEM)
+        ).decode()
+    }
+    return json.dumps(data)
+
+
 class FulcioSigningCert(Endpoint):
     def post(
-        self, req: FulcioCertificateSigningRequest, token: str
+        self, req: CertificateSigningRequest, token: str
     ) -> FulcioCertificateSigningResponse:
         """
-        Get the signing certificate.
-
-        Ideally, in the future, this could take an X.509 Certificate Signing
-        Request object instead [^1], but the Fulcio API doesn't currently
-        support this [^2].
-
-        [^1]: https://cryptography.io/en/latest/x509/reference/#x-509-csr-certificate-signing-request-object  # noqa
-        [^2]: https://github.com/sigstore/fulcio/issues/503
-
+        Get the signing certificate, using an X.509 Certificate
+        Signing Request.
         """
         headers = {
             "Authorization": f"Bearer {token}",
@@ -219,7 +199,7 @@ class FulcioSigningCert(Endpoint):
             "Accept": "application/pem-certificate-chain",
         }
         resp: requests.Response = self.session.post(
-            url=self.url, data=req.data, headers=headers
+            url=self.url, data=_serialize_cert_request(req), headers=headers
         )
         try:
             resp.raise_for_status()
