@@ -29,9 +29,9 @@ from sigstore._internal import sct
     "precert_bytes",
     [
         b"tbs",
-        # b"x" * 255,
-        # b"x" * 1024,
-        # b"x" * 16777215,
+        b"x" * 255,
+        b"x" * 1024,
+        b"x" * 16777215,
     ],
 )
 def test_pack_digitally_signed(precert_bytes):

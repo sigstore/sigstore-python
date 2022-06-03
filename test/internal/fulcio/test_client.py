@@ -62,7 +62,7 @@ class TestDetachedFulcioSCT:
         # Computed fields are also correct.
         assert sct.entry_type == LogEntryType.X509_CERTIFICATE
 
-        # TODO(ww): Re-enable once cryptography 38 is released.
+        # HACK(#84): Re-enable once cryptography 38 is released.
         # assert type(sct.signature_hash_algorithm) is hashes.SHA256
         # assert sct.signature_algorithm == SignatureAlgorithm.ANONYMOUS
         # assert sct.signature == sct.digitally_signed[4:] == b"abcd"
