@@ -37,7 +37,7 @@ from cryptography.x509 import (
     PrecertificateSignedCertificateTimestamps,
     load_pem_x509_certificate,
 )
-from cryptography.x509.certificate_transparency import (  # SignatureAlgorithm,
+from cryptography.x509.certificate_transparency import (
     LogEntryType,
     SignedCertificateTimestamp,
     Version,
@@ -128,6 +128,8 @@ class DetachedFulcioSCT(BaseModel):
 
     @property
     def signature_algorithm(self) -> int:
+        # TODO(ww): This method will need to return a SignatureAlgorithm
+        # variant instead, for consistency with cryptography's interface.
         return self.digitally_signed[1]
 
     @property
