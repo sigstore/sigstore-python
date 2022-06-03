@@ -248,6 +248,7 @@ def _sign(
 @click.option("certificate_path", "--cert", type=click.File("rb"), required=True)
 @click.option("signature_path", "--signature", type=click.File("rb"), required=True)
 @click.option("cert_email", "--cert-email", type=str)
+@click.option("cert_oidc_issuer", "--cert-oidc-issuer", type=str)
 @click.option(
     "staging",
     "--staging",
@@ -275,9 +276,16 @@ def _verify(
     certificate_path: BinaryIO,
     signature_path: BinaryIO,
     cert_email: Optional[str],
+    cert_oidc_issuer: Optional[str],
     rekor_url: str,
     staging: bool,
 ) -> None:
+    if cert_email and not cert_oidc_issuer:
+        click.echo(
+            "--cert-oidc-issuer is required if --cert-email is provided", err=True
+        )
+        raise click.Abort
+
     # If the user has explicitly requested the staging instance,
     # we need to override some of the CLI's defaults.
     if staging:
@@ -300,6 +308,7 @@ def _verify(
             certificate=certificate,
             signature=signature,
             cert_email=cert_email,
+            cert_oidc_issuer=cert_oidc_issuer,
         ):
             click.echo(f"OK: {file.name}")
         else:

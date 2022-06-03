@@ -26,6 +26,7 @@ from typing import BinaryIO, Optional, cast
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
+    OID_ORGANIZATION_NAME,
     ExtendedKeyUsage,
     KeyUsage,
     RFC822Name,
@@ -78,6 +79,7 @@ def verify(
     certificate: bytes,
     signature: bytes,
     cert_email: Optional[str] = None,
+    cert_oidc_issuer: Optional[str] = None,
 ) -> VerificationResult:
     """Public API for verifying files.
 
@@ -153,6 +155,17 @@ def verify(
         if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
             return VerificationFailure(
                 reason=f"Subject name does not contain identity: {cert_email}"
+            )
+
+    if cert_oidc_issuer is not None:
+        issuers = [
+            issuer.value
+            for issuer in cert.issuer.get_attributes_for_oid(OID_ORGANIZATION_NAME)
+        ]
+        if cert_oidc_issuer not in issuers:
+            return VerificationFailure(
+                reason="Issuer organization name does not contain expected name: "
+                f"{cert_oidc_issuer}"
             )
 
     logger.debug("Successfully verified signing certificate validity...")
