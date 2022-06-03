@@ -20,9 +20,9 @@ import hashlib
 import logging
 import struct
 from datetime import timezone
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
-# import cryptography.hazmat.primitives.asymmetric.padding as padding
+import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -41,6 +41,11 @@ logger = logging.getLogger(__name__)
 # TODO(ww): Replace with this import when cryptography 38 is released.
 # from cryptography.x509.oid import ExtendedKeyUsageOID
 _CERTIFICATE_TRANSPARENCY = ObjectIdentifier("1.3.6.1.4.1.11129.2.4.4")
+
+# TODO(ww): Remove these once cryptography 38 is released.
+_HASH_ALGORITHM_SHA256 = 4
+_SIG_ALGORITHM_RSA = 1
+_SIG_ALGORITHM_ECDSA = 3
 
 
 def _make_tbs_precertificate_bytes(cert: Certificate) -> bytes:
@@ -67,48 +72,64 @@ def _make_tbs_precertificate_bytes(cert: Certificate) -> bytes:
         return asn1_encode(tbs_cert)  # type: ignore[no-any-return]
 
 
-def _sct_signature(sct: SignedCertificateTimestamp, raw_sct: Optional[bytes]) -> bytes:
+def _sct_properties(
+    sct: SignedCertificateTimestamp, raw_sct: Optional[bytes]
+) -> Tuple[hashes.HashAlgorithm, int, bytes]:
     if hasattr(sct, "signature"):
-        return sct.signature  # type: ignore[attr-defined, no-any-return]
-    else:
-        if not raw_sct:
-            raise InvalidSctError("API misuse: missing raw SCT")
+        return (
+            sct.hash_algorithm,  # type: ignore[attr-defined]
+            sct.signature_algorithm.value,  # type: ignore[attr-defined]
+            sct.signature,  # type: ignore[attr-defined]
+        )
 
-        # YOLO: A raw SCT looks like this:
-        #
-        #   u8     Version
-        #   u8[32] LogID
-        #   u64    Timestamp
-        #   opaque CtExtensions<0..2^16-1>
-        #   digitally-signed struct { ... }
-        #
-        # The last component contains the signature, in RFC5246's
-        # digitally-signed format, which looks like this:
-        #
-        #   u8 Hash
-        #   u8 Signature
-        #   opaque signature<0..2^16-1>
+    if not raw_sct:
+        raise InvalidSctError("API misuse: missing raw SCT")
 
-        def _opaque16(value: bytes) -> bytes:
-            # invariant: there have to be at least two bytes, for the length.
-            if len(value) < 2:
-                raise InvalidSctError("malformed TLS encoding in SCT (length)")
+    return _raw_sct_properties(raw_sct)
 
-            (length,) = struct.unpack("!H", value[0:2])
 
-            if length != len(value[2:]):
-                raise InvalidSctError("malformed TLS encoding in SCT (payload)")
+def _raw_sct_properties(raw_sct: bytes) -> Tuple[hashes.HashAlgorithm, int, bytes]:
+    # YOLO: A raw SCT looks like this:
+    #
+    #   u8     Version
+    #   u8[32] LogID
+    #   u64    Timestamp
+    #   opaque CtExtensions<0..2^16-1>
+    #   digitally-signed struct { ... }
+    #
+    # The last component contains the signature, in RFC5246's
+    # digitally-signed format, which looks like this:
+    #
+    #   u8 Hash
+    #   u8 Signature
+    #   opaque signature<0..2^16-1>
 
-            return value[2:]
+    def _opaque16(value: bytes) -> bytes:
+        # invariant: there have to be at least two bytes, for the length.
+        if len(value) < 2:
+            raise InvalidSctError("malformed TLS encoding in SCT (length)")
 
-        # 43 = sizeof(Version) + sizeof(LogID) + sizeof(Timestamp) + sizeof(opauque CtExtensions),
-        # the latter being assumed to be just two (length + zero payload).
-        digitally_signed_offset = 43
-        digitally_signed = raw_sct[digitally_signed_offset:]
+        (length,) = struct.unpack("!H", value[0:2])
 
-        # 2 = sizeof(Hash) + sizeof(Algorithm)
-        signature = _opaque16(digitally_signed[2:])
-        return signature
+        if length != len(value[2:]):
+            raise InvalidSctError("malformed TLS encoding in SCT (payload)")
+
+        return value[2:]
+
+    # 43 = sizeof(Version) + sizeof(LogID) + sizeof(Timestamp) + sizeof(opauque CtExtensions),
+    # the latter being assumed to be just two (length + zero payload).
+    digitally_signed_offset = 43
+    digitally_signed = raw_sct[digitally_signed_offset:]
+
+    hash_algorithm = digitally_signed[0]
+    signature_algorithm = digitally_signed[1]
+    signature = _opaque16(digitally_signed[2:])
+
+    if hash_algorithm != _HASH_ALGORITHM_SHA256:
+        raise InvalidSctError(
+            f"invalid hash algorithm ({hash_algorithm}, expected {_HASH_ALGORITHM_SHA256})"
+        )
+    return (hashes.SHA256(), signature_algorithm, signature)
 
 
 def _sct_extension_bytes(sct: SignedCertificateTimestamp) -> bytes:
@@ -249,40 +270,37 @@ def verify_sct(
 
     digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_hash)
 
-    # if not isinstance(sct.signature_hash_algorithm, hashes.SHA256):
-    #     raise InvalidSctError(
-    #         "Found unexpected hash algorithm in SCT: only SHA256 is supported"
-    #     )
+    hash_algorithm, signature_algorithm, signature = _sct_properties(sct, raw_sct)
 
-    try:
-        # YOLO
-        ctfe_key.verify(
-            signature=_sct_signature(sct, raw_sct),
-            data=digitally_signed,
-            signature_algorithm=ec.ECDSA(hashes.SHA256()),
+    # TODO(ww): Replace when cryptography 38 is released.
+    if not isinstance(hash_algorithm, hashes.SHA256):
+        raise InvalidSctError(
+            "Found unexpected hash algorithm in SCT: only SHA256 is supported "
+            f"(expected {_HASH_ALGORITHM_SHA256}, got {hash_algorithm})"
         )
 
-        # if sct.signature_algorithm == SignatureAlgorithm.RSA and isinstance(
-        #     ctfe_key, rsa.RSAPublicKey
-        # ):
-        #     ctfe_key.verify(
-        #         signature=sct.signature,
-        #         data=digitally_signed,
-        #         padding=padding.PKCS1v15(),
-        #         algorithm=hashes.SHA256(),
-        #     )
-        # elif sct.signature_algorithm == SignatureAlgorithm.ECDSA and isinstance(
-        #     ctfe_key, ec.EllipticCurvePublicKey
-        # ):
-        #     ctfe_key.verify(
-        #         signature=sct.signature,
-        #         data=digitally_signed,
-        #         signature_algorithm=ec.ECDSA(hashes.SHA256()),
-        #     )
-        # else:
-        #     raise InvalidSctError(
-        #         "Found unexpected signature type in SCT: signature type of"
-        #         f"{sct.signature_algorithm} and CTFE key type of {type(ctfe_key)}"
-        #     )
+    try:
+        if signature_algorithm == _SIG_ALGORITHM_RSA and isinstance(
+            ctfe_key, rsa.RSAPublicKey
+        ):
+            ctfe_key.verify(
+                signature=signature,
+                data=digitally_signed,
+                padding=padding.PKCS1v15(),
+                algorithm=hashes.SHA256(),
+            )
+        elif signature_algorithm == _SIG_ALGORITHM_ECDSA and isinstance(
+            ctfe_key, ec.EllipticCurvePublicKey
+        ):
+            ctfe_key.verify(
+                signature=signature,
+                data=digitally_signed,
+                signature_algorithm=ec.ECDSA(hashes.SHA256()),
+            )
+        else:
+            raise InvalidSctError(
+                "Found unexpected signature type in SCT: signature type of"
+                f"{signature_algorithm} and CTFE key type of {type(ctfe_key)}"
+            )
     except InvalidSignature as inval_sig:
         raise InvalidSctError from inval_sig
