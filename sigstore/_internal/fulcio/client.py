@@ -126,9 +126,9 @@ class DetachedFulcioSCT(BaseModel):
         hash_ = SCTHashAlgorithm(self.digitally_signed[0])
         return hash_.to_cryptography()
 
-    # @property
-    # def signature_algorithm(self) -> SignatureAlgorithm:
-    #     return SignatureAlgorithm(self.digitally_signed[1])
+    @property
+    def signature_algorithm(self) -> int:
+        return self.digitally_signed[1]
 
     @property
     def signature(self) -> bytes:

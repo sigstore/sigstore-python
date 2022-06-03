@@ -78,7 +78,7 @@ def _sct_properties(
     if hasattr(sct, "signature"):
         return (
             sct.hash_algorithm,  # type: ignore[attr-defined]
-            sct.signature_algorithm.value,  # type: ignore[attr-defined]
+            sct.signature_algorithm,  # type: ignore[attr-defined]
             sct.signature,  # type: ignore[attr-defined]
         )
 
