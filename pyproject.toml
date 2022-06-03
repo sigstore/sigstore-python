@@ -33,7 +33,7 @@ dependencies = [
   "pyOpenSSL",
   "requests",
   "securesystemslib",
-  # TODO(ww): Remove when cryptography 38 is released an constrained above.
+  # HACK(#84): Remove these dependencies.
   "pyasn1",
   "pyasn1-modules",
 ]

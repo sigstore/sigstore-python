@@ -177,7 +177,7 @@ class FulcioCertificateSigningResponse:
     cert: Certificate
     chain: List[Certificate]
     sct: SignedCertificateTimestamp
-    # TODO(ww): Remove when cryptography 38 is released.
+    # HACK(#84): Remove entirely.
     raw_sct: Optional[bytes]
 
 
@@ -250,6 +250,7 @@ class FulcioSigningCert(Endpoint):
                     f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
                 )
 
+            # HACK(#84): Remove entirely.
             # HACK: Until cryptography is released, we don't have direct access
             # to each SCT's internals (signature, extensions, etc.)
             # Instead, we do something really nasty here: we decode the ASN.1,
@@ -301,6 +302,7 @@ class FulcioSigningCert(Endpoint):
                 # Ideally we'd catch something less generic here.
                 raise FulcioClientError from exc
 
+            # HACK(#84): Remove entirely.
             # The terrible hack above doesn't apply to detached SCTs.
             raw_sct = None
 

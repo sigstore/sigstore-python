@@ -38,16 +38,17 @@ from pyasn1_modules import rfc5280
 
 logger = logging.getLogger(__name__)
 
-# TODO(ww): Replace with this import when cryptography 38 is released.
+# HACK(#84): Replace with the import below.
 # from cryptography.x509.oid import ExtendedKeyUsageOID
 _CERTIFICATE_TRANSPARENCY = ObjectIdentifier("1.3.6.1.4.1.11129.2.4.4")
 
-# TODO(ww): Remove these once cryptography 38 is released.
+# HACK(#84): Remove entirely.
 _HASH_ALGORITHM_SHA256 = 4
 _SIG_ALGORITHM_RSA = 1
 _SIG_ALGORITHM_ECDSA = 3
 
 
+# HACK(#84): Remove entirely.
 def _make_tbs_precertificate_bytes(cert: Certificate) -> bytes:
     if hasattr(cert, "tbs_precertificate_bytes"):
         # NOTE(ww): cryptography 38, which is unreleased, will contain this API.
@@ -72,6 +73,7 @@ def _make_tbs_precertificate_bytes(cert: Certificate) -> bytes:
         return asn1_encode(tbs_cert)  # type: ignore[no-any-return]
 
 
+# HACK(#84): Remove entirely.
 def _sct_properties(
     sct: SignedCertificateTimestamp, raw_sct: Optional[bytes]
 ) -> Tuple[hashes.HashAlgorithm, int, bytes]:
@@ -88,6 +90,7 @@ def _sct_properties(
     return _raw_sct_properties(raw_sct)
 
 
+# HACK(#84): Remove entirely.
 def _raw_sct_properties(raw_sct: bytes) -> Tuple[hashes.HashAlgorithm, int, bytes]:
     # YOLO: A raw SCT looks like this:
     #
@@ -132,6 +135,7 @@ def _raw_sct_properties(raw_sct: bytes) -> Tuple[hashes.HashAlgorithm, int, byte
     return (hashes.SHA256(), signature_algorithm, signature)
 
 
+# HACK(#84): Remove entirely.
 def _sct_extension_bytes(sct: SignedCertificateTimestamp) -> bytes:
     if hasattr(sct, "extension_bytes"):
         return sct.extension_bytes  # type: ignore[attr-defined, no-any-return]
@@ -196,6 +200,7 @@ def _pack_digitally_signed(
 
     # No extensions are currently specified, so we treat the presence
     # of any extension bytes as suspicious.
+    # HACK(#84): Replace with `sct.extension_bytes`
     if len(_sct_extension_bytes(sct)) != 0:
         raise InvalidSctError("Unexpected trailing extension bytes")
 
@@ -216,6 +221,7 @@ def _pack_digitally_signed(
         int(timestamp.timestamp() * 1000),  # timestamp (milliseconds)
         sct.entry_type.value,               # entry_type (x509_entry(0) | precert_entry(1))
         signed_entry,                       # select(entry_type) -> signed_entry (see above)
+        # HACK(#84): Replace with `sct.extension_bytes`
         len(_sct_extension_bytes(sct)),     # extensions (opaque CtExtensions<0..2^16-1>)
     )
     # fmt: on
@@ -226,7 +232,7 @@ def _pack_digitally_signed(
 def _is_preissuer(issuer: Certificate) -> bool:
     ext_key_usage = issuer.extensions.get_extension_for_class(ExtendedKeyUsage)
 
-    # TODO(ww): Replace when cryptography 38 is released.
+    # HACK(#84): Replace with the line below.
     # return ExtendedKeyUsageOID.CERTIFICATE_TRANSPARENCY in ext_key_usage.value
     return _CERTIFICATE_TRANSPARENCY in ext_key_usage.value
 
@@ -272,7 +278,7 @@ def verify_sct(
 
     hash_algorithm, signature_algorithm, signature = _sct_properties(sct, raw_sct)
 
-    # TODO(ww): Replace when cryptography 38 is released.
+    # HACK(#84): Refactor.
     if not isinstance(hash_algorithm, hashes.SHA256):
         raise InvalidSctError(
             "Found unexpected hash algorithm in SCT: only SHA256 is supported "
@@ -280,6 +286,7 @@ def verify_sct(
         )
 
     try:
+        # HACK(#84): Replace with `sct.signature_algorithm`
         if signature_algorithm == _SIG_ALGORITHM_RSA and isinstance(
             ctfe_key, rsa.RSAPublicKey
         ):
@@ -289,6 +296,7 @@ def verify_sct(
                 padding=padding.PKCS1v15(),
                 algorithm=hashes.SHA256(),
             )
+        # HACK(#84): Replace with `sct.signature_algorithm`
         elif signature_algorithm == _SIG_ALGORITHM_ECDSA and isinstance(
             ctfe_key, ec.EllipticCurvePublicKey
         ):

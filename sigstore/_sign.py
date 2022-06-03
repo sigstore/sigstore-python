@@ -115,6 +115,7 @@ def sign(
     chain = certificate_response.chain
     ctfe_key = load_pem_public_key(ctfe_pem)
 
+    # HACK(#84): Remove the last parameter here.
     verify_sct(sct, cert, chain, ctfe_key, certificate_response.raw_sct)
 
     logger.debug("Successfully verified SCT...")
