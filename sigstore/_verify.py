@@ -26,9 +26,10 @@ from typing import BinaryIO, Optional, cast
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
-    OID_ORGANIZATION_NAME,
     ExtendedKeyUsage,
+    ExtensionNotFound,
     KeyUsage,
+    ObjectIdentifier,
     RFC822Name,
     SubjectAlternativeName,
     load_pem_x509_certificate,
@@ -61,9 +62,14 @@ FULCIO_INTERMEDIATE_CERT = resources.read_binary(
     "sigstore._store", "fulcio_intermediate.crt.pem"
 )
 
+_OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
+
 
 class VerificationResult(BaseModel):
     success: bool
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __bool__(self) -> bool:
         return self.success
@@ -78,13 +84,17 @@ class VerificationFailure(VerificationResult):
     reason: str
 
 
+class CertificateVerificationFailure(VerificationFailure):
+    exception: Exception
+
+
 def verify(
     rekor_url: str,
     file: BinaryIO,
     certificate: bytes,
     signature: bytes,
-    cert_email: Optional[str] = None,
-    cert_oidc_issuer: Optional[str] = None,
+    expected_cert_email: Optional[str] = None,
+    expected_cert_oidc_issuer: Optional[str] = None,
 ) -> VerificationResult:
     """Public API for verifying files.
 
@@ -94,9 +104,9 @@ def verify(
 
     `signature` is a base64-encoded signature for `file`.
 
-    `cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
+    `expected_cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
 
-    `cert_oidc_issuer` is the expected Organization Name of the issuer of `certificate`.
+    `expected_cert_oidc_issuer` is the expected Organization Name of the issuer of `certificate`.
 
     Returns a `VerificationResult` which will be truthy or falsey depending on
     success.
@@ -142,9 +152,9 @@ def verify(
     try:
         store_ctx.verify_certificate()
     except X509StoreContextError as store_ctx_error:
-        return VerificationFailure(
-            reason="Failed to verify signing certificate, consider upgrading `sigstore` if a newer "
-            f"version is available: {store_ctx_error}"
+        return CertificateVerificationFailure(
+            reason="Failed to verify signing certificate",
+            exception=store_ctx_error,
         )
 
     # 2) Check that the signing certificate contains the proof claim as the subject
@@ -162,23 +172,27 @@ def verify(
             reason="Extended usage does not contain `code signing`"
         )
 
-    if cert_email is not None:
+    if expected_cert_email is not None:
         # Check that SubjectAlternativeName contains signer identity
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-        if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
+        if expected_cert_email not in san_ext.value.get_values_for_type(RFC822Name):
             return VerificationFailure(
-                reason=f"Subject name does not contain identity: {cert_email}"
+                reason=f"Subject name does not contain identity: {expected_cert_email}"
             )
 
-    if cert_oidc_issuer is not None:
-        issuers = [
-            issuer.value
-            for issuer in cert.issuer.get_attributes_for_oid(OID_ORGANIZATION_NAME)
-        ]
-        if cert_oidc_issuer not in issuers:
+    if expected_cert_oidc_issuer is not None:
+        # Check that the OIDC issuer extension is present, and contains the expected
+        # issuer string (which is probably a URL).
+        try:
+            oidc_issuer = cert.extensions.get_extension_for_oid(_OIDC_ISSUER_OID).value
+        except ExtensionNotFound:
             return VerificationFailure(
-                reason="Issuer organization name does not contain expected name: "
-                f"{cert_oidc_issuer}"
+                reason="Certificate does not contain OIDC issuer extension"
+            )
+
+        if oidc_issuer.value != expected_cert_oidc_issuer.encode():
+            return VerificationFailure(
+                reason=f"Certificate's OIDC issuer does not match (got {oidc_issuer.value})"
             )
 
     logger.debug("Successfully verified signing certificate validity...")

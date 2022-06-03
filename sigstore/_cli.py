@@ -16,6 +16,7 @@ import logging
 import os
 import sys
 from importlib import resources
+from textwrap import dedent
 from typing import BinaryIO, List, Optional, TextIO, cast
 
 import click
@@ -37,7 +38,11 @@ from sigstore._internal.rekor.client import (
     STAGING_REKOR_URL,
 )
 from sigstore._sign import sign
-from sigstore._verify import VerificationFailure, verify
+from sigstore._verify import (
+    CertificateVerificationFailure,
+    VerificationFailure,
+    verify,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
@@ -328,16 +333,41 @@ def _verify(
             file=file,
             certificate=certificate,
             signature=signature,
-            cert_email=cert_email,
-            cert_oidc_issuer=cert_oidc_issuer,
+            expected_cert_email=cert_email,
+            expected_cert_oidc_issuer=cert_oidc_issuer,
         )
 
         if result:
             click.echo(f"OK: {file.name}")
         else:
-            failure = cast(VerificationFailure, result)
-            click.echo(failure.reason)
+            result = cast(VerificationFailure, result)
             click.echo(f"FAIL: {file.name}")
+
+            if isinstance(result, CertificateVerificationFailure):
+                # If certificate verification failed, it's either because of
+                # a chain issue or some outdated state in sigstore itself.
+                # These might already be resolved in a newer version, so
+                # we suggest that users try to upgrade and retry before
+                # anything else.
+                click.echo(result.reason, err=True)
+                click.echo(
+                    dedent(
+                        f"""
+                        This may be a result of an outdated `sigstore` installation.
+
+                        Consider upgrading with:
+
+                            python -m pip install --upgrade sigstore
+
+                        Additional context:
+
+                        {result.exception}
+                        """
+                    ),
+                    err=True,
+                )
+            else:
+                click.echo(result.reason, err=True)
             verified = False
 
     if not verified:
