@@ -55,7 +55,7 @@ lint:
 .PHONY: test
 test:
 	. env/bin/activate && \
-		pytest --cov=$(PY_MODULE) test/ $(TEST_ARGS) && \
+		pytest --cov=$(PY_MODULE) test/ $(T) $(TEST_ARGS) && \
 		python -m coverage report -m $(COV_ARGS)
 
 .PHONY: doc

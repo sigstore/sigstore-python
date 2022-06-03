@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 import sys
 from importlib import resources
 from typing import BinaryIO, List, Optional, TextIO
@@ -27,6 +28,7 @@ from sigstore._internal.fulcio.client import (
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import (
+    DEFAULT_OAUTH_ISSUER,
     STAGING_OAUTH_ISSUER,
     get_identity_token,
 )
@@ -38,6 +40,7 @@ from sigstore._sign import sign
 from sigstore._verify import verify
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
 
 
 @click.group()
@@ -82,7 +85,7 @@ def main() -> None:
     "--oidc-issuer",
     metavar="URL",
     type=click.STRING,
-    default="https://oauth2.sigstore.dev/auth",
+    default=DEFAULT_OAUTH_ISSUER,
     help="The custom OpenID Connect issuer to use (conflicts with --staging)",
 )
 @click.option(

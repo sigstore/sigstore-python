@@ -19,24 +19,33 @@ Client implementation for interacting with Fulcio.
 import base64
 import datetime
 import json
+import logging
 import struct
 from abc import ABC
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import List
+from typing import List, Optional
 from urllib.parse import urljoin
 
 import pem
 import requests
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509 import Certificate, load_pem_x509_certificate
+from cryptography.x509 import (
+    Certificate,
+    ExtensionNotFound,
+    PrecertificateSignedCertificateTimestamps,
+    load_pem_x509_certificate,
+)
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
     SignedCertificateTimestamp,
     Version,
 )
+from pyasn1.codec.der.decoder import decode as asn1_decode
 from pydantic import BaseModel, Field, validator
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
 STAGING_FULCIO_URL = "https://fulcio.sigstage.dev"
@@ -61,20 +70,11 @@ class SCTHashAlgorithm(IntEnum):
     SHA384 = 5
     SHA512 = 6
 
+    def to_cryptography(self) -> hashes.HashAlgorithm:
+        if self != SCTHashAlgorithm.SHA256:
+            raise FulcioSCTError(f"unexpected hash algorithm: {self!r}")
 
-class SCTSignatureAlgorithm(IntEnum):
-    """
-    Signature algorithms that are valid for SCTs.
-
-    These are exactly the same as the SignatureAlgorithm enum in RFC 5246 (TLS 1.2).
-
-    See: https://datatracker.ietf.org/doc/html/rfc5246#section-7.4.1.4.1
-    """
-
-    ANONYMOUS = 0
-    RSA = 1
-    DSA = 2
-    ECDSA = 3
+        return hashes.SHA256()
 
 
 class FulcioSCTError(Exception):
@@ -94,7 +94,7 @@ class DetachedFulcioSCT(BaseModel):
     log_id: bytes = Field(..., alias="id")
     timestamp: datetime.datetime
     digitally_signed: bytes = Field(..., alias="signature")
-    extensions: bytes
+    extension_bytes: bytes = Field(..., alias="extensions")
 
     class Config:
         allow_population_by_field_name = True
@@ -113,7 +113,7 @@ class DetachedFulcioSCT(BaseModel):
     def _validate_log_id(cls, v: bytes) -> bytes:
         return base64.b64decode(v)
 
-    @validator("extensions", pre=True)
+    @validator("extension_bytes", pre=True)
     def _validate_extensions(cls, v: bytes) -> bytes:
         return base64.b64decode(v)
 
@@ -122,15 +122,14 @@ class DetachedFulcioSCT(BaseModel):
         return LogEntryType.X509_CERTIFICATE
 
     @property
-    def signature_hash_algorithm(self) -> int:
-        # TODO(ww): This should become a cryptography `Hash` subclass
-        # instance once cryptography adds this API.
-        return self.digitally_signed[0]
+    def signature_hash_algorithm(self) -> hashes.HashAlgorithm:
+        hash_ = SCTHashAlgorithm(self.digitally_signed[0])
+        return hash_.to_cryptography()
 
     @property
     def signature_algorithm(self) -> int:
-        # TODO(ww): This should become a SignatureAlgorithm variant
-        # once cryptography adds this API.
+        # TODO(ww): This method will need to return a SignatureAlgorithm
+        # variant instead, for consistency with cryptography's interface.
         return self.digitally_signed[1]
 
     @property
@@ -177,7 +176,9 @@ class FulcioCertificateSigningResponse:
 
     cert: Certificate
     chain: List[Certificate]
-    sct: DetachedFulcioSCT
+    sct: SignedCertificateTimestamp
+    # HACK(#84): Remove entirely.
+    raw_sct: Optional[bytes]
 
 
 @dataclass(frozen=True)
@@ -229,24 +230,6 @@ class FulcioSigningCert(Endpoint):
             except (AttributeError, KeyError):
                 raise FulcioClientError from http_error
 
-        # The SCT header is a base64-encoded payload, which in turn
-        # is a JSON representation of the SignedCertificateTimestamp
-        # in RFC 6962 (subsec. 3.2).
-        sct_b64 = resp.headers.get("SCT")
-        if sct_b64 is None:
-            raise FulcioClientError("Fulcio response did not include a SCT header")
-
-        try:
-            sct_json = json.loads(base64.b64decode(sct_b64).decode())
-        except ValueError as exc:
-            raise FulcioClientError from exc
-
-        try:
-            sct = DetachedFulcioSCT.parse_obj(sct_json)
-        except Exception as exc:
-            # Ideally we'd catch something less generic here.
-            raise FulcioClientError from exc
-
         # Cryptography doesn't have chain verification/building built in
         # https://github.com/pyca/cryptography/issues/2381
         try:
@@ -256,7 +239,74 @@ class FulcioSigningCert(Endpoint):
         except ValueError:
             raise FulcioClientError(f"Did not find a cert in Fulcio response: {resp}")
 
-        return FulcioCertificateSigningResponse(cert, chain, sct)
+        try:
+            # Try to retrieve the embedded SCTs within the cert.
+            precert_scts_extension = cert.extensions.get_extension_for_class(
+                PrecertificateSignedCertificateTimestamps
+            ).value
+
+            if len(precert_scts_extension) != 1:
+                raise FulcioClientError(
+                    f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
+                )
+
+            # HACK(#84): Remove entirely.
+            # HACK: Until cryptography is released, we don't have direct access
+            # to each SCT's internals (signature, extensions, etc.)
+            # Instead, we do something really nasty here: we decode the ASN.1,
+            # unwrap the underlying TLS structures, and stash the raw SCT
+            # for later use.
+            parsed_sct_extension = asn1_decode(precert_scts_extension.public_bytes())
+
+            def _opaque16(value: bytes) -> bytes:
+                # invariant: there have to be at least two bytes, for the length.
+                if len(value) < 2:
+                    raise FulcioClientError(
+                        "malformed TLS encoding in response (length)"
+                    )
+
+                (length,) = struct.unpack("!H", value[0:2])
+
+                if length != len(value[2:]):
+                    raise FulcioClientError(
+                        "malformed TLS encoding in response (payload)"
+                    )
+
+                return value[2:]
+
+            # This is a TLS-encoded `opaque<0..2^16-1>` for the list,
+            # which itself contains an `opaque<0..2^16-1>` for the SCT.
+            raw_sct_list_bytes = bytes(parsed_sct_extension[0])
+            raw_sct = _opaque16(_opaque16(raw_sct_list_bytes))
+
+            sct = precert_scts_extension[0]
+        except ExtensionNotFound:
+            # If we don't have any embedded SCTs, then we might be dealing
+            # with a Fulcio instance that provides detached SCTs.
+
+            # The SCT header is a base64-encoded payload, which in turn
+            # is a JSON representation of the SignedCertificateTimestamp
+            # in RFC 6962 (subsec. 3.2).
+            sct_b64 = resp.headers.get("SCT")
+            if sct_b64 is None:
+                raise FulcioClientError("Fulcio response did not include a SCT header")
+
+            try:
+                sct_json = json.loads(base64.b64decode(sct_b64).decode())
+            except ValueError as exc:
+                raise FulcioClientError from exc
+
+            try:
+                sct = DetachedFulcioSCT.parse_obj(sct_json)
+            except Exception as exc:
+                # Ideally we'd catch something less generic here.
+                raise FulcioClientError from exc
+
+            # HACK(#84): Remove entirely.
+            # The terrible hack above doesn't apply to detached SCTs.
+            raw_sct = None
+
+        return FulcioCertificateSigningResponse(cert, chain, sct, raw_sct)
 
 
 class FulcioRootCert(Endpoint):
@@ -276,6 +326,7 @@ class FulcioClient:
 
     def __init__(self, url: str = DEFAULT_FULCIO_URL) -> None:
         """Initialize the client"""
+        logger.debug(f"Fulcio client using URL: {url}")
         self.url = url
         self.session = requests.Session()
 
