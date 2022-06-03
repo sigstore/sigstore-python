@@ -51,6 +51,9 @@ logger = logging.getLogger(__name__)
 
 
 FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
+FULCIO_INTERMEDIATE_CERT = resources.read_binary(
+    "sigstore._store", "fulcio_intermediate.crt.pem"
+)
 
 
 class VerificationResult(BaseModel):
@@ -115,13 +118,16 @@ def verify(
     # 1) Verify that the signing certificate is signed by the root certificate and that the signing
     #    certificate was valid at the time of signing.
     root = load_pem_x509_certificate(FULCIO_ROOT_CERT)
+    intermediate = load_pem_x509_certificate(FULCIO_INTERMEDIATE_CERT)
 
     sign_date = cert.not_valid_before
     openssl_cert = X509.from_cryptography(cert)
     openssl_root = X509.from_cryptography(root)
+    openssl_intermediate = X509.from_cryptography(intermediate)
 
     store = X509Store()
     store.add_cert(openssl_root)
+    store.add_cert(openssl_intermediate)
     store.set_time(sign_date)
     store_ctx = X509StoreContext(store, openssl_cert)
     store_ctx.verify_certificate()
