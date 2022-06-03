@@ -34,7 +34,12 @@ from cryptography.x509 import (
     load_pem_x509_certificate,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
-from OpenSSL.crypto import X509, X509Store, X509StoreContext
+from OpenSSL.crypto import (
+    X509,
+    X509Store,
+    X509StoreContext,
+    X509StoreContextError,
+)
 from pydantic import BaseModel
 
 from sigstore._internal.merkle import (
@@ -134,7 +139,13 @@ def verify(
     store.add_cert(openssl_intermediate)
     store.set_time(sign_date)
     store_ctx = X509StoreContext(store, openssl_cert)
-    store_ctx.verify_certificate()
+    try:
+        store_ctx.verify_certificate()
+    except X509StoreContextError as store_ctx_error:
+        return VerificationFailure(
+            reason="Failed to verify signing certificate, consider upgrading `sigstore` if a newer "
+            f"version is available: {store_ctx_error}"
+        )
 
     # 2) Check that the signing certificate contains the proof claim as the subject
     # Check usage is "digital signature"
