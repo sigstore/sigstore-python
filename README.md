@@ -94,14 +94,15 @@ Verifying:
 Usage: sigstore verify [OPTIONS] FILE [FILE ...]
 
 Options:
-  --cert FILENAME       [required]
-  --signature FILENAME  [required]
+  --cert FILENAME          [required]
+  --signature FILENAME     [required]
   --cert-email TEXT
-  --staging             Use the sigstore project's staging instances, instead
-                        of the default production instances
-  --rekor-url URL       The Rekor instance to use (conflicts with --staging)
-                        [default: https://rekor.sigstore.dev]
-  --help                Show this message and exit.
+  --cert-oidc-issuer TEXT
+  --staging                Use the sigstore project's staging instances,
+                           instead of the default production instances
+  --rekor-url URL          The Rekor instance to use (conflicts with
+                           --staging)  [default: https://rekor.sigstore.dev]
+  --help                   Show this message and exit.
 ```
 <!-- @end-sigstore-verify-help@ -->
 
