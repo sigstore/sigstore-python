@@ -30,7 +30,6 @@ from urllib.parse import urljoin
 import pem
 import requests
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
     Certificate,
     CertificateSigningRequest,
@@ -191,15 +190,8 @@ class FulcioSigningCert(Endpoint):
         self, req: CertificateSigningRequest, token: str
     ) -> FulcioCertificateSigningResponse:
         """
-        Get the signing certificate.
-
-        Ideally, in the future, this could take an X.509 Certificate Signing
-        Request object instead [^1], but the Fulcio API doesn't currently
-        support this [^2].
-
-        [^1]: https://cryptography.io/en/latest/x509/reference/#x-509-csr-certificate-signing-request-object  # noqa
-        [^2]: https://github.com/sigstore/fulcio/issues/503
-
+        Get the signing certificate, using an X.509 Certificate
+        Signing Request.
         """
         headers = {
             "Authorization": f"Bearer {token}",
