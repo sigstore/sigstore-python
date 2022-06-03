@@ -24,6 +24,14 @@ sigstore-python
 python -m pip install sigstore
 ```
 
+Optionally, to install `sigstore` and all its dependencies with [hash-checking mode](https://pip.pypa.io/en/stable/topics/secure-installs/#hash-checking-mode) enabled, run the following:
+
+```console
+python -m pip install -r <(curl -s https://raw.githubusercontent.com/sigstore/sigstore-python/main/install/requirements.txt)
+```
+
+This installs the requirements file located [here](https://github.com/sigstore/sigstore-python/blob/main/install/requirements.txt), which is kept up-to-date.
+
 ## Usage
 
 You can run `sigstore` as a standalone program, or via `python -m`:
