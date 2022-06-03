@@ -33,6 +33,9 @@ dependencies = [
   "pyOpenSSL",
   "requests",
   "securesystemslib",
+  # HACK(#84): Remove these dependencies.
+  "pyasn1",
+  "pyasn1-modules",
 ]
 requires-python = ">=3.7"
 

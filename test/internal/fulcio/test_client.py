@@ -42,7 +42,7 @@ class TestDetachedFulcioSCT:
             version=0,
             log_id=blob,
             timestamp=int(now.timestamp() * 1000),
-            digitally_signed=enc(b"\x00\x00\x00\x04abcd"),
+            digitally_signed=enc(b"\x04\x00\x00\x04abcd"),
             extensions=blob,
         )
 
@@ -56,14 +56,16 @@ class TestDetachedFulcioSCT:
         # into millisecond timestamps before comparing, to avoid
         # failing on microseconds.
         assert int(sct.timestamp.timestamp() * 1000) == int(now.timestamp() * 1000)
-        assert sct.digitally_signed == b"\x00\x00\x00\x04abcd"
-        assert enc(sct.extensions) == blob
+        assert sct.digitally_signed == b"\x04\x00\x00\x04abcd"
+        assert enc(sct.extension_bytes) == blob
 
         # Computed fields are also correct.
         assert sct.entry_type == LogEntryType.X509_CERTIFICATE
-        assert sct.signature_hash_algorithm == sct.digitally_signed[0]
-        assert sct.signature_algorithm == sct.digitally_signed[1]
-        assert sct.signature == sct.digitally_signed[4:] == b"abcd"
+
+        # HACK(#84): Re-enable once cryptography 38 is released.
+        # assert type(sct.signature_hash_algorithm) is hashes.SHA256
+        # assert sct.signature_algorithm == SignatureAlgorithm.ANONYMOUS
+        # assert sct.signature == sct.digitally_signed[4:] == b"abcd"
 
     def test_constructor_equivalence(self):
         blob = enc(b"this is a base64-encoded blob")

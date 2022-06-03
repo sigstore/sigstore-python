@@ -150,6 +150,12 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
 
     code: str
     with RedirectServer(client_id, client_secret, issuer) as server:
+        thread = threading.Thread(
+            target=lambda server: server.serve_forever(),
+            args=(server,),
+        )
+        thread.start()
+
         # Launch web browser
         if webbrowser.open(server.base_uri):
             print(f"Your browser will now be opened to:\n{server.auth_request()}\n")
@@ -158,12 +164,6 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
             print(
                 f"Go to the following link in a browser:\n\n\t{server.auth_request()}"
             )
-
-        thread = threading.Thread(
-            target=lambda server: server.serve_forever(),
-            args=(server,),
-        )
-        thread.start()
 
         if not server.is_oob:
             # Wait until the redirect server populates the response

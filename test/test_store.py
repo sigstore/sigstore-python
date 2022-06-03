@@ -16,14 +16,16 @@ from importlib import resources
 
 
 def test_store_reads_fulcio_root_cert():
-    fulcio_crt = resources.read_text("sigstore._store", "fulcio.crt.pem")
+    fulcio_crt = resources.read_text("sigstore._store", "fulcio.crt.pem").strip()
+    lines = fulcio_crt.split("\n")
 
-    assert fulcio_crt.startswith("-----BEGIN CERTIFICATE-----")
-    assert fulcio_crt.endswith("-----END CERTIFICATE-----")
+    assert lines[0].startswith("-----BEGIN CERTIFICATE-----")
+    assert lines[-1].startswith("-----END CERTIFICATE-----")
 
 
 def test_store_reads_ctfe_pub():
-    ctfe_pub = resources.read_text("sigstore._store", "ctfe.pub")
+    ctfe_pub = resources.read_text("sigstore._store", "ctfe.pub").strip()
+    lines = ctfe_pub.split("\n")
 
-    assert ctfe_pub.startswith("-----BEGIN PUBLIC KEY-----")
-    assert ctfe_pub.endswith("-----END PUBLIC KEY-----")
+    assert lines[0].startswith("-----BEGIN PUBLIC KEY-----")
+    assert lines[-1].startswith("-----END PUBLIC KEY-----")
