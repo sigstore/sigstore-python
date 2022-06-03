@@ -16,7 +16,7 @@ import logging
 import os
 import sys
 from importlib import resources
-from typing import BinaryIO, List, Optional, TextIO
+from typing import BinaryIO, List, Optional, TextIO, cast
 
 import click
 
@@ -37,7 +37,7 @@ from sigstore._internal.rekor.client import (
     STAGING_REKOR_URL,
 )
 from sigstore._sign import sign
-from sigstore._verify import verify
+from sigstore._verify import VerificationFailure, verify
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
@@ -294,15 +294,18 @@ def _verify(
 
     verified = True
     for file in files:
-        if verify(
+        result = verify(
             rekor_url=rekor_url,
             file=file,
             certificate=certificate,
             signature=signature,
             cert_email=cert_email,
-        ):
+        )
+        if result:
             click.echo(f"OK: {file.name}")
         else:
+            failure = cast(VerificationFailure, result)
+            click.echo(failure.reason)
             click.echo(f"FAIL: {file.name}")
             verified = False
 
