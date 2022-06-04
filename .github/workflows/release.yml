@@ -67,4 +67,8 @@ jobs:
       # created the release that triggered the action.
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/*
+        # dist/ contains the built packages, which smoketest-artifacts/
+        # contains the signatures and certificates.
+        files: |
+          dist/*
+          smoketest-artifacts/*
