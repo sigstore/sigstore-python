@@ -27,7 +27,9 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
     ExtendedKeyUsage,
+    ExtensionNotFound,
     KeyUsage,
+    ObjectIdentifier,
     RFC822Name,
     SubjectAlternativeName,
     load_pem_x509_certificate,
@@ -60,6 +62,8 @@ FULCIO_INTERMEDIATE_CERT = resources.read_binary(
     "sigstore._store", "fulcio_intermediate.crt.pem"
 )
 
+_OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
+
 
 class VerificationResult(BaseModel):
     success: bool
@@ -77,12 +81,22 @@ class VerificationFailure(VerificationResult):
     reason: str
 
 
+class CertificateVerificationFailure(VerificationFailure):
+    exception: Exception
+
+    class Config:
+        # Needed for the `exception` field above, since exceptions are
+        # not trivially serializable.
+        arbitrary_types_allowed = True
+
+
 def verify(
     rekor_url: str,
     file: BinaryIO,
     certificate: bytes,
     signature: bytes,
-    cert_email: Optional[str] = None,
+    expected_cert_email: Optional[str] = None,
+    expected_cert_oidc_issuer: Optional[str] = None,
 ) -> VerificationResult:
     """Public API for verifying files.
 
@@ -92,7 +106,9 @@ def verify(
 
     `signature` is a base64-encoded signature for `file`.
 
-    `cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
+    `expected_cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
+
+    `expected_cert_oidc_issuer` is the expected OIDC Issuer Extension within `certificate`.
 
     Returns a `VerificationResult` which will be truthy or falsey depending on
     success.
@@ -138,9 +154,9 @@ def verify(
     try:
         store_ctx.verify_certificate()
     except X509StoreContextError as store_ctx_error:
-        return VerificationFailure(
-            reason="Failed to verify signing certificate, consider upgrading `sigstore` if a newer "
-            f"version is available: {store_ctx_error}"
+        return CertificateVerificationFailure(
+            reason="Failed to verify signing certificate",
+            exception=store_ctx_error,
         )
 
     # 2) Check that the signing certificate contains the proof claim as the subject
@@ -158,12 +174,27 @@ def verify(
             reason="Extended usage does not contain `code signing`"
         )
 
-    if cert_email is not None:
+    if expected_cert_email is not None:
         # Check that SubjectAlternativeName contains signer identity
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-        if cert_email not in san_ext.value.get_values_for_type(RFC822Name):
+        if expected_cert_email not in san_ext.value.get_values_for_type(RFC822Name):
             return VerificationFailure(
-                reason=f"Subject name does not contain identity: {cert_email}"
+                reason=f"Subject name does not contain identity: {expected_cert_email}"
+            )
+
+    if expected_cert_oidc_issuer is not None:
+        # Check that the OIDC issuer extension is present, and contains the expected
+        # issuer string (which is probably a URL).
+        try:
+            oidc_issuer = cert.extensions.get_extension_for_oid(_OIDC_ISSUER_OID).value
+        except ExtensionNotFound:
+            return VerificationFailure(
+                reason="Certificate does not contain OIDC issuer extension"
+            )
+
+        if oidc_issuer.value != expected_cert_oidc_issuer.encode():
+            return VerificationFailure(
+                reason=f"Certificate's OIDC issuer does not match (got {oidc_issuer.value})"
             )
 
     logger.debug("Successfully verified signing certificate validity...")

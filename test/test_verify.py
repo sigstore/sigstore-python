@@ -15,7 +15,12 @@
 import pretend
 import pytest
 
-from sigstore._verify import VerificationFailure, VerificationSuccess, verify
+from sigstore._verify import (
+    CertificateVerificationFailure,
+    VerificationFailure,
+    VerificationSuccess,
+    verify,
+)
 
 
 @pytest.mark.xfail
@@ -28,4 +33,5 @@ def test_verify():
 
 def test_verify_result_boolish():
     assert not VerificationFailure(reason="foo")
+    assert not CertificateVerificationFailure(reason="foo", exception=ValueError("bar"))
     assert VerificationSuccess()

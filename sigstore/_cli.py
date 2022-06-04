@@ -16,6 +16,7 @@ import logging
 import os
 import sys
 from importlib import resources
+from textwrap import dedent
 from typing import BinaryIO, List, Optional, TextIO, cast
 
 import click
@@ -37,7 +38,11 @@ from sigstore._internal.rekor.client import (
     STAGING_REKOR_URL,
 )
 from sigstore._sign import sign
-from sigstore._verify import VerificationFailure, verify
+from sigstore._verify import (
+    CertificateVerificationFailure,
+    VerificationFailure,
+    verify,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
@@ -245,9 +250,37 @@ def _sign(
 
 
 @main.command("verify")
-@click.option("certificate_path", "--cert", type=click.File("rb"), required=True)
-@click.option("signature_path", "--signature", type=click.File("rb"), required=True)
-@click.option("cert_email", "--cert-email", type=str)
+@click.option(
+    "certificate_path",
+    "--cert",
+    type=click.File("rb"),
+    required=True,
+    help="The PEM-encoded certificate to verify against",
+)
+@click.option(
+    "signature_path",
+    "--signature",
+    type=click.File("rb"),
+    required=True,
+    help="The signature to verify against",
+)
+@click.option(
+    "cert_email",
+    "--cert-email",
+    type=str,
+    help=(
+        "The email address (or other identity string) to check for in the "
+        "certificate's Subject Alternative Name"
+    ),
+)
+@click.option(
+    "cert_oidc_issuer",
+    "--cert-oidc-issuer",
+    type=str,
+    help=(
+        "The OIDC issuer URL to check for in the certificate's OIDC issuer extension"
+    ),
+)
 @click.option(
     "staging",
     "--staging",
@@ -275,13 +308,14 @@ def _verify(
     certificate_path: BinaryIO,
     signature_path: BinaryIO,
     cert_email: Optional[str],
+    cert_oidc_issuer: Optional[str],
     rekor_url: str,
     staging: bool,
 ) -> None:
     # If the user has explicitly requested the staging instance,
     # we need to override some of the CLI's defaults.
     if staging:
-        logger.debug("sign: staging instances requested")
+        logger.debug("verify: staging instances requested")
         rekor_url = STAGING_REKOR_URL
 
     # Load the signing certificate
@@ -299,14 +333,41 @@ def _verify(
             file=file,
             certificate=certificate,
             signature=signature,
-            cert_email=cert_email,
+            expected_cert_email=cert_email,
+            expected_cert_oidc_issuer=cert_oidc_issuer,
         )
+
         if result:
             click.echo(f"OK: {file.name}")
         else:
-            failure = cast(VerificationFailure, result)
-            click.echo(failure.reason)
+            result = cast(VerificationFailure, result)
             click.echo(f"FAIL: {file.name}")
+
+            if isinstance(result, CertificateVerificationFailure):
+                # If certificate verification failed, it's either because of
+                # a chain issue or some outdated state in sigstore itself.
+                # These might already be resolved in a newer version, so
+                # we suggest that users try to upgrade and retry before
+                # anything else.
+                click.echo(result.reason, err=True)
+                click.echo(
+                    dedent(
+                        f"""
+                        This may be a result of an outdated `sigstore` installation.
+
+                        Consider upgrading with:
+
+                            python -m pip install --upgrade sigstore
+
+                        Additional context:
+
+                        {result.exception}
+                        """
+                    ),
+                    err=True,
+                )
+            else:
+                click.echo(result.reason, err=True)
             verified = False
 
     if not verified:
