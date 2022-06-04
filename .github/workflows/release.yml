@@ -10,7 +10,7 @@ permissions:
   id-token: write
 
   # Needed to upload release assets.
-  content: write
+  contents: write
 
 jobs:
   pypi:
