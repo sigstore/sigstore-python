@@ -5,9 +5,12 @@ on:
 
 name: release
 
-# Needed to access the workflow's OIDC identity.
 permissions:
+  # Needed to access the workflow's OIDC identity.
   id-token: write
+
+  # Needed to upload release assets.
+  content: write
 
 jobs:
   pypi:
@@ -27,13 +30,21 @@ jobs:
     - name: sign
       run: |
         # we smoke-test sigstore by installing each of the distributions
-        # we've built in a fresh environment and using each to sign for itself,
-        # using the ambient OIDC identity
+        # we've built in a fresh environment and using each to sign and
+        # verify for itself, using the ambient OIDC identity
         for dist in dist/*; do
           python -m venv smoketest-env
 
           ./smoketest-env/bin/python -m pip install "${dist}"
-          ./smoketest-env/bin/python -m sigstore sign "${dist}"
+
+          ./smoketest-env/bin/python -m \
+            sigstore sign --output-signature --output-certificate "${dist}"
+
+          ./smoketest-env/bin/python -m \
+            sigstore verify \
+            --cert "${dist}.crt" --signature "${dist}.sig" \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            "${dist}"
 
           rm -rf smoketest-env
         done
@@ -43,3 +54,11 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_TOKEN }}
+
+    - name: upload artifacts to github
+      # Confusingly, this action also supports updating releases, not
+      # just creating them. This is what we want here, since we've manually
+      # created the release that triggered the action.
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*
