@@ -68,9 +68,6 @@ _OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
 class VerificationResult(BaseModel):
     success: bool
 
-    class Config:
-        arbitrary_types_allowed = True
-
     def __bool__(self) -> bool:
         return self.success
 
@@ -86,6 +83,11 @@ class VerificationFailure(VerificationResult):
 
 class CertificateVerificationFailure(VerificationFailure):
     exception: Exception
+
+    class Config:
+        # Needed for the `exception` field above, since exceptions are
+        # not trivially serializable.
+        arbitrary_types_allowed = True
 
 
 def verify(
