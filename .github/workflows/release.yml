@@ -29,22 +29,28 @@ jobs:
 
     - name: sign
       run: |
+        mkdir -p smoketest-artifacts
+
         # we smoke-test sigstore by installing each of the distributions
         # we've built in a fresh environment and using each to sign and
         # verify for itself, using the ambient OIDC identity
         for dist in dist/*; do
+          dist_base="$(basename "${dist}")"
+
           python -m venv smoketest-env
 
           ./smoketest-env/bin/python -m pip install "${dist}"
 
           ./smoketest-env/bin/python -m \
-            sigstore sign "${dist}" --output-signature --output-certificate
+            sigstore sign "${dist}" \
+            --output-signature smoketest-artifacts/"${dist_base}.sig" \
+            --output-certificate smoketest-artifacts/"${dist_base}.crt"
 
           ./smoketest-env/bin/python -m \
             sigstore verify "${dist}" \
-            --cert "${dist}.crt" --signature "${dist}.sig" \
+            --cert "smoketest-artifacts/${dist_base}.crt" \
+            --signature "smoketest-artifacts/${dist_base}.sig" \
             --cert-oidc-issuer https://token.actions.githubusercontent.com \
-
 
           rm -rf smoketest-env
         done
