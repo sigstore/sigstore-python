@@ -62,6 +62,7 @@ FULCIO_INTERMEDIATE_CERT = resources.read_binary(
     "sigstore._store", "fulcio_intermediate.crt.pem"
 )
 
+# From: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
 _OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
 _OIDC_GITHUB_WORKFLOW_TRIGGER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.2")
 _OIDC_GITHUB_WORKFLOW_SHA_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.3")
