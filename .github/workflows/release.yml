@@ -5,9 +5,12 @@ on:
 
 name: release
 
-# Needed to access the workflow's OIDC identity.
 permissions:
+  # Needed to access the workflow's OIDC identity.
   id-token: write
+
+  # Needed to upload release assets.
+  contents: write
 
 jobs:
   pypi:
@@ -26,14 +29,32 @@ jobs:
 
     - name: sign
       run: |
+        mkdir -p smoketest-artifacts
+
         # we smoke-test sigstore by installing each of the distributions
-        # we've built in a fresh environment and using each to sign for itself,
-        # using the ambient OIDC identity
+        # we've built in a fresh environment and using each to sign and
+        # verify for itself, using the ambient OIDC identity
         for dist in dist/*; do
+          dist_base="$(basename "${dist}")"
+
           python -m venv smoketest-env
 
           ./smoketest-env/bin/python -m pip install "${dist}"
-          ./smoketest-env/bin/python -m sigstore sign "${dist}"
+
+          # NOTE: signing artifacts currently go in a separate directory,
+          # to avoid confusing the package uploader (which otherwise tries
+          # to upload them to PyPI and fails). Future versions of twine
+          # and the gh-action-pypi-publish action should support these artifacts.
+          ./smoketest-env/bin/python -m \
+            sigstore sign "${dist}" \
+            --output-signature smoketest-artifacts/"${dist_base}.sig" \
+            --output-certificate smoketest-artifacts/"${dist_base}.crt"
+
+          ./smoketest-env/bin/python -m \
+            sigstore verify "${dist}" \
+            --cert "smoketest-artifacts/${dist_base}.crt" \
+            --signature "smoketest-artifacts/${dist_base}.sig" \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
 
           rm -rf smoketest-env
         done
@@ -43,3 +64,15 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_TOKEN }}
+
+    - name: upload artifacts to github
+      # Confusingly, this action also supports updating releases, not
+      # just creating them. This is what we want here, since we've manually
+      # created the release that triggered the action.
+      uses: softprops/action-gh-release@v1
+      with:
+        # dist/ contains the built packages, which smoketest-artifacts/
+        # contains the signatures and certificates.
+        files: |
+          dist/*
+          smoketest-artifacts/*
