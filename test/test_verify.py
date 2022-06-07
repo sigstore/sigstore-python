@@ -12,23 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pretend
-import pytest
-
 from sigstore._verify import (
     CertificateVerificationFailure,
     VerificationFailure,
     VerificationSuccess,
-    verify,
+    Verifier,
 )
 
 
-@pytest.mark.xfail
-def test_verify():
-    filename = pretend.stub()
-    certificate_path = pretend.stub()
-    signature_path = pretend.stub()
-    assert verify(filename, certificate_path, signature_path) is not None
+def test_verifier_production():
+    verifier = Verifier.production()
+    assert verifier is not None
+
+
+def test_verifier_staging():
+    verifier = Verifier.staging()
+    assert verifier is not None
 
 
 def test_verify_result_boolish():

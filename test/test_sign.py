@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pretend
-import pytest
 
-from sigstore._sign import sign
+from sigstore._sign import Signer
 
 
-@pytest.mark.xfail
-def test_sign():
-    file_ = pretend.stub()
-    identity_token = pretend.stub()
-    ctfe_pem = pretend.stub()
+def test_signer_production():
+    signer = Signer.production()
+    assert signer is not None
 
-    assert sign(file_, identity_token, ctfe_pem) == "Nothing here yet"
+
+def test_signer_staging():
+    signer = Signer.staging()
+    assert signer is not None
