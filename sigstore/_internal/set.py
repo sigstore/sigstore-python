@@ -43,8 +43,8 @@ def verify_set(entry: RekorEntry) -> None:
     # This involves removing any non-required fields (verification and attestation) and then
     # canonicalizing the remaining JSON in accordance with IETF's RFC 8785.
     raw_data = entry.raw_data.copy()
-    del raw_data["verification"]
-    del raw_data["attestation"]
+    raw_data.pop("verification", None)
+    raw_data.pop("attestation", None)
     canon_data: bytes = encode_canonical(raw_data).encode()
 
     # Decode the SET field
