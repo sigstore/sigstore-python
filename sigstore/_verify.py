@@ -21,7 +21,7 @@ import datetime
 import hashlib
 import logging
 from importlib import resources
-from typing import BinaryIO, Optional, cast
+from typing import BinaryIO, List, Optional, cast
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -62,6 +62,13 @@ FULCIO_INTERMEDIATE_CERT = resources.read_binary(
     "sigstore._store", "fulcio_intermediate.crt.pem"
 )
 
+STAGING_FULCIO_ROOT_CERT = resources.read_binary(
+    "sigstore._store", "fulcio.crt.staging.pem"
+)
+STAGING_FULCIO_INTERMEDIATE_CERT = resources.read_binary(
+    "sigstore._store", "fulcio_intermediate.crt.staging.pem"
+)
+
 # From: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
 _OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
 _OIDC_GITHUB_WORKFLOW_TRIGGER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.2")
@@ -98,13 +105,20 @@ class CertificateVerificationFailure(VerificationFailure):
 
 def verify(
     rekor_url: str,
+    fulcio_certificate_chain: List[bytes],
     file: BinaryIO,
     certificate: bytes,
     signature: bytes,
     expected_cert_email: Optional[str] = None,
     expected_cert_oidc_issuer: Optional[str] = None,
+    staging: bool = False,
 ) -> VerificationResult:
     """Public API for verifying files.
+
+    `rekor_url` is a URL pointing to the Rekor instance to use.
+
+    `fulcio_certificate_chain` is a list of PEM-encoded X.509 certificates,
+    establishing the trust chain for the signing `certificate`.
 
     `file` is the file to verify.
 
@@ -115,6 +129,10 @@ def verify(
     `expected_cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
 
     `expected_cert_oidc_issuer` is the expected OIDC Issuer Extension within `certificate`.
+
+    `staging` directs the Rekor and Fulcio state to use. By default, the production
+    sigstore instance of Rekor and Fulcio certificates are used. When `True`, the
+    "sigstage" instance is used.
 
     Returns a `VerificationResult` which will be truthy or falsey depending on
     success.
@@ -144,19 +162,17 @@ def verify(
 
     # 1) Verify that the signing certificate is signed by the root certificate and that the signing
     #    certificate was valid at the time of signing.
-    root = load_pem_x509_certificate(FULCIO_ROOT_CERT)
-    intermediate = load_pem_x509_certificate(FULCIO_INTERMEDIATE_CERT)
-
     sign_date = cert.not_valid_before
-    openssl_cert = X509.from_cryptography(cert)
-    openssl_root = X509.from_cryptography(root)
-    openssl_intermediate = X509.from_cryptography(intermediate)
+    cert_ossl = X509.from_cryptography(cert)
 
     store = X509Store()
-    store.add_cert(openssl_root)
-    store.add_cert(openssl_intermediate)
+    for parent_cert_pem in fulcio_certificate_chain:
+        parent_cert = load_pem_x509_certificate(parent_cert_pem)
+        parent_cert_ossl = X509.from_cryptography(parent_cert)
+        store.add_cert(parent_cert_ossl)
+        pass
     store.set_time(sign_date)
-    store_ctx = X509StoreContext(store, openssl_cert)
+    store_ctx = X509StoreContext(store, cert_ossl)
     try:
         store_ctx.verify_certificate()
     except X509StoreContextError as store_ctx_error:

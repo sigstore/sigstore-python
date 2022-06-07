@@ -39,6 +39,10 @@ from sigstore._internal.rekor.client import (
 )
 from sigstore._sign import sign
 from sigstore._verify import (
+    FULCIO_INTERMEDIATE_CERT,
+    FULCIO_ROOT_CERT,
+    STAGING_FULCIO_INTERMEDIATE_CERT,
+    STAGING_FULCIO_ROOT_CERT,
     CertificateVerificationFailure,
     VerificationFailure,
     verify,
@@ -312,11 +316,18 @@ def _verify(
     rekor_url: str,
     staging: bool,
 ) -> None:
+    # TODO: Allow a user to configure this cert chain via the CLI.
+    fulcio_certificate_chain = [FULCIO_ROOT_CERT, FULCIO_INTERMEDIATE_CERT]
+
     # If the user has explicitly requested the staging instance,
     # we need to override some of the CLI's defaults.
     if staging:
         logger.debug("verify: staging instances requested")
         rekor_url = STAGING_REKOR_URL
+        fulcio_certificate_chain = [
+            STAGING_FULCIO_ROOT_CERT,
+            STAGING_FULCIO_INTERMEDIATE_CERT,
+        ]
 
     # Load the signing certificate
     logger.debug(f"Using certificate from: {certificate_path.name}")
@@ -330,6 +341,7 @@ def _verify(
     for file in files:
         result = verify(
             rekor_url=rekor_url,
+            fulcio_certificate_chain=fulcio_certificate_chain,
             file=file,
             certificate=certificate,
             signature=signature,
