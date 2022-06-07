@@ -65,8 +65,6 @@ Usage: sigstore sign [OPTIONS] FILE [FILE ...]
 
 Options:
   --identity-token TOKEN          the OIDC identity token to use
-  --ctfe FILENAME                 A PEM-encoded public key for the CT log
-                                  (conflicts with --staging)
   --oidc-client-id ID             The custom OpenID Connect client ID to use
   --oidc-client-secret SECRET     The custom OpenID Connect client secret to
                                   use
@@ -91,6 +89,10 @@ Options:
   --rekor-url URL                 The Rekor instance to use (conflicts with
                                   --staging)  [default:
                                   https://rekor.sigstore.dev]
+  --ctfe FILE                     A PEM-encoded public key for the CT log
+                                  (conflicts with --staging)
+  --rekor-root-pubkey FILE        A PEM-encoded root public key for Rekor
+                                  itself (conflicts with --staging)
   --help                          Show this message and exit.
 ```
 <!-- @end-sigstore-sign-help@ -->

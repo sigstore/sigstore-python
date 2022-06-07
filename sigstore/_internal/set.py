@@ -17,34 +17,31 @@ Utilities for verifying Signed Entry Timestamps.
 """
 
 import base64
-from importlib import resources
-from typing import cast
 
 import cryptography.hazmat.primitives.asymmetric.ec as ec
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from securesystemslib.formats import encode_canonical
 
-from sigstore._internal.rekor import RekorEntry
-
-REKOR_ROOT_PUBKEY = resources.read_binary("sigstore._store", "rekor.pub")
+from sigstore._internal.rekor import RekorClient, RekorEntry
 
 
 class InvalidSetError(Exception):
     pass
 
 
-def verify_set(entry: RekorEntry) -> None:
-    """Verify the Signed Entry Timestamp for a given Rekor entry"""
+def verify_set(client: RekorClient, entry: RekorEntry) -> None:
+    """
+    Verify the Signed Entry Timestamp for a given Rekor `entry` using the given `client`.
+    """
 
     # Put together the payload
     #
     # This involves removing any non-required fields (verification and attestation) and then
     # canonicalizing the remaining JSON in accordance with IETF's RFC 8785.
     raw_data = entry.raw_data.copy()
-    del raw_data["verification"]
-    del raw_data["attestation"]
+    raw_data.pop("verification", None)
+    raw_data.pop("attestation", None)
     canon_data: bytes = encode_canonical(raw_data).encode()
 
     # Decode the SET field
@@ -52,13 +49,9 @@ def verify_set(entry: RekorEntry) -> None:
         entry.verification["signedEntryTimestamp"].encode()
     )
 
-    # Load the Rekor public key
-    rekor_key = load_pem_public_key(REKOR_ROOT_PUBKEY)
-    rekor_key = cast(ec.EllipticCurvePublicKey, rekor_key)
-
     # Validate the SET
     try:
-        rekor_key.verify(
+        client._pubkey.verify(
             signature=signed_entry_ts,
             data=canon_data,
             signature_algorithm=ec.ECDSA(hashes.SHA256()),

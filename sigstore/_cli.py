@@ -15,17 +15,14 @@
 import logging
 import os
 import sys
-from importlib import resources
+from io import BytesIO
 from textwrap import dedent
 from typing import BinaryIO, List, Optional, TextIO, cast
 
 import click
 
 from sigstore import __version__
-from sigstore._internal.fulcio.client import (
-    DEFAULT_FULCIO_URL,
-    STAGING_FULCIO_URL,
-)
+from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import (
@@ -34,14 +31,16 @@ from sigstore._internal.oidc.oauth import (
     get_identity_token,
 )
 from sigstore._internal.rekor.client import (
+    DEFAULT_REKOR_CTFE_PUBKEY,
+    DEFAULT_REKOR_ROOT_PUBKEY,
     DEFAULT_REKOR_URL,
-    STAGING_REKOR_URL,
+    RekorClient,
 )
-from sigstore._sign import sign
+from sigstore._sign import Signer
 from sigstore._verify import (
     CertificateVerificationFailure,
     VerificationFailure,
-    verify,
+    Verifier,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,13 +60,6 @@ def main() -> None:
     metavar="TOKEN",
     type=click.STRING,
     help="the OIDC identity token to use",
-)
-@click.option(
-    "ctfe_pem",
-    "--ctfe",
-    type=click.File("rb"),
-    default=resources.open_binary("sigstore._store", "ctfe.pub"),
-    help="A PEM-encoded public key for the CT log (conflicts with --staging)",
 )
 @click.option(
     "oidc_client_id",
@@ -151,6 +143,22 @@ def main() -> None:
     show_default=True,
     help="The Rekor instance to use (conflicts with --staging)",
 )
+@click.option(
+    "ctfe_pem",
+    "--ctfe",
+    metavar="FILE",
+    type=click.File("rb"),
+    default=BytesIO(DEFAULT_REKOR_CTFE_PUBKEY),
+    help="A PEM-encoded public key for the CT log (conflicts with --staging)",
+)
+@click.option(
+    "rekor_root_pubkey",
+    "--rekor-root-pubkey",
+    metavar="FILE",
+    type=click.File("rb"),
+    default=BytesIO(DEFAULT_REKOR_ROOT_PUBKEY),
+    help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
+)
 @click.argument(
     "files",
     metavar="FILE [FILE ...]",
@@ -161,7 +169,6 @@ def main() -> None:
 def _sign(
     files: List[BinaryIO],
     identity_token: Optional[str],
-    ctfe_pem: BinaryIO,
     oidc_client_id: str,
     oidc_client_secret: str,
     oidc_issuer: str,
@@ -170,6 +177,8 @@ def _sign(
     output_certificate: Optional[str],
     fulcio_url: str,
     rekor_url: str,
+    ctfe_pem: BinaryIO,
+    rekor_root_pubkey: BinaryIO,
     staging: bool,
 ) -> None:
     # Fail if `--output-signature` or `--output-certificate` is specified with
@@ -185,14 +194,17 @@ def _sign(
         )
         raise click.Abort
 
-    # If the user has explicitly requested the staging instance,
-    # we need to override some of the CLI's defaults.
     if staging:
         logger.debug("sign: staging instances requested")
+        signer = Signer.staging()
         oidc_issuer = STAGING_OAUTH_ISSUER
-        ctfe_pem = resources.open_binary("sigstore._store", "ctfe.staging.pub")
-        fulcio_url = STAGING_FULCIO_URL
-        rekor_url = STAGING_REKOR_URL
+    elif fulcio_url == DEFAULT_FULCIO_URL and rekor_url == DEFAULT_REKOR_URL:
+        signer = Signer.production()
+    else:
+        signer = Signer(
+            fulcio=FulcioClient(fulcio_url),
+            rekor=RekorClient(rekor_url, rekor_root_pubkey.read(), ctfe_pem.read()),
+        )
 
     # The order of precedence is as follows:
     #
@@ -212,14 +224,10 @@ def _sign(
         click.echo("No identity token supplied or detected!", err=True)
         raise click.Abort
 
-    ctfe_pem = ctfe_pem.read()
     for file in files:
-        result = sign(
-            fulcio_url=fulcio_url,
-            rekor_url=rekor_url,
+        result = signer.sign(
             file=file,
             identity_token=identity_token,
-            ctfe_pem=ctfe_pem,
         )
 
         click.echo("Using ephemeral certificate:")
@@ -312,11 +320,19 @@ def _verify(
     rekor_url: str,
     staging: bool,
 ) -> None:
-    # If the user has explicitly requested the staging instance,
-    # we need to override some of the CLI's defaults.
     if staging:
         logger.debug("verify: staging instances requested")
-        rekor_url = STAGING_REKOR_URL
+        verifier = Verifier.staging()
+    elif rekor_url == DEFAULT_REKOR_URL:
+        verifier = Verifier.production()
+    else:
+        # TODO: We need CLI flags that allow the user to figure the Fulcio cert chain
+        # for verification.
+        click.echo(
+            "Custom Rekor and Fulcio configuration for verification isn't fully supported yet!",
+            err=True,
+        )
+        raise click.Abort
 
     # Load the signing certificate
     logger.debug(f"Using certificate from: {certificate_path.name}")
@@ -328,8 +344,7 @@ def _verify(
 
     verified = True
     for file in files:
-        result = verify(
-            rekor_url=rekor_url,
+        result = verifier.verify(
             file=file,
             certificate=certificate,
             signature=signature,

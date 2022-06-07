@@ -21,14 +21,24 @@ from __future__ import annotations
 import json
 from abc import ABC
 from dataclasses import dataclass
+from importlib import resources
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
+from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel, Field, validator
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
+
+DEFAULT_REKOR_ROOT_PUBKEY = resources.read_binary("sigstore._store", "rekor.pub")
+STAGING_REKOR_ROOT_PUBKEY = resources.read_binary(
+    "sigstore._store", "rekor.staging.pub"
+)
+
+DEFAULT_REKOR_CTFE_PUBKEY = resources.read_binary("sigstore._store", "ctfe.pub")
+STAGING_REKOR_CTFE_PUBKEY = resources.read_binary("sigstore._store", "ctfe.staging.pub")
 
 
 @dataclass(frozen=True)
@@ -180,11 +190,26 @@ class RekorEntries(Endpoint):
 class RekorClient:
     """The internal Rekor client"""
 
-    def __init__(self, url: str = DEFAULT_REKOR_URL) -> None:
+    def __init__(self, url: str, pubkey: bytes, ctfe_pubkey: bytes) -> None:
         self.url = urljoin(url, "api/v1/")
         self.session = requests.Session()
         self.session.headers.update(
             {"Content-Type": "application/json", "Accept": "application/json"}
+        )
+
+        self._pubkey = serialization.load_pem_public_key(pubkey)
+        self._ctfe_pubkey = serialization.load_pem_public_key(ctfe_pubkey)
+
+    @classmethod
+    def production(cls) -> RekorClient:
+        return cls(
+            DEFAULT_REKOR_URL, DEFAULT_REKOR_ROOT_PUBKEY, DEFAULT_REKOR_CTFE_PUBKEY
+        )
+
+    @classmethod
+    def staging(cls) -> RekorClient:
+        return cls(
+            STAGING_REKOR_URL, STAGING_REKOR_ROOT_PUBKEY, STAGING_REKOR_CTFE_PUBKEY
         )
 
     @property

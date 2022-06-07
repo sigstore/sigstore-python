@@ -16,6 +16,8 @@
 Client implementation for interacting with Fulcio.
 """
 
+from __future__ import annotations
+
 import base64
 import datetime
 import json
@@ -309,6 +311,14 @@ class FulcioClient:
         logger.debug(f"Fulcio client using URL: {url}")
         self.url = url
         self.session = requests.Session()
+
+    @classmethod
+    def production(cls) -> FulcioClient:
+        return cls(DEFAULT_FULCIO_URL)
+
+    @classmethod
+    def staging(cls) -> FulcioClient:
+        return cls(STAGING_FULCIO_URL)
 
     @property
     def signing_cert(self) -> FulcioSigningCert:
