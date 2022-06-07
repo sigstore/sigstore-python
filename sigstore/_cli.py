@@ -27,6 +27,7 @@ from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import (
     DEFAULT_OAUTH_ISSUER,
+    STAGING_OAUTH_ISSUER,
     get_identity_token,
 )
 from sigstore._internal.rekor.client import (
@@ -196,6 +197,7 @@ def _sign(
     if staging:
         logger.debug("sign: staging instances requested")
         signer = Signer.staging()
+        oidc_issuer = STAGING_OAUTH_ISSUER
     elif fulcio_url == DEFAULT_FULCIO_URL and rekor_url == DEFAULT_REKOR_URL:
         signer = Signer.production()
     else:
