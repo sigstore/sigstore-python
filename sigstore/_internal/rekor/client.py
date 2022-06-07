@@ -190,7 +190,7 @@ class RekorEntries(Endpoint):
 class RekorClient:
     """The internal Rekor client"""
 
-    def __init__(self, url: str, pubkey: bytes, ctfe_key: bytes) -> None:
+    def __init__(self, url: str, pubkey: bytes, ctfe_pubkey: bytes) -> None:
         self.url = urljoin(url, "api/v1/")
         self.session = requests.Session()
         self.session.headers.update(
@@ -198,7 +198,7 @@ class RekorClient:
         )
 
         self._pubkey = serialization.load_pem_public_key(pubkey)
-        self._ctfe_pubkey = serialization.load_pem_public_key(ctfe_key)
+        self._ctfe_pubkey = serialization.load_pem_public_key(ctfe_pubkey)
 
     @classmethod
     def production(cls) -> RekorClient:
