@@ -358,8 +358,9 @@ def _verify(args: argparse.Namespace) -> None:
     logger.debug(f"Using signature from: {args.signature.name}")
     signature = args.signature.read()
 
+    logger.debug(f"Verifying contents from: {args.file.name}")
     result = verifier.verify(
-        file=args.file,
+        input_=args.file.read(),
         certificate=certificate,
         signature=signature,
         expected_cert_email=args.cert_email,
@@ -371,6 +372,7 @@ def _verify(args: argparse.Namespace) -> None:
     else:
         result = cast(VerificationFailure, result)
         print(f"FAIL: {args.file.name}")
+        print(f"Failure reason: {result.reason}", file=sys.stderr)
 
         if isinstance(result, CertificateVerificationFailure):
             # If certificate verification failed, it's either because of
@@ -378,7 +380,6 @@ def _verify(args: argparse.Namespace) -> None:
             # These might already be resolved in a newer version, so
             # we suggest that users try to upgrade and retry before
             # anything else.
-            print(result.reason, file=sys.stderr)
             print(
                 dedent(
                     f"""
@@ -395,7 +396,5 @@ def _verify(args: argparse.Namespace) -> None:
                 ),
                 file=sys.stderr,
             )
-        else:
-            print(result.reason, file=sys.stderr)
 
         sys.exit(1)
