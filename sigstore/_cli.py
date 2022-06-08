@@ -323,7 +323,7 @@ def _sign(args: argparse.Namespace) -> None:
         issuer = Issuer(args.oidc_issuer)
 
         if args.oidc_client_secret is None:
-            args.oidc_client_secret = ""
+            args.oidc_client_secret = ""  # nosec: B105
 
         args.identity_token = get_identity_token(
             args.oidc_client_id,
