@@ -53,7 +53,9 @@ def _parser() -> argparse.ArgumentParser:
     subcommands = parser.add_subparsers(required=True, dest="subcommand")
 
     # `sigstore sign`
-    sign = subcommands.add_parser("sign")
+    sign = subcommands.add_parser(
+        "sign", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
 
     oidc_options = sign.add_argument_group("OpenID Connect options")
     oidc_options.add_argument(
@@ -167,7 +169,9 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     # `sigstore verify`
-    verify = subcommands.add_parser("verify")
+    verify = subcommands.add_parser(
+        "verify", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
 
     input_options = verify.add_argument_group("Verification inputs")
     input_options.add_argument(
