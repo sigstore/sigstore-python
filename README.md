@@ -69,52 +69,55 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--force] [--fulcio-url URL] [--rekor-url URL]
                      [--ctfe FILE] [--rekor-root-pubkey FILE]
                      [--oidc-issuer URL] [--staging]
-                     FILE [FILE ...] [FILE [FILE ...] ...]
+                     FILE [FILE ...]
 
 positional arguments:
-  FILE [FILE ...]       The files to sign
+  FILE                  The file to sign
 
 options:
   -h, --help            show this help message and exit
 
 OpenID Connect options:
   --identity-token TOKEN
-                        the OIDC identity token to use
+                        the OIDC identity token to use (default: None)
   --oidc-client-id ID   The custom OpenID Connect client ID to use during
-                        OAuth2
+                        OAuth2 (default: sigstore)
   --oidc-client-secret SECRET
                         The custom OpenID Connect client secret to use during
-                        OAuth2
+                        OAuth2 (default: None)
   --oidc-disable-ambient-providers
                         Disable ambient OpenID Connect credential detection
-                        (e.g. on GitHub Actions)
+                        (e.g. on GitHub Actions) (default: False)
 
 Output options:
   --output              Write signature and certificate results to default
-                        files ({input}.sig and {input}.crt)
+                        files ({input}.sig and {input}.crt) (default: False)
   --output-signature FILE
                         Write a single signature to the given file; conflicts
                         with --output and does not work with multiple input
-                        files
+                        files (default: None)
   --output-certificate FILE
                         Write a single certificate to the given file;
                         conflicts with --output and does not work with
-                        multiple input files
+                        multiple input files (default: None)
   --force               Overwrite preexisting signature and certificate
-                        outputs, if present
+                        outputs, if present (default: False)
 
 Sigstore instance options:
   --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
+                        (default: https://fulcio.sigstore.dev)
   --rekor-url URL       The Rekor instance to use (conflicts with --staging)
+                        (default: https://rekor.sigstore.dev)
   --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
-                        with --staging)
+                        with --staging) (default: ctfe.pub (embedded))
   --rekor-root-pubkey FILE
                         A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging)
+                        (conflicts with --staging) (default: rekor.pub
+                        (embedded))
   --oidc-issuer URL     The OpenID Connect issuer to use (conflicts with
-                        --staging)
+                        --staging) (default: https://oauth2.sigstore.dev/auth)
   --staging             Use sigstore's staging instances, instead of the
-                        default production instances
+                        default production instances (default: False)
 ```
 <!-- @end-sigstore-sign-help@ -->
 
@@ -136,19 +139,21 @@ options:
 Verification inputs:
   --certificate FILE, --cert FILE
                         The PEM-encoded certificate to verify against
-  --signature FILE      The signature to verify against
+                        (default: None)
+  --signature FILE      The signature to verify against (default: None)
 
 Extended verification options:
   --cert-email EMAIL    The email address to check for in the certificate's
-                        Subject Alternative Name
+                        Subject Alternative Name (default: None)
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
-                        OIDC issuer extension
+                        OIDC issuer extension (default: None)
 
 Sigstore instance options:
   --rekor-url URL       The Rekor instance to use (conflicts with --staging)
+                        (default: https://rekor.sigstore.dev)
   --staging             Use sigstore's staging instances, instead of the
-                        default production instances
+                        default production instances (default: False)
 ```
 <!-- @end-sigstore-verify-help@ -->
 

@@ -16,6 +16,7 @@ import argparse
 import logging
 import os
 import sys
+from importlib import resources
 from pathlib import Path
 from textwrap import dedent
 from typing import TextIO, cast
@@ -39,6 +40,22 @@ from sigstore._verify import (
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
+
+
+class _Embedded:
+    """
+    A repr-wrapper for reading embedded resources, needed to help `argparse`
+    render defaults correctly.
+    """
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def read(self) -> bytes:
+        return resources.read_binary("sigstore._store", self._name)
+
+    def __repr__(self) -> str:
+        return f"{self._name} (embedded)"
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -75,7 +92,6 @@ def _parser() -> argparse.ArgumentParser:
         "--oidc-client-secret",
         metavar="SECRET",
         type=str,
-        default="",
         help="The custom OpenID Connect client secret to use during OAuth2",
     )
     oidc_options.add_argument(
@@ -138,14 +154,14 @@ def _parser() -> argparse.ArgumentParser:
         metavar="FILE",
         type=argparse.FileType("rb"),
         help="A PEM-encoded public key for the CT log (conflicts with --staging)",
-        # TODO: Dynamic default here
+        default=_Embedded("ctfe.pub"),
     )
     instance_options.add_argument(
         "--rekor-root-pubkey",
         metavar="FILE",
         type=argparse.FileType("rb"),
         help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-        # TODO: Dynamic default here
+        default=_Embedded("rekor.pub"),
     )
     instance_options.add_argument(
         "--oidc-issuer",
@@ -162,10 +178,10 @@ def _parser() -> argparse.ArgumentParser:
 
     sign.add_argument(
         "files",
-        metavar="FILE [FILE ...]",
+        metavar="FILE",
         type=Path,
         nargs="+",
-        help="The files to sign",
+        help="The file to sign",
     )
 
     # `sigstore verify`
@@ -305,6 +321,10 @@ def _sign(args: argparse.Namespace) -> None:
         args.identity_token = detect_credential()
     if not args.identity_token:
         issuer = Issuer(args.oidc_issuer)
+
+        if args.oidc_client_secret is None:
+            args.oidc_client_secret = ""
+
         args.identity_token = get_identity_token(
             args.oidc_client_id,
             args.oidc_client_secret,
