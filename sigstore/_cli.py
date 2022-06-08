@@ -128,7 +128,7 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     output_options.add_argument(
-        "--force",
+        "--overwrite",
         action="store_true",
         help="Overwrite preexisting signature and certificate outputs, if present",
     )
@@ -275,7 +275,7 @@ def _sign(args: argparse.Namespace) -> None:
         )
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
-    # so that we can fail early if overwriting without `--force`.
+    # so that we can fail early if overwriting without `--overwrite`.
     output_map = {}
     for file in args.files:
         sig, cert = args.output_signature, args.output_certificate
@@ -283,16 +283,17 @@ def _sign(args: argparse.Namespace) -> None:
             sig = file.parent / f"{file.name}.sig"
             cert = file.parent / f"{file.name}.crt"
 
-        if not args.force:
-            extant = None
+        if not args.overwrite:
+            extants = []
             if sig and sig.exists():
-                extant = sig
-            elif cert and cert.exists():
-                extant = cert
+                extants.append(str(sig))
+            if cert and cert.exists():
+                extants.append(str(cert))
 
-            if extant:
+            if extants:
                 args._parser.error(
-                    f"Refusing to overwrite pre-existing outputs without --force: {extant}"
+                    "Refusing to overwrite outputs without --overwrite: "
+                    f"{', '.join(extants)}"
                 )
 
         output_map[file] = {"cert": cert, "sig": sig}
