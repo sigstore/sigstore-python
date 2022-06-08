@@ -66,7 +66,7 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--output]
                      [--output-signature FILE] [--output-certificate FILE]
-                     [--force] [--fulcio-url URL] [--rekor-url URL]
+                     [--overwrite] [--fulcio-url URL] [--rekor-url URL]
                      [--ctfe FILE] [--rekor-root-pubkey FILE]
                      [--oidc-issuer URL] [--staging]
                      FILE [FILE ...]
@@ -100,7 +100,7 @@ Output options:
                         Write a single certificate to the given file;
                         conflicts with --output and does not work with
                         multiple input files (default: None)
-  --force               Overwrite preexisting signature and certificate
+  --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
 
 Sigstore instance options:
