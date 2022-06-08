@@ -17,7 +17,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
-from typing import BinaryIO
 
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -57,14 +56,11 @@ class Signer:
 
     def sign(
         self,
-        file: BinaryIO,
+        input_: bytes,
         identity_token: str,
     ) -> SigningResult:
         """Public API for signing blobs"""
-
-        logger.debug(f"Using payload from: {file.name}")
-        artifact_contents = file.read()
-        sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
+        sha256_artifact_hash = hashlib.sha256(input_).hexdigest()
 
         logger.debug("Generating ephemeral keys...")
         private_key = ec.generate_private_key(ec.SECP384R1())
@@ -109,9 +105,7 @@ class Signer:
         logger.debug("Successfully verified SCT...")
 
         # Sign artifact
-        artifact_signature = private_key.sign(
-            artifact_contents, ec.ECDSA(hashes.SHA256())
-        )
+        artifact_signature = private_key.sign(input_, ec.ECDSA(hashes.SHA256()))
         b64_artifact_signature = base64.b64encode(artifact_signature).decode()
 
         # Prepare inputs
