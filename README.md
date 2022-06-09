@@ -218,8 +218,8 @@ namely the Fulcio's supported identity providers and the claims expected within 
 
 ### Verifying against a signature and certificate
 
-By default, `sigstore verify` will attempt to find a `foo.txt.sig` and `foo.txt.crt` adjacent
-to the file being verified:
+By default, `sigstore verify` will attempt to find a `<filename>.sig` and `<filename>.crt` in the
+same directory as the file being verified:
 
 ```console
 # looks for foo.txt.sig and foo.txt.crt
@@ -237,7 +237,10 @@ If your signature and certificate are at different paths, you can specify them
 explicitly (but only for one file at a time):
 
 ```console
-$ python -m sigstore verify --certificate foo.crt --signature foo.sig foo.txt
+$ python -m sigstore verify \
+    --certificate some/other/path/foo.crt \
+    --signature some/other/path/foo.sig \
+    foo.txt
 ```
 
 ### Extended verification against OpenID Connect claims
