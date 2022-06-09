@@ -175,11 +175,11 @@ detection. This includes many popular CI platforms and cloud providers.
 | GitLab CI                   | Planned   | See [#31](https://github.com/sigstore/sigstore-python/issues/31)                                                                                                                                                                                                                                                       |
 | CircleCI                    | Planned   | See [#31](https://github.com/sigstore/sigstore-python/issues/31)                                                                                                                                                                                                                                                       |
 
-Sign a single file (`foo.tar.gz`) using an ambient OpenID Connect credential,
-saving the signature and certificate to `foo.tar.gz.sig` and `foo.tar.gz.crt`:
+Sign a single file (`foo.txt`) using an ambient OpenID Connect credential,
+saving the signature and certificate to `foo.txt.sig` and `foo.txt.crt`:
 
 ```console
-$ sigstore sign foo.tar.gz
+$ python -m sigstore sign foo.txt
 ```
 
 ### Signing with an email identity
@@ -188,11 +188,11 @@ $ sigstore sign foo.tar.gz
 allowing you to request signing certificates that attest to control over
 that email.
 
-Sign a single file (`foo.tar.gz`) using the OAuth2 flow, saving the
-signature and certificate to `foo.tar.gz.sig` and `foo.tar.gz.crt`:
+Sign a single file (`foo.txt`) using the OAuth2 flow, saving the
+signature and certificate to `foo.txt.sig` and `foo.txt.crt`:
 
 ```console
-$ sigstore sign foo.tar.gz
+$ python -m sigstore sign foo.txt
 ```
 
 By default, `sigstore` attempts to do
@@ -200,7 +200,7 @@ By default, `sigstore` attempts to do
 the OAuth2 flow. To force the OAuth2 flow, you can explicitly disable ambient detection:
 
 ```console
-$ sigstore sign --oidc-disable-ambient-providers foo.tar.gz
+$ python -m sigstore sign --oidc-disable-ambient-providers foo.txt
 ```
 
 ### Signing with an explicit identity token
@@ -209,7 +209,7 @@ If you can't use an ambient credential or the OAuth2 flow, you can pass a pre-cr
 identity token directly into `sigstore sign`:
 
 ```console
-$ sigstore sign --identity-token YOUR-LONG-JWT-HERE foo.tar.gz
+$ python -m sigstore sign --identity-token YOUR-LONG-JWT-HERE foo.txt
 ```
 
 Note that passing a custom identity token does not circumvent Fulcio's requirements,
