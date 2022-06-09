@@ -32,13 +32,15 @@ from pydantic import BaseModel, Field, validator
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
 
-DEFAULT_REKOR_ROOT_PUBKEY = resources.read_binary("sigstore._store", "rekor.pub")
-STAGING_REKOR_ROOT_PUBKEY = resources.read_binary(
+_DEFAULT_REKOR_ROOT_PUBKEY = resources.read_binary("sigstore._store", "rekor.pub")
+_STAGING_REKOR_ROOT_PUBKEY = resources.read_binary(
     "sigstore._store", "rekor.staging.pub"
 )
 
-DEFAULT_REKOR_CTFE_PUBKEY = resources.read_binary("sigstore._store", "ctfe.pub")
-STAGING_REKOR_CTFE_PUBKEY = resources.read_binary("sigstore._store", "ctfe.staging.pub")
+_DEFAULT_REKOR_CTFE_PUBKEY = resources.read_binary("sigstore._store", "ctfe.pub")
+_STAGING_REKOR_CTFE_PUBKEY = resources.read_binary(
+    "sigstore._store", "ctfe.staging.pub"
+)
 
 
 @dataclass(frozen=True)
@@ -203,13 +205,13 @@ class RekorClient:
     @classmethod
     def production(cls) -> RekorClient:
         return cls(
-            DEFAULT_REKOR_URL, DEFAULT_REKOR_ROOT_PUBKEY, DEFAULT_REKOR_CTFE_PUBKEY
+            DEFAULT_REKOR_URL, _DEFAULT_REKOR_ROOT_PUBKEY, _DEFAULT_REKOR_CTFE_PUBKEY
         )
 
     @classmethod
     def staging(cls) -> RekorClient:
         return cls(
-            STAGING_REKOR_URL, STAGING_REKOR_ROOT_PUBKEY, STAGING_REKOR_CTFE_PUBKEY
+            STAGING_REKOR_URL, _STAGING_REKOR_ROOT_PUBKEY, _STAGING_REKOR_CTFE_PUBKEY
         )
 
     @property

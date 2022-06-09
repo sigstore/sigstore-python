@@ -23,8 +23,9 @@ import datetime
 import hashlib
 import logging
 from importlib import resources
-from typing import BinaryIO, List, Optional, cast
+from typing import List, Optional, cast
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
@@ -121,15 +122,15 @@ class Verifier:
 
     def verify(
         self,
-        file: BinaryIO,
+        input_: bytes,
         certificate: bytes,
         signature: bytes,
         expected_cert_email: Optional[str] = None,
         expected_cert_oidc_issuer: Optional[str] = None,
     ) -> VerificationResult:
-        """Public API for verifying files.
+        """Public API for verifying.
 
-        `file` is the file to verify.
+        `input` is the input to verify.
 
         `certificate` is the PEM-encoded signing certificate.
 
@@ -143,10 +144,7 @@ class Verifier:
         success.
         """
 
-        # Read the contents of the package to be verified
-        logger.debug(f"Using payload from: {file.name}")
-        artifact_contents = file.read()
-        sha256_artifact_hash = hashlib.sha256(artifact_contents).hexdigest()
+        sha256_artifact_hash = hashlib.sha256(input_).hexdigest()
 
         cert = load_pem_x509_certificate(certificate)
         artifact_signature = base64.b64decode(signature)
@@ -223,11 +221,12 @@ class Verifier:
         logger.debug("Successfully verified signing certificate validity...")
 
         # 3) Verify that the signature was signed by the public key in the signing certificate
-        signing_key = cert.public_key()
-        signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
-        signing_key.verify(
-            artifact_signature, artifact_contents, ec.ECDSA(hashes.SHA256())
-        )
+        try:
+            signing_key = cert.public_key()
+            signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
+            signing_key.verify(artifact_signature, input_, ec.ECDSA(hashes.SHA256()))
+        except InvalidSignature:
+            return VerificationFailure(reason="Signature is invalid for input")
 
         logger.debug("Successfully verified signature...")
 

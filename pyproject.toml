@@ -25,7 +25,6 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
-  "click>=8",
   "cryptography",
   "pem",
   "pydantic",

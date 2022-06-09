@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import logging
 import os
 import sys
-from io import BytesIO
+from importlib import resources
+from pathlib import Path
 from textwrap import dedent
-from typing import BinaryIO, List, Optional, TextIO, cast
-
-import click
+from typing import TextIO, cast
 
 from sigstore import __version__
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
@@ -30,12 +30,7 @@ from sigstore._internal.oidc.oauth import (
     STAGING_OAUTH_ISSUER,
     get_identity_token,
 )
-from sigstore._internal.rekor.client import (
-    DEFAULT_REKOR_CTFE_PUBKEY,
-    DEFAULT_REKOR_ROOT_PUBKEY,
-    DEFAULT_REKOR_URL,
-    RekorClient,
-)
+from sigstore._internal.rekor.client import DEFAULT_REKOR_URL, RekorClient
 from sigstore._sign import Signer
 from sigstore._verify import (
     CertificateVerificationFailure,
@@ -47,163 +42,275 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
 
 
-@click.group()
-@click.version_option(version=__version__)
+class _Embedded:
+    """
+    A repr-wrapper for reading embedded resources, needed to help `argparse`
+    render defaults correctly.
+    """
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def read(self) -> bytes:
+        return resources.read_binary("sigstore._store", self._name)
+
+    def __repr__(self) -> str:
+        return f"{self._name} (embedded)"
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="sigstore",
+        description="a tool for signing and verifying Python package distributions",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "-V", "--version", action="version", version=f"%(prog)s {__version__}"
+    )
+    subcommands = parser.add_subparsers(required=True, dest="subcommand")
+
+    # `sigstore sign`
+    sign = subcommands.add_parser(
+        "sign", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    oidc_options = sign.add_argument_group("OpenID Connect options")
+    oidc_options.add_argument(
+        "--identity-token",
+        metavar="TOKEN",
+        type=str,
+        help="the OIDC identity token to use",
+    )
+    oidc_options.add_argument(
+        "--oidc-client-id",
+        metavar="ID",
+        type=str,
+        default="sigstore",
+        help="The custom OpenID Connect client ID to use during OAuth2",
+    )
+    oidc_options.add_argument(
+        "--oidc-client-secret",
+        metavar="SECRET",
+        type=str,
+        help="The custom OpenID Connect client secret to use during OAuth2",
+    )
+    oidc_options.add_argument(
+        "--oidc-disable-ambient-providers",
+        action="store_true",
+        help="Disable ambient OpenID Connect credential detection (e.g. on GitHub Actions)",
+    )
+
+    output_options = sign.add_argument_group("Output options")
+    output_options.add_argument(
+        "--output",
+        action="store_true",
+        help=(
+            "Write signature and certificate results to default files "
+            "({input}.sig and {input}.crt)"
+        ),
+    )
+    output_options.add_argument(
+        "--output-signature",
+        metavar="FILE",
+        type=Path,
+        help=(
+            "Write a single signature to the given file; conflicts with --output and "
+            "does not work with multiple input files"
+        ),
+    )
+    output_options.add_argument(
+        "--output-certificate",
+        metavar="FILE",
+        type=Path,
+        help=(
+            "Write a single certificate to the given file; conflicts with --output and "
+            "does not work with multiple input files"
+        ),
+    )
+    output_options.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite preexisting signature and certificate outputs, if present",
+    )
+
+    instance_options = sign.add_argument_group("Sigstore instance options")
+    instance_options.add_argument(
+        "--fulcio-url",
+        metavar="URL",
+        type=str,
+        default=DEFAULT_FULCIO_URL,
+        help="The Fulcio instance to use (conflicts with --staging)",
+    )
+    instance_options.add_argument(
+        "--rekor-url",
+        metavar="URL",
+        type=str,
+        default=DEFAULT_REKOR_URL,
+        help="The Rekor instance to use (conflicts with --staging)",
+    )
+    instance_options.add_argument(
+        "--ctfe",
+        dest="ctfe_pem",
+        metavar="FILE",
+        type=argparse.FileType("rb"),
+        help="A PEM-encoded public key for the CT log (conflicts with --staging)",
+        default=_Embedded("ctfe.pub"),
+    )
+    instance_options.add_argument(
+        "--rekor-root-pubkey",
+        metavar="FILE",
+        type=argparse.FileType("rb"),
+        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
+        default=_Embedded("rekor.pub"),
+    )
+    instance_options.add_argument(
+        "--oidc-issuer",
+        metavar="URL",
+        type=str,
+        default=DEFAULT_OAUTH_ISSUER,
+        help="The OpenID Connect issuer to use (conflicts with --staging)",
+    )
+    instance_options.add_argument(
+        "--staging",
+        action="store_true",
+        help="Use sigstore's staging instances, instead of the default production instances",
+    )
+
+    sign.add_argument(
+        "files",
+        metavar="FILE",
+        type=Path,
+        nargs="+",
+        help="The file to sign",
+    )
+
+    # `sigstore verify`
+    verify = subcommands.add_parser(
+        "verify", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    input_options = verify.add_argument_group("Verification inputs")
+    input_options.add_argument(
+        "--certificate",
+        "--cert",
+        metavar="FILE",
+        type=argparse.FileType("rb"),
+        required=True,
+        help="The PEM-encoded certificate to verify against",
+    )
+    input_options.add_argument(
+        "--signature",
+        metavar="FILE",
+        type=argparse.FileType("rb"),
+        required=True,
+        help="The signature to verify against",
+    )
+
+    verification_options = verify.add_argument_group("Extended verification options")
+    verification_options.add_argument(
+        "--cert-email",
+        metavar="EMAIL",
+        type=str,
+        help="The email address to check for in the certificate's Subject Alternative Name",
+    )
+    verification_options.add_argument(
+        "--cert-oidc-issuer",
+        metavar="URL",
+        type=str,
+        help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
+    )
+
+    instance_options = verify.add_argument_group("Sigstore instance options")
+    instance_options.add_argument(
+        "--rekor-url",
+        metavar="URL",
+        type=str,
+        default=DEFAULT_REKOR_URL,
+        help="The Rekor instance to use (conflicts with --staging)",
+    )
+    instance_options.add_argument(
+        "--staging",
+        action="store_true",
+        help="Use sigstore's staging instances, instead of the default production instances",
+    )
+
+    verify.add_argument(
+        "file", metavar="FILE", type=argparse.FileType("rb"), help="The file to verify"
+    )
+
+    return parser
+
+
 def main() -> None:
-    pass
+    parser = _parser()
+    args = parser.parse_args()
+
+    logger.debug(f"parsed arguments {args}")
+
+    # Stuff the parser back into our namespace, so that we can use it for
+    # error handling later.
+    args._parser = parser
+
+    if args.subcommand == "sign":
+        _sign(args)
+    elif args.subcommand == "verify":
+        _verify(args)
+    else:
+        parser.error(f"Unknown subcommand: {args.subcommand}")
 
 
-@main.command("sign")
-@click.option(
-    "identity_token",
-    "--identity-token",
-    metavar="TOKEN",
-    type=click.STRING,
-    help="the OIDC identity token to use",
-)
-@click.option(
-    "oidc_client_id",
-    "--oidc-client-id",
-    metavar="ID",
-    type=click.STRING,
-    default="sigstore",
-    help="The custom OpenID Connect client ID to use",
-)
-@click.option(
-    "oidc_client_secret",
-    "--oidc-client-secret",
-    metavar="SECRET",
-    type=click.STRING,
-    default=str(),
-    help="The custom OpenID Connect client secret to use",
-)
-@click.option(
-    "oidc_issuer",
-    "--oidc-issuer",
-    metavar="URL",
-    type=click.STRING,
-    default=DEFAULT_OAUTH_ISSUER,
-    help="The custom OpenID Connect issuer to use (conflicts with --staging)",
-)
-@click.option(
-    "staging",
-    "--staging",
-    is_flag=True,
-    default=False,
-    help=(
-        "Use the sigstore project's staging instances, "
-        "instead of the default production instances"
-    ),
-)
-@click.option(
-    "oidc_disable_ambient_providers",
-    "--oidc-disable-ambient-providers",
-    is_flag=True,
-    default=False,
-    help="Disable ambient OIDC detection (e.g. on GitHub Actions)",
-)
-@click.option(
-    "output_signature",
-    "--output-signature",
-    is_flag=False,
-    flag_value=str(),
-    metavar="FILE",
-    type=click.STRING,
-    help=(
-        "With a value, write a single signature to the given file; "
-        "without a value, write each signing result to {input}.sig"
-    ),
-)
-@click.option(
-    "output_certificate",
-    "--output-certificate",
-    is_flag=False,
-    flag_value=str(),
-    metavar="FILE",
-    type=click.STRING,
-    help=(
-        "With a value, write a single signing certificate to the given file; "
-        "without a value, write each signing certificate to {input}.cert"
-    ),
-)
-@click.option(
-    "--fulcio-url",
-    metavar="URL",
-    type=click.STRING,
-    default=DEFAULT_FULCIO_URL,
-    show_default=True,
-    help="The Fulcio instance to use (conflicts with --staging)",
-)
-@click.option(
-    "rekor_url",
-    "--rekor-url",
-    metavar="URL",
-    type=click.STRING,
-    default=DEFAULT_REKOR_URL,
-    show_default=True,
-    help="The Rekor instance to use (conflicts with --staging)",
-)
-@click.option(
-    "ctfe_pem",
-    "--ctfe",
-    metavar="FILE",
-    type=click.File("rb"),
-    default=BytesIO(DEFAULT_REKOR_CTFE_PUBKEY),
-    help="A PEM-encoded public key for the CT log (conflicts with --staging)",
-)
-@click.option(
-    "rekor_root_pubkey",
-    "--rekor-root-pubkey",
-    metavar="FILE",
-    type=click.File("rb"),
-    default=BytesIO(DEFAULT_REKOR_ROOT_PUBKEY),
-    help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-)
-@click.argument(
-    "files",
-    metavar="FILE [FILE ...]",
-    type=click.File("rb"),
-    nargs=-1,
-    required=True,
-)
-def _sign(
-    files: List[BinaryIO],
-    identity_token: Optional[str],
-    oidc_client_id: str,
-    oidc_client_secret: str,
-    oidc_issuer: str,
-    oidc_disable_ambient_providers: bool,
-    output_signature: Optional[str],
-    output_certificate: Optional[str],
-    fulcio_url: str,
-    rekor_url: str,
-    ctfe_pem: BinaryIO,
-    rekor_root_pubkey: BinaryIO,
-    staging: bool,
-) -> None:
-    # Fail if `--output-signature` or `--output-certificate` is specified with
-    # a value *and* we have more than one input. If passed without values,
-    # then treat them as an instruction to generate default {input}.sig and
-    # {input}.cert outputs for each {input}.
-    multiple_inputs = len(files) > 1
-    if (output_signature or output_certificate) and multiple_inputs:
-        click.echo(
-            "Error: --output-signature and --output-certificate can't be used with "
-            "explicit outputs for multiple inputs",
-            err=True,
+def _sign(args: argparse.Namespace) -> None:
+    # `--output` may not be mixed with `--output-signature` or `--output-certificate`.
+    if args.output and (args.output_signature or args.output_certificate):
+        args._parser.error(
+            "--output may not be combined with --output-signature or --output-certificate",
         )
-        raise click.Abort
 
-    if staging:
+    # Fail if `--output-signature` or `--output-certificate` is specified
+    # *and* we have more than one input.
+    if (args.output_signature or args.output_certificate) and len(args.files) > 1:
+        args._parser.error(
+            "Error: --output-signature and --output-certificate can't be used with "
+            "explicit outputs for multiple inputs; consider using --output",
+        )
+
+    # Build up the map of inputs -> outputs ahead of any signing operations,
+    # so that we can fail early if overwriting without `--overwrite`.
+    output_map = {}
+    for file in args.files:
+        sig, cert = args.output_signature, args.output_certificate
+        if args.output:
+            sig = file.parent / f"{file.name}.sig"
+            cert = file.parent / f"{file.name}.crt"
+
+        if not args.overwrite:
+            extants = []
+            if sig and sig.exists():
+                extants.append(str(sig))
+            if cert and cert.exists():
+                extants.append(str(cert))
+
+            if extants:
+                args._parser.error(
+                    "Refusing to overwrite outputs without --overwrite: "
+                    f"{', '.join(extants)}"
+                )
+
+        output_map[file] = {"cert": cert, "sig": sig}
+
+    # Select the signer to use.
+    if args.staging:
         logger.debug("sign: staging instances requested")
         signer = Signer.staging()
-        oidc_issuer = STAGING_OAUTH_ISSUER
-    elif fulcio_url == DEFAULT_FULCIO_URL and rekor_url == DEFAULT_REKOR_URL:
+        args.oidc_issuer = STAGING_OAUTH_ISSUER
+    elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
         signer = Signer.production()
     else:
         signer = Signer(
-            fulcio=FulcioClient(fulcio_url),
-            rekor=RekorClient(rekor_url, rekor_root_pubkey.read(), ctfe_pem.read()),
+            fulcio=FulcioClient(args.fulcio_url),
+            rekor=RekorClient(
+                args.rekor_url, args.rekor_root_pubkey.read(), args.ctfe_pem.read()
+            ),
         )
 
     # The order of precedence is as follows:
@@ -211,179 +318,108 @@ def _sign(
     # 1) Explicitly supplied identity token
     # 2) Ambient credential detected in the environment, unless disabled
     # 3) Interactive OAuth flow
-    if not identity_token and not oidc_disable_ambient_providers:
-        identity_token = detect_credential()
-    if not identity_token:
-        issuer = Issuer(oidc_issuer)
-        identity_token = get_identity_token(
-            oidc_client_id,
-            oidc_client_secret,
+    if not args.identity_token and not args.oidc_disable_ambient_providers:
+        args.identity_token = detect_credential()
+    if not args.identity_token:
+        issuer = Issuer(args.oidc_issuer)
+
+        if args.oidc_client_secret is None:
+            args.oidc_client_secret = ""  # nosec: B105
+
+        args.identity_token = get_identity_token(
+            args.oidc_client_id,
+            args.oidc_client_secret,
             issuer,
         )
-    if not identity_token:
-        click.echo("No identity token supplied or detected!", err=True)
-        raise click.Abort
+    if not args.identity_token:
+        args._parser.error("No identity token supplied or detected!")
 
-    for file in files:
+    for file, outputs in output_map.items():
+        logger.debug(f"signing for {file.name}")
         result = signer.sign(
-            file=file,
-            identity_token=identity_token,
+            input_=file.read_bytes(),
+            identity_token=args.identity_token,
         )
 
-        click.echo("Using ephemeral certificate:")
-        click.echo(result.cert_pem)
+        print("Using ephemeral certificate:")
+        print(result.cert_pem)
 
-        click.echo(
-            f"Transparency log entry created at index: {result.log_entry.log_index}"
-        )
+        print(f"Transparency log entry created at index: {result.log_entry.log_index}")
 
         sig_output: TextIO
-        if output_signature is None:
-            sig_output = sys.stdout
+        if outputs["sig"]:
+            sig_output = outputs["sig"].open("w")
         else:
-            if output_signature == "":
-                output_signature = f"{file.name}.sig"
-            sig_output = open(output_signature, "w")
+            sig_output = sys.stdout
 
         print(result.b64_signature, file=sig_output)
-        if output_signature:
-            click.echo(f"Signature written to file {output_signature}")
+        if outputs["sig"]:
+            print(f"Signature written to file {outputs['sig']}")
 
-        if output_certificate is not None:
-            if output_certificate == "":
-                output_certificate = f"{file.name}.crt"
-            cert_output = open(output_certificate, "w")
+        if outputs["cert"] is not None:
+            cert_output = open(outputs["cert"], "w")
             print(result.cert_pem, file=cert_output)
-            click.echo(f"Certificate written to file {output_certificate}")
+            print(f"Certificate written to file {outputs['cert']}")
 
 
-@main.command("verify")
-@click.option(
-    "certificate_path",
-    "--cert",
-    type=click.File("rb"),
-    required=True,
-    help="The PEM-encoded certificate to verify against",
-)
-@click.option(
-    "signature_path",
-    "--signature",
-    type=click.File("rb"),
-    required=True,
-    help="The signature to verify against",
-)
-@click.option(
-    "cert_email",
-    "--cert-email",
-    type=str,
-    help=(
-        "The email address (or other identity string) to check for in the "
-        "certificate's Subject Alternative Name"
-    ),
-)
-@click.option(
-    "cert_oidc_issuer",
-    "--cert-oidc-issuer",
-    type=str,
-    help=(
-        "The OIDC issuer URL to check for in the certificate's OIDC issuer extension"
-    ),
-)
-@click.option(
-    "staging",
-    "--staging",
-    is_flag=True,
-    default=False,
-    help=(
-        "Use the sigstore project's staging instances, "
-        "instead of the default production instances"
-    ),
-)
-@click.option(
-    "rekor_url",
-    "--rekor-url",
-    metavar="URL",
-    type=click.STRING,
-    default=DEFAULT_REKOR_URL,
-    show_default=True,
-    help="The Rekor instance to use (conflicts with --staging)",
-)
-@click.argument(
-    "files", metavar="FILE [FILE ...]", type=click.File("rb"), nargs=-1, required=True
-)
-def _verify(
-    files: List[BinaryIO],
-    certificate_path: BinaryIO,
-    signature_path: BinaryIO,
-    cert_email: Optional[str],
-    cert_oidc_issuer: Optional[str],
-    rekor_url: str,
-    staging: bool,
-) -> None:
-    if staging:
+def _verify(args: argparse.Namespace) -> None:
+    if args.staging:
         logger.debug("verify: staging instances requested")
         verifier = Verifier.staging()
-    elif rekor_url == DEFAULT_REKOR_URL:
+    elif args.rekor_url == DEFAULT_REKOR_URL:
         verifier = Verifier.production()
     else:
         # TODO: We need CLI flags that allow the user to figure the Fulcio cert chain
         # for verification.
-        click.echo(
+        args._parser.error(
             "Custom Rekor and Fulcio configuration for verification isn't fully supported yet!",
-            err=True,
         )
-        raise click.Abort
 
     # Load the signing certificate
-    logger.debug(f"Using certificate from: {certificate_path.name}")
-    certificate = certificate_path.read()
+    logger.debug(f"Using certificate from: {args.certificate.name}")
+    certificate = args.certificate.read()
 
     # Load the signature
-    logger.debug(f"Using signature from: {signature_path.name}")
-    signature = signature_path.read()
+    logger.debug(f"Using signature from: {args.signature.name}")
+    signature = args.signature.read()
 
-    verified = True
-    for file in files:
-        result = verifier.verify(
-            file=file,
-            certificate=certificate,
-            signature=signature,
-            expected_cert_email=cert_email,
-            expected_cert_oidc_issuer=cert_oidc_issuer,
-        )
+    logger.debug(f"Verifying contents from: {args.file.name}")
+    result = verifier.verify(
+        input_=args.file.read(),
+        certificate=certificate,
+        signature=signature,
+        expected_cert_email=args.cert_email,
+        expected_cert_oidc_issuer=args.cert_oidc_issuer,
+    )
 
-        if result:
-            click.echo(f"OK: {file.name}")
-        else:
-            result = cast(VerificationFailure, result)
-            click.echo(f"FAIL: {file.name}")
+    if result:
+        print(f"OK: {args.file.name}")
+    else:
+        result = cast(VerificationFailure, result)
+        print(f"FAIL: {args.file.name}")
+        print(f"Failure reason: {result.reason}", file=sys.stderr)
 
-            if isinstance(result, CertificateVerificationFailure):
-                # If certificate verification failed, it's either because of
-                # a chain issue or some outdated state in sigstore itself.
-                # These might already be resolved in a newer version, so
-                # we suggest that users try to upgrade and retry before
-                # anything else.
-                click.echo(result.reason, err=True)
-                click.echo(
-                    dedent(
-                        f"""
-                        This may be a result of an outdated `sigstore` installation.
+        if isinstance(result, CertificateVerificationFailure):
+            # If certificate verification failed, it's either because of
+            # a chain issue or some outdated state in sigstore itself.
+            # These might already be resolved in a newer version, so
+            # we suggest that users try to upgrade and retry before
+            # anything else.
+            print(
+                dedent(
+                    f"""
+                    This may be a result of an outdated `sigstore` installation.
 
-                        Consider upgrading with:
+                    Consider upgrading with:
 
-                            python -m pip install --upgrade sigstore
+                        python -m pip install --upgrade sigstore
 
-                        Additional context:
+                    Additional context:
 
-                        {result.exception}
-                        """
-                    ),
-                    err=True,
-                )
-            else:
-                click.echo(result.reason, err=True)
-            verified = False
+                    {result.exception}
+                    """
+                ),
+                file=sys.stderr,
+            )
 
-    if not verified:
-        raise click.Abort
+        sys.exit(1)
