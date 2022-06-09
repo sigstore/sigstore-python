@@ -213,7 +213,7 @@ $ sigstore sign --identity-token YOUR-LONG-JWT-HERE foo.tar.gz
 ```
 
 Note that passing a custom identity token does not circumvent Fulcio's requirements,
-namely the list of supported Identity Providers and their expected claims.
+namely the Fulcio's supported identity providers and the claims expected within the token.
 
 ## Licensing
 
