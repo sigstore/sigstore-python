@@ -216,6 +216,55 @@ $ python -m sigstore sign --identity-token YOUR-LONG-JWT-HERE foo.txt
 Note that passing a custom identity token does not circumvent Fulcio's requirements,
 namely the Fulcio's supported identity providers and the claims expected within the token.
 
+### Verifying against a signature and certificate
+
+By default, `sigstore verify` will attempt to find a `foo.txt.sig` and `foo.txt.crt` adjacent
+to the file being verified:
+
+```console
+# looks for foo.txt.sig and foo.txt.crt
+$ python -m sigstore verify foo.txt
+```
+
+Multiple files can be verified at once:
+
+```console
+# looks for {foo,bar}.txt.{sig,crt}
+$ python -m sigstore verify foo.txt bar.txt
+```
+
+If your signature and certificate are at different paths, you can specify them
+explicitly (but only for one file at a time):
+
+```console
+$ python -m sigstore verify --certificate foo.crt --signature foo.sig foo.txt
+```
+
+### Extended verification against OpenID Connect claims
+
+By default, `sigstore verify` only checks the validity of the certificate,
+the correctness of the signature, and the consistency of both with the
+certificate transparency log.
+
+To assert further details about the signature (such as *who* or *what* signed for the artifact),
+you can test against the OpenID Connect claims embedded within it.
+
+For example, to accept the signature and certificate only if they correspond to a particular
+email identity:
+
+```console
+$ python -m sigstore verify --cert-email developer@example.com foo.txt
+```
+
+Or to accept only if the OpenID Connect issuer is the expected one:
+
+```console
+$ python -m sigstore verify --cert-oidc-issuer https://github.com/login/oauth foo.txt
+```
+
+These options can be combined, and further extended validation options (e.g., for
+signing results from GitHub Actions) are under development.
+
 ## Licensing
 
 `sigstore` is licensed under the Apache 2.0 License.
