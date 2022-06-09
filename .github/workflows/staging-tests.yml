@@ -31,7 +31,7 @@ jobs:
 
           # Our signing target is not important here, so we just sign
           # the README in the repository.
-          ./staging-env/bin/python -m sigstore sign --output --staging README.md
+          ./staging-env/bin/python -m sigstore sign --staging README.md
 
           # Verification also requires a different Rekor instance, so we
           # also test it.

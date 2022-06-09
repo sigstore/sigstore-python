@@ -102,12 +102,9 @@ def _parser() -> argparse.ArgumentParser:
 
     output_options = sign.add_argument_group("Output options")
     output_options.add_argument(
-        "--output",
+        "--no-default-files",
         action="store_true",
-        help=(
-            "Write signature and certificate results to default files "
-            "({input}.sig and {input}.crt)"
-        ),
+        help="Don't emit the default output files ({input}.sig and {input}.crt)",
     )
     output_options.add_argument(
         "--output-signature",
@@ -260,10 +257,12 @@ def main() -> None:
 
 
 def _sign(args: argparse.Namespace) -> None:
-    # `--output` may not be mixed with `--output-signature` or `--output-certificate`.
-    if args.output and (args.output_signature or args.output_certificate):
+    # `--no-default-files` has no effect on `--output-{signature,certificate}`,
+    # but we forbid it because it indicates user confusion.
+    if args.no_default_files and (args.output_signature or args.output_certificate):
         args._parser.error(
-            "--output may not be combined with --output-signature or --output-certificate",
+            "--no-default-files may not be combined with "
+            "--output-signature or --output-certificate",
         )
 
     # Fail if `--output-signature` or `--output-certificate` is specified
@@ -279,7 +278,7 @@ def _sign(args: argparse.Namespace) -> None:
     output_map = {}
     for file in args.files:
         sig, cert = args.output_signature, args.output_certificate
-        if args.output:
+        if not args.no_default_files:
             sig = file.parent / f"{file.name}.sig"
             cert = file.parent / f"{file.name}.crt"
 
