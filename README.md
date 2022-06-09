@@ -157,17 +157,63 @@ Sigstore instance options:
 ```
 <!-- @end-sigstore-verify-help@ -->
 
-### Ambient credential detection
+## Example uses
 
-For environments that support OIDC natively, `sigstore` supports automatic ambient credential detection:
+`sigstore` supports a wide variety of workflows and usages. Some common ones are
+provided below.
 
-- GitHub:
-  - Actions: requires setting the `id-token` permission, see https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect. An example is [here](https://github.com/sigstore/sigstore-python/blob/main/.github/workflows/release.yml).
-- Google Cloud:
-  - Compute Engine: automatic
-  - Cloud Build: requires setting `GOOGLE_SERVICE_ACCOUNT_NAME` to an appropriately configured service account name, see https://cloud.google.com/iam/docs/creating-short-lived-service-account-credentials#sa-credentials-direct. An example is [here](https://github.com/sigstore/sigstore-python/blob/main/cloudbuild.yaml)
-- GitLab: planned, see https://github.com/sigstore/sigstore-python/issues/31
-- CircleCI: planned, see https://github.com/sigstore/sigstore-python/issues/31
+### Signing with ambient credentials
+
+For environments that support OpenID Connect, natively `sigstore` supports ambient credential
+detection. This includes many popular CI platforms and cloud providers.
+
+| Service                     | Status    | Notes                                                                                                                                                                                                                                                                                                                  |
+|-----------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GitHub Actions              | Supported | Requires the `id-token` permission; see [the docs](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect) and [this example](https://github.com/sigstore/sigstore-python/blob/main/.github/workflows/release.yml)                             |
+| Google Compute Engine (GCE) | Supported | Automatic                                                                                                                                                                                                                                                                                                              |
+| Google Cloud Build (GCB)    | Supported | Requires setting `GOOGLE_SERVICE_ACCOUNT_NAME` to an appropriately configured service account name; see [the docs](https://cloud.google.com/iam/docs/creating-short-lived-service-account-credentials#sa-credentials-direct) and [this example](https://github.com/sigstore/sigstore-python/blob/main/cloudbuild.yaml) |
+| GitLab CI                   | Planned   | See [#31](https://github.com/sigstore/sigstore-python/issues/31)                                                                                                                                                                                                                                                       |
+| CircleCI                    | Planned   | See [#31](https://github.com/sigstore/sigstore-python/issues/31)                                                                                                                                                                                                                                                       |
+
+Sign a single file (`foo.tar.gz`) using an ambient OpenID Connect credential,
+saving the signature and certificate to `foo.tar.gz.sig` and `foo.tar.gz.crt`:
+
+```console
+$ sigstore sign foo.tar.gz
+```
+
+### Signing with an email identity
+
+`sigstore` can use an OAuth2 + OpenID flow to establish an email identity,
+allowing you to request signing certificates that attest to control over
+that email.
+
+Sign a single file (`foo.tar.gz`) using the OAuth2 flow, saving the
+signature and certificate to `foo.tar.gz.sig` and `foo.tar.gz.crt`:
+
+```console
+$ sigstore sign foo.tar.gz
+```
+
+By default, `sigstore` attempts to do
+[ambient credential detection](#signing-with-ambient-credentials), which may preempt
+the OAuth2 flow. To force the OAuth2 flow, you can explicitly disable ambient detection:
+
+```console
+$ sigstore sign --oidc-disable-ambient-providers foo.tar.gz
+```
+
+### Signing with an explicit identity token
+
+If you can't use an ambient credential or the OAuth2 flow, you can pass a pre-created
+identity token directly into `sigstore sign`:
+
+```console
+$ sigstore sign --identity-token YOUR-LONG-JWT-HERE foo.tar.gz
+```
+
+Note that passing a custom identity token does not circumvent Fulcio's requirements,
+namely the list of supported Identity Providers and their expected claims.
 
 ## Licensing
 
