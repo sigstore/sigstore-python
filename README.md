@@ -125,10 +125,10 @@ Verifying:
 
 <!-- @begin-sigstore-verify-help@ -->
 ```
-usage: sigstore verify [-h] --certificate FILE --signature FILE
+usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
                        [--cert-email EMAIL] [--cert-oidc-issuer URL]
                        [--rekor-url URL] [--staging]
-                       FILE
+                       FILE [FILE ...]
 
 positional arguments:
   FILE                  The file to verify
@@ -138,9 +138,10 @@ options:
 
 Verification inputs:
   --certificate FILE, --cert FILE
-                        The PEM-encoded certificate to verify against
-                        (default: None)
-  --signature FILE      The signature to verify against (default: None)
+                        The PEM-encoded certificate to verify against; not
+                        used with multiple inputs (default: None)
+  --signature FILE      The signature to verify against; not used with
+                        multiple inputs (default: None)
 
 Extended verification options:
   --cert-email EMAIL    The email address to check for in the certificate's

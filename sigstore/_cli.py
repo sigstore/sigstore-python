@@ -191,16 +191,14 @@ def _parser() -> argparse.ArgumentParser:
         "--certificate",
         "--cert",
         metavar="FILE",
-        type=argparse.FileType("rb"),
-        required=True,
-        help="The PEM-encoded certificate to verify against",
+        type=Path,
+        help="The PEM-encoded certificate to verify against; not used with multiple inputs",
     )
     input_options.add_argument(
         "--signature",
         metavar="FILE",
-        type=argparse.FileType("rb"),
-        required=True,
-        help="The signature to verify against",
+        type=Path,
+        help="The signature to verify against; not used with multiple inputs",
     )
 
     verification_options = verify.add_argument_group("Extended verification options")
@@ -232,7 +230,11 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     verify.add_argument(
-        "file", metavar="FILE", type=argparse.FileType("rb"), help="The file to verify"
+        "files",
+        metavar="FILE",
+        type=Path,
+        nargs="+",
+        help="The file to verify",
     )
 
     return parser
@@ -277,6 +279,9 @@ def _sign(args: argparse.Namespace) -> None:
     # so that we can fail early if overwriting without `--overwrite`.
     output_map = {}
     for file in args.files:
+        if not file.is_file():
+            args._parser.error(f"Input must be a file: {file}")
+
         sig, cert = args.output_signature, args.output_certificate
         if not args.no_default_files:
             sig = file.parent / f"{file.name}.sig"
@@ -362,6 +367,38 @@ def _sign(args: argparse.Namespace) -> None:
 
 
 def _verify(args: argparse.Namespace) -> None:
+    # Fail if `--certificate` or `--signature` is specified and we have more than one input.
+    if (args.certificate or args.signature) and len(args.files) > 1:
+        args._parser.error(
+            "--certificate and --signature can only be used with a single input"
+        )
+
+    # The converse of `sign`: we build up an expected input map and check
+    # that we have everything so that we can fail early.
+    input_map = {}
+    for file in args.files:
+        if not file.is_file():
+            args._parser.error(f"Input must be a file: {file}")
+
+        sig, cert = args.signature, args.certificate
+        if sig is None:
+            sig = file.parent / f"{file.name}.sig"
+        if cert is None:
+            cert = file.parent / f"{file.name}.crt"
+
+        missing = []
+        if not sig.is_file():
+            missing.append(str(sig))
+        if not cert.is_file():
+            missing.append(str(cert))
+
+        if missing:
+            args._parser.error(
+                f"Missing requirements for {(file)}: {', '.join(missing)}"
+            )
+
+        input_map[file] = {"cert": cert, "sig": sig}
+
     if args.staging:
         logger.debug("verify: staging instances requested")
         verifier = Verifier.staging()
@@ -374,51 +411,53 @@ def _verify(args: argparse.Namespace) -> None:
             "Custom Rekor and Fulcio configuration for verification isn't fully supported yet!",
         )
 
-    # Load the signing certificate
-    logger.debug(f"Using certificate from: {args.certificate.name}")
-    certificate = args.certificate.read()
+    for file, inputs in input_map.items():
+        # Load the signing certificate
+        logger.debug(f"Using certificate from: {inputs['cert']}")
+        certificate = inputs["cert"].read_bytes()
 
-    # Load the signature
-    logger.debug(f"Using signature from: {args.signature.name}")
-    signature = args.signature.read()
+        # Load the signature
+        logger.debug(f"Using signature from: {inputs['sig']}")
+        signature = inputs["sig"].read_bytes()
 
-    logger.debug(f"Verifying contents from: {args.file.name}")
-    result = verifier.verify(
-        input_=args.file.read(),
-        certificate=certificate,
-        signature=signature,
-        expected_cert_email=args.cert_email,
-        expected_cert_oidc_issuer=args.cert_oidc_issuer,
-    )
+        logger.debug(f"Verifying contents from: {file}")
 
-    if result:
-        print(f"OK: {args.file.name}")
-    else:
-        result = cast(VerificationFailure, result)
-        print(f"FAIL: {args.file.name}")
-        print(f"Failure reason: {result.reason}", file=sys.stderr)
+        result = verifier.verify(
+            input_=file.read_bytes(),
+            certificate=certificate,
+            signature=signature,
+            expected_cert_email=args.cert_email,
+            expected_cert_oidc_issuer=args.cert_oidc_issuer,
+        )
 
-        if isinstance(result, CertificateVerificationFailure):
-            # If certificate verification failed, it's either because of
-            # a chain issue or some outdated state in sigstore itself.
-            # These might already be resolved in a newer version, so
-            # we suggest that users try to upgrade and retry before
-            # anything else.
-            print(
-                dedent(
-                    f"""
-                    This may be a result of an outdated `sigstore` installation.
+        if result:
+            print(f"OK: {file}")
+        else:
+            result = cast(VerificationFailure, result)
+            print(f"FAIL: {file}")
+            print(f"Failure reason: {result.reason}", file=sys.stderr)
 
-                    Consider upgrading with:
+            if isinstance(result, CertificateVerificationFailure):
+                # If certificate verification failed, it's either because of
+                # a chain issue or some outdated state in sigstore itself.
+                # These might already be resolved in a newer version, so
+                # we suggest that users try to upgrade and retry before
+                # anything else.
+                print(
+                    dedent(
+                        f"""
+                        This may be a result of an outdated `sigstore` installation.
 
-                        python -m pip install --upgrade sigstore
+                        Consider upgrading with:
 
-                    Additional context:
+                            python -m pip install --upgrade sigstore
 
-                    {result.exception}
-                    """
-                ),
-                file=sys.stderr,
-            )
+                        Additional context:
 
-        sys.exit(1)
+                        {result.exception}
+                        """
+                    ),
+                    file=sys.stderr,
+                )
+
+            sys.exit(1)
