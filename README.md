@@ -64,7 +64,7 @@ Signing:
 ```
 usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
-                     [--oidc-disable-ambient-providers] [--output]
+                     [--oidc-disable-ambient-providers] [--no-default-files]
                      [--output-signature FILE] [--output-certificate FILE]
                      [--overwrite] [--fulcio-url URL] [--rekor-url URL]
                      [--ctfe FILE] [--rekor-root-pubkey FILE]
@@ -90,8 +90,8 @@ OpenID Connect options:
                         (e.g. on GitHub Actions) (default: False)
 
 Output options:
-  --output              Write signature and certificate results to default
-                        files ({input}.sig and {input}.crt) (default: False)
+  --no-default-files    Don't emit the default output files ({input}.sig and
+                        {input}.crt) (default: False)
   --output-signature FILE
                         Write a single signature to the given file; conflicts
                         with --output and does not work with multiple input
