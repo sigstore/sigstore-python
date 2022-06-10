@@ -283,7 +283,7 @@ def _sign(args: argparse.Namespace) -> None:
             args._parser.error(f"Input must be a file: {file}")
 
         sig, cert = args.output_signature, args.output_certificate
-        if not args.no_default_files:
+        if not sig and not cert and not args.no_default_files:
             sig = file.parent / f"{file.name}.sig"
             cert = file.parent / f"{file.name}.crt"
 
