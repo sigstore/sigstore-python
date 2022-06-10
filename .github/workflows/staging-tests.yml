@@ -36,7 +36,5 @@ jobs:
           # Verification also requires a different Rekor instance, so we
           # also test it.
           ./staging-env/bin/python -m sigstore verify --staging \
-            README.md \
-            --cert README.md.crt \
-            --signature README.md.sig \
-            --cert-oidc-issuer https://token.actions.githubusercontent.com
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            README.md
