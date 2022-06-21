@@ -78,9 +78,12 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(302)
             self.send_header("Location", url)
             self.end_headers()
+            return None
         else:
+            logger.debug(f"404: {self.path}")
             # Anything else sends a "Not Found" response.
             self.send_response(404)
+            return None
 
 
 OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
