@@ -162,8 +162,7 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
     https://github.com/psteniusubi/python-sample
     """
 
-    browser = webbrowser.get(os.getenv("SIGSTORE_OAUTH_BROWSER"))
-    logger.debug(f"OAuth flow: using browser: {browser}")
+    force_oob = os.getenv("SIGSTORE_OAUTH_FORCE_OOB") is not None
 
     code: str
     with RedirectServer(client_id, client_secret, issuer) as server:
@@ -174,7 +173,7 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
         thread.start()
 
         # Launch web browser
-        if browser.open(server.base_uri):
+        if not force_oob and webbrowser.open(server.base_uri):
             print(f"Your browser will now be opened to:\n{server.auth_request()}\n")
         else:
             server.enable_oob()
