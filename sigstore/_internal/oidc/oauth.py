@@ -93,7 +93,7 @@ class RedirectServer(http.server.HTTPServer):
         self.state: Optional[str] = None
         self.nonce: Optional[str] = None
         self.auth_response: Optional[Dict[str, List[str]]] = None
-        self.is_oob = False
+        self._is_out_of_band = False
         self._port: int = self.socket.getsockname()[1]
         self._client_id = client_id
         self._client_secret = client_secret
@@ -119,7 +119,7 @@ class RedirectServer(http.server.HTTPServer):
     def redirect_uri(self) -> str:
         return (
             (self.base_uri + self.redirect_path)
-            if not self.is_oob
+            if not self._is_out_of_band
             else OOB_REDIRECT_URI
         )
 
@@ -151,7 +151,7 @@ class RedirectServer(http.server.HTTPServer):
 
     def enable_oob(self) -> None:
         logger.debug("enabling out-of-band OAuth flow")
-        self.is_oob = True
+        self._is_out_of_band = True
 
 
 def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> str:
@@ -175,14 +175,13 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
         # Launch web browser
         if not force_oob and webbrowser.open(server.base_uri):
             print("Waiting for browser interaction...")
-            # print(f"Your browser will now be opened to:\n{server.auth_request()}\n")
         else:
             server.enable_oob()
             print(
                 f"Go to the following link in a browser:\n\n\t{server.auth_request()}"
             )
 
-        if not server.is_oob:
+        if not server._is_out_of_band:
             # Wait until the redirect server populates the response
             while server.auth_response is None:
                 time.sleep(0.1)
