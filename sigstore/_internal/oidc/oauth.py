@@ -141,7 +141,7 @@ class RedirectServer(http.server.HTTPServer):
         return f"{self._issuer.auth_endpoint}?{urllib.parse.urlencode(params)}"
 
     def enable_oob(self) -> None:
-        logger.debug("enabling out-of-band oauth flow")
+        logger.debug("enabling out-of-band OAuth flow")
         self.is_oob = True
 
 
@@ -153,6 +153,9 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
     https://github.com/psteniusubi/python-sample
     """
 
+    browser = webbrowser.get(os.getenv("SIGSTORE_OAUTH_BROWSER"))
+    logger.debug(f"OAuth flow: using browser: {browser}")
+
     code: str
     with RedirectServer(client_id, client_secret, issuer) as server:
         thread = threading.Thread(
@@ -162,7 +165,7 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
         thread.start()
 
         # Launch web browser
-        if webbrowser.open(server.base_uri):
+        if browser.open(server.base_uri):
             print(f"Your browser will now be opened to:\n{server.auth_request()}\n")
         else:
             server.enable_oob()
