@@ -61,7 +61,9 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
 
         r = urllib.parse.urlsplit(self.path)
 
-        # Handle auth response
+        # We only understand two kinds of requests:
+        # 1. The response from a successful OAuth redirect
+        # 2. The initial request to /, which kicks off (1)
         if r.path == server.redirect_path:
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -71,12 +73,14 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
             server.auth_response = urllib.parse.parse_qs(r.query)
             return None
-
-        # Any other request generates an auth request
-        url = server.auth_request()
-        self.send_response(302)
-        self.send_header("Location", url)
-        self.end_headers()
+        elif r.path == server.request_path:
+            url = server.auth_request()
+            self.send_response(302)
+            self.send_header("Location", url)
+            self.end_headers()
+        else:
+            # Anything else sends a "Not Found" response.
+            self.send_response(404)
 
 
 OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
@@ -101,6 +105,10 @@ class RedirectServer(http.server.HTTPServer):
     @property
     def base_uri(self) -> str:
         return f"http://localhost:{self._port}"
+
+    @property
+    def request_path(self) -> str:
+        return "/"
 
     @property
     def redirect_path(self) -> str:
