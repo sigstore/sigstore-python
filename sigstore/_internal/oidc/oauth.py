@@ -174,7 +174,8 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
 
         # Launch web browser
         if not force_oob and webbrowser.open(server.base_uri):
-            print(f"Your browser will now be opened to:\n{server.auth_request()}\n")
+            print("Waiting for browser interaction...")
+            # print(f"Your browser will now be opened to:\n{server.auth_request()}\n")
         else:
             server.enable_oob()
             print(
