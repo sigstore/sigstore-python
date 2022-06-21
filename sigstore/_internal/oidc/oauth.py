@@ -54,10 +54,12 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
         logger.debug(f"GET: {self.path}")
         server = cast(RedirectServer, self.server)
 
-        # # If the auth response has already been populated, the main thread will be stopping this
-        # # thread and accessing the auth response shortly so we should stop servicing any requests.
-        # if not server.active:
-        #     return None
+        # If the auth response has already been populated, the main thread will be stopping this
+        # thread and accessing the auth response shortly so we should stop servicing any requests.
+        if not server.active:
+            logger.debug(f"{self.path} unavailable (teardown)")
+            self.send_response(404)
+            return None
 
         r = urllib.parse.urlsplit(self.path)
 
@@ -72,18 +74,14 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             server.auth_response = urllib.parse.parse_qs(r.query)
-            return None
         elif r.path == server.request_path:
             url = server.auth_request()
             self.send_response(302)
             self.send_header("Location", url)
             self.end_headers()
-            return None
         else:
-            logger.debug(f"404: {self.path}")
             # Anything else sends a "Not Found" response.
             self.send_response(404)
-            return None
 
 
 OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
@@ -212,7 +210,6 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
         client_id,
         client_secret,
     )
-    logger.debug(f"token endpoint payloads: {data=} {auth=}")
     resp: requests.Response = requests.post(
         issuer.token_endpoint,
         data=data,
