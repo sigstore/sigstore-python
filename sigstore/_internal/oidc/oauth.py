@@ -54,10 +54,10 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
         logger.debug(f"GET: {self.path}")
         server = cast(RedirectServer, self.server)
 
-        # If the auth response has already been populated, the main thread will be stopping this
-        # thread and accessing the auth response shortly so we should stop servicing any requests.
-        if not server.active:
-            return None
+        # # If the auth response has already been populated, the main thread will be stopping this
+        # # thread and accessing the auth response shortly so we should stop servicing any requests.
+        # if not server.active:
+        #     return None
 
         r = urllib.parse.urlsplit(self.path)
 
