@@ -210,6 +210,7 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
         client_id,
         client_secret,
     )
+    logging.debug(f"PAYLOAD: data={data}, auth={auth}")
     resp: requests.Response = requests.post(
         issuer.token_endpoint,
         data=data,
