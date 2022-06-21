@@ -51,7 +51,7 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self) -> None:
-        logger.debug(f"GET: {self.path}")
+        logger.debug(f"GET: {self.path} with {dict(self.headers)}")
         server = cast(RedirectServer, self.server)
 
         # If the auth response has already been populated, the main thread will be stopping this
