@@ -15,6 +15,7 @@
 import base64
 import hashlib
 import http.server
+import logging
 import os
 import threading
 import time
@@ -27,6 +28,8 @@ import requests
 
 from sigstore._internal.oidc import IdentityError
 from sigstore._internal.oidc.issuer import Issuer
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_OAUTH_ISSUER = "https://oauth2.sigstore.dev/auth"
 STAGING_OAUTH_ISSUER = "https://oauth2.sigstage.dev/auth"
@@ -48,16 +51,21 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self) -> None:
+        logger.debug(f"GET: {self.path} with {dict(self.headers)}")
         server = cast(RedirectServer, self.server)
 
         # If the auth response has already been populated, the main thread will be stopping this
         # thread and accessing the auth response shortly so we should stop servicing any requests.
         if not server.active:
+            logger.debug(f"{self.path} unavailable (teardown)")
+            self.send_response(404)
             return None
 
         r = urllib.parse.urlsplit(self.path)
 
-        # Handle auth response
+        # We only understand two kinds of requests:
+        # 1. The response from a successful OAuth redirect
+        # 2. The initial request to /, which kicks off (1)
         if r.path == server.redirect_path:
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -66,13 +74,14 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             server.auth_response = urllib.parse.parse_qs(r.query)
-            return None
-
-        # Any other request generates an auth request
-        url = server.auth_request()
-        self.send_response(302)
-        self.send_header("Location", url)
-        self.end_headers()
+        elif r.path == server.request_path:
+            url = server.auth_request()
+            self.send_response(302)
+            self.send_header("Location", url)
+            self.end_headers()
+        else:
+            # Anything else sends a "Not Found" response.
+            self.send_response(404)
 
 
 OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
@@ -84,7 +93,7 @@ class RedirectServer(http.server.HTTPServer):
         self.state: Optional[str] = None
         self.nonce: Optional[str] = None
         self.auth_response: Optional[Dict[str, List[str]]] = None
-        self.is_oob = False
+        self._is_out_of_band = False
         self._port: int = self.socket.getsockname()[1]
         self._client_id = client_id
         self._client_secret = client_secret
@@ -99,6 +108,10 @@ class RedirectServer(http.server.HTTPServer):
         return f"http://localhost:{self._port}"
 
     @property
+    def request_path(self) -> str:
+        return "/"
+
+    @property
     def redirect_path(self) -> str:
         return "/auth/callback"
 
@@ -106,7 +119,7 @@ class RedirectServer(http.server.HTTPServer):
     def redirect_uri(self) -> str:
         return (
             (self.base_uri + self.redirect_path)
-            if not self.is_oob
+            if not self._is_out_of_band
             else OOB_REDIRECT_URI
         )
 
@@ -137,7 +150,8 @@ class RedirectServer(http.server.HTTPServer):
         return f"{self._issuer.auth_endpoint}?{urllib.parse.urlencode(params)}"
 
     def enable_oob(self) -> None:
-        self.is_oob = True
+        logger.debug("enabling out-of-band OAuth flow")
+        self._is_out_of_band = True
 
 
 def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> str:
@@ -148,6 +162,8 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
     https://github.com/psteniusubi/python-sample
     """
 
+    force_oob = os.getenv("SIGSTORE_OAUTH_FORCE_OOB") is not None
+
     code: str
     with RedirectServer(client_id, client_secret, issuer) as server:
         thread = threading.Thread(
@@ -157,15 +173,15 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
         thread.start()
 
         # Launch web browser
-        if webbrowser.open(server.base_uri):
-            print(f"Your browser will now be opened to:\n{server.auth_request()}\n")
+        if not force_oob and webbrowser.open(server.base_uri):
+            print("Waiting for browser interaction...")
         else:
             server.enable_oob()
             print(
                 f"Go to the following link in a browser:\n\n\t{server.auth_request()}"
             )
 
-        if not server.is_oob:
+        if not server._is_out_of_band:
             # Wait until the redirect server populates the response
             while server.auth_response is None:
                 time.sleep(0.1)
@@ -193,6 +209,7 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
         client_id,
         client_secret,
     )
+    logging.debug(f"PAYLOAD: data={data}, auth={auth}")
     resp: requests.Response = requests.post(
         issuer.token_endpoint,
         data=data,
