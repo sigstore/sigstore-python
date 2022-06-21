@@ -15,6 +15,7 @@
 import base64
 import hashlib
 import http.server
+import logging
 import os
 import threading
 import time
@@ -27,6 +28,8 @@ import requests
 
 from sigstore._internal.oidc import IdentityError
 from sigstore._internal.oidc.issuer import Issuer
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_OAUTH_ISSUER = "https://oauth2.sigstore.dev/auth"
 STAGING_OAUTH_ISSUER = "https://oauth2.sigstage.dev/auth"
@@ -48,6 +51,7 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self) -> None:
+        logger.debug(f"GET: {self.path}")
         server = cast(RedirectServer, self.server)
 
         # If the auth response has already been populated, the main thread will be stopping this
@@ -137,6 +141,7 @@ class RedirectServer(http.server.HTTPServer):
         return f"{self._issuer.auth_endpoint}?{urllib.parse.urlencode(params)}"
 
     def enable_oob(self) -> None:
+        logger.debug("enabling out-of-band oauth flow")
         self.is_oob = True
 
 
