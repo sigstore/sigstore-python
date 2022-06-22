@@ -46,17 +46,38 @@ AUTH_SUCCESS_HTML = """
 """
 
 
-class RedirectHandler(http.server.BaseHTTPRequestHandler):
+class OAuthFlow:
+    def __init__(self, client_id: str, client_secret: str, issuer: Issuer):
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._issuer = issuer
+        self._server = OAuthRedirectServer(self._client_id, self._client_secret, self._issuer)
+        self._server_thread = threading.Thread(
+            target=lambda server: server.serve_forever(),
+            args=(self._server,),
+        )
+
+    def __enter__(self):
+        self._server_thread.start()
+
+        return self._server
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._server.shutdown()
+        self._server_thread.join()
+
+
+class OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, _format: str, *_args: Any) -> None:
         pass
 
     def do_GET(self) -> None:
         logger.debug(f"GET: {self.path} with {dict(self.headers)}")
-        server = cast(RedirectServer, self.server)
+        server = cast(OAuthRedirectServer, self.server)
 
         # If the auth response has already been populated, the main thread will be stopping this
         # thread and accessing the auth response shortly so we should stop servicing any requests.
-        if not server.active:
+        if not server.waiting_for_auth:
             logger.debug(f"{self.path} unavailable (teardown)")
             self.send_response(404)
             return None
@@ -74,7 +95,7 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             server.auth_response = urllib.parse.parse_qs(r.query)
-        elif r.path == server.request_path:
+        elif r.path == server.auth_request_path:
             url = server.auth_request()
             self.send_response(302)
             self.send_header("Location", url)
@@ -87,28 +108,30 @@ class RedirectHandler(http.server.BaseHTTPRequestHandler):
 OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
 
 
-class RedirectServer(http.server.HTTPServer):
+class OAuthRedirectServer(http.server.HTTPServer):
     def __init__(self, client_id: str, client_secret: str, issuer: Issuer) -> None:
-        super().__init__(("127.0.0.1", 0), RedirectHandler)
-        self.state: Optional[str] = None
-        self.nonce: Optional[str] = None
+        super().__init__(("localhost", 0), OAuthRedirectHandler)
+        self.__state = str(uuid.uuid4())
+        self.__nonce = str(uuid.uuid4())
         self.auth_response: Optional[Dict[str, List[str]]] = None
-        self._is_out_of_band = False
-        self._port: int = self.socket.getsockname()[1]
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._issuer = issuer
+        self.__is_out_of_band = False
+        self.__client_id = client_id
+        self.__client_secret = client_secret
+        self.__issuer = issuer
 
     @property
-    def active(self) -> bool:
+    def waiting_for_auth(self) -> bool:
         return self.auth_response is None
 
     @property
     def base_uri(self) -> str:
-        return f"http://localhost:{self._port}"
+        # NOTE: We'd ideally use `self.server_name` here, but it uses
+        # the FQDN internally (which in turn confuses Sigstore).
+        return f"http://localhost:{self.server_port}"
 
     @property
-    def request_path(self) -> str:
+    def auth_request_path(self) -> str:
+        # TODO: Maybe this should be /auth, for clarity?
         return "/"
 
     @property
@@ -119,7 +142,7 @@ class RedirectServer(http.server.HTTPServer):
     def redirect_uri(self) -> str:
         return (
             (self.base_uri + self.redirect_path)
-            if not self._is_out_of_band
+            if not self.__is_out_of_band
             else OOB_REDIRECT_URI
         )
 
@@ -131,27 +154,28 @@ class RedirectServer(http.server.HTTPServer):
 
     def auth_request_params(self) -> Dict[str, str]:
         code_challenge = self.generate_code_challenge()
-        self.state = str(uuid.uuid4())
-        self.nonce = str(uuid.uuid4())
         return {
             "response_type": "code",
-            "client_id": self._client_id,
-            "client_secret": self._client_secret,
+            "client_id": self.__client_id,
+            "client_secret": self.__client_secret,
             "scope": "openid email",
             "redirect_uri": self.redirect_uri,
             "code_challenge": code_challenge.decode("utf-8"),
             "code_challenge_method": "S256",
-            "state": self.state,
-            "nonce": self.nonce,
+            "state": self.__state,
+            "nonce": self.__nonce,
         }
 
     def auth_request(self) -> str:
         params = self.auth_request_params()
-        return f"{self._issuer.auth_endpoint}?{urllib.parse.urlencode(params)}"
+        return f"{self.__issuer.auth_endpoint}?{urllib.parse.urlencode(params)}"
 
     def enable_oob(self) -> None:
         logger.debug("enabling out-of-band OAuth flow")
-        self._is_out_of_band = True
+        self.__is_out_of_band = True
+
+    def is_oob(self) -> bool:
+        return self.__is_out_of_band
 
 
 def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> str:
@@ -165,13 +189,7 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
     force_oob = os.getenv("SIGSTORE_OAUTH_FORCE_OOB") is not None
 
     code: str
-    with RedirectServer(client_id, client_secret, issuer) as server:
-        thread = threading.Thread(
-            target=lambda server: server.serve_forever(),
-            args=(server,),
-        )
-        thread.start()
-
+    with OAuthFlow(client_id, client_secret, issuer) as server:
         # Launch web browser
         if not force_oob and webbrowser.open(server.base_uri):
             print("Waiting for browser interaction...")
@@ -181,9 +199,9 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
                 f"Go to the following link in a browser:\n\n\t{server.auth_request()}"
             )
 
-        if not server._is_out_of_band:
+        if not server.is_oob():
             # Wait until the redirect server populates the response
-            while server.auth_response is None:
+            while server.waiting_for_auth:
                 time.sleep(0.1)
             auth_error = server.auth_response.get("error")
             if auth_error is not None:
@@ -194,9 +212,6 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
         else:
             # In the out-of-band case, we wait until the user provides the code
             code = input("Enter verification code: ")
-
-        server.shutdown()
-        thread.join()
 
     # Provide code to token endpoint
     data = {
