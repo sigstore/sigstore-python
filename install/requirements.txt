@@ -165,9 +165,9 @@ securesystemslib==0.23.0 \
     --hash=sha256:573e9c810f2a6afe9ac71a177f26b9d6a321c53574f561f5cef2ed511c3f1831 \
     --hash=sha256:613c2891a8b4480bae6edb2351710f8c695679101ea7f471cc56f64980d2cd38
     # via sigstore
-sigstore==0.6.1 \
-    --hash=sha256:cb9b7af27fe1917d5f64d13a86b5afd6f48cff032c78e79a365ddfb435367e59 \
-    --hash=sha256:f8d1969fa31bc4139d453cebc76c0e960e33f6d7809a5f5dd178456e597b0427
+sigstore==0.6.2 \
+    --hash=sha256:6f21b16fa23fcae8ed3ebfcd691412f597c40172b17dc4191f23b48239f0c498 \
+    --hash=sha256:e560636112dc09d729097adc5a33f154648ed79f1b3d40359736843e0e351d07
     # via -r requirements.in
 typing-extensions==4.2.0 \
     --hash=sha256:6657594ee297170d19f67d55c05852a874e7eb634f4f753dbd667855e07c1708 \
