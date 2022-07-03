@@ -111,8 +111,7 @@ def _parser() -> argparse.ArgumentParser:
         metavar="FILE",
         type=Path,
         help=(
-            "Write a single signature to the given file; conflicts with --output and "
-            "does not work with multiple input files"
+            "Write a single signature to the given file; does not work with multiple input files"
         ),
     )
     output_options.add_argument(
@@ -120,8 +119,7 @@ def _parser() -> argparse.ArgumentParser:
         metavar="FILE",
         type=Path,
         help=(
-            "Write a single certificate to the given file; conflicts with --output and "
-            "does not work with multiple input files"
+            "Write a single certificate to the given file; does not work with multiple input files"
         ),
     )
     output_options.add_argument(
