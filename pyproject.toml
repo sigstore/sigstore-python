@@ -25,7 +25,7 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
-  "cryptography",
+  "cryptography>=3.1",
   "pem",
   "pydantic",
   "pyjwt>=2.1",
