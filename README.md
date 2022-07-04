@@ -93,13 +93,11 @@ Output options:
   --no-default-files    Don't emit the default output files ({input}.sig and
                         {input}.crt) (default: False)
   --output-signature FILE
-                        Write a single signature to the given file; conflicts
-                        with --output and does not work with multiple input
-                        files (default: None)
+                        Write a single signature to the given file; does not
+                        work with multiple input files (default: None)
   --output-certificate FILE
-                        Write a single certificate to the given file;
-                        conflicts with --output and does not work with
-                        multiple input files (default: None)
+                        Write a single certificate to the given file; does not
+                        work with multiple input files (default: None)
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
 
