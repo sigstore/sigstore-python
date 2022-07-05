@@ -186,8 +186,13 @@ def _parser() -> argparse.ArgumentParser:
 
     input_options = verify.add_argument_group("Verification inputs")
     input_options.add_argument(
-        "--certificate",
         "--cert",
+        metavar="FILE",
+        type=Path,
+        help="A deprecated alias for --certificate",
+    )
+    input_options.add_argument(
+        "--certificate",
         metavar="FILE",
         type=Path,
         help="The PEM-encoded certificate to verify against; not used with multiple inputs",
@@ -365,6 +370,19 @@ def _sign(args: argparse.Namespace) -> None:
 
 
 def _verify(args: argparse.Namespace) -> None:
+    # Legacy behavior: treat `--cert` as an alias for `--certificate`, but warn
+    # users that we'll be removing it soon.
+    if args.cert:
+        if args.certificate:
+            args._parser.error(
+                "--cert and --certificate can't be used at the same time"
+            )
+        logger.warning(
+            "--cert has been replaced with --certificate and will be removed in "
+            "an upcoming stable release",
+        )
+        args.certificate = args.cert
+
     # Fail if `--certificate` or `--signature` is specified and we have more than one input.
     if (args.certificate or args.signature) and len(args.files) > 1:
         args._parser.error(

@@ -123,9 +123,9 @@ Verifying:
 
 <!-- @begin-sigstore-verify-help@ -->
 ```
-usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
-                       [--cert-email EMAIL] [--cert-oidc-issuer URL]
-                       [--rekor-url URL] [--staging]
+usage: sigstore verify [-h] [--cert FILE] [--certificate FILE]
+                       [--signature FILE] [--cert-email EMAIL]
+                       [--cert-oidc-issuer URL] [--rekor-url URL] [--staging]
                        FILE [FILE ...]
 
 positional arguments:
@@ -135,8 +135,8 @@ options:
   -h, --help            show this help message and exit
 
 Verification inputs:
-  --certificate FILE, --cert FILE
-                        The PEM-encoded certificate to verify against; not
+  --cert FILE           A deprecated alias for --certificate (default: None)
+  --certificate FILE    The PEM-encoded certificate to verify against; not
                         used with multiple inputs (default: None)
   --signature FILE      The signature to verify against; not used with
                         multiple inputs (default: None)
