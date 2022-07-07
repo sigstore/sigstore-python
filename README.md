@@ -32,6 +32,27 @@ python -m pip install -r <(curl -s https://raw.githubusercontent.com/sigstore/si
 
 This installs the requirements file located [here](https://github.com/sigstore/sigstore-python/blob/main/install/requirements.txt), which is kept up-to-date.
 
+### GitHub Actions
+
+`sigstore-python` has [an official GitHub Action](https://github.com/trailofbits/gh-action-sigstore-python)!
+
+You can install it from the
+[GitHub Marketplace](https://github.com/marketplace/actions/gh-action-sigstore-python), or
+add it to your CI manually:
+
+```yaml
+jobs:
+  sigstore-python:
+    steps:
+      - uses: trailofbits/gh-action-sigstore-python@v0.0.1
+        with:
+          inputs: foo.txt
+```
+
+See the
+[action documentation](https://github.com/trailofbits/gh-action-sigstore-python/blob/main/README.md)
+for more details and usage examples.
+
 ## Usage
 
 You can run `sigstore` as a standalone program, or via `python -m`:
