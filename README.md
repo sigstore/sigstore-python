@@ -65,10 +65,10 @@ Signing:
 usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--no-default-files]
-                     [--output-signature FILE] [--output-certificate FILE]
-                     [--overwrite] [--fulcio-url URL] [--rekor-url URL]
-                     [--ctfe FILE] [--rekor-root-pubkey FILE]
-                     [--oidc-issuer URL] [--staging]
+                     [--signature FILE] [--certificate FILE] [--overwrite]
+                     [--fulcio-url URL] [--rekor-url URL] [--ctfe FILE]
+                     [--rekor-root-pubkey FILE] [--oidc-issuer URL]
+                     [--staging]
                      FILE [FILE ...]
 
 positional arguments:
@@ -92,10 +92,10 @@ OpenID Connect options:
 Output options:
   --no-default-files    Don't emit the default output files ({input}.sig and
                         {input}.crt) (default: False)
-  --output-signature FILE
+  --signature FILE, --output-signature FILE
                         Write a single signature to the given file; does not
                         work with multiple input files (default: None)
-  --output-certificate FILE
+  --certificate FILE, --output-certificate FILE
                         Write a single certificate to the given file; does not
                         work with multiple input files (default: None)
   --overwrite           Overwrite preexisting signature and certificate
