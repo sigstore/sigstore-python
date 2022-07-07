@@ -107,6 +107,7 @@ def _parser() -> argparse.ArgumentParser:
         help="Don't emit the default output files ({input}.sig and {input}.crt)",
     )
     output_options.add_argument(
+        "--signature",
         "--output-signature",
         metavar="FILE",
         type=Path,
@@ -115,6 +116,7 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     output_options.add_argument(
+        "--certificate",
         "--output-certificate",
         metavar="FILE",
         type=Path,
@@ -257,20 +259,20 @@ def main() -> None:
 
 
 def _sign(args: argparse.Namespace) -> None:
-    # `--no-default-files` has no effect on `--output-{signature,certificate}`,
-    # but we forbid it because it indicates user confusion.
-    if args.no_default_files and (args.output_signature or args.output_certificate):
+    # `--no-default-files` has no effect on `--{signature,certificate}`, but we
+    # forbid it because it indicates user confusion.
+    if args.no_default_files and (args.signature or args.certificate):
         args._parser.error(
-            "--no-default-files may not be combined with "
-            "--output-signature or --output-certificate",
+            "--no-default-files may not be combined with --signature or "
+            "--certificate",
         )
 
-    # Fail if `--output-signature` or `--output-certificate` is specified
-    # *and* we have more than one input.
-    if (args.output_signature or args.output_certificate) and len(args.files) > 1:
+    # Fail if `--signature` or `--certificate` is specified *and* we have more
+    # than one input.
+    if (args.signature or args.certificate) and len(args.files) > 1:
         args._parser.error(
-            "Error: --output-signature and --output-certificate can't be used with "
-            "explicit outputs for multiple inputs; consider using --output",
+            "Error: --signature and --certificate can't be used with explicit "
+            "outputs for multiple inputs",
         )
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
@@ -280,7 +282,7 @@ def _sign(args: argparse.Namespace) -> None:
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert = args.output_signature, args.output_certificate
+        sig, cert = args.signature, args.certificate
         if not sig and not cert and not args.no_default_files:
             sig = file.parent / f"{file.name}.sig"
             cert = file.parent / f"{file.name}.crt"
