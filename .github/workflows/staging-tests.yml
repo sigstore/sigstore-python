@@ -24,26 +24,25 @@ jobs:
       - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
 
       - name: staging tests
-        run: exit 1
-        # run: |
-        #   # This is similar to the "smoketest" that we run during the
-        #   # release workflow, except that we run against Sigstore's
-        #   # staging instances instead.
-        #   # We also don't bother to build distributions.
+        run: |
+          # This is similar to the "smoketest" that we run during the
+          # release workflow, except that we run against Sigstore's
+          # staging instances instead.
+          # We also don't bother to build distributions.
 
-        #   python -m venv staging-env
+          python -m venv staging-env
 
-        #   ./staging-env/bin/python -m pip install .
+          ./staging-env/bin/python -m pip install .
 
-        #   # Our signing target is not important here, so we just sign
-        #   # the README in the repository.
-        #   ./staging-env/bin/python -m sigstore sign --staging README.md
+          # Our signing target is not important here, so we just sign
+          # the README in the repository.
+          ./staging-env/bin/python -m sigstore sign --staging README.md
 
-        #   # Verification also requires a different Rekor instance, so we
-        #   # also test it.
-        #   ./staging-env/bin/python -m sigstore verify --staging \
-        #     --cert-oidc-issuer https://token.actions.githubusercontent.com \
-        #     README.md
+          # Verification also requires a different Rekor instance, so we
+          # also test it.
+          ./staging-env/bin/python -m sigstore verify --staging \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            README.md
 
       - name: generate an issue if staging tests fail
         if: failure()
@@ -72,4 +71,4 @@ jobs:
           # created in the previous step
           content-filepath: /tmp/staging-instance-issue.md
           labels: bug,component:cicd,component:tests
-          # assignees: woodruffw,di,tetsuo-cpp
+          assignees: woodruffw,di,tetsuo-cpp
