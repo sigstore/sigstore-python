@@ -71,5 +71,5 @@ jobs:
           title: "[CI] Integration failure: staging instance"
           # created in the previous step
           content-filepath: /tmp/staging-instance-issue.md
-          labels: bug component:cicd component:tests
-          # assignees: woodruffw di tetsuo-cpp
+          labels: bug,component:cicd,component:tests
+          # assignees: woodruffw,di,tetsuo-cpp
