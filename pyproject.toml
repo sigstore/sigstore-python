@@ -26,7 +26,6 @@ classifiers = [
 ]
 dependencies = [
   "cryptography>=3.1",
-  "pem",
   "pydantic",
   "pyjwt>=2.1",
   "pyOpenSSL",
