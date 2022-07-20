@@ -4,6 +4,9 @@ permissions:
   # Needed to access the workflow's OIDC identity.
   id-token: write
 
+  # Needed to create an issue, on failure.
+  issues: write
+
 on:
   push:
     branches:
@@ -16,8 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+
       - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
-      - name: staging-tests
+
+      - name: staging tests
         run: |
           # This is similar to the "smoketest" that we run during the
           # release workflow, except that we run against Sigstore's
@@ -37,3 +42,32 @@ jobs:
           ./staging-env/bin/python -m sigstore verify --staging \
             --cert-oidc-issuer https://token.actions.githubusercontent.com \
             README.md
+
+      - name: generate an issue if staging tests fail
+        if: failure()
+        run: |
+          cat <<- EOF > /tmp/staging-instance-issue.md
+          ## Staging instance failure
+
+          A scheduled test against Sigstore's staging instance has failed.
+
+          This suggests one of three conditions:
+
+          * A backwards-incompatible change in a Sigstore component;
+          * A regression in \`sigstore python\`;
+          * A transient error.
+
+          The full CI failure can be found here:
+
+          $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          EOF
+
+      - name: open an issue if the staging tests fail
+        if: failure()
+        uses: peter-evans/create-issue-from-file@v4
+        with:
+          title: "[CI] Integration failure: staging instance"
+          # created in the previous step
+          content-filepath: /tmp/staging-instance-issue.md
+          labels: bug,component:cicd,component:tests
+          assignees: woodruffw,di,tetsuo-cpp
