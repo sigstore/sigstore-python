@@ -4,6 +4,9 @@ permissions:
   # Needed to access the workflow's OIDC identity.
   id-token: write
 
+  # Needed to create an issue, on failure.
+  issues: write
+
 on:
   push:
     branches:
