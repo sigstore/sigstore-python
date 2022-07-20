@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - ww/create-issue-when-staging-fails
   schedule:
     - cron: '0 */4 * * *'
 
