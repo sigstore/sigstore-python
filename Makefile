@@ -47,8 +47,9 @@ lint:
 		isort $(ALL_PY_SRCS) && \
 		flake8 $(ALL_PY_SRCS) && \
 		mypy $(PY_MODULE) && \
-		bandit -c pyproject.toml -r $(PY_MODULE) && \
-	        git diff --exit-code
+		bandit -c pyproject.toml -r $(PY_MODULE)
+
+	  git diff --exit-code
 
 .PHONY: test
 test:
