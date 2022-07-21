@@ -51,6 +51,12 @@ make lint
 * [`interrogate`](https://interrogate.readthedocs.io/en/latest/): Documentation coverage
 
 
+To automatically apply any lint-suggested changes, you can run:
+
+```bash
+make reformat
+```
+
 ### Testing
 
 You can run the tests locally with:

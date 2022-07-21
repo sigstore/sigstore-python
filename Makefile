@@ -43,13 +43,17 @@ run:
 .PHONY: lint
 lint:
 	. env/bin/activate && \
-		black $(ALL_PY_SRCS) && \
-		isort $(ALL_PY_SRCS) && \
+		black --check $(ALL_PY_SRCS) && \
+		isort --check $(ALL_PY_SRCS) && \
 		flake8 $(ALL_PY_SRCS) && \
 		mypy $(PY_MODULE) && \
 		bandit -c pyproject.toml -r $(PY_MODULE)
 
-	  git diff --exit-code
+.PHONY: reformat
+reformat:
+	. env/bin/activate && \
+		black $(ALL_PY_SRCS) && \
+		isort $(ALL_PY_SRCS)
 
 .PHONY: test
 test:
