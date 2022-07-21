@@ -213,13 +213,17 @@ class FulcioSigningCert(Endpoint):
         if resp.json().get("signedCertificateEmbeddedSct"):
             sct_embedded = True
             try:
-                certificates = resp.json()["signedCertificateEmbeddedSct"]["chain"]["certificates"]
+                certificates = resp.json()["signedCertificateEmbeddedSct"]["chain"][
+                    "certificates"
+                ]
             except KeyError:
                 raise FulcioClientError("Fulcio response missing certificate chain")
         else:
             sct_embedded = False
             try:
-                certificates = resp.json()["signedCertificateDetachedSct"]["chain"]["certificates"]
+                certificates = resp.json()["signedCertificateDetachedSct"]["chain"][
+                    "certificates"
+                ]
             except KeyError:
                 raise FulcioClientError("Fulcio response missing certificate chain")
 
@@ -281,9 +285,13 @@ class FulcioSigningCert(Endpoint):
             # is a JSON representation of the SignedCertificateTimestamp
             # in RFC 6962 (subsec. 3.2).
             try:
-                sct_b64 = resp.json()["signedCertificateDetachedSct"]["signedCertificateTimestamp"]
+                sct_b64 = resp.json()["signedCertificateDetachedSct"][
+                    "signedCertificateTimestamp"
+                ]
             except KeyError:
-                raise FulcioClientError("Fulcio response did not include a detached SCT")
+                raise FulcioClientError(
+                    "Fulcio response did not include a detached SCT"
+                )
 
             try:
                 sct_json = json.loads(base64.b64decode(sct_b64).decode())
