@@ -89,12 +89,14 @@ def detect_github() -> Optional[str]:
     req_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
     if not req_token:
         raise GitHubOidcPermissionCredentialError(
-            "GitHub: the ACTIONS_ID_TOKEN_REQUEST_TOKEN environment variable was unset"
+            "GitHub: missing or insufficient OIDC token permissions, the "
+            "ACTIONS_ID_TOKEN_REQUEST_TOKEN environment variable was unset"
         )
     req_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
     if not req_url:
         raise GitHubOidcPermissionCredentialError(
-            "GitHub: the ACTIONS_ID_TOKEN_REQUEST_URL environment variable was unset"
+            "GitHub: missing or insufficient OIDC token permissions, the "
+            "ACTIONS_ID_TOKEN_REQUEST_URL environment variable was unset"
         )
 
     logger.debug("GitHub: requesting OIDC token")
