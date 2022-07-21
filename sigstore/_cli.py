@@ -23,7 +23,10 @@ from typing import TextIO, cast
 
 from sigstore import __version__
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
-from sigstore._internal.oidc.ambient import detect_credential
+from sigstore._internal.oidc.ambient import (
+    GitHubOidcPermissionCredentialError,
+    detect_credential,
+)
 from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import (
     DEFAULT_OAUTH_ISSUER,
@@ -323,7 +326,43 @@ def _sign(args: argparse.Namespace) -> None:
     # 2) Ambient credential detected in the environment, unless disabled
     # 3) Interactive OAuth flow
     if not args.identity_token and not args.oidc_disable_ambient_providers:
-        args.identity_token = detect_credential()
+        try:
+            args.identity_token = detect_credential()
+        except GitHubOidcPermissionCredentialError as exception:
+            # Provide some common reasons for why we hit permission errors in
+            # GitHub Actions.
+            print(
+                dedent(
+                    f"""
+                    Insufficient permissions for GitHub Actions workflow.
+
+                    The most common reason for this is due to incorrect
+                    configuration of the top-level `permissions` setting of the
+                    workflow YAML file. It should be configured like so:
+
+                        permissions:
+                          id-token: write
+
+                    Relevant documentation here:
+
+                        https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
+
+                    Another possible reason is that the workflow run has been
+                    triggered by a PR from a forked repository. PRs from forked
+                    repositories typically cannot be granted write access.
+
+                    Relevant documentation here:
+
+                        https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+
+                    Additional context:
+
+                    {exception}
+                    """
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(1)
     if not args.identity_token:
         issuer = Issuer(args.oidc_issuer)
 
