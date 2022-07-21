@@ -42,6 +42,15 @@ class AmbientCredentialError(IdentityError):
     pass
 
 
+class GitHubOidcPermissionCredentialError(AmbientCredentialError):
+    """
+    Raised when the current GitHub Actions environment doesn't have permission
+    to retrieve an OIDC token.
+    """
+
+    pass
+
+
 def detect_credential() -> Optional[str]:
     """
     Try each ambient credential detector, returning the first one to succeed
@@ -78,10 +87,16 @@ def detect_github() -> Optional[str]:
     # to a special URL with a special bearer token. Both are stored in
     # the environment and are only present if the workflow has sufficient permissions.
     req_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+    if not req_token:
+        raise GitHubOidcPermissionCredentialError(
+            "GitHub: missing or insufficient OIDC token permissions, the "
+            "ACTIONS_ID_TOKEN_REQUEST_TOKEN environment variable was unset"
+        )
     req_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
-    if not req_token or not req_url:
-        raise AmbientCredentialError(
-            "GitHub: missing or insufficient OIDC token permissions?"
+    if not req_url:
+        raise GitHubOidcPermissionCredentialError(
+            "GitHub: missing or insufficient OIDC token permissions, the "
+            "ACTIONS_ID_TOKEN_REQUEST_URL environment variable was unset"
         )
 
     logger.debug("GitHub: requesting OIDC token")
