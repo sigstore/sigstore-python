@@ -336,7 +336,7 @@ def _sign(args: argparse.Namespace) -> None:
                     f"""
                     Insufficient permissions for GitHub Actions workflow.
 
-                    The most common reason for this is due to incorrect
+                    The most common reason for this is incorrect
                     configuration of the top-level `permissions` setting of the
                     workflow YAML file. It should be configured like so:
 
