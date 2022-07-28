@@ -93,12 +93,7 @@ class Verifier:
         establishing the trust chain for the signing certificate and signature.
         """
         self._rekor = rekor
-
-        self._store = X509Store()
-        for parent_cert_pem in fulcio_certificate_chain:
-            parent_cert = load_pem_x509_certificate(parent_cert_pem)
-            parent_cert_ossl = X509.from_cryptography(parent_cert)
-            self._store.add_cert(parent_cert_ossl)
+        self._fulcio_certificate_chain = fulcio_certificate_chain
 
     @classmethod
     def production(cls) -> Verifier:
@@ -144,6 +139,14 @@ class Verifier:
         success.
         """
 
+        # NOTE: The `X509Store` object currently cannot have its time reset once the `set_time` method
+        # been called on it. To get around this, we construct a new one for every `verify` call.
+        store = X509Store()
+        for parent_cert_pem in self._fulcio_certificate_chain:
+            parent_cert = load_pem_x509_certificate(parent_cert_pem)
+            parent_cert_ossl = X509.from_cryptography(parent_cert)
+            store.add_cert(parent_cert_ossl)
+
         sha256_artifact_hash = hashlib.sha256(input_).hexdigest()
 
         cert = load_pem_x509_certificate(certificate)
@@ -168,8 +171,8 @@ class Verifier:
         sign_date = cert.not_valid_before
         cert_ossl = X509.from_cryptography(cert)
 
-        self._store.set_time(sign_date)
-        store_ctx = X509StoreContext(self._store, cert_ossl)
+        store.set_time(sign_date)
+        store_ctx = X509StoreContext(store, cert_ossl)
         try:
             store_ctx.verify_certificate()
         except X509StoreContextError as store_ctx_error:
