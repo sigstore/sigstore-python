@@ -139,8 +139,9 @@ class Verifier:
         success.
         """
 
-        # NOTE: The `X509Store` object currently cannot have its time reset once the `set_time` method
-        # been called on it. To get around this, we construct a new one for every `verify` call.
+        # NOTE: The `X509Store` object currently cannot have its time reset once the `set_time`
+        # method been called on it. To get around this, we construct a new one for every `verify`
+        # call.
         store = X509Store()
         for parent_cert_pem in self._fulcio_certificate_chain:
             parent_cert = load_pem_x509_certificate(parent_cert_pem)
