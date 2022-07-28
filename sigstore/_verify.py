@@ -93,7 +93,12 @@ class Verifier:
         establishing the trust chain for the signing certificate and signature.
         """
         self._rekor = rekor
-        self._fulcio_certificate_chain = fulcio_certificate_chain
+
+        self._fulcio_certificate_chain: List[X509] = []
+        for parent_cert_pem in fulcio_certificate_chain:
+            parent_cert = load_pem_x509_certificate(parent_cert_pem)
+            parent_cert_ossl = X509.from_cryptography(parent_cert)
+            self._fulcio_certificate_chain.append(parent_cert_ossl)
 
     @classmethod
     def production(cls) -> Verifier:
@@ -143,9 +148,7 @@ class Verifier:
         # method been called on it. To get around this, we construct a new one for every `verify`
         # call.
         store = X509Store()
-        for parent_cert_pem in self._fulcio_certificate_chain:
-            parent_cert = load_pem_x509_certificate(parent_cert_pem)
-            parent_cert_ossl = X509.from_cryptography(parent_cert)
+        for parent_cert_ossl in self._fulcio_certificate_chain:
             store.add_cert(parent_cert_ossl)
 
         sha256_artifact_hash = hashlib.sha256(input_).hexdigest()
