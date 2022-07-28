@@ -30,6 +30,22 @@ def test_verifier_staging():
     assert verifier is not None
 
 
+def test_verifier_one_verification(signed_asset):
+    a_assets = signed_asset("a.txt")
+
+    verifier = Verifier.staging()
+    assert verifier.verify(a_assets[0], a_assets[1], a_assets[2])
+
+
+def test_verifier_multiple_verifications(signed_asset):
+    a_assets = signed_asset("a.txt")
+    b_assets = signed_asset("b.txt")
+
+    verifier = Verifier.staging()
+    for assets in [a_assets, b_assets]:
+        assert verifier.verify(assets[0], assets[1], assets[2])
+
+
 def test_verify_result_boolish():
     assert not VerificationFailure(reason="foo")
     assert not CertificateVerificationFailure(reason="foo", exception=ValueError("bar"))
