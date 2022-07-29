@@ -20,3 +20,6 @@ build
 !sigstore/_store/*.crt
 !sigstore/_store/*.pem
 !sigstore/_store/*.pub
+!test/assets/*.txt
+!test/assets/*.crt
+!test/assets/*.sig
