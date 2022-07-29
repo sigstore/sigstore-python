@@ -44,7 +44,7 @@ add it to your CI manually:
 jobs:
   sigstore-python:
     steps:
-      - uses: trailofbits/gh-action-sigstore-python@v0.0.1
+      - uses: trailofbits/gh-action-sigstore-python@v1.0.0
         with:
           inputs: foo.txt
 ```
