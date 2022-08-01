@@ -26,9 +26,9 @@ jobs:
       - name: deps
         run: make dev
       - name: test
-        run: |
-          make test
-          unshare -n make test
+        run: make test
+      - name: test (offline)
+        run: sudo unshare -n make test
 
   licenses:
     runs-on: ubuntu-latest
