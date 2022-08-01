@@ -21,6 +21,21 @@ _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--skip-online", action="store_true", help="skip tests that require network connectivity"
+    )
+
+
+def pytest_runtest_setup(item):
+    if "online" in item.keywords and item.config.getoption("--skip-online"):
+        pytest.skip("skipping test that requires network connectivity due to `--skip-online` flag")
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "online: mark test as requiring network connectivity")
+
+
 @pytest.fixture
 def signed_asset():
     def _signed_asset(name: str) -> Tuple[bytes, bytes, bytes]:
