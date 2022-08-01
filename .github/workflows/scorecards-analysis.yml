@@ -20,6 +20,7 @@ jobs:
       security-events: write
       actions: read
       contents: read
+      # Needed to access GitHub's OIDC token which ensures the uploaded results integrity.
       id-token: write
     steps:
       - name: "Checkout code"
