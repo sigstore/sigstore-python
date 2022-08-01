@@ -28,8 +28,7 @@ jobs:
       - name: test
         run: make test
       - name: test (offline)
-        # run: sudo unshare -n make test TEST_ARGS="--skip-online"
-        run: sudo unshare -n make test
+        run: sudo unshare -n make test TEST_ARGS="--skip-online"
 
   licenses:
     runs-on: ubuntu-latest
