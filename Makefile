@@ -9,6 +9,10 @@ BUMP_ARGS :=
 # Optionally overridden by the user in the `test` target.
 TESTS :=
 
+# Optionally overridden by the user/CI, to limit the installation to a specific
+# subset of development dependencies.
+SIGSTORE_EXTRA := dev
+
 # If the user selects a specific test pattern to run, set `pytest` to fail fast
 # and only run tests that match the pattern.
 # Otherwise, run all tests and enable coverage assertions, since we expect
@@ -31,7 +35,7 @@ env/pyvenv.cfg: pyproject.toml
 	rm -rf env
 	python3 -m venv env
 	./env/bin/python -m pip install --upgrade pip
-	./env/bin/python -m pip install -e .[dev]
+	./env/bin/python -m pip install -e .[$(SIGSTORE_EXTRA)]
 
 .PHONY: dev
 dev: env/pyvenv.cfg

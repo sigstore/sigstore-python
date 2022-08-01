@@ -46,24 +46,29 @@ Issues = "https://github.com/sigstore/sigstore-python/issues"
 Source = "https://github.com/sigstore/sigstore-python"
 
 [project.optional-dependencies]
-dev = [
-  "bandit",
-  "build",
-  "bump",
-  "flake8",
-  "black",
-  "isort",
+test = [
   "pytest",
   "pytest-cov",
   "pretend",
   "coverage[toml]",
+]
+lint = [
+  "bandit",
+  "flake8",
+  "black",
+  "isort",
   "interrogate",
-  "pdoc3",
   "mypy",
   "types-cryptography",
   "types-requests",
   "types-pyOpenSSL",
   "types-pyjwt",
+]
+dev = [
+  "build",
+  "bump>=1.3.2",
+  "pdoc3",
+  "sigstore[test,lint]",
 ]
 
 [tool.isort]
