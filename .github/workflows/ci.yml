@@ -28,7 +28,13 @@ jobs:
       - name: test
         run: make test
       - name: test (offline)
-        run: sudo unshare -n make test TEST_ARGS="--skip-online"
+        run: |
+          # We use `unshare` to "un-share" the default networking namespace,
+          # in effect running the tests as if the host is offline.
+          # This in turn effectively exercises the correctness of our
+          # "online-only" test markers, since any test that's online
+          # but not marked as such will fail.
+          unshare --map-root-user --net make test TEST_ARGS="--skip-online"
 
   licenses:
     runs-on: ubuntu-latest
