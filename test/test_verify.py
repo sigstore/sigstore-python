@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pytest
+
 from sigstore._verify import (
     CertificateVerificationFailure,
     VerificationFailure,
@@ -30,6 +32,7 @@ def test_verifier_staging():
     assert verifier is not None
 
 
+@pytest.mark.online
 def test_verifier_one_verification(signed_asset):
     a_assets = signed_asset("a.txt")
 
@@ -37,6 +40,7 @@ def test_verifier_one_verification(signed_asset):
     assert verifier.verify(a_assets[0], a_assets[1], a_assets[2])
 
 
+@pytest.mark.online
 def test_verifier_multiple_verifications(signed_asset):
     a_assets = signed_asset("a.txt")
     b_assets = signed_asset("b.txt")
