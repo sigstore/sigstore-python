@@ -44,11 +44,12 @@ def pytest_configure(config):
 
 @pytest.fixture
 def signed_asset():
-    def _signed_asset(name: str) -> Tuple[bytes, bytes, bytes]:
+    def _signed_asset(name: str) -> Tuple[bytes, bytes, bytes, str]:
         file = _ASSETS / name
         cert = _ASSETS / f"{name}.crt"
         sig = _ASSETS / f"{name}.sig"
+        email = _ASSETS / f"{name}.email"
 
-        return (file.read_bytes(), cert.read_bytes(), sig.read_bytes())
+        return (file.read_bytes(), cert.read_bytes(), sig.read_bytes(), email.read_text().strip())
 
     return _signed_asset

@@ -29,6 +29,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
+    Certificate,
     ExtendedKeyUsage,
     ExtensionNotFound,
     KeyUsage,
@@ -120,15 +121,15 @@ class Verifier:
             ],
         )
 
-    def verify(
+    def verify_email(
         self,
         input_: bytes,
         certificate: bytes,
         signature: bytes,
-        expected_cert_email: Optional[str] = None,
+        expected_cert_email: str,
         expected_cert_oidc_issuer: Optional[str] = None,
     ) -> VerificationResult:
-        """Public API for verifying.
+        """Public API for verifying email identities
 
         `input` is the input to verify.
 
@@ -142,6 +143,46 @@ class Verifier:
 
         Returns a `VerificationResult` which will be truthy or falsey depending on
         success.
+        """
+
+        # Check that certificate is a valid sigstore cert, that OIDC issuer and signature match
+        res = self.verify_base(input_, certificate, signature, expected_cert_oidc_issuer)
+        if not res:
+            return res
+
+        # Check that SubjectAlternativeName contains signer identity
+        san_ext = res.certificate.extensions.get_extension_for_class(SubjectAlternativeName)
+        if expected_cert_email not in san_ext.value.get_values_for_type(RFC822Name):
+            return VerificationFailure(
+                reason=f"Subject name does not contain identity: {expected_cert_email}"
+            )
+
+        logger.debug("Successfully verified signing certificate email identity...")
+        return res
+
+    def verify_base(
+        self,
+        input_: bytes,
+        certificate: bytes,
+        signature: bytes,
+        expected_cert_oidc_issuer: Optional[str] = None,
+    ) -> VerificationResult:
+        """Public API for verifying core elements of a sigstore certificate/signature
+
+        `input` is the input to verify.
+
+        `certificate` is the PEM-encoded signing certificate.
+
+        `signature` is a base64-encoded signature for `file`.
+
+        `expected_cert_oidc_issuer` is the expected OIDC Issuer Extension within `certificate`.
+
+        Returns a `VerificationResult` which will be truthy or falsey depending on
+        success. The truthy result will contain the certificate object that can be used for
+        further verification.
+
+        Note that SAN (the signer identity) or any other certificate extensions are not verified
+        here: they should be verified by the caller.
         """
 
         # NOTE: The `X509Store` object currently cannot have its time reset once the `set_time`
@@ -200,15 +241,9 @@ class Verifier:
                 reason="Extended usage does not contain `code signing`"
             )
 
-        if expected_cert_email is not None:
-            # Check that SubjectAlternativeName contains signer identity
-            san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-            if expected_cert_email not in san_ext.value.get_values_for_type(RFC822Name):
-                return VerificationFailure(
-                    reason=f"Subject name does not contain identity: {expected_cert_email}"
-                )
-
         if expected_cert_oidc_issuer is not None:
+            # TODO: Make issuer a mandatory argument
+
             # Check that the OIDC issuer extension is present, and contains the expected
             # issuer string (which is probably a URL).
             try:
@@ -225,7 +260,7 @@ class Verifier:
                     reason=f"Certificate's OIDC issuer does not match (got {oidc_issuer.value})"
                 )
 
-        logger.debug("Successfully verified signing certificate validity...")
+            logger.debug("Successfully verified signing certificate OIDC issuer...")
 
         # 3) Verify that the signature was signed by the public key in the signing certificate
         try:
@@ -291,7 +326,7 @@ class Verifier:
             return VerificationFailure(reason="No valid Rekor entries were found")
 
         logger.debug("Successfully verified Rekor entry...")
-        return VerificationSuccess()
+        return VerificationSuccess(certificate=cert)
 
 
 class VerificationResult(BaseModel):
@@ -303,6 +338,11 @@ class VerificationResult(BaseModel):
 
 class VerificationSuccess(VerificationResult):
     success: bool = True
+    certificate: Certificate
+
+    class Config:
+        # Needed for Certificate
+        arbitrary_types_allowed = True
 
 
 class VerificationFailure(VerificationResult):
