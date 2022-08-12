@@ -249,6 +249,7 @@ class Verifier:
         uuids = self._rekor.index.retrieve.post(sha256_artifact_hash, pub_b64.decode())
 
         valid_sig_exists = False
+        log_index = None
         for uuid in uuids:
             entry: RekorEntry = self._rekor.log.entries.get(uuid)
 
@@ -285,12 +286,13 @@ class Verifier:
 
             # TODO: Does it make sense to collect all valid Rekor entries?
             valid_sig_exists = True
+            log_index = entry.log_index
             break
 
         if not valid_sig_exists:
             return VerificationFailure(reason="No valid Rekor entries were found")
 
-        logger.debug("Successfully verified Rekor entry...")
+        logger.debug(f"Successfully verified Rekor entry at index {log_index}..")
         return VerificationSuccess()
 
 
