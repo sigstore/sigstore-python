@@ -203,9 +203,7 @@ class RekorClient:
         pubkey = serialization.load_pem_public_key(pubkey)
         if not isinstance(
             pubkey,
-            (
-                ec.EllipticCurvePublicKey,
-            ),
+            ec.EllipticCurvePublicKey,
         ):
             raise RekorClientError(f"Invalid public key type: {pubkey}")
         self._pubkey = pubkey
