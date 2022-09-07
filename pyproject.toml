@@ -56,7 +56,6 @@ lint = [
   "isort",
   "interrogate",
   "mypy",
-  "types-cryptography",
   "types-requests",
   "types-pyOpenSSL",
   "types-pyjwt",
