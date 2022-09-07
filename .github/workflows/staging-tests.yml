@@ -56,7 +56,7 @@ jobs:
           This suggests one of three conditions:
 
           * A backwards-incompatible change in a Sigstore component;
-          * A regression in \`sigstore python\`;
+          * A regression in \`sigstore-python\`;
           * A transient error.
 
           The full CI failure can be found here:
