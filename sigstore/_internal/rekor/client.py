@@ -27,6 +27,7 @@ from urllib.parse import urljoin
 
 import requests
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from pydantic import BaseModel, Field, validator
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
@@ -199,8 +200,28 @@ class RekorClient:
             {"Content-Type": "application/json", "Accept": "application/json"}
         )
 
-        self._pubkey = serialization.load_pem_public_key(pubkey)
-        self._ctfe_pubkey = serialization.load_pem_public_key(ctfe_pubkey)
+        pubkey = serialization.load_pem_public_key(pubkey)
+        if not isinstance(
+            pubkey,
+            (
+                rsa.RSAPublicKey,
+                ec.EllipticCurvePublicKey,
+            ),
+        ):
+            raise RekorClientError(f"Invalid public key type: {pubkey}")
+        self._pubkey = pubkey
+
+        # The public keys must be either RSA or EC.
+        ctfe_pubkey = serialization.load_pem_public_key(ctfe_pubkey)
+        if not isinstance(
+            ctfe_pubkey,
+            (
+                rsa.RSAPublicKey,
+                ec.EllipticCurvePublicKey,
+            ),
+        ):
+            raise RekorClientError(f"Invalid CTFE public key type: {ctfe_pubkey}")
+        self._ctfe_pubkey = ctfe_pubkey
 
     @classmethod
     def production(cls) -> RekorClient:
