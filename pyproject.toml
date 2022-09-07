@@ -57,8 +57,9 @@ lint = [
   "interrogate",
   "mypy",
   "types-requests",
-  "types-pyOpenSSL",
-  "types-pyjwt",
+  # TODO(ww): Re-enable once dependency on types-cryptography is dropped.
+  # See: https://github.com/python/typeshed/issues/8699
+  # "types-pyOpenSSL",
 ]
 dev = [
   "build",
