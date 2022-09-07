@@ -204,14 +204,12 @@ class RekorClient:
         if not isinstance(
             pubkey,
             (
-                rsa.RSAPublicKey,
                 ec.EllipticCurvePublicKey,
             ),
         ):
             raise RekorClientError(f"Invalid public key type: {pubkey}")
         self._pubkey = pubkey
 
-        # The public keys must be either RSA or EC.
         ctfe_pubkey = serialization.load_pem_public_key(ctfe_pubkey)
         if not isinstance(
             ctfe_pubkey,
