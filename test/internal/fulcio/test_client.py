@@ -17,8 +17,10 @@ from base64 import b64encode
 from datetime import datetime
 
 import pytest
+from cryptography.hazmat.primitives import hashes
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
+    SignatureAlgorithm,
     SignedCertificateTimestamp,
     Version,
 )
@@ -62,10 +64,9 @@ class TestDetachedFulcioSCT:
         # Computed fields are also correct.
         assert sct.entry_type == LogEntryType.X509_CERTIFICATE
 
-        # HACK(#84): Re-enable once cryptography 38 is released.
-        # assert type(sct.signature_hash_algorithm) is hashes.SHA256
-        # assert sct.signature_algorithm == SignatureAlgorithm.ANONYMOUS
-        # assert sct.signature == sct.digitally_signed[4:] == b"abcd"
+        assert type(sct.signature_hash_algorithm) is hashes.SHA256
+        assert sct.signature_algorithm == SignatureAlgorithm.ANONYMOUS
+        assert sct.signature == sct.digitally_signed[4:] == b"abcd"
 
     def test_constructor_equivalence(self):
         blob = enc(b"this is a base64-encoded blob")
