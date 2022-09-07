@@ -26,7 +26,7 @@ import struct
 from abc import ABC
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import List, Optional
+from typing import List
 from urllib.parse import urljoin
 
 import requests
@@ -39,10 +39,10 @@ from cryptography.x509 import (
 )
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
+    SignatureAlgorithm,
     SignedCertificateTimestamp,
     Version,
 )
-from pyasn1.codec.der.decoder import decode as asn1_decode
 from pydantic import BaseModel, Field, validator
 
 logger = logging.getLogger(__name__)
@@ -127,10 +127,8 @@ class DetachedFulcioSCT(BaseModel):
         return hash_.to_cryptography()
 
     @property
-    def signature_algorithm(self) -> int:
-        # TODO(ww): This method will need to return a SignatureAlgorithm
-        # variant instead, for consistency with cryptography's interface.
-        return self.digitally_signed[1]
+    def signature_algorithm(self) -> SignatureAlgorithm:
+        return SignatureAlgorithm(self.digitally_signed[1])
 
     @property
     def signature(self) -> bytes:
@@ -155,8 +153,6 @@ class FulcioCertificateSigningResponse:
     cert: Certificate
     chain: List[Certificate]
     sct: SignedCertificateTimestamp
-    # HACK(#84): Remove entirely.
-    raw_sct: Optional[bytes]
 
 
 @dataclass(frozen=True)
@@ -246,36 +242,6 @@ class FulcioSigningCert(Endpoint):
                 raise FulcioClientError(
                     f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
                 )
-
-            # HACK(#84): Remove entirely.
-            # HACK: Until cryptography is released, we don't have direct access
-            # to each SCT's internals (signature, extensions, etc.)
-            # Instead, we do something really nasty here: we decode the ASN.1,
-            # unwrap the underlying TLS structures, and stash the raw SCT
-            # for later use.
-            parsed_sct_extension = asn1_decode(precert_scts_extension.public_bytes())
-
-            def _opaque16(value: bytes) -> bytes:
-                # invariant: there have to be at least two bytes, for the length.
-                if len(value) < 2:
-                    raise FulcioClientError(
-                        "malformed TLS encoding in response (length)"
-                    )
-
-                (length,) = struct.unpack("!H", value[0:2])
-
-                if length != len(value[2:]):
-                    raise FulcioClientError(
-                        "malformed TLS encoding in response (payload)"
-                    )
-
-                return value[2:]
-
-            # This is a TLS-encoded `opaque<0..2^16-1>` for the list,
-            # which itself contains an `opaque<0..2^16-1>` for the SCT.
-            raw_sct_list_bytes = bytes(parsed_sct_extension[0])
-            raw_sct = _opaque16(_opaque16(raw_sct_list_bytes))
-
             sct = precert_scts_extension[0]
         else:
             # If we don't have any embedded SCTs, then we might be dealing
@@ -304,11 +270,7 @@ class FulcioSigningCert(Endpoint):
                 # Ideally we'd catch something less generic here.
                 raise FulcioClientError from exc
 
-            # HACK(#84): Remove entirely.
-            # The terrible hack above doesn't apply to detached SCTs.
-            raw_sct = None
-
-        return FulcioCertificateSigningResponse(cert, chain, sct, raw_sct)
+        return FulcioCertificateSigningResponse(cert, chain, sct)
 
 
 class FulcioTrustBundle(Endpoint):

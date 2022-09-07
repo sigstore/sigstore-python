@@ -97,10 +97,7 @@ class Signer:
         cert = certificate_response.cert  # noqa
         chain = certificate_response.chain
 
-        # HACK(#84): Remove the last parameter here.
-        verify_sct(
-            sct, cert, chain, self._rekor._ctfe_pubkey, certificate_response.raw_sct
-        )
+        verify_sct(sct, cert, chain, self._rekor._ctfe_pubkey)
 
         logger.debug("Successfully verified SCT...")
 
