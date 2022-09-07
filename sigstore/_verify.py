@@ -38,7 +38,7 @@ from cryptography.x509 import (
     load_pem_x509_certificate,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
-from OpenSSL.crypto import (
+from OpenSSL.crypto import (  # type: ignore[import]
     X509,
     X509Store,
     X509StoreContext,
@@ -220,9 +220,12 @@ class Verifier:
                     reason="Certificate does not contain OIDC issuer extension"
                 )
 
-            if oidc_issuer.value != expected_cert_oidc_issuer.encode():
+            # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
+            # by `get_extension_for_oid` above.
+            issuer_value = oidc_issuer.value  # type: ignore[attr-defined]
+            if issuer_value != expected_cert_oidc_issuer.encode():
                 return VerificationFailure(
-                    reason=f"Certificate's OIDC issuer does not match (got {oidc_issuer.value})"
+                    reason=f"Certificate's OIDC issuer does not match (got {issuer_value})"
                 )
 
         logger.debug("Successfully verified signing certificate validity...")
