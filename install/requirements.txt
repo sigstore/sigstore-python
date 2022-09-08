@@ -112,16 +112,6 @@ idna==3.3 \
     --hash=sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff \
     --hash=sha256:9d643ff0a55b762d5cdb124b8eaa99c66322e2157b69160bc32796e824360e6d
     # via requests
-pyasn1==0.4.8 \
-    --hash=sha256:39c7e2ec30515947ff4e87fb6f456dfc6e84857d34be479c9d4a4ba4bf46aa5d \
-    --hash=sha256:aef77c9fb94a3ac588e87841208bdec464471d9871bd5050a287cc9a475cd0ba
-    # via
-    #   pyasn1-modules
-    #   sigstore
-pyasn1-modules==0.2.8 \
-    --hash=sha256:905f84c712230b2c592c19470d3ca8d552de726050d1d1716282a1f6146be65e \
-    --hash=sha256:a50b808ffeb97cb3601dd25981f6b016cbb3d31fbf57a8b8a87428e6158d0c74
-    # via sigstore
 pycparser==2.21 \
     --hash=sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9 \
     --hash=sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206
@@ -180,9 +170,9 @@ securesystemslib==0.23.0 \
     --hash=sha256:573e9c810f2a6afe9ac71a177f26b9d6a321c53574f561f5cef2ed511c3f1831 \
     --hash=sha256:613c2891a8b4480bae6edb2351710f8c695679101ea7f471cc56f64980d2cd38
     # via sigstore
-sigstore==0.6.3 \
-    --hash=sha256:e109ecc7a24734215da3627893f0373232637e27688ef0bae4cd6d03ba6e24e5 \
-    --hash=sha256:f51334dc4b4fb025c7ba370183c0933bb465146f5ada8ff5871725bfe583a9ee
+sigstore==0.6.4 \
+    --hash=sha256:359c477c4266988116be8c3528d630dccf514034e63bb0a097e93d9872caa372 \
+    --hash=sha256:6646f0ff9c15851a6f8c82806996c19e60b2595feb959921a6d70a84ee80f624
     # via -r requirements.in
 typing-extensions==4.3.0 \
     --hash=sha256:25642c956049920a5aa49edcdd6ab1e06d7e5d467fc00e0506c44ac86fbfca02 \
