@@ -302,7 +302,7 @@ class FulcioClient:
         self.url = url
         self.session = requests.Session()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.session.close()
 
     @classmethod
