@@ -219,6 +219,9 @@ class RekorClient:
             raise RekorClientError(f"Invalid CTFE public key type: {ctfe_pubkey}")
         self._ctfe_pubkey = ctfe_pubkey
 
+    def __del__(self) -> None:
+        self.session.close()
+
     @classmethod
     def production(cls) -> RekorClient:
         return cls(
