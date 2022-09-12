@@ -28,7 +28,7 @@ from urllib.parse import urljoin
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
@@ -75,10 +75,10 @@ class RekorEntry:
 
 
 class RekorInclusionProof(BaseModel):
-    log_index: int = Field(..., alias="logIndex")
-    root_hash: str = Field(..., alias="rootHash")
-    tree_size: int = Field(..., alias="treeSize")
-    hashes: List[str] = Field(..., alias="hashes")
+    log_index: StrictInt = Field(..., alias="logIndex")
+    root_hash: StrictStr = Field(..., alias="rootHash")
+    tree_size: StrictInt = Field(..., alias="treeSize")
+    hashes: List[StrictStr] = Field(..., alias="hashes")
 
     class Config:
         allow_population_by_field_name = True

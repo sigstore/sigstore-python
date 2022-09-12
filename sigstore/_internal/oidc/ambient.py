@@ -21,7 +21,7 @@ import os
 from typing import Callable, List, Optional
 
 import requests
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictStr
 
 from sigstore._internal.oidc import DEFAULT_AUDIENCE, IdentityError
 
@@ -74,7 +74,7 @@ class _GitHubTokenPayload(BaseModel):
     This exists solely to provide nice error handling.
     """
 
-    value: str
+    value: StrictStr
 
 
 def detect_github() -> Optional[str]:
