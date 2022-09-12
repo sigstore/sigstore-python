@@ -302,6 +302,9 @@ class FulcioClient:
         self.url = url
         self.session = requests.Session()
 
+    def __del__(self):
+        self.session.close()
+
     @classmethod
     def production(cls) -> FulcioClient:
         return cls(DEFAULT_FULCIO_URL)
