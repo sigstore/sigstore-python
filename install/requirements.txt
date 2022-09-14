@@ -166,9 +166,9 @@ requests==2.28.1 \
     --hash=sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983 \
     --hash=sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349
     # via sigstore
-securesystemslib==0.23.0 \
-    --hash=sha256:573e9c810f2a6afe9ac71a177f26b9d6a321c53574f561f5cef2ed511c3f1831 \
-    --hash=sha256:613c2891a8b4480bae6edb2351710f8c695679101ea7f471cc56f64980d2cd38
+securesystemslib==0.24.0 \
+    --hash=sha256:28ea9c44956b73cfe1400703ae11de5107f6d7c62f4463da1ccb63097bf85d5b \
+    --hash=sha256:793b5028b70dfeed1c1e25d8834ac87710a0b4637e7efa6cd368f3df91d7f878
     # via sigstore
 sigstore==0.6.4 \
     --hash=sha256:359c477c4266988116be8c3528d630dccf514034e63bb0a097e93d9872caa372 \
