@@ -56,7 +56,7 @@ jobs:
 
             rm -rf smoketest-env
           done
-      
+
       - name: Generate hashes for provenance
         shell: bash
         id: hash
@@ -65,7 +65,7 @@ jobs:
           # base64 -w0 encodes to base64 and outputs on a single line.
           # sha256sum artifact1 artifact2 ... | base64 -w0
           echo "::set-output name=hashes::$(sha256sum ./dist/* | base64 -w0)"
-      
+
       - name: Upload built packages
         uses: actions/upload-artifact@v3
         with:
@@ -101,8 +101,6 @@ jobs:
     steps:
       - name: Download artifacts diretories # goes to current working directory
         uses: actions/download-artifact@v3
-        with:
-          name: built-packages
 
       - name: publish
         uses: pypa/gh-action-pypi-publish@717ba43cfbb0387f6ce311b169a825772f54d295
