@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
     steps:
       - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
 
@@ -49,6 +51,15 @@ jobs:
             rm -rf smoketest-env
           done
       
+      - name: Generate hashes for provenance
+        shell: bash
+        id: hash
+        run: |
+          # sha256sum generates sha256 hash for all artifacts.
+          # base64 -w0 encodes to base64 and outputs on a single line.
+          # sha256sum artifact1 artifact2 ... | base64 -w0
+          echo "::set-output name=hashes::$(sha256sum ./dist/* | base64 -w0)"
+      
       - name: Upload built packages
         uses: actions/upload-artifact@v3
         with:
@@ -63,8 +74,21 @@ jobs:
           path: smoketest-artifacts/
           if-no-files-found: warn
 
-  release-pypi:
+  generate-provenance:
     needs: [build]
+    name: Generate build provenance
+    permissions:
+      actions: read   # To read the workflow path.
+      id-token: write # To sign the provenance.
+      contents: write # To add assets to a release.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.2.0
+    with:
+      attestation-name: sigstore-python-provenance.intoto.jsonl
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+      upload-assets: true
+
+  release-pypi:
+    needs: [build, generate-provenance]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -82,7 +106,7 @@ jobs:
           packages_dir: built-packages/
 
   release-github:
-    needs: [build]
+    needs: [build, generate-provenance]
     runs-on: ubuntu-latest
     permissions:
       # Needed to upload release assets.
