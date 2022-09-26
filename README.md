@@ -5,6 +5,7 @@ sigstore-python
 ![CI](https://github.com/sigstore/sigstore-python/workflows/CI/badge.svg)
 [![PyPI version](https://badge.fury.io/py/sigstore.svg)](https://pypi.org/project/sigstore)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python/badge)](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python)
+[![SLSA](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/)
 <!--- @end-badges@ --->
 
 ⚠️ This project is not ready for general-purpose use! ⚠️
@@ -304,6 +305,12 @@ Everyone interacting with this project is expected to follow the
 
 Should you discover any security issues, please refer to sigstore's [security
 process](https://github.com/sigstore/.github/blob/main/SECURITY.md).
+
+### SLSA Provenance
+This project emits a SLSA provenance on it's release! This enables you to verify the integrity
+of the downloaded artifacts and ensured that the binary's code really comes from this source code.
+To do so, please follow the instructions [here](https://github.com/urllib3/urllib3/blob/main/.github/workflows/publish.yml).
+
 
 ## Info
 
