@@ -95,8 +95,7 @@ jobs:
   release-pypi:
     needs: [build, generate-provenance]
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
+    permissions: {}
     steps:
       - name: Download artifacts diretories # goes to current working directory
         uses: actions/download-artifact@v3
