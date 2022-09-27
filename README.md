@@ -307,7 +307,7 @@ Should you discover any security issues, please refer to sigstore's [security
 process](https://github.com/sigstore/.github/blob/main/SECURITY.md).
 
 ### SLSA Provenance
-This project emits a SLSA provenance on it's release! This enables you to verify the integrity
+This project emits a SLSA provenance on its release! This enables you to verify the integrity
 of the downloaded artifacts and ensured that the binary's code really comes from this source code.
 To do so, please follow the instructions [here](https://github.com/slsa-framework/slsa-github-generator#verification-of-provenance).
 
