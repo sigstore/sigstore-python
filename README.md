@@ -36,7 +36,7 @@ This installs the requirements file located [here](https://github.com/sigstore/s
 
 ### GitHub Actions
 
-`sigstore-python` has [an official GitHub Action](https://github.com/trailofbits/gh-action-sigstore-python)!
+`sigstore-python` has [an official GitHub Action](https://github.com/sigstore/gh-action-sigstore-python)!
 
 You can install it from the
 [GitHub Marketplace](https://github.com/marketplace/actions/gh-action-sigstore-python), or
@@ -46,13 +46,13 @@ add it to your CI manually:
 jobs:
   sigstore-python:
     steps:
-      - uses: trailofbits/gh-action-sigstore-python@v0.0.2
+      - uses: sigstore/gh-action-sigstore-python@v0.0.9
         with:
           inputs: foo.txt
 ```
 
 See the
-[action documentation](https://github.com/trailofbits/gh-action-sigstore-python/blob/main/README.md)
+[action documentation](https://github.com/sigstore/gh-action-sigstore-python/blob/main/README.md)
 for more details and usage examples.
 
 ## Usage
