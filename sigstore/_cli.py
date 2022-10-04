@@ -247,10 +247,7 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     # `sigstore get-identity-token`
-    get_identity_token = subcommands.add_parser(
-        "get-identity-token",
-        help="Generate and print an identity token to be used with --identity-token",
-    )
+    get_identity_token = subcommands.add_parser("get-identity-token")
     _add_shared_oidc_options(get_identity_token)
 
     return parser
