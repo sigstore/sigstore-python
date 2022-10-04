@@ -19,7 +19,7 @@ import sys
 from importlib import resources
 from pathlib import Path
 from textwrap import dedent
-from typing import TextIO, cast
+from typing import Optional, TextIO, Union, cast
 
 from sigstore import __version__
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
@@ -61,7 +61,9 @@ class _Embedded:
         return f"{self._name} (embedded)"
 
 
-def _add_shared_oidc_options(group):
+def _add_shared_oidc_options(
+    group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
+) -> None:
     group.add_argument(
         "--oidc-client-id",
         metavar="ID",
@@ -468,7 +470,7 @@ def _verify(args: argparse.Namespace) -> None:
             sys.exit(1)
 
 
-def _get_identity_token(args):
+def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
     if not args.oidc_disable_ambient_providers:
         try:
             return detect_credential()
