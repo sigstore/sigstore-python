@@ -325,55 +325,8 @@ def _sign(args: argparse.Namespace) -> None:
     # 1) Explicitly supplied identity token
     # 2) Ambient credential detected in the environment, unless disabled
     # 3) Interactive OAuth flow
-    if not args.identity_token and not args.oidc_disable_ambient_providers:
-        try:
-            args.identity_token = detect_credential()
-        except GitHubOidcPermissionCredentialError as exception:
-            # Provide some common reasons for why we hit permission errors in
-            # GitHub Actions.
-            print(
-                dedent(
-                    f"""
-                    Insufficient permissions for GitHub Actions workflow.
-
-                    The most common reason for this is incorrect
-                    configuration of the top-level `permissions` setting of the
-                    workflow YAML file. It should be configured like so:
-
-                        permissions:
-                          id-token: write
-
-                    Relevant documentation here:
-
-                        https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
-
-                    Another possible reason is that the workflow run has been
-                    triggered by a PR from a forked repository. PRs from forked
-                    repositories typically cannot be granted write access.
-
-                    Relevant documentation here:
-
-                        https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
-
-                    Additional context:
-
-                    {exception}
-                    """
-                ),
-                file=sys.stderr,
-            )
-            sys.exit(1)
     if not args.identity_token:
-        issuer = Issuer(args.oidc_issuer)
-
-        if args.oidc_client_secret is None:
-            args.oidc_client_secret = ""  # nosec: B105
-
-        args.identity_token = get_identity_token(
-            args.oidc_client_id,
-            args.oidc_client_secret,
-            issuer,
-        )
+        args.identity_token = _get_identity_token(args)
     if not args.identity_token:
         args._parser.error("No identity token supplied or detected!")
 
@@ -500,3 +453,55 @@ def _verify(args: argparse.Namespace) -> None:
                 )
 
             sys.exit(1)
+
+
+def _get_identity_token(args):
+    if not args.oidc_disable_ambient_providers:
+        try:
+            return detect_credential()
+        except GitHubOidcPermissionCredentialError as exception:
+            # Provide some common reasons for why we hit permission errors in
+            # GitHub Actions.
+            print(
+                dedent(
+                    f"""
+                    Insufficient permissions for GitHub Actions workflow.
+
+                    The most common reason for this is incorrect
+                    configuration of the top-level `permissions` setting of the
+                    workflow YAML file. It should be configured like so:
+
+                        permissions:
+                          id-token: write
+
+                    Relevant documentation here:
+
+                        https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
+
+                    Another possible reason is that the workflow run has been
+                    triggered by a PR from a forked repository. PRs from forked
+                    repositories typically cannot be granted write access.
+
+                    Relevant documentation here:
+
+                        https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+
+                    Additional context:
+
+                    {exception}
+                    """
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    else:
+        issuer = Issuer(args.oidc_issuer)
+
+        if args.oidc_client_secret is None:
+            args.oidc_client_secret = ""  # nosec: B105
+
+        return get_identity_token(
+            args.oidc_client_id,
+            args.oidc_client_secret,
+            issuer,
+        )
