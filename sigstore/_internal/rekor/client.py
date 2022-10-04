@@ -74,6 +74,25 @@ class RekorEntry:
         )
 
 
+@dataclass(frozen=True)
+class RekorLogInfo:
+    root_hash: str
+    tree_size: int
+    signed_tree_head: str
+    tree_id: str
+    raw_data: dict
+
+    @classmethod
+    def from_response(cls, dict_: Dict[str, Any]) -> RekorLogInfo:
+        return cls(
+            root_hash=dict_["rootHash"],
+            tree_size=dict_["treeSize"],
+            signed_tree_head=dict_["signedTreeHead"],
+            tree_id=dict_["treeID"],
+            raw_data=dict_,
+        )
+
+
 class RekorInclusionProof(BaseModel):
     log_index: StrictInt = Field(..., alias="logIndex")
     root_hash: StrictStr = Field(..., alias="rootHash")
@@ -147,14 +166,35 @@ class RekorRetrieve(Endpoint):
 
 
 class RekorLog(Endpoint):
+    def get(self) -> RekorLogInfo:
+        resp: requests.Response = self.session.get(self.url)
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as http_error:
+            raise RekorClientError from http_error
+        return RekorLogInfo.from_response(resp.json())
+
     @property
     def entries(self) -> RekorEntries:
         return RekorEntries(urljoin(self.url, "entries/"), session=self.session)
 
 
 class RekorEntries(Endpoint):
-    def get(self, uuid: str) -> RekorEntry:
-        resp: requests.Response = self.session.get(urljoin(self.url, uuid))
+    def get(
+        self, uuid: Optional[str] = None, log_index: Optional[int] = None
+    ) -> RekorEntry:
+        if uuid is None and log_index is None:
+            raise RekorClientError("Cannot get entry without uuid or log_index")
+        if uuid is not None and log_index is not None:
+            raise RekorClientError("Cannot get entry with both uuid and log_index")
+
+        resp: requests.Response
+
+        if uuid is not None:
+            resp = self.session.get(urljoin(self.url, uuid))
+        else:
+            resp = self.session.get(self.url, params={"logIndex": log_index})
+
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
