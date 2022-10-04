@@ -19,7 +19,7 @@ import sys
 from importlib import resources
 from pathlib import Path
 from textwrap import dedent
-from typing import TextIO, cast
+from typing import Optional, TextIO, Union, cast
 
 from sigstore import __version__
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
@@ -61,6 +61,36 @@ class _Embedded:
         return f"{self._name} (embedded)"
 
 
+def _add_shared_oidc_options(
+    group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
+) -> None:
+    group.add_argument(
+        "--oidc-client-id",
+        metavar="ID",
+        type=str,
+        default="sigstore",
+        help="The custom OpenID Connect client ID to use during OAuth2",
+    )
+    group.add_argument(
+        "--oidc-client-secret",
+        metavar="SECRET",
+        type=str,
+        help="The custom OpenID Connect client secret to use during OAuth2",
+    )
+    group.add_argument(
+        "--oidc-disable-ambient-providers",
+        action="store_true",
+        help="Disable ambient OpenID Connect credential detection (e.g. on GitHub Actions)",
+    )
+    group.add_argument(
+        "--oidc-issuer",
+        metavar="URL",
+        type=str,
+        default=DEFAULT_OAUTH_ISSUER,
+        help="The OpenID Connect issuer to use (conflicts with --staging)",
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sigstore",
@@ -84,24 +114,7 @@ def _parser() -> argparse.ArgumentParser:
         type=str,
         help="the OIDC identity token to use",
     )
-    oidc_options.add_argument(
-        "--oidc-client-id",
-        metavar="ID",
-        type=str,
-        default="sigstore",
-        help="The custom OpenID Connect client ID to use during OAuth2",
-    )
-    oidc_options.add_argument(
-        "--oidc-client-secret",
-        metavar="SECRET",
-        type=str,
-        help="The custom OpenID Connect client secret to use during OAuth2",
-    )
-    oidc_options.add_argument(
-        "--oidc-disable-ambient-providers",
-        action="store_true",
-        help="Disable ambient OpenID Connect credential detection (e.g. on GitHub Actions)",
-    )
+    _add_shared_oidc_options(oidc_options)
 
     output_options = sign.add_argument_group("Output options")
     output_options.add_argument(
@@ -162,13 +175,6 @@ def _parser() -> argparse.ArgumentParser:
         type=argparse.FileType("rb"),
         help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
         default=_Embedded("rekor.pub"),
-    )
-    instance_options.add_argument(
-        "--oidc-issuer",
-        metavar="URL",
-        type=str,
-        default=DEFAULT_OAUTH_ISSUER,
-        help="The OpenID Connect issuer to use (conflicts with --staging)",
     )
     instance_options.add_argument(
         "--staging",
@@ -240,6 +246,10 @@ def _parser() -> argparse.ArgumentParser:
         help="The file to verify",
     )
 
+    # `sigstore get-identity-token`
+    get_identity_token = subcommands.add_parser("get-identity-token")
+    _add_shared_oidc_options(get_identity_token)
+
     return parser
 
 
@@ -257,6 +267,13 @@ def main() -> None:
         _sign(args)
     elif args.subcommand == "verify":
         _verify(args)
+    elif args.subcommand == "get-identity-token":
+        token = _get_identity_token(args)
+        if token:
+            print(token)
+        else:
+            args._parser.error("No identity token supplied or detected!")
+
     else:
         parser.error(f"Unknown subcommand: {args.subcommand}")
 
@@ -325,55 +342,8 @@ def _sign(args: argparse.Namespace) -> None:
     # 1) Explicitly supplied identity token
     # 2) Ambient credential detected in the environment, unless disabled
     # 3) Interactive OAuth flow
-    if not args.identity_token and not args.oidc_disable_ambient_providers:
-        try:
-            args.identity_token = detect_credential()
-        except GitHubOidcPermissionCredentialError as exception:
-            # Provide some common reasons for why we hit permission errors in
-            # GitHub Actions.
-            print(
-                dedent(
-                    f"""
-                    Insufficient permissions for GitHub Actions workflow.
-
-                    The most common reason for this is incorrect
-                    configuration of the top-level `permissions` setting of the
-                    workflow YAML file. It should be configured like so:
-
-                        permissions:
-                          id-token: write
-
-                    Relevant documentation here:
-
-                        https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
-
-                    Another possible reason is that the workflow run has been
-                    triggered by a PR from a forked repository. PRs from forked
-                    repositories typically cannot be granted write access.
-
-                    Relevant documentation here:
-
-                        https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
-
-                    Additional context:
-
-                    {exception}
-                    """
-                ),
-                file=sys.stderr,
-            )
-            sys.exit(1)
     if not args.identity_token:
-        issuer = Issuer(args.oidc_issuer)
-
-        if args.oidc_client_secret is None:
-            args.oidc_client_secret = ""  # nosec: B105
-
-        args.identity_token = get_identity_token(
-            args.oidc_client_id,
-            args.oidc_client_secret,
-            issuer,
-        )
+        args.identity_token = _get_identity_token(args)
     if not args.identity_token:
         args._parser.error("No identity token supplied or detected!")
 
@@ -500,3 +470,58 @@ def _verify(args: argparse.Namespace) -> None:
                 )
 
             sys.exit(1)
+
+
+def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
+    token = None
+    if not args.oidc_disable_ambient_providers:
+        try:
+            token = detect_credential()
+        except GitHubOidcPermissionCredentialError as exception:
+            # Provide some common reasons for why we hit permission errors in
+            # GitHub Actions.
+            print(
+                dedent(
+                    f"""
+                    Insufficient permissions for GitHub Actions workflow.
+
+                    The most common reason for this is incorrect
+                    configuration of the top-level `permissions` setting of the
+                    workflow YAML file. It should be configured like so:
+
+                        permissions:
+                          id-token: write
+
+                    Relevant documentation here:
+
+                        https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
+
+                    Another possible reason is that the workflow run has been
+                    triggered by a PR from a forked repository. PRs from forked
+                    repositories typically cannot be granted write access.
+
+                    Relevant documentation here:
+
+                        https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+
+                    Additional context:
+
+                    {exception}
+                    """
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    if not token:
+        issuer = Issuer(args.oidc_issuer)
+
+        if args.oidc_client_secret is None:
+            args.oidc_client_secret = ""  # nosec: B105
+
+        token = get_identity_token(
+            args.oidc_client_id,
+            args.oidc_client_secret,
+            issuer,
+        )
+    return token

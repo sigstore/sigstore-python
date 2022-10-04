@@ -68,16 +68,16 @@ Top-level:
 
 <!-- @begin-sigstore-help@ -->
 ```
-usage: sigstore [-h] [-V] {sign,verify} ...
+usage: sigstore [-h] [-V] {sign,verify,get-identity-token} ...
 
 a tool for signing and verifying Python package distributions
 
 positional arguments:
-  {sign,verify}
+  {sign,verify,get-identity-token}
 
 options:
-  -h, --help     show this help message and exit
-  -V, --version  show program's version number and exit
+  -h, --help            show this help message and exit
+  -V, --version         show program's version number and exit
 ```
 <!-- @end-sigstore-help@ -->
 
@@ -87,11 +87,11 @@ Signing:
 ```
 usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
-                     [--oidc-disable-ambient-providers] [--no-default-files]
-                     [--signature FILE] [--certificate FILE] [--overwrite]
-                     [--fulcio-url URL] [--rekor-url URL] [--ctfe FILE]
-                     [--rekor-root-pubkey FILE] [--oidc-issuer URL]
-                     [--staging]
+                     [--oidc-disable-ambient-providers] [--oidc-issuer URL]
+                     [--no-default-files] [--signature FILE]
+                     [--certificate FILE] [--overwrite] [--fulcio-url URL]
+                     [--rekor-url URL] [--ctfe FILE]
+                     [--rekor-root-pubkey FILE] [--staging]
                      FILE [FILE ...]
 
 positional arguments:
@@ -111,6 +111,8 @@ OpenID Connect options:
   --oidc-disable-ambient-providers
                         Disable ambient OpenID Connect credential detection
                         (e.g. on GitHub Actions) (default: False)
+  --oidc-issuer URL     The OpenID Connect issuer to use (conflicts with
+                        --staging) (default: https://oauth2.sigstore.dev/auth)
 
 Output options:
   --no-default-files    Don't emit the default output files ({input}.sig and
@@ -135,8 +137,6 @@ Sigstore instance options:
                         A PEM-encoded root public key for Rekor itself
                         (conflicts with --staging) (default: rekor.pub
                         (embedded))
-  --oidc-issuer URL     The OpenID Connect issuer to use (conflicts with
-                        --staging) (default: https://oauth2.sigstore.dev/auth)
   --staging             Use sigstore's staging instances, instead of the
                         default production instances (default: False)
 ```
