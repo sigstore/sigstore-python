@@ -244,6 +244,13 @@ def _parser() -> argparse.ArgumentParser:
         help="The file to verify",
     )
 
+    # `sigstore get-identity-token`
+    get_identity_token = subcommands.add_parser(
+        "get-identity-token",
+        help="Generate and print an identity token to be used with --identity-token",
+    )
+    _add_shared_oidc_options(get_identity_token)
+
     return parser
 
 
@@ -261,6 +268,8 @@ def main() -> None:
         _sign(args)
     elif args.subcommand == "verify":
         _verify(args)
+    elif args.subcommand == "get-identity-token":
+        print(_get_identity_token(args))
     else:
         parser.error(f"Unknown subcommand: {args.subcommand}")
 
