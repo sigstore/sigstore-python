@@ -268,7 +268,12 @@ def main() -> None:
     elif args.subcommand == "verify":
         _verify(args)
     elif args.subcommand == "get-identity-token":
-        print(_get_identity_token(args))
+        token = _get_identity_token(args)
+        if token:
+            print(token)
+        else:
+            args._parser.error("No identity token supplied or detected!")
+
     else:
         parser.error(f"Unknown subcommand: {args.subcommand}")
 
@@ -468,9 +473,10 @@ def _verify(args: argparse.Namespace) -> None:
 
 
 def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
+    token = None
     if not args.oidc_disable_ambient_providers:
         try:
-            return detect_credential()
+            token = detect_credential()
         except GitHubOidcPermissionCredentialError as exception:
             # Provide some common reasons for why we hit permission errors in
             # GitHub Actions.
@@ -506,14 +512,16 @@ def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
                 file=sys.stderr,
             )
             sys.exit(1)
-    else:
+
+    if not token:
         issuer = Issuer(args.oidc_issuer)
 
         if args.oidc_client_secret is None:
             args.oidc_client_secret = ""  # nosec: B105
 
-        return get_identity_token(
+        token = get_identity_token(
             args.oidc_client_id,
             args.oidc_client_secret,
             issuer,
         )
+    return token
