@@ -61,6 +61,34 @@ class _Embedded:
         return f"{self._name} (embedded)"
 
 
+def _add_shared_oidc_options(group):
+    group.add_argument(
+        "--oidc-client-id",
+        metavar="ID",
+        type=str,
+        default="sigstore",
+        help="The custom OpenID Connect client ID to use during OAuth2",
+    )
+    group.add_argument(
+        "--oidc-client-secret",
+        metavar="SECRET",
+        type=str,
+        help="The custom OpenID Connect client secret to use during OAuth2",
+    )
+    group.add_argument(
+        "--oidc-disable-ambient-providers",
+        action="store_true",
+        help="Disable ambient OpenID Connect credential detection (e.g. on GitHub Actions)",
+    )
+    group.add_argument(
+        "--oidc-issuer",
+        metavar="URL",
+        type=str,
+        default=DEFAULT_OAUTH_ISSUER,
+        help="The OpenID Connect issuer to use (conflicts with --staging)",
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sigstore",
@@ -84,24 +112,7 @@ def _parser() -> argparse.ArgumentParser:
         type=str,
         help="the OIDC identity token to use",
     )
-    oidc_options.add_argument(
-        "--oidc-client-id",
-        metavar="ID",
-        type=str,
-        default="sigstore",
-        help="The custom OpenID Connect client ID to use during OAuth2",
-    )
-    oidc_options.add_argument(
-        "--oidc-client-secret",
-        metavar="SECRET",
-        type=str,
-        help="The custom OpenID Connect client secret to use during OAuth2",
-    )
-    oidc_options.add_argument(
-        "--oidc-disable-ambient-providers",
-        action="store_true",
-        help="Disable ambient OpenID Connect credential detection (e.g. on GitHub Actions)",
-    )
+    _add_shared_oidc_options(oidc_options)
 
     output_options = sign.add_argument_group("Output options")
     output_options.add_argument(
@@ -162,13 +173,6 @@ def _parser() -> argparse.ArgumentParser:
         type=argparse.FileType("rb"),
         help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
         default=_Embedded("rekor.pub"),
-    )
-    instance_options.add_argument(
-        "--oidc-issuer",
-        metavar="URL",
-        type=str,
-        default=DEFAULT_OAUTH_ISSUER,
-        help="The OpenID Connect issuer to use (conflicts with --staging)",
     )
     instance_options.add_argument(
         "--staging",
