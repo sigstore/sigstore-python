@@ -139,3 +139,7 @@ bug reports when their debug logs include helpful context!
 * *Update the [CHANGELOG](./CHANGELOG.md)*. If your changes are public or result
 in changes to `sigstore`'s CLI, please record them under the "Unreleased" section,
 with an entry in an appropriate subsection ("Added", "Changed", "Removed", or "Fixed").
+
+* Ensure your commits are signed off, as sigstore uses the
+[DCO](https://en.wikipedia.org/wiki/Developer_Certificate_of_Origin). 
+You can do it using `git commit -s`, or `git commit -s --amend` if you want to amend already existing commits.
