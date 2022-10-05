@@ -181,12 +181,10 @@ class RekorLog(Endpoint):
 
 class RekorEntries(Endpoint):
     def get(
-        self, uuid: Optional[str] = None, log_index: Optional[int] = None
+        self, *, uuid: Optional[str] = None, log_index: Optional[int] = None
     ) -> RekorEntry:
-        if uuid is None and log_index is None:
-            raise RekorClientError("Cannot get entry without uuid or log_index")
-        if uuid is not None and log_index is not None:
-            raise RekorClientError("Cannot get entry with both uuid and log_index")
+        if not (bool(uuid) ^ bool(log_index)):
+            raise RekorClientError("uuid or log_index required, but not both")
 
         resp: requests.Response
 
