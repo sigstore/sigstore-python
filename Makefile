@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 PY_MODULE := sigstore
 
 ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
@@ -84,6 +86,38 @@ release:
 		git commit -m "version: v$${NEXT_VERSION}" && \
 		git tag v$${NEXT_VERSION} && \
 		echo "RUN ME MANUALLY: git push origin main && git push origin v$${NEXT_VERSION}"
+
+.PHONY: check-readme
+check-readme:
+	# sigstore --help
+	@diff \
+	  <( \
+	    awk '/@begin-sigstore-help@/{f=1;next} /@end-sigstore-help@/{f=0} f' \
+	      < README.md | sed '1d;$$d' \
+	  ) \
+	  <( \
+	    $(MAKE) run ARGS="--help" \
+	  )
+
+	# sigstore sign --help
+	@diff \
+	  <( \
+	    awk '/@begin-sigstore-sign-help@/{f=1;next} /@end-sigstore-sign-help@/{f=0} f' \
+	      < README.md | sed '1d;$$d' \
+	  ) \
+	  <( \
+	    $(MAKE) run ARGS="sign --help" \
+	  )
+
+	# sigstore verify --help
+	@diff \
+	  <( \
+	    awk '/@begin-sigstore-verify-help@/{f=1;next} /@end-sigstore-verify-help@/{f=0} f' \
+	      < README.md | sed '1d;$$d' \
+	  ) \
+	  <( \
+	    $(MAKE) run ARGS="verify --help" \
+	  )
 
 
 .PHONY: edit
