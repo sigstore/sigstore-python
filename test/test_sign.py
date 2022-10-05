@@ -43,4 +43,8 @@ def test_sign_rekor_entry_consistent(signer):
     expected_entry = result.log_entry
     actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
 
-    assert expected_entry == actual_entry
+    assert expected_entry.uuid == actual_entry.uuid
+    assert expected_entry.body == actual_entry.body
+    assert expected_entry.integrated_time == actual_entry.integrated_time
+    assert expected_entry.log_id == actual_entry.log_id
+    assert expected_entry.log_index == actual_entry.log_index
