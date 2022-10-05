@@ -38,9 +38,7 @@ def test_sign_rekor_entry_consistent(signer):
         pytest.skip("no ambient credentials; skipping")
 
     payload = secrets.token_bytes(32)
-    result = signer.sign(payload, token)
-
-    expected_entry = result.log_entry
+    expected_entry = signer.sign(payload, token).log_entry
     actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
 
     assert expected_entry.uuid == actual_entry.uuid
