@@ -30,6 +30,7 @@ def test_signer_staging():
     assert signer is not None
 
 
+@pytest.mark.online
 @pytest.mark.parametrize("signer", [Signer.production(), Signer.staging()])
 def test_sign_rekor_entry_consistent(signer):
     token = detect_credential()
