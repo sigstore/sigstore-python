@@ -10,6 +10,9 @@ on:
 
 jobs:
   test:
+    permissions:
+      # Needed to access the workflow's OIDC identity.
+      id-token: write
     strategy:
       matrix:
         python:

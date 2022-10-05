@@ -254,7 +254,7 @@ class Verifier:
         valid_sig_exists = False
         log_index = None
         for uuid in uuids:
-            entry: RekorEntry = self._rekor.log.entries.get(uuid)
+            entry: RekorEntry = self._rekor.log.entries.get(uuid=uuid)
 
             # 4) Verify the inclusion proof supplied by Rekor for this artifact
             inclusion_proof = RekorInclusionProof.parse_obj(
