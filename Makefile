@@ -96,7 +96,7 @@ check-readme:
 	      < README.md | sed '1d;$$d' \
 	  ) \
 	  <( \
-	    $(MAKE) run ARGS="--help" \
+	    $(MAKE) -s run ARGS="--help" \
 	  )
 
 	# sigstore sign --help
@@ -106,7 +106,7 @@ check-readme:
 	      < README.md | sed '1d;$$d' \
 	  ) \
 	  <( \
-	    $(MAKE) run ARGS="sign --help" \
+	    $(MAKE) -s run ARGS="sign --help" \
 	  )
 
 	# sigstore verify --help
@@ -116,7 +116,7 @@ check-readme:
 	      < README.md | sed '1d;$$d' \
 	  ) \
 	  <( \
-	    $(MAKE) run ARGS="verify --help" \
+	    $(MAKE) -s run ARGS="verify --help" \
 	  )
 
 
