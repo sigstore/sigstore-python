@@ -18,7 +18,6 @@ Client implementation for interacting with Rekor.
 
 from __future__ import annotations
 
-import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
@@ -215,7 +214,7 @@ class RekorEntriesRetrieve(Endpoint):
         b64_artifact_signature: str,
         sha256_artifact_hash: str,
         b64_cert: str,
-    ) -> RekorEntry:
+    ) -> Optional[RekorEntry]:
         data = {
             "entries": [
                 {
@@ -241,9 +240,31 @@ class RekorEntriesRetrieve(Endpoint):
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
+            if http_error.status_code == 404:
+                return None
             raise RekorClientError(resp.json()) from http_error
 
-        return RekorEntry.from_response(resp.json()[0])
+        # Rekor should return a 404 when there are no results rather than
+        # an empty list, but we check for the latter just in case.
+        #
+        # Similarly, we expect exactly one top-level response, since we made
+        # exactly one entry request. The inner entry set may have more than
+        # one result, but anything other than 1 at the top-level indicates
+        # a bug in Rekor.
+        body = resp.json()
+        if len(body) == 0:
+            return None
+        elif len(body) > 1:
+            raise RekorClientError(
+                f"expected exactly one response for entry query, but got {len(body)}"
+            )
+
+        # The response is a list of `{ uuid: LogEntry }` objects.
+        # We select the oldest entry to actually return, since a malicious
+        # actor could conceivably spam the log with newer duplicate entries.
+        entry = min(body[0].items(), key=lambda tup: tup[1]["integratedTime"])
+
+        return RekorEntry.from_response(dict([entry]))
 
 
 class RekorClient:

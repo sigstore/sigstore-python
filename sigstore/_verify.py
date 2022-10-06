@@ -50,11 +50,7 @@ from sigstore._internal.merkle import (
     InvalidInclusionProofError,
     verify_merkle_inclusion,
 )
-from sigstore._internal.rekor import (
-    RekorClient,
-    RekorEntry,
-    RekorInclusionProof,
-)
+from sigstore._internal.rekor import RekorClient, RekorInclusionProof
 from sigstore._internal.set import InvalidSetError, verify_set
 
 logger = logging.getLogger(__name__)
@@ -240,20 +236,16 @@ class Verifier:
 
         logger.debug("Successfully verified signature...")
 
-        # Get a base64 encoding of the signing key. We're going to use this in our Rekor query.
-        pub_b64 = base64.b64encode(
-            signing_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo,
-            )
-        )
-
         # Retrieve the relevant Rekor entry to verify the inclusion proof and SET
         entry = self._rekor.log.entries.retrieve.post(
             signature.decode(),
             sha256_artifact_hash,
             base64.b64encode(certificate).decode(),
         )
+        if entry is None:
+            return VerificationFailure(
+                reason="Rekor has no entry for these verification materials"
+            )
 
         # 4) Verify the inclusion proof supplied by Rekor for this artifact
         inclusion_proof = RekorInclusionProof.parse_obj(
