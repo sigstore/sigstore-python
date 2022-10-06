@@ -26,7 +26,7 @@ from importlib import resources
 from typing import List, Optional, cast
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
     ExtendedKeyUsage,
