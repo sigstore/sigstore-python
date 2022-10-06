@@ -247,7 +247,7 @@ class RekorEntriesRetrieve(Endpoint):
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
-            if http_error.status_code == 404:
+            if http_error.response.status_code == 404:
                 return None
             raise RekorClientError(resp.json()) from http_error
 
@@ -269,7 +269,10 @@ class RekorEntriesRetrieve(Endpoint):
         # The response is a list of `{ uuid: LogEntry }` objects.
         # We select the oldest entry to actually return, since a malicious
         # actor could conceivably spam the log with newer duplicate entries.
-        entry = min(body[0].items(), key=lambda tup: tup[1]["integratedTime"])
+        entry = min(
+            body[0].items(),
+            key=lambda tup: tup[1]["integratedTime"],  # type: ignore[no-any-return]
+        )
 
         return RekorEntry.from_response(dict([entry]))
 
