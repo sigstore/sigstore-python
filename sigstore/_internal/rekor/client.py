@@ -19,6 +19,7 @@ Client implementation for interacting with Rekor.
 from __future__ import annotations
 
 import json
+import logging
 from abc import ABC
 from dataclasses import dataclass
 from importlib import resources
@@ -29,6 +30,8 @@ import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
@@ -136,35 +139,6 @@ class Endpoint(ABC):
         self.session = session
 
 
-class RekorIndex(Endpoint):
-    @property
-    def retrieve(self) -> RekorRetrieve:
-        return RekorRetrieve(urljoin(self.url, "retrieve/"), session=self.session)
-
-
-class RekorRetrieve(Endpoint):
-    def post(
-        self,
-        sha256_hash: Optional[str] = None,
-        encoded_public_key: Optional[str] = None,
-    ) -> List[str]:
-        data: Dict[str, Any] = dict()
-        if sha256_hash is not None:
-            data["hash"] = f"sha256:{sha256_hash}"
-        if encoded_public_key is not None:
-            data["publicKey"] = {"format": "x509", "content": encoded_public_key}
-        if not data:
-            raise RekorClientError(
-                "No parameters were provided to Rekor index retrieve query"
-            )
-        resp: requests.Response = self.session.post(self.url, data=json.dumps(data))
-        try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            raise RekorClientError from http_error
-        return list(resp.json())
-
-
 class RekorLog(Endpoint):
     def get(self) -> RekorLogInfo:
         resp: requests.Response = self.session.get(self.url)
@@ -205,6 +179,7 @@ class RekorEntries(Endpoint):
         sha256_artifact_hash: str,
         b64_cert: str,
     ) -> RekorEntry:
+        # TODO(ww): Dedupe this payload construction with the retrive endpoint below.
         data = {
             "kind": "hashedrekord",
             "apiVersion": "0.0.1",
@@ -219,13 +194,56 @@ class RekorEntries(Endpoint):
             },
         }
 
-        resp: requests.Response = self.session.post(self.url, data=json.dumps(data))
+        resp: requests.Response = self.session.post(self.url, json=data)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
             raise RekorClientError from http_error
 
         return RekorEntry.from_response(resp.json())
+
+    @property
+    def retrieve(self) -> RekorEntriesRetrieve:
+        return RekorEntriesRetrieve(
+            urljoin(self.url, "retrieve/"), session=self.session
+        )
+
+
+class RekorEntriesRetrieve(Endpoint):
+    def post(
+        self,
+        b64_artifact_signature: str,
+        sha256_artifact_hash: str,
+        b64_cert: str,
+    ) -> RekorEntry:
+        data = {
+            "entries": [
+                {
+                    "kind": "hashedrekord",
+                    "apiVersion": "0.0.1",
+                    "spec": {
+                        "signature": {
+                            "content": b64_artifact_signature,
+                            "publicKey": {"content": b64_cert},
+                        },
+                        "data": {
+                            "hash": {
+                                "algorithm": "sha256",
+                                "value": sha256_artifact_hash,
+                            }
+                        },
+                    },
+                }
+            ]
+        }
+
+        resp: requests.Response = self.session.post(self.url, json=data)
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as http_error:
+            raise RekorClientError(resp.json()) from http_error
+
+        return RekorEntry.from_response(resp.json()[0])
 
 
 class RekorClient:
@@ -271,10 +289,6 @@ class RekorClient:
         return cls(
             STAGING_REKOR_URL, _STAGING_REKOR_ROOT_PUBKEY, _STAGING_REKOR_CTFE_PUBKEY
         )
-
-    @property
-    def index(self) -> RekorIndex:
-        return RekorIndex(urljoin(self.url, "index/"), session=self.session)
 
     @property
     def log(self) -> RekorLog:
