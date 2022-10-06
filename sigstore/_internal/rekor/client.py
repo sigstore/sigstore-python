@@ -215,6 +215,13 @@ class RekorEntriesRetrieve(Endpoint):
         sha256_artifact_hash: str,
         b64_cert: str,
     ) -> Optional[RekorEntry]:
+        """
+        Retrieves an extant Rekor entry, identified by its artifact signature,
+        artifact hash, and signing certificate.
+
+        Returns None if Rekor has no entry corresponding to the signing
+        materials.
+        """
         data = {
             "entries": [
                 {
