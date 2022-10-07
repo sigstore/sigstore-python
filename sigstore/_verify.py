@@ -26,7 +26,7 @@ from importlib import resources
 from typing import List, Optional, cast
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
     ExtendedKeyUsage,
@@ -50,11 +50,7 @@ from sigstore._internal.merkle import (
     InvalidInclusionProofError,
     verify_merkle_inclusion,
 )
-from sigstore._internal.rekor import (
-    RekorClient,
-    RekorEntry,
-    RekorInclusionProof,
-)
+from sigstore._internal.rekor import RekorClient, RekorInclusionProof
 from sigstore._internal.set import InvalidSetError, verify_set
 
 logger = logging.getLogger(__name__)
@@ -240,62 +236,45 @@ class Verifier:
 
         logger.debug("Successfully verified signature...")
 
-        # Get a base64 encoding of the signing key. We're going to use this in our Rekor query.
-        pub_b64 = base64.b64encode(
-            signing_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo,
-            )
-        )
-
         # Retrieve the relevant Rekor entry to verify the inclusion proof and SET
-        uuids = self._rekor.index.retrieve.post(sha256_artifact_hash, pub_b64.decode())
-
-        valid_sig_exists = False
-        log_index = None
-        for uuid in uuids:
-            entry: RekorEntry = self._rekor.log.entries.get(uuid=uuid)
-
-            # 4) Verify the inclusion proof supplied by Rekor for this artifact
-            inclusion_proof = RekorInclusionProof.parse_obj(
-                entry.verification.get("inclusionProof")
+        entry = self._rekor.log.entries.retrieve.post(
+            signature.decode(),
+            sha256_artifact_hash,
+            base64.b64encode(certificate).decode(),
+        )
+        if entry is None:
+            return VerificationFailure(
+                reason="Rekor has no entry for these verification materials"
             )
-            try:
-                verify_merkle_inclusion(inclusion_proof, entry)
-            except InvalidInclusionProofError as inval_inclusion_proof:
-                logger.warning(
-                    f"Failed to validate Rekor entry's inclusion proof: {inval_inclusion_proof}"
-                )
-                continue
 
-            # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
-            try:
-                verify_set(self._rekor, entry)
-            except InvalidSetError as inval_set:
-                logger.warning(f"Failed to validate Rekor entry's SET: {inval_set}")
-                continue
+        # 4) Verify the inclusion proof supplied by Rekor for this artifact
+        inclusion_proof = RekorInclusionProof.parse_obj(
+            entry.verification.get("inclusionProof")
+        )
+        try:
+            verify_merkle_inclusion(inclusion_proof, entry)
+        except InvalidInclusionProofError as inval_inclusion_proof:
+            return VerificationFailure(
+                reason=f"invalid Rekor inclusion proof: {inval_inclusion_proof}"
+            )
 
-            # 6) Verify that the signing certificate was valid at the time of signing
-            integrated_time = datetime.datetime.utcfromtimestamp(entry.integrated_time)
-            if (
-                integrated_time < cert.not_valid_before
-                or integrated_time >= cert.not_valid_after
-            ):
-                # No need to log anything here.
-                #
-                # If an artifact has been signed multiple times, this will happen so it's not
-                # really an error case.
-                continue
+        # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
+        try:
+            verify_set(self._rekor, entry)
+        except InvalidSetError as inval_set:
+            return VerificationFailure(reason=f"invalid Rekor entry SET: {inval_set}")
 
-            # TODO: Does it make sense to collect all valid Rekor entries?
-            valid_sig_exists = True
-            log_index = entry.log_index
-            break
+        # 6) Verify that the signing certificate was valid at the time of signing
+        integrated_time = datetime.datetime.utcfromtimestamp(entry.integrated_time)
+        if (
+            integrated_time < cert.not_valid_before
+            or integrated_time >= cert.not_valid_after
+        ):
+            return VerificationFailure(
+                reason="invalid signing cert: expired at time of Rekor entry"
+            )
 
-        if not valid_sig_exists:
-            return VerificationFailure(reason="No valid Rekor entries were found")
-
-        logger.debug(f"Successfully verified Rekor entry at index {log_index}..")
+        logger.debug(f"Successfully verified Rekor entry at index {entry.log_index}..")
         return VerificationSuccess()
 
 
