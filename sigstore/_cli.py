@@ -209,6 +209,12 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="The signature to verify against; not used with multiple inputs",
     )
+    input_options.add_argument(
+        "--bundle",
+        metavar="FILE",
+        type=Path,
+        help="The offline Rekor bundle to verify with; not used with multiple inputs",
+    )
 
     verification_options = verify.add_argument_group("Extended verification options")
     verification_options.add_argument(
@@ -222,6 +228,11 @@ def _parser() -> argparse.ArgumentParser:
         metavar="URL",
         type=str,
         help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
+    )
+    verification_options.add_argument(
+        "--offline",
+        action="store_true",
+        help="Perform offline Rekor verification using a bundle; implied by --bundle",
     )
 
     instance_options = verify.add_argument_group("Sigstore instance options")
