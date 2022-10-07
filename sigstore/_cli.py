@@ -387,10 +387,10 @@ def _sign(args: argparse.Namespace) -> None:
 
 
 def _verify(args: argparse.Namespace) -> None:
-    # Fail if `--certificate` or `--signature` is specified and we have more than one input.
-    if (args.certificate or args.signature) and len(args.files) > 1:
+    # Fail if --certificate, --signature, or --bundle is specified and we have more than one input.
+    if (args.certificate or args.signature or args.bundle) and len(args.files) > 1:
         args._parser.error(
-            "--certificate and --signature can only be used with a single input file"
+            "--certificate, --signature, and --bundle can only be used with a single input file"
         )
 
     # The converse of `sign`: we build up an expected input map and check
