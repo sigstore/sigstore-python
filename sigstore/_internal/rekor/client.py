@@ -251,30 +251,22 @@ class RekorEntriesRetrieve(Endpoint):
                 return None
             raise RekorClientError(resp.json()) from http_error
 
-        # Rekor should return a 404 when there are no results rather than
-        # an empty list, but we check for the latter just in case.
-        #
-        # Similarly, we expect exactly one top-level response, since we made
-        # exactly one entry request. The inner entry set may have more than
-        # one result, but anything other than 1 at the top-level indicates
-        # a bug in Rekor.
-        body = resp.json()
-        if len(body) == 0:
-            return None
-        elif len(body) > 1:
-            raise RekorClientError(
-                f"expected exactly one response for entry query, but got {len(body)}"
-            )
+        results = resp.json()
 
-        # The response is a list of `{ uuid: LogEntry }` objects.
-        # We select the oldest entry to actually return, since a malicious
-        # actor could conceivably spam the log with newer duplicate entries.
-        entry = min(
-            body[0].items(),
-            key=lambda tup: tup[1]["integratedTime"],  # type: ignore[no-any-return]
-        )
+        # The response is a list of `{uuid: LogEntry}` objects.
+        # We select the oldest entry for our actual return value,
+        # since a malicious actor could conceivably spam the log with
+        # newer duplicate entries.
+        oldest_entry: Optional[RekorEntry] = None
+        for result in results:
+            entry = RekorEntry.from_response(result)
+            if (
+                oldest_entry is None
+                or entry.integrated_time < oldest_entry.integrated_time
+            ):
+                oldest_entry = entry
 
-        return RekorEntry.from_response(dict([entry]))
+        return oldest_entry
 
 
 class RekorClient:
