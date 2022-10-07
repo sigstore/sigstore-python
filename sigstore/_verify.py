@@ -244,7 +244,11 @@ class Verifier:
         )
         if entry is None:
             return VerificationFailure(
-                reason="Rekor has no entry for these verification materials"
+                reason=(
+                    "Rekor has no entry for these verification materials; "
+                    "this suggests that the signing certificate was not published "
+                    "to the log at the time the signature was created"
+                )
             )
 
         # 4) Verify the inclusion proof supplied by Rekor for this artifact
