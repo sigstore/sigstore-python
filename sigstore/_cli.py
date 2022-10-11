@@ -484,6 +484,9 @@ def _verify(args: argparse.Namespace) -> None:
                 print(
                     dedent(
                         f"""
+                        These signing artifacts could not be matched to a entry
+                        in the configured transparency log.
+
                         This may be a result of connecting to the wrong Rekor instance
                         (for example, staging instead of production, or vice versa).
 
