@@ -66,13 +66,21 @@ def _boolify_env(envvar: str) -> bool:
     """
     An `argparse` helper for turning an environment variable into a boolean.
 
-    The only valid `True` states are (case-insensitive) "true", "yes", and "1".
-    Anything else, including the absence of the variable, is `False`.
+    The semantics here closely mirror `distutils.util.strtobool`.
+
+    See: <https://docs.python.org/3/distutils/apiref.html#distutils.util.strtobool>
     """
     val = os.getenv(envvar)
     if val is None:
         return False
-    return val.lower() in {"true", "yes", "1"}
+
+    val = val.lower()
+    if val in {"y", "yes", "true", "t", "on", "1"}:
+        return True
+    elif val in {"n", "no", "false", "f", "off", "0"}:
+        return False
+    else:
+        raise ValueError(f"can't coerce '{val}' to a boolean")
 
 
 def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
