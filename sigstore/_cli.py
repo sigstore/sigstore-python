@@ -62,6 +62,43 @@ class _Embedded:
         return f"{self._name} (embedded)"
 
 
+def _boolify_env(envvar: str) -> bool:
+    """
+    An `argparse` helper for turning an environment variable into a boolean.
+
+    The semantics here closely mirror `distutils.util.strtobool`.
+
+    See: <https://docs.python.org/3/distutils/apiref.html#distutils.util.strtobool>
+    """
+    val = os.getenv(envvar)
+    if val is None:
+        return False
+
+    val = val.lower()
+    if val in {"y", "yes", "true", "t", "on", "1"}:
+        return True
+    elif val in {"n", "no", "false", "f", "off", "0"}:
+        return False
+    else:
+        raise ValueError(f"can't coerce '{val}' to a boolean")
+
+
+def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
+    group.add_argument(
+        "--staging",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_STAGING"),
+        help="Use sigstore's staging instances, instead of the default production instances",
+    )
+    group.add_argument(
+        "--rekor-url",
+        metavar="URL",
+        type=str,
+        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
+        help="The Rekor instance to use (conflicts with --staging)",
+    )
+
+
 def _add_shared_oidc_options(
     group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
 ) -> None:
@@ -82,6 +119,7 @@ def _add_shared_oidc_options(
     group.add_argument(
         "--oidc-disable-ambient-providers",
         action="store_true",
+        default=_boolify_env("SIGSTORE_OIDC_DISABLE_AMBIENT_PROVIDERS"),
         help="Disable ambient OpenID Connect credential detection (e.g. on GitHub Actions)",
     )
     group.add_argument(
@@ -123,6 +161,7 @@ def _parser() -> argparse.ArgumentParser:
     output_options.add_argument(
         "--no-default-files",
         action="store_true",
+        default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
         help="Don't emit the default output files ({input}.sig and {input}.crt)",
     )
     output_options.add_argument(
@@ -148,23 +187,18 @@ def _parser() -> argparse.ArgumentParser:
     output_options.add_argument(
         "--overwrite",
         action="store_true",
+        default=_boolify_env("SIGSTORE_OVERWRITE"),
         help="Overwrite preexisting signature and certificate outputs, if present",
     )
 
     instance_options = sign.add_argument_group("Sigstore instance options")
+    _add_shared_instance_options(instance_options)
     instance_options.add_argument(
         "--fulcio-url",
         metavar="URL",
         type=str,
         default=os.getenv("SIGSTORE_FULCIO_URL", DEFAULT_FULCIO_URL),
         help="The Fulcio instance to use (conflicts with --staging)",
-    )
-    instance_options.add_argument(
-        "--rekor-url",
-        metavar="URL",
-        type=str,
-        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
-        help="The Rekor instance to use (conflicts with --staging)",
     )
     instance_options.add_argument(
         "--ctfe",
@@ -180,11 +214,6 @@ def _parser() -> argparse.ArgumentParser:
         type=argparse.FileType("rb"),
         help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
         default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY", _Embedded("rekor.pub")),
-    )
-    instance_options.add_argument(
-        "--staging",
-        action="store_true",
-        help="Use sigstore's staging instances, instead of the default production instances",
     )
 
     sign.add_argument(
@@ -234,18 +263,7 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     instance_options = verify.add_argument_group("Sigstore instance options")
-    instance_options.add_argument(
-        "--rekor-url",
-        metavar="URL",
-        type=str,
-        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
-        help="The Rekor instance to use (conflicts with --staging)",
-    )
-    instance_options.add_argument(
-        "--staging",
-        action="store_true",
-        help="Use sigstore's staging instances, instead of the default production instances",
-    )
+    _add_shared_instance_options(instance_options)
 
     verify.add_argument(
         "files",

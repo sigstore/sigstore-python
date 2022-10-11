@@ -88,9 +88,9 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
-                     [--certificate FILE] [--overwrite] [--fulcio-url URL]
-                     [--rekor-url URL] [--ctfe FILE]
-                     [--rekor-root-pubkey FILE] [--staging]
+                     [--certificate FILE] [--overwrite] [--staging]
+                     [--rekor-url URL] [--fulcio-url URL] [--ctfe FILE]
+                     [--rekor-root-pubkey FILE]
                      FILE [FILE ...]
 
 positional arguments:
@@ -126,18 +126,18 @@ Output options:
                         outputs, if present (default: False)
 
 Sigstore instance options:
-  --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
-                        (default: https://fulcio.sigstore.dev)
+  --staging             Use sigstore's staging instances, instead of the
+                        default production instances (default: False)
   --rekor-url URL       The Rekor instance to use (conflicts with --staging)
                         (default: https://rekor.sigstore.dev)
+  --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
+                        (default: https://fulcio.sigstore.dev)
   --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
                         with --staging) (default: ctfe.pub (embedded))
   --rekor-root-pubkey FILE
                         A PEM-encoded root public key for Rekor itself
                         (conflicts with --staging) (default: rekor.pub
                         (embedded))
-  --staging             Use sigstore's staging instances, instead of the
-                        default production instances (default: False)
 ```
 <!-- @end-sigstore-sign-help@ -->
 
@@ -147,7 +147,7 @@ Verifying:
 ```
 usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
                        [--cert-email EMAIL] [--cert-oidc-issuer URL]
-                       [--rekor-url URL] [--staging]
+                       [--staging] [--rekor-url URL]
                        FILE [FILE ...]
 
 positional arguments:
@@ -171,10 +171,10 @@ Extended verification options:
                         OIDC issuer extension (default: None)
 
 Sigstore instance options:
-  --rekor-url URL       The Rekor instance to use (conflicts with --staging)
-                        (default: https://rekor.sigstore.dev)
   --staging             Use sigstore's staging instances, instead of the
                         default production instances (default: False)
+  --rekor-url URL       The Rekor instance to use (conflicts with --staging)
+                        (default: https://rekor.sigstore.dev)
 ```
 <!-- @end-sigstore-verify-help@ -->
 
