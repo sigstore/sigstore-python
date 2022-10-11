@@ -254,6 +254,7 @@ def _parser() -> argparse.ArgumentParser:
         "--bundle",
         metavar="FILE",
         type=Path,
+        default=os.getenv("SIGSTORE_BUNDLE"),
         help="The offline Rekor bundle to verify with; not used with multiple inputs",
     )
 
@@ -275,6 +276,7 @@ def _parser() -> argparse.ArgumentParser:
     verification_options.add_argument(
         "--offline",
         action="store_true",
+        default=_boolify_env("SIGSTORE_OFFLINE"),
         help="Perform offline Rekor verification using a bundle; implied by --bundle",
     )
 
