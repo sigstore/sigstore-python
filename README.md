@@ -146,8 +146,9 @@ Verifying:
 <!-- @begin-sigstore-verify-help@ -->
 ```
 usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
-                       [--cert-email EMAIL] [--cert-oidc-issuer URL]
-                       [--staging] [--rekor-url URL]
+                       [--bundle FILE] [--cert-email EMAIL]
+                       [--cert-oidc-issuer URL] [--offline] [--staging]
+                       [--rekor-url URL]
                        FILE [FILE ...]
 
 positional arguments:
@@ -162,6 +163,8 @@ Verification inputs:
                         used with multiple inputs (default: None)
   --signature FILE      The signature to verify against; not used with
                         multiple inputs (default: None)
+  --bundle FILE         The offline Rekor bundle to verify with; not used with
+                        multiple inputs (default: None)
 
 Extended verification options:
   --cert-email EMAIL    The email address to check for in the certificate's
@@ -169,6 +172,8 @@ Extended verification options:
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
                         OIDC issuer extension (default: None)
+  --offline             Perform offline Rekor verification using a bundle;
+                        implied by --bundle (default: False)
 
 Sigstore instance options:
   --staging             Use sigstore's staging instances, instead of the
