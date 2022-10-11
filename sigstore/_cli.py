@@ -75,6 +75,22 @@ def _boolify_env(envvar: str) -> bool:
     return val.lower() in {"true", "yes", "1"}
 
 
+def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
+    group.add_argument(
+        "--staging",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_STAGING"),
+        help="Use sigstore's staging instances, instead of the default production instances",
+    )
+    group.add_argument(
+        "--rekor-url",
+        metavar="URL",
+        type=str,
+        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
+        help="The Rekor instance to use (conflicts with --staging)",
+    )
+
+
 def _add_shared_oidc_options(
     group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
 ) -> None:
@@ -168,19 +184,13 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     instance_options = sign.add_argument_group("Sigstore instance options")
+    _add_shared_instance_options(instance_options)
     instance_options.add_argument(
         "--fulcio-url",
         metavar="URL",
         type=str,
         default=os.getenv("SIGSTORE_FULCIO_URL", DEFAULT_FULCIO_URL),
         help="The Fulcio instance to use (conflicts with --staging)",
-    )
-    instance_options.add_argument(
-        "--rekor-url",
-        metavar="URL",
-        type=str,
-        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
-        help="The Rekor instance to use (conflicts with --staging)",
     )
     instance_options.add_argument(
         "--ctfe",
@@ -196,12 +206,6 @@ def _parser() -> argparse.ArgumentParser:
         type=argparse.FileType("rb"),
         help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
         default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY", _Embedded("rekor.pub")),
-    )
-    instance_options.add_argument(
-        "--staging",
-        action="store_true",
-        default=_boolify_env("SIGSTORE_STAGING"),
-        help="Use sigstore's staging instances, instead of the default production instances",
     )
 
     sign.add_argument(
@@ -251,19 +255,7 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     instance_options = verify.add_argument_group("Sigstore instance options")
-    instance_options.add_argument(
-        "--rekor-url",
-        metavar="URL",
-        type=str,
-        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
-        help="The Rekor instance to use (conflicts with --staging)",
-    )
-    instance_options.add_argument(
-        "--staging",
-        action="store_true",
-        default=_boolify_env("SIGSTORE_STAGING"),
-        help="Use sigstore's staging instances, instead of the default production instances",
-    )
+    _add_shared_instance_options(instance_options)
 
     verify.add_argument(
         "files",
