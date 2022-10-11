@@ -62,6 +62,19 @@ class _Embedded:
         return f"{self._name} (embedded)"
 
 
+def _boolify_env(envvar: str) -> bool:
+    """
+    An `argparse` helper for turning an environment variable into a boolean.
+
+    The only valid `True` states are (case-insensitive) "true", "yes", and "1".
+    Anything else, including the absence of the variable, is `False`.
+    """
+    val = os.getenv(envvar)
+    if val is None:
+        return False
+    return val.lower() in {"true", "yes", "1"}
+
+
 def _add_shared_oidc_options(
     group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
 ) -> None:
@@ -82,6 +95,7 @@ def _add_shared_oidc_options(
     group.add_argument(
         "--oidc-disable-ambient-providers",
         action="store_true",
+        default=_boolify_env("SIGSTORE_OIDC_DISABLE_AMBIENT_PROVIDERS"),
         help="Disable ambient OpenID Connect credential detection (e.g. on GitHub Actions)",
     )
     group.add_argument(
@@ -123,6 +137,7 @@ def _parser() -> argparse.ArgumentParser:
     output_options.add_argument(
         "--no-default-files",
         action="store_true",
+        default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
         help="Don't emit the default output files ({input}.sig and {input}.crt)",
     )
     output_options.add_argument(
@@ -148,6 +163,7 @@ def _parser() -> argparse.ArgumentParser:
     output_options.add_argument(
         "--overwrite",
         action="store_true",
+        default=_boolify_env("SIGSTORE_OVERWRITE"),
         help="Overwrite preexisting signature and certificate outputs, if present",
     )
 
@@ -184,6 +200,7 @@ def _parser() -> argparse.ArgumentParser:
     instance_options.add_argument(
         "--staging",
         action="store_true",
+        default=_boolify_env("SIGSTORE_STAGING"),
         help="Use sigstore's staging instances, instead of the default production instances",
     )
 
@@ -244,6 +261,7 @@ def _parser() -> argparse.ArgumentParser:
     instance_options.add_argument(
         "--staging",
         action="store_true",
+        default=_boolify_env("SIGSTORE_STAGING"),
         help="Use sigstore's staging instances, instead of the default production instances",
     )
 
