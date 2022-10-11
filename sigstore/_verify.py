@@ -139,7 +139,10 @@ class Verifier:
 
         `offline_rekor_entry` is an optional offline `RekorEntry` to verify against. If supplied,
         verification will be done against this entry rather than the against the online
-        transparency log.
+        transparency log. Offline Rekor entries do not carry their Merkle inclusion
+        proofs, and as such are verified only against their Signed Entry Timestamps.
+        This is a slightly weaker verification verification mode, as it does not guarantee
+        the log's consistency.
 
         Returns a `VerificationResult` which will be truthy or falsey depending on
         success.
