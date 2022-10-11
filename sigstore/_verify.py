@@ -50,7 +50,7 @@ from sigstore._internal.merkle import (
     InvalidInclusionProofError,
     verify_merkle_inclusion,
 )
-from sigstore._internal.rekor import RekorClient, RekorInclusionProof
+from sigstore._internal.rekor import RekorClient, RekorEntry
 from sigstore._internal.set import InvalidSetError, verify_set
 
 logger = logging.getLogger(__name__)
@@ -123,6 +123,7 @@ class Verifier:
         signature: bytes,
         expected_cert_email: Optional[str] = None,
         expected_cert_oidc_issuer: Optional[str] = None,
+        offline_rekor_entry: Optional[RekorEntry] = None,
     ) -> VerificationResult:
         """Public API for verifying.
 
@@ -135,6 +136,10 @@ class Verifier:
         `expected_cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
 
         `expected_cert_oidc_issuer` is the expected OIDC Issuer Extension within `certificate`.
+
+        `offline_rekor_entry` is an optional offline `RekorEntry` to verify against. If supplied,
+        verification will be done against this entry rather than the against the online
+        transparency log.
 
         Returns a `VerificationResult` which will be truthy or falsey depending on
         success.
@@ -236,27 +241,34 @@ class Verifier:
 
         logger.debug("Successfully verified signature...")
 
-        # Retrieve the relevant Rekor entry to verify the inclusion proof and SET
-        entry = self._rekor.log.entries.retrieve.post(
-            signature.decode(),
-            sha256_artifact_hash,
-            base64.b64encode(certificate).decode(),
-        )
-        if entry is None:
-            return RekorEntryMissing(
-                signature=signature.decode(), sha256_artifact_hash=sha256_artifact_hash
+        entry: Optional[RekorEntry]
+        if offline_rekor_entry is not None:
+            entry = offline_rekor_entry
+        else:
+            # Retrieve the relevant Rekor entry to verify the inclusion proof and SET.
+            entry = self._rekor.log.entries.retrieve.post(
+                signature.decode(),
+                sha256_artifact_hash,
+                base64.b64encode(certificate).decode(),
             )
+            if entry is None:
+                return RekorEntryMissing(
+                    signature=signature.decode(),
+                    sha256_artifact_hash=sha256_artifact_hash,
+                )
 
-        # 4) Verify the inclusion proof supplied by Rekor for this artifact
-        inclusion_proof = RekorInclusionProof.parse_obj(
-            entry.verification.get("inclusionProof")
-        )
-        try:
-            verify_merkle_inclusion(inclusion_proof, entry)
-        except InvalidInclusionProofError as inval_inclusion_proof:
-            return VerificationFailure(
-                reason=f"invalid Rekor inclusion proof: {inval_inclusion_proof}"
-            )
+        # 4) Verify the inclusion proof supplied by Rekor for this artifact.
+        #
+        # We skip the inclusion proof for offline Rekor bundles.
+        if offline_rekor_entry is None:
+            try:
+                verify_merkle_inclusion(entry)
+            except InvalidInclusionProofError as inval_inclusion_proof:
+                return VerificationFailure(
+                    reason=f"invalid Rekor inclusion proof: {inval_inclusion_proof}"
+                )
+        else:
+            logger.debug("offline Rekor entry used; skipping Merkle inclusion proof")
 
         # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         try:

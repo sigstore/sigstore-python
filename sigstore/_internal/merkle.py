@@ -26,7 +26,7 @@ import hashlib
 import struct
 from typing import List, Tuple
 
-from sigstore._internal.rekor import RekorEntry, RekorInclusionProof
+from sigstore._internal.rekor import RekorEntry
 
 
 class InvalidInclusionProofError(Exception):
@@ -91,10 +91,11 @@ def _hash_leaf(leaf: bytes) -> bytes:
     return hashlib.sha256(data).digest()
 
 
-def verify_merkle_inclusion(
-    inclusion_proof: RekorInclusionProof, entry: RekorEntry
-) -> None:
+def verify_merkle_inclusion(entry: RekorEntry) -> None:
     """Verify the Merkle Inclusion Proof for a given Rekor entry"""
+    inclusion_proof = entry.inclusion_proof
+    if inclusion_proof is None:
+        raise InvalidInclusionProofError("Rekor entry has no inclusion proof")
 
     # Figure out which subset of hashes corresponds to the inner and border nodes.
     inner, border = _decomp_inclusion_proof(

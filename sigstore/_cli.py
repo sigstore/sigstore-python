@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -33,7 +34,11 @@ from sigstore._internal.oidc.oauth import (
     STAGING_OAUTH_ISSUER,
     get_identity_token,
 )
-from sigstore._internal.rekor.client import DEFAULT_REKOR_URL, RekorClient
+from sigstore._internal.rekor.client import (
+    DEFAULT_REKOR_URL,
+    RekorClient,
+    RekorEntry,
+)
 from sigstore._sign import Signer
 from sigstore._verify import (
     CertificateVerificationFailure,
@@ -427,12 +432,16 @@ def _verify(args: argparse.Namespace) -> None:
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert = args.signature, args.certificate
+        sig, cert, bundle = args.signature, args.certificate, args.bundle
         if sig is None:
             sig = file.parent / f"{file.name}.sig"
         if cert is None:
             cert = file.parent / f"{file.name}.crt"
+        if bundle is None:
+            bundle = file.parent / f"{file.name}.bundle"
 
+        # NOTE: We don't produce errors on missing bundle files,
+        # since the absence of a bundle file implies online verification.
         missing = []
         if not sig.is_file():
             missing.append(str(sig))
@@ -444,7 +453,7 @@ def _verify(args: argparse.Namespace) -> None:
                 f"Missing verification materials for {(file)}: {', '.join(missing)}"
             )
 
-        input_map[file] = {"cert": cert, "sig": sig}
+        input_map[file] = {"cert": cert, "sig": sig, "bundle": bundle}
 
     if args.staging:
         logger.debug("verify: staging instances requested")
@@ -467,6 +476,12 @@ def _verify(args: argparse.Namespace) -> None:
         logger.debug(f"Using signature from: {inputs['sig']}")
         signature = inputs["sig"].read_bytes().rstrip()
 
+        entry: Optional[RekorEntry] = None
+        if inputs["bundle"].is_file():
+            logger.debug(f"Using offline Rekor bundle from: {inputs['bundle']}")
+            bundle = json.loads(inputs["bundle"].read_text())
+            entry = RekorEntry.from_bundle(bundle)
+
         logger.debug(f"Verifying contents from: {file}")
 
         result = verifier.verify(
@@ -475,6 +490,7 @@ def _verify(args: argparse.Namespace) -> None:
             signature=signature,
             expected_cert_email=args.cert_email,
             expected_cert_oidc_issuer=args.cert_oidc_issuer,
+            offline_rekor_entry=entry,
         )
 
         if result:
