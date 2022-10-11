@@ -442,13 +442,16 @@ def _verify(args: argparse.Namespace) -> None:
         if bundle is None:
             bundle = file.parent / f"{file.name}.bundle"
 
-        # NOTE: We don't produce errors on missing bundle files,
-        # since the absence of a bundle file implies online verification.
         missing = []
         if not sig.is_file():
             missing.append(str(sig))
         if not cert.is_file():
             missing.append(str(cert))
+        if not bundle.is_file() and args.offline:
+            # NOTE: We only produce errors on missing bundle files
+            # if the user has explicitly requested offline-only verification.
+            # Otherwise, we fall back on online verification.
+            missing.append(str(bundle))
 
         if missing:
             args._parser.error(
