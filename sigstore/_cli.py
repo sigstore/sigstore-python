@@ -69,13 +69,14 @@ def _add_shared_oidc_options(
         "--oidc-client-id",
         metavar="ID",
         type=str,
-        default="sigstore",
+        default=os.getenv("SIGSTORE_OIDC_CLIENT_ID", "sigstore"),
         help="The custom OpenID Connect client ID to use during OAuth2",
     )
     group.add_argument(
         "--oidc-client-secret",
         metavar="SECRET",
         type=str,
+        default=os.getenv("SIGSTORE_OIDC_CLIENT_SECRET"),
         help="The custom OpenID Connect client secret to use during OAuth2",
     )
     group.add_argument(
@@ -87,7 +88,7 @@ def _add_shared_oidc_options(
         "--oidc-issuer",
         metavar="URL",
         type=str,
-        default=DEFAULT_OAUTH_ISSUER,
+        default=os.getenv("SIGSTORE_OIDC_ISSUER", DEFAULT_OAUTH_ISSUER),
         help="The OpenID Connect issuer to use (conflicts with --staging)",
     )
 
@@ -113,6 +114,7 @@ def _parser() -> argparse.ArgumentParser:
         "--identity-token",
         metavar="TOKEN",
         type=str,
+        default=os.getenv("SIGSTORE_IDENTITY_TOKEN"),
         help="the OIDC identity token to use",
     )
     _add_shared_oidc_options(oidc_options)
@@ -128,6 +130,7 @@ def _parser() -> argparse.ArgumentParser:
         "--output-signature",
         metavar="FILE",
         type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_SIGNATURE"),
         help=(
             "Write a single signature to the given file; does not work with multiple input files"
         ),
@@ -137,6 +140,7 @@ def _parser() -> argparse.ArgumentParser:
         "--output-certificate",
         metavar="FILE",
         type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_CERTIFICATE"),
         help=(
             "Write a single certificate to the given file; does not work with multiple input files"
         ),
@@ -152,14 +156,14 @@ def _parser() -> argparse.ArgumentParser:
         "--fulcio-url",
         metavar="URL",
         type=str,
-        default=DEFAULT_FULCIO_URL,
+        default=os.getenv("SIGSTORE_FULCIO_URL", DEFAULT_FULCIO_URL),
         help="The Fulcio instance to use (conflicts with --staging)",
     )
     instance_options.add_argument(
         "--rekor-url",
         metavar="URL",
         type=str,
-        default=DEFAULT_REKOR_URL,
+        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
         help="The Rekor instance to use (conflicts with --staging)",
     )
     instance_options.add_argument(
@@ -168,14 +172,14 @@ def _parser() -> argparse.ArgumentParser:
         metavar="FILE",
         type=argparse.FileType("rb"),
         help="A PEM-encoded public key for the CT log (conflicts with --staging)",
-        default=_Embedded("ctfe.pub"),
+        default=os.getenv("SIGSTORE_CTFE", _Embedded("ctfe.pub")),
     )
     instance_options.add_argument(
         "--rekor-root-pubkey",
         metavar="FILE",
         type=argparse.FileType("rb"),
         help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-        default=_Embedded("rekor.pub"),
+        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY", _Embedded("rekor.pub")),
     )
     instance_options.add_argument(
         "--staging",
@@ -202,12 +206,14 @@ def _parser() -> argparse.ArgumentParser:
         "--cert",
         metavar="FILE",
         type=Path,
+        default=os.getenv("SIGSTORE_CERTIFICATE"),
         help="The PEM-encoded certificate to verify against; not used with multiple inputs",
     )
     input_options.add_argument(
         "--signature",
         metavar="FILE",
         type=Path,
+        default=os.getenv("SIGSTORE_SIGNATURE"),
         help="The signature to verify against; not used with multiple inputs",
     )
 
@@ -216,12 +222,14 @@ def _parser() -> argparse.ArgumentParser:
         "--cert-email",
         metavar="EMAIL",
         type=str,
+        default=os.getenv("SIGSTORE_CERT_EMAIL"),
         help="The email address to check for in the certificate's Subject Alternative Name",
     )
     verification_options.add_argument(
         "--cert-oidc-issuer",
         metavar="URL",
         type=str,
+        default=os.getenv("SIGSTORE_CERT_OIDC_ISSUER"),
         help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
     )
 
@@ -230,7 +238,7 @@ def _parser() -> argparse.ArgumentParser:
         "--rekor-url",
         metavar="URL",
         type=str,
-        default=DEFAULT_REKOR_URL,
+        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
         help="The Rekor instance to use (conflicts with --staging)",
     )
     instance_options.add_argument(
