@@ -162,17 +162,18 @@ class Verifier:
 
         # In order to verify an artifact, we need to achieve the following:
         #
-        # 1) Verify that the signing certificate is signed by the root certificate and that the
-        #    signing certificate was valid at the time of signing.
-        # 2) Verify that the signing certiticate belongs to the signer
-        # 3) Verify that the signature was signed by the public key in the signing certificate
-        #
-        # And optionally, if we're performing verification online:
-        #
-        # 4) Verify the inclusion proof supplied by Rekor for this artifact
-        # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
-        # 6) Verify that the signing certificate was valid at the time of signing by comparing the
-        #    expiry against the integrated timestamp
+        # 1) Verify that the signing certificate is signed by the root
+        #    certificate and that the signing certificate was valid at the time
+        #    of signing.
+        # 2) Verify that the signing certificate belongs to the signer.
+        # 3) Verify that the signature was signed by the public key in the
+        #    signing certificate.
+        # 4) Verify the inclusion proof supplied by Rekor for this artifact,
+        #    if we're doing online verification.
+        # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this
+        #    artifact.
+        # 6) Verify that the signing certificate was valid at the time of
+        #    signing by comparing the expiry against the integrated timestamp.
 
         # 1) Verify that the signing certificate is signed by the root certificate and that the
         #    signing certificate was valid at the time of signing.
