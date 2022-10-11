@@ -62,6 +62,43 @@ class _Embedded:
         return f"{self._name} (embedded)"
 
 
+def _boolify_env(envvar: str) -> bool:
+    """
+    An `argparse` helper for turning an environment variable into a boolean.
+
+    The semantics here closely mirror `distutils.util.strtobool`.
+
+    See: <https://docs.python.org/3/distutils/apiref.html#distutils.util.strtobool>
+    """
+    val = os.getenv(envvar)
+    if val is None:
+        return False
+
+    val = val.lower()
+    if val in {"y", "yes", "true", "t", "on", "1"}:
+        return True
+    elif val in {"n", "no", "false", "f", "off", "0"}:
+        return False
+    else:
+        raise ValueError(f"can't coerce '{val}' to a boolean")
+
+
+def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
+    group.add_argument(
+        "--staging",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_STAGING"),
+        help="Use sigstore's staging instances, instead of the default production instances",
+    )
+    group.add_argument(
+        "--rekor-url",
+        metavar="URL",
+        type=str,
+        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
+        help="The Rekor instance to use (conflicts with --staging)",
+    )
+
+
 def _add_shared_oidc_options(
     group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
 ) -> None:
@@ -69,25 +106,27 @@ def _add_shared_oidc_options(
         "--oidc-client-id",
         metavar="ID",
         type=str,
-        default="sigstore",
+        default=os.getenv("SIGSTORE_OIDC_CLIENT_ID", "sigstore"),
         help="The custom OpenID Connect client ID to use during OAuth2",
     )
     group.add_argument(
         "--oidc-client-secret",
         metavar="SECRET",
         type=str,
+        default=os.getenv("SIGSTORE_OIDC_CLIENT_SECRET"),
         help="The custom OpenID Connect client secret to use during OAuth2",
     )
     group.add_argument(
         "--oidc-disable-ambient-providers",
         action="store_true",
+        default=_boolify_env("SIGSTORE_OIDC_DISABLE_AMBIENT_PROVIDERS"),
         help="Disable ambient OpenID Connect credential detection (e.g. on GitHub Actions)",
     )
     group.add_argument(
         "--oidc-issuer",
         metavar="URL",
         type=str,
-        default=DEFAULT_OAUTH_ISSUER,
+        default=os.getenv("SIGSTORE_OIDC_ISSUER", DEFAULT_OAUTH_ISSUER),
         help="The OpenID Connect issuer to use (conflicts with --staging)",
     )
 
@@ -113,6 +152,7 @@ def _parser() -> argparse.ArgumentParser:
         "--identity-token",
         metavar="TOKEN",
         type=str,
+        default=os.getenv("SIGSTORE_IDENTITY_TOKEN"),
         help="the OIDC identity token to use",
     )
     _add_shared_oidc_options(oidc_options)
@@ -121,6 +161,7 @@ def _parser() -> argparse.ArgumentParser:
     output_options.add_argument(
         "--no-default-files",
         action="store_true",
+        default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
         help="Don't emit the default output files ({input}.sig and {input}.crt)",
     )
     output_options.add_argument(
@@ -128,6 +169,7 @@ def _parser() -> argparse.ArgumentParser:
         "--output-signature",
         metavar="FILE",
         type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_SIGNATURE"),
         help=(
             "Write a single signature to the given file; does not work with multiple input files"
         ),
@@ -137,6 +179,7 @@ def _parser() -> argparse.ArgumentParser:
         "--output-certificate",
         metavar="FILE",
         type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_CERTIFICATE"),
         help=(
             "Write a single certificate to the given file; does not work with multiple input files"
         ),
@@ -144,23 +187,18 @@ def _parser() -> argparse.ArgumentParser:
     output_options.add_argument(
         "--overwrite",
         action="store_true",
+        default=_boolify_env("SIGSTORE_OVERWRITE"),
         help="Overwrite preexisting signature and certificate outputs, if present",
     )
 
     instance_options = sign.add_argument_group("Sigstore instance options")
+    _add_shared_instance_options(instance_options)
     instance_options.add_argument(
         "--fulcio-url",
         metavar="URL",
         type=str,
-        default=DEFAULT_FULCIO_URL,
+        default=os.getenv("SIGSTORE_FULCIO_URL", DEFAULT_FULCIO_URL),
         help="The Fulcio instance to use (conflicts with --staging)",
-    )
-    instance_options.add_argument(
-        "--rekor-url",
-        metavar="URL",
-        type=str,
-        default=DEFAULT_REKOR_URL,
-        help="The Rekor instance to use (conflicts with --staging)",
     )
     instance_options.add_argument(
         "--ctfe",
@@ -168,19 +206,14 @@ def _parser() -> argparse.ArgumentParser:
         metavar="FILE",
         type=argparse.FileType("rb"),
         help="A PEM-encoded public key for the CT log (conflicts with --staging)",
-        default=_Embedded("ctfe.pub"),
+        default=os.getenv("SIGSTORE_CTFE", _Embedded("ctfe.pub")),
     )
     instance_options.add_argument(
         "--rekor-root-pubkey",
         metavar="FILE",
         type=argparse.FileType("rb"),
         help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-        default=_Embedded("rekor.pub"),
-    )
-    instance_options.add_argument(
-        "--staging",
-        action="store_true",
-        help="Use sigstore's staging instances, instead of the default production instances",
+        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY", _Embedded("rekor.pub")),
     )
 
     sign.add_argument(
@@ -202,12 +235,14 @@ def _parser() -> argparse.ArgumentParser:
         "--cert",
         metavar="FILE",
         type=Path,
+        default=os.getenv("SIGSTORE_CERTIFICATE"),
         help="The PEM-encoded certificate to verify against; not used with multiple inputs",
     )
     input_options.add_argument(
         "--signature",
         metavar="FILE",
         type=Path,
+        default=os.getenv("SIGSTORE_SIGNATURE"),
         help="The signature to verify against; not used with multiple inputs",
     )
     input_options.add_argument(
@@ -222,12 +257,14 @@ def _parser() -> argparse.ArgumentParser:
         "--cert-email",
         metavar="EMAIL",
         type=str,
+        default=os.getenv("SIGSTORE_CERT_EMAIL"),
         help="The email address to check for in the certificate's Subject Alternative Name",
     )
     verification_options.add_argument(
         "--cert-oidc-issuer",
         metavar="URL",
         type=str,
+        default=os.getenv("SIGSTORE_CERT_OIDC_ISSUER"),
         help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
     )
     verification_options.add_argument(
@@ -237,18 +274,7 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     instance_options = verify.add_argument_group("Sigstore instance options")
-    instance_options.add_argument(
-        "--rekor-url",
-        metavar="URL",
-        type=str,
-        default=DEFAULT_REKOR_URL,
-        help="The Rekor instance to use (conflicts with --staging)",
-    )
-    instance_options.add_argument(
-        "--staging",
-        action="store_true",
-        help="Use sigstore's staging instances, instead of the default production instances",
-    )
+    _add_shared_instance_options(instance_options)
 
     verify.add_argument(
         "files",
