@@ -133,8 +133,7 @@ class RekorEntry:
 
     def encode_canonical(self) -> bytes:
         """
-        Returns a base64-encoded, canonicalized JSON (RFC 8785) representation
-        of the Rekor log entry.
+        Returns a canonicalized JSON (RFC 8785) representation of the Rekor log entry.
 
         This encoded representation is suitable for verification against
         the Signed Entry Timestamp.
