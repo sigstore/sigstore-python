@@ -251,10 +251,10 @@ def _parser() -> argparse.ArgumentParser:
         help="The signature to verify against; not used with multiple inputs",
     )
     input_options.add_argument(
-        "--bundle",
+        "--rekor-bundle",
         metavar="FILE",
         type=Path,
-        default=os.getenv("SIGSTORE_BUNDLE"),
+        default=os.getenv("SIGSTORE_REKOR_BUNDLE"),
         help="The offline Rekor bundle to verify with; not used with multiple inputs",
     )
 
@@ -274,9 +274,9 @@ def _parser() -> argparse.ArgumentParser:
         help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
     )
     verification_options.add_argument(
-        "--offline",
+        "--rekor-offline",
         action="store_true",
-        default=_boolify_env("SIGSTORE_OFFLINE"),
+        default=_boolify_env("SIGSTORE_REKOR_OFFLINE"),
         help="Perform offline Rekor verification using a bundle; implied by --bundle",
     )
 
@@ -422,7 +422,9 @@ def _sign(args: argparse.Namespace) -> None:
 
 def _verify(args: argparse.Namespace) -> None:
     # Fail if --certificate, --signature, or --bundle is specified and we have more than one input.
-    if (args.certificate or args.signature or args.bundle) and len(args.files) > 1:
+    if (args.certificate or args.signature or args.rekor_bundle) and len(
+        args.files
+    ) > 1:
         args._parser.error(
             "--certificate, --signature, and --bundle can only be used with a single input file"
         )
@@ -434,7 +436,7 @@ def _verify(args: argparse.Namespace) -> None:
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert, bundle = args.signature, args.certificate, args.bundle
+        sig, cert, bundle = args.signature, args.certificate, args.rekor_bundle
         if sig is None:
             sig = file.parent / f"{file.name}.sig"
         if cert is None:
@@ -447,7 +449,7 @@ def _verify(args: argparse.Namespace) -> None:
             missing.append(str(sig))
         if not cert.is_file():
             missing.append(str(cert))
-        if not bundle.is_file() and args.offline:
+        if not bundle.is_file() and args.rekor_offline:
             # NOTE: We only produce errors on missing bundle files
             # if the user has explicitly requested offline-only verification.
             # Otherwise, we fall back on online verification.
