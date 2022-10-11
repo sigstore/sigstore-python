@@ -37,6 +37,7 @@ from sigstore._internal.rekor.client import DEFAULT_REKOR_URL, RekorClient
 from sigstore._sign import Signer
 from sigstore._verify import (
     CertificateVerificationFailure,
+    RekorEntryMissing,
     VerificationFailure,
     Verifier,
 )
@@ -423,11 +424,11 @@ def _verify(args: argparse.Namespace) -> None:
     for file, inputs in input_map.items():
         # Load the signing certificate
         logger.debug(f"Using certificate from: {inputs['cert']}")
-        certificate = inputs["cert"].read_bytes()
+        certificate = inputs["cert"].read_bytes().rstrip()
 
         # Load the signature
         logger.debug(f"Using signature from: {inputs['sig']}")
-        signature = inputs["sig"].read_bytes()
+        signature = inputs["sig"].read_bytes().rstrip()
 
         logger.debug(f"Verifying contents from: {file}")
 
@@ -464,6 +465,36 @@ def _verify(args: argparse.Namespace) -> None:
                         Additional context:
 
                         {result.exception}
+                        """
+                    ),
+                    file=sys.stderr,
+                )
+            elif isinstance(result, RekorEntryMissing):
+                # If Rekor lookup failed, it's because the certificate either
+                # wasn't logged after creation or because the user requested the
+                # wrong Rekor instance (e.g., staging instead of production).
+                # The latter is significantly more likely, so we add
+                # some additional context to the output indicating it.
+                #
+                # NOTE: Even though the latter is more likely, it's still extremely
+                # unlikely that we'd hit this -- we should always fail with
+                # `CertificateVerificationFailure` instead, as the cert store should
+                # fail to validate due to a mismatch between the leaf and the trusted
+                # root + intermediates.
+                print(
+                    dedent(
+                        f"""
+                        These signing artifacts could not be matched to a entry
+                        in the configured transparency log.
+
+                        This may be a result of connecting to the wrong Rekor instance
+                        (for example, staging instead of production, or vice versa).
+
+                        Additional context:
+
+                        Signature: {result.signature}
+
+                        Artifact hash: {result.sha256_artifact_hash}
                         """
                     ),
                     file=sys.stderr,
