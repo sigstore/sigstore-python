@@ -243,12 +243,8 @@ class Verifier:
             base64.b64encode(certificate).decode(),
         )
         if entry is None:
-            return VerificationFailure(
-                reason=(
-                    "Rekor has no entry for these verification materials; "
-                    "this suggests that the signing certificate was not published "
-                    "to the log at the time the signature was created"
-                )
+            return RekorEntryMissing(
+                signature=signature.decode(), sha256_artifact_hash=sha256_artifact_hash
             )
 
         # 4) Verify the inclusion proof supplied by Rekor for this artifact
@@ -296,6 +292,12 @@ class VerificationSuccess(VerificationResult):
 class VerificationFailure(VerificationResult):
     success: bool = False
     reason: str
+
+
+class RekorEntryMissing(VerificationFailure):
+    reason: str = "Rekor has no entry for the given verification materials"
+    signature: str
+    sha256_artifact_hash: str
 
 
 class CertificateVerificationFailure(VerificationFailure):
