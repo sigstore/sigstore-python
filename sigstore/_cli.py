@@ -277,7 +277,7 @@ def _parser() -> argparse.ArgumentParser:
         "--rekor-offline",
         action="store_true",
         default=_boolify_env("SIGSTORE_REKOR_OFFLINE"),
-        help="Perform offline Rekor verification using a bundle; implied by --bundle",
+        help="Perform offline Rekor verification using a bundle; implied by --rekor-bundle",
     )
 
     instance_options = verify.add_argument_group("Sigstore instance options")
@@ -421,12 +421,12 @@ def _sign(args: argparse.Namespace) -> None:
 
 
 def _verify(args: argparse.Namespace) -> None:
-    # Fail if --certificate, --signature, or --bundle is specified and we have more than one input.
+    # Fail if --certificate, --signature, or --rekor-bundle is specified and we have more than one input.
     if (args.certificate or args.signature or args.rekor_bundle) and len(
         args.files
     ) > 1:
         args._parser.error(
-            "--certificate, --signature, and --bundle can only be used with a single input file"
+            "--certificate, --signature, and --rekor-bundle can only be used with a single input file"
         )
 
     # The converse of `sign`: we build up an expected input map and check

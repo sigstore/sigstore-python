@@ -173,7 +173,7 @@ Extended verification options:
                         The OIDC issuer URL to check for in the certificate's
                         OIDC issuer extension (default: None)
   --rekor-offline       Perform offline Rekor verification using a bundle;
-                        implied by --bundle (default: False)
+                        implied by --rekor-bundle (default: False)
 
 Sigstore instance options:
   --staging             Use sigstore's staging instances, instead of the
