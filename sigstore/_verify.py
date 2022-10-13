@@ -284,7 +284,7 @@ class Verifier:
                 return VerificationFailure(
                     reason=(
                         f"Rekor entry's signature ('{expected_sig}') does not "
-                        f"match supplied signature ('{signature}')"
+                        f"match supplied signature ('{signature.decode()}')"
                     )
                 )
 
@@ -292,7 +292,7 @@ class Verifier:
                 return VerificationFailure(
                     reason=(
                         f"Rekor entry's certificate ('{expected_cert}') does not "
-                        f"match supplied certificate ('{certificate}')"
+                        f"match supplied certificate ('{cert}')"
                     )
                 )
 
