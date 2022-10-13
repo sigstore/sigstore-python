@@ -337,7 +337,9 @@ def main() -> None:
 def _sign(args: argparse.Namespace) -> None:
     # `--no-default-files` has no effect on `--{signature,certificate,rekor-bundle}`, but we
     # forbid it because it indicates user confusion.
-    if args.no_default_files and (args.signature or args.certificate or args.rekor_bundle):
+    if args.no_default_files and (
+        args.signature or args.certificate or args.rekor_bundle
+    ):
         args._parser.error(
             "--no-default-files may not be combined with --signature, "
             "--certificate, or --rekor-bundle",
@@ -345,7 +347,9 @@ def _sign(args: argparse.Namespace) -> None:
 
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
-    if (args.signature or args.certificate or args.rekor_bundle) and len(args.files) > 1:
+    if (args.signature or args.certificate or args.rekor_bundle) and len(
+        args.files
+    ) > 1:
         args._parser.error(
             "Error: --signature, --certificate, and --rekor-bundle can't be used "
             "with explicit outputs for multiple inputs",

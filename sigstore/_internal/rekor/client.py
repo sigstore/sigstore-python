@@ -172,7 +172,7 @@ class RekorEntry:
                 integrated_time=self.integrated_time,
                 log_index=self.log_index,
                 log_id=self.log_id,
-            )
+            ),
         )
 
     def encode_canonical(self) -> bytes:
