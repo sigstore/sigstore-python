@@ -151,8 +151,8 @@ Verifying:
 ```
 usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
                        [--rekor-bundle FILE] [--cert-email EMAIL]
-                       [--cert-oidc-issuer URL] [--rekor-offline] [--staging]
-                       [--rekor-url URL]
+                       [--cert-oidc-issuer URL] [--require-rekor-offline]
+                       [--staging] [--rekor-url URL]
                        FILE [FILE ...]
 
 positional arguments:
@@ -176,7 +176,8 @@ Extended verification options:
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
                         OIDC issuer extension (default: None)
-  --rekor-offline       Require offline Rekor verification with a bundle;
+  --require-rekor-offline
+                        Require offline Rekor verification with a bundle;
                         implied by --rekor-bundle (default: False)
 
 Sigstore instance options:

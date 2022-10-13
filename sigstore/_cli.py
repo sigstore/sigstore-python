@@ -285,9 +285,9 @@ def _parser() -> argparse.ArgumentParser:
         help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
     )
     verification_options.add_argument(
-        "--rekor-offline",
+        "--require-rekor-offline",
         action="store_true",
-        default=_boolify_env("SIGSTORE_REKOR_OFFLINE"),
+        default=_boolify_env("SIGSTORE_REQUIRE_REKOR_OFFLINE"),
         help="Require offline Rekor verification with a bundle; implied by --rekor-bundle",
     )
 
@@ -445,8 +445,8 @@ def _sign(args: argparse.Namespace) -> None:
 
 
 def _verify(args: argparse.Namespace) -> None:
-    # The presence of --rekor-bundle implies --rekor-offline.
-    args.rekor_offline = args.rekor_offline or args.rekor_bundle
+    # The presence of --rekor-bundle implies --require-rekor-offline.
+    args.require_rekor_offline = args.require_rekor_offline or args.rekor_bundle
 
     # Fail if --certificate, --signature, or --rekor-bundle is specified and we
     # have more than one input.
@@ -478,7 +478,7 @@ def _verify(args: argparse.Namespace) -> None:
             missing.append(str(sig))
         if not cert.is_file():
             missing.append(str(cert))
-        if not bundle.is_file() and args.rekor_offline:
+        if not bundle.is_file() and args.require_rekor_offline:
             # NOTE: We only produce errors on missing bundle files
             # if the user has explicitly requested offline-only verification.
             # Otherwise, we fall back on online verification.
