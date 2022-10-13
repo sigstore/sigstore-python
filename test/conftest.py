@@ -56,7 +56,12 @@ def signed_asset():
         file = _ASSETS / name
         cert = _ASSETS / f"{name}.crt"
         sig = _ASSETS / f"{name}.sig"
+        bundle = _ASSETS / f"{name}.bundle"
 
-        return (file.read_bytes(), cert.read_bytes(), sig.read_bytes())
+        bundle_bytes = None
+        if bundle.is_file():
+            bundle_bytes = bundle.read_bytes()
+
+        return (file.read_bytes(), cert.read_bytes(), sig.read_bytes(), bundle_bytes)
 
     return _signed_asset
