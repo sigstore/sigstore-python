@@ -120,7 +120,7 @@ class RekorEntry:
         See: <https://github.com/sigstore/cosign/blob/main/specs/SIGNATURE_SPEC.md#properties>
         """
 
-        payload = dict_["payload"]
+        payload = dict_["Payload"]
         return cls(
             uuid=None,
             body=payload["body"],
