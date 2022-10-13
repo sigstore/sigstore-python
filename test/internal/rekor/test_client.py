@@ -46,6 +46,9 @@ class TestRekorBundle:
         assert entry.inclusion_proof is None
         assert entry.signed_entry_timestamp == bundle.signed_entry_timestamp
 
+        # Round-tripping from RekorBundle -> RekorEntry -> RekorBundle is lossless.
+        assert entry.to_bundle() == bundle
+
 
 class TestRekorInclusionProof:
     def test_valid(self):

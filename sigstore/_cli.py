@@ -167,7 +167,7 @@ def _parser() -> argparse.ArgumentParser:
         "--no-default-files",
         action="store_true",
         default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
-        help="Don't emit the default output files ({input}.sig and {input}.crt)",
+        help="Don't emit the default output files ({input}.sig, {input}.crt, {input}.bundle)",
     )
     output_options.add_argument(
         "--signature",
@@ -187,6 +187,17 @@ def _parser() -> argparse.ArgumentParser:
         default=os.getenv("SIGSTORE_OUTPUT_CERTIFICATE"),
         help=(
             "Write a single certificate to the given file; does not work with multiple input files"
+        ),
+    )
+    output_options.add_argument(
+        "--rekor-bundle",
+        "--output-rekor-bundle",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_BUNDLE"),
+        help=(
+            "Write a single offline Rekor bundle to the given file; does not work with "
+            "multiple input files"
         ),
     )
     output_options.add_argument(
@@ -324,20 +335,20 @@ def main() -> None:
 
 
 def _sign(args: argparse.Namespace) -> None:
-    # `--no-default-files` has no effect on `--{signature,certificate}`, but we
+    # `--no-default-files` has no effect on `--{signature,certificate,rekor-bundle}`, but we
     # forbid it because it indicates user confusion.
-    if args.no_default_files and (args.signature or args.certificate):
+    if args.no_default_files and (args.signature or args.certificate or args.rekor_bundle):
         args._parser.error(
-            "--no-default-files may not be combined with --signature or "
-            "--certificate",
+            "--no-default-files may not be combined with --signature, "
+            "--certificate, or --rekor-bundle",
         )
 
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
-    if (args.signature or args.certificate) and len(args.files) > 1:
+    if (args.signature or args.certificate or args.rekor_bundle) and len(args.files) > 1:
         args._parser.error(
-            "Error: --signature and --certificate can't be used with explicit "
-            "outputs for multiple inputs",
+            "Error: --signature, --certificate, and --rekor-bundle can't be used "
+            "with explicit outputs for multiple inputs",
         )
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
@@ -347,10 +358,11 @@ def _sign(args: argparse.Namespace) -> None:
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert = args.signature, args.certificate
-        if not sig and not cert and not args.no_default_files:
+        sig, cert, bundle = args.signature, args.certificate, args.rekor_bundle
+        if not sig and not cert and not bundle and not args.no_default_files:
             sig = file.parent / f"{file.name}.sig"
             cert = file.parent / f"{file.name}.crt"
+            bundle = file.parent / f"{file.name}.bundle"
 
         if not args.overwrite:
             extants = []
@@ -358,6 +370,8 @@ def _sign(args: argparse.Namespace) -> None:
                 extants.append(str(sig))
             if cert and cert.exists():
                 extants.append(str(cert))
+            if bundle and bundle.exists():
+                extants.append(str(bundle))
 
             if extants:
                 args._parser.error(
@@ -365,7 +379,7 @@ def _sign(args: argparse.Namespace) -> None:
                     f"{', '.join(extants)}"
                 )
 
-        output_map[file] = {"cert": cert, "sig": sig}
+        output_map[file] = {"cert": cert, "sig": sig, "bundle": bundle}
 
     # Select the signer to use.
     if args.staging:
@@ -411,13 +425,19 @@ def _sign(args: argparse.Namespace) -> None:
             sig_output = sys.stdout
 
         print(result.b64_signature, file=sig_output)
-        if outputs["sig"]:
-            print(f"Signature written to file {outputs['sig']}")
+        if outputs["sig"] is not None:
+            print(f"Signature written to {outputs['sig']}")
 
         if outputs["cert"] is not None:
-            cert_output = open(outputs["cert"], "w")
-            print(result.cert_pem, file=cert_output)
-            print(f"Certificate written to file {outputs['cert']}")
+            with outputs["cert"].open(mode="w") as io:
+                print(result.cert_pem, file=io)
+            print(f"Certificate written to {outputs['cert']}")
+
+        if outputs["bundle"] is not None:
+            with outputs["bundle"].open(mode="w") as io:
+                bundle = result.log_entry.to_bundle()
+                print(bundle.json(by_alias=True), file=io)
+            print(f"Rekor bundle written to {outputs['bundle']}")
 
 
 def _verify(args: argparse.Namespace) -> None:

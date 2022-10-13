@@ -57,11 +57,17 @@ class RekorBundle(BaseModel):
     See: <https://github.com/sigstore/cosign/blob/main/specs/SIGNATURE_SPEC.md#properties>
     """
 
+    class Config:
+        allow_population_by_field_name = True
+
     class _Payload(BaseModel):
         body: StrictStr = Field(alias="body")
         integrated_time: StrictInt = Field(alias="integratedTime")
         log_index: StrictInt = Field(alias="logIndex")
         log_id: StrictStr = Field(alias="logID")
+
+        class Config:
+            allow_population_by_field_name = True
 
     signed_entry_timestamp: StrictStr = Field(alias="SignedEntryTimestamp")
     payload: RekorBundle._Payload = Field(alias="Payload")
@@ -152,6 +158,21 @@ class RekorEntry:
                 entry["verification"]["inclusionProof"]
             ),
             signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
+        )
+
+    def to_bundle(self) -> RekorBundle:
+        """
+        Returns a `RekorBundle` for this `RekorEntry`.
+        """
+
+        return RekorBundle(
+            signed_entry_timestamp=self.signed_entry_timestamp,
+            payload=RekorBundle._Payload(
+                body=self.body,
+                integrated_time=self.integrated_time,
+                log_index=self.log_index,
+                log_id=self.log_id,
+            )
         )
 
     def encode_canonical(self) -> bytes:
