@@ -254,7 +254,7 @@ class Verifier:
 
             try:
                 entry_body = json.loads(base64.b64decode(offline_rekor_entry.body))
-            except Exception as e:
+            except Exception:
                 return VerificationFailure(
                     reason="couldn't parse offline Rekor entry's body"
                 )
@@ -265,7 +265,10 @@ class Verifier:
             kind, version = entry_body.get("kind"), entry_body.get("apiVersion")
             if kind != "hashedrekord" or version != "0.0.1":
                 return VerificationFailure(
-                    reason=f"Rekor entry is of unsupported kind ('{kind}') or API version ('{version}')"
+                    reason=(
+                        f"Rekor entry is of unsupported kind ('{kind}') or API "
+                        f"version ('{version}')"
+                    )
                 )
 
             spec = entry_body["spec"]
