@@ -47,8 +47,50 @@ _STAGING_REKOR_CTFE_PUBKEY = resources.read_binary(
 )
 
 
+class RekorBundle(BaseModel):
+    """
+    Represents an offline Rekor bundle.
+
+    This model contains most of the same information as `RekorEntry`, but
+    with a slightly different layout.
+
+    See: <https://github.com/sigstore/cosign/blob/main/specs/SIGNATURE_SPEC.md#properties>
+    """
+
+    class _Payload(BaseModel):
+        body: StrictStr = Field(alias="body")
+        integrated_time: StrictInt = Field(alias="integratedTime")
+        log_index: StrictInt = Field(alias="logIndex")
+        log_id: StrictStr = Field(alias="logID")
+
+    signed_entry_timestamp: StrictStr = Field(alias="SignedEntryTimestamp")
+    payload: RekorBundle._Payload = Field(alias="Payload")
+
+    def to_entry(self) -> RekorEntry:
+        """
+        Creates a `RekorEntry` from this offline Rekor bundle.
+        """
+
+        return RekorEntry(
+            uuid=None,
+            body=self.payload.body,
+            integrated_time=self.payload.integrated_time,
+            log_id=self.payload.log_id,
+            log_index=self.payload.log_index,
+            inclusion_proof=None,
+            signed_entry_timestamp=self.signed_entry_timestamp,
+        )
+
+
 @dataclass(frozen=True)
 class RekorEntry:
+    """
+    Represents a Rekor log entry.
+
+    Log entries are retrieved from Rekor after signing or verification events,
+    or generated from "offline" Rekor bundles supplied by the user.
+    """
+
     uuid: Optional[str]
     """
     This entry's unique ID in the Rekor instance it was retrieved from.
@@ -110,25 +152,6 @@ class RekorEntry:
                 entry["verification"]["inclusionProof"]
             ),
             signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
-        )
-
-    @classmethod
-    def from_bundle(cls, dict_: Dict[str, Any]) -> RekorEntry:
-        """
-        Creates a `RekorEntry` from an offline Rekor bundle.
-
-        See: <https://github.com/sigstore/cosign/blob/main/specs/SIGNATURE_SPEC.md#properties>
-        """
-
-        payload = dict_["Payload"]
-        return cls(
-            uuid=None,
-            body=payload["body"],
-            integrated_time=payload["integratedTime"],
-            log_id=payload["logID"],
-            log_index=payload["logIndex"],
-            inclusion_proof=None,
-            signed_entry_timestamp=dict_["SignedEntryTimestamp"],
         )
 
     def encode_canonical(self) -> bytes:

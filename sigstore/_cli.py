@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import argparse
-import json
 import logging
 import os
 import sys
@@ -36,6 +35,7 @@ from sigstore._internal.oidc.oauth import (
 )
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
+    RekorBundle,
     RekorClient,
     RekorEntry,
 )
@@ -491,8 +491,8 @@ def _verify(args: argparse.Namespace) -> None:
         entry: Optional[RekorEntry] = None
         if inputs["bundle"].is_file():
             logger.debug(f"Using offline Rekor bundle from: {inputs['bundle']}")
-            bundle = json.loads(inputs["bundle"].read_text())
-            entry = RekorEntry.from_bundle(bundle)
+            bundle = RekorBundle.parse_file(inputs["bundle"])
+            entry = bundle.to_entry()
 
         logger.debug(f"Verifying contents from: {file}")
 

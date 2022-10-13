@@ -43,6 +43,14 @@ def pytest_configure(config):
 
 
 @pytest.fixture
+def asset():
+    def _asset(name: str) -> Path:
+        return _ASSETS / name
+
+    return _asset
+
+
+@pytest.fixture
 def signed_asset():
     def _signed_asset(name: str) -> Tuple[bytes, bytes, bytes]:
         file = _ASSETS / name
