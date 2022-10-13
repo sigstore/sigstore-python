@@ -294,7 +294,7 @@ class RekorEntries(Endpoint):
         sha256_artifact_hash: str,
         b64_cert: str,
     ) -> RekorEntry:
-        # TODO(ww): Dedupe this payload construction with the retrive endpoint below.
+        # TODO(ww): Dedupe this payload construction with the retrieve endpoint below.
         data = {
             "kind": "hashedrekord",
             "apiVersion": "0.0.1",

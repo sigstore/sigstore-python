@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import datetime
 import hashlib
+import json
 import logging
 from importlib import resources
 from typing import List, Optional, cast
@@ -247,6 +248,60 @@ class Verifier:
 
         entry: Optional[RekorEntry]
         if offline_rekor_entry is not None:
+            # TODO(ww): This should all go in a separate API, probably under the
+            # RekorEntry class.
+            logger.debug("offline Rekor entry: checking consistency")
+
+            try:
+                entry_body = json.loads(base64.b64decode(offline_rekor_entry.body))
+            except Exception as e:
+                return VerificationFailure(
+                    reason="couldn't parse offline Rekor entry's body"
+                )
+
+            # The Rekor entry's body should be a hashedrekord object.
+            # TODO: This should use a real data model, ideally generated from
+            # Rekor's official JSON schema.
+            kind, version = entry_body.get("kind"), entry_body.get("apiVersion")
+            if kind != "hashedrekord" or version != "0.0.1":
+                return VerificationFailure(
+                    reason=f"Rekor entry is of unsupported kind ('{kind}') or API version ('{version}')"
+                )
+
+            spec = entry_body["spec"]
+            expected_sig, expected_cert, expected_hash = (
+                spec["signature"]["content"],
+                load_pem_x509_certificate(
+                    base64.b64decode(spec["signature"]["publicKey"]["content"])
+                ),
+                spec["data"]["hash"]["value"],
+            )
+
+            if expected_sig != signature.decode():
+                return VerificationFailure(
+                    reason=(
+                        f"Rekor entry's signature ('{expected_sig}') does not "
+                        f"match supplied signature ('{signature}')"
+                    )
+                )
+
+            if expected_cert != cert:
+                return VerificationFailure(
+                    reason=(
+                        f"Rekor entry's certificate ('{expected_cert}') does not "
+                        f"match supplied certificate ('{certificate}')"
+                    )
+                )
+
+            if expected_hash != sha256_artifact_hash:
+                return VerificationFailure(
+                    reason=(
+                        f"Rekor entry's hash ('{expected_hash}') does not "
+                        f"match supplied hash ('{sha256_artifact_hash}')"
+                    )
+                )
+
+            logger.debug("offline Rekor entry is consistent with signing artifacts!")
             entry = offline_rekor_entry
         else:
             # Retrieve the relevant Rekor entry to verify the inclusion proof and SET.
@@ -272,7 +327,7 @@ class Verifier:
                     reason=f"invalid Rekor inclusion proof: {inval_inclusion_proof}"
                 )
         else:
-            logger.debug("offline Rekor entry used; skipping Merkle inclusion proof")
+            logger.debug("offline Rekor entry: skipping Merkle inclusion proof")
 
         # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         try:
@@ -290,7 +345,7 @@ class Verifier:
                 reason="invalid signing cert: expired at time of Rekor entry"
             )
 
-        logger.debug(f"Successfully verified Rekor entry at index {entry.log_index}..")
+        logger.debug(f"Successfully verified Rekor entry at index {entry.log_index}")
         return VerificationSuccess()
 
 
