@@ -88,9 +88,9 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
-                     [--certificate FILE] [--overwrite] [--staging]
-                     [--rekor-url URL] [--fulcio-url URL] [--ctfe FILE]
-                     [--rekor-root-pubkey FILE]
+                     [--certificate FILE] [--rekor-bundle FILE] [--overwrite]
+                     [--staging] [--rekor-url URL] [--fulcio-url URL]
+                     [--ctfe FILE] [--rekor-root-pubkey FILE]
                      FILE [FILE ...]
 
 positional arguments:
@@ -114,14 +114,18 @@ OpenID Connect options:
                         --staging) (default: https://oauth2.sigstore.dev/auth)
 
 Output options:
-  --no-default-files    Don't emit the default output files ({input}.sig and
-                        {input}.crt) (default: False)
+  --no-default-files    Don't emit the default output files ({input}.sig,
+                        {input}.crt, {input}.bundle) (default: False)
   --signature FILE, --output-signature FILE
                         Write a single signature to the given file; does not
                         work with multiple input files (default: None)
   --certificate FILE, --output-certificate FILE
                         Write a single certificate to the given file; does not
                         work with multiple input files (default: None)
+  --rekor-bundle FILE, --output-rekor-bundle FILE
+                        Write a single offline Rekor bundle to the given file;
+                        does not work with multiple input files (default:
+                        None)
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
 
@@ -172,7 +176,7 @@ Extended verification options:
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
                         OIDC issuer extension (default: None)
-  --rekor-offline       Perform offline Rekor verification using a bundle;
+  --rekor-offline       Require offline Rekor verification with a bundle;
                         implied by --rekor-bundle (default: False)
 
 Sigstore instance options:
