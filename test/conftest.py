@@ -62,6 +62,11 @@ def signed_asset():
         if bundle.is_file():
             bundle_bytes = bundle.read_bytes()
 
-        return (file.read_bytes(), cert.read_bytes(), sig.read_bytes(), bundle_bytes)
+        return (
+            file.read_bytes(),
+            cert.read_bytes().rstrip(),
+            sig.read_bytes().rstrip(),
+            bundle_bytes,
+        )
 
     return _signed_asset
