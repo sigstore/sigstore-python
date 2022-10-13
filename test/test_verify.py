@@ -14,7 +14,7 @@
 
 import pytest
 
-from sigstore._internal.rekor.client import RekorBundle, RekorEntry
+from sigstore._internal.rekor.client import RekorBundle
 from sigstore._verify import (
     CertificateVerificationFailure,
     VerificationFailure,
