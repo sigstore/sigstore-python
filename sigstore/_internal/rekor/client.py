@@ -124,9 +124,9 @@ class RekorEntry:
         return cls(
             uuid=None,
             body=payload["body"],
-            integrated_time=payload["body"],
-            log_id=payload["body"],
-            log_index=payload["body"],
+            integrated_time=payload["integratedTime"],
+            log_id=payload["logID"],
+            log_index=payload["logIndex"],
             inclusion_proof=None,
             signed_entry_timestamp=dict_["SignedEntryTimestamp"],
         )
