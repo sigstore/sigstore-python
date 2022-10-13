@@ -421,6 +421,9 @@ def _sign(args: argparse.Namespace) -> None:
 
 
 def _verify(args: argparse.Namespace) -> None:
+    # The presence of --rekor-bundle implies --rekor-offline.
+    args.rekor_offline = args.rekor_offline or args.rekor_bundle
+
     # Fail if --certificate, --signature, or --rekor-bundle is specified and we
     # have more than one input.
     if (args.certificate or args.signature or args.rekor_bundle) and len(
