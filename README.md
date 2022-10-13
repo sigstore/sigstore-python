@@ -115,7 +115,7 @@ OpenID Connect options:
 
 Output options:
   --no-default-files    Don't emit the default output files ({input}.sig,
-                        {input}.crt, {input}.bundle) (default: False)
+                        {input}.crt, {input}.rekor) (default: False)
   --signature FILE, --output-signature FILE
                         Write a single signature to the given file; does not
                         work with multiple input files (default: None)

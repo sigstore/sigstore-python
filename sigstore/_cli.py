@@ -167,7 +167,7 @@ def _parser() -> argparse.ArgumentParser:
         "--no-default-files",
         action="store_true",
         default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
-        help="Don't emit the default output files ({input}.sig, {input}.crt, {input}.bundle)",
+        help="Don't emit the default output files ({input}.sig, {input}.crt, {input}.rekor)",
     )
     output_options.add_argument(
         "--signature",
@@ -366,7 +366,7 @@ def _sign(args: argparse.Namespace) -> None:
         if not sig and not cert and not bundle and not args.no_default_files:
             sig = file.parent / f"{file.name}.sig"
             cert = file.parent / f"{file.name}.crt"
-            bundle = file.parent / f"{file.name}.bundle"
+            bundle = file.parent / f"{file.name}.rekor"
 
         if not args.overwrite:
             extants = []
@@ -471,7 +471,7 @@ def _verify(args: argparse.Namespace) -> None:
         if cert is None:
             cert = file.parent / f"{file.name}.crt"
         if bundle is None:
-            bundle = file.parent / f"{file.name}.bundle"
+            bundle = file.parent / f"{file.name}.rekor"
 
         missing = []
         if not sig.is_file():
