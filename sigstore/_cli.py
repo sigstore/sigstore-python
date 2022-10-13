@@ -288,7 +288,7 @@ def _parser() -> argparse.ArgumentParser:
         "--rekor-offline",
         action="store_true",
         default=_boolify_env("SIGSTORE_REKOR_OFFLINE"),
-        help="Perform offline Rekor verification using a bundle; implied by --rekor-bundle",
+        help="Require offline Rekor verification with a bundle; implied by --rekor-bundle",
     )
 
     instance_options = verify.add_argument_group("Sigstore instance options")
