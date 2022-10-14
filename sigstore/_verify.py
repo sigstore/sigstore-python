@@ -142,8 +142,8 @@ class Verifier:
         verification will be done against this entry rather than the against the online
         transparency log. Offline Rekor entries do not carry their Merkle inclusion
         proofs, and as such are verified only against their Signed Entry Timestamps.
-        This is a slightly weaker verification verification mode, as it does not guarantee
-        the log's consistency.
+        This is a slightly weaker verification verification mode, as it does not
+        demonstrate inclusion in the log.
 
         Returns a `VerificationResult` which will be truthy or falsey depending on
         success.
@@ -163,8 +163,8 @@ class Verifier:
 
         # In order to verify an artifact, we need to achieve the following:
         #
-        # 1) Verify that the signing certificate is signed by the root
-        #    certificate and that the signing certificate was valid at the time
+        # 1) Verify that the signing certificate is signed by the certificate
+        #    chain and that the signing certificate was valid at the time
         #    of signing.
         # 2) Verify that the signing certificate belongs to the signer.
         # 3) Verify that the artifact signature was signed by the public key in the
@@ -248,9 +248,19 @@ class Verifier:
 
         entry: Optional[RekorEntry]
         if offline_rekor_entry is not None:
+            # NOTE: CVE-2022-36056 in cosign happened because the offline Rekor
+            # entry was not matched against the other signing materials: an
+            # adversary could present a *valid but unrelated* Rekor entry
+            # and cosign would perform verification "as if" the entry was a
+            # legitimate entry for the certificate and signature.
+            # The steps below avoid this by decomposing the Rekor entry's
+            # body and confirming that it contains the same signature,
+            # certificate, and artifact hash as the rest of the verification
+            # process.
+
             # TODO(ww): This should all go in a separate API, probably under the
             # RekorEntry class.
-            logger.debug("offline Rekor entry: checking consistency")
+            logger.debug("offline Rekor entry: ensuring contents match signing materials")
 
             try:
                 entry_body = json.loads(base64.b64decode(offline_rekor_entry.body))
@@ -304,7 +314,7 @@ class Verifier:
                     )
                 )
 
-            logger.debug("offline Rekor entry is consistent with signing artifacts!")
+            logger.debug("offline Rekor entry matches signing artifacts!")
             entry = offline_rekor_entry
         else:
             # Retrieve the relevant Rekor entry to verify the inclusion proof and SET.
