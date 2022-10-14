@@ -260,7 +260,9 @@ class Verifier:
 
             # TODO(ww): This should all go in a separate API, probably under the
             # RekorEntry class.
-            logger.debug("offline Rekor entry: ensuring contents match signing materials")
+            logger.debug(
+                "offline Rekor entry: ensuring contents match signing materials"
+            )
 
             try:
                 entry_body = json.loads(base64.b64decode(offline_rekor_entry.body))
