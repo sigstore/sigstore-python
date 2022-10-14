@@ -167,7 +167,7 @@ class Verifier:
         #    certificate and that the signing certificate was valid at the time
         #    of signing.
         # 2) Verify that the signing certificate belongs to the signer.
-        # 3) Verify that the signature was signed by the public key in the
+        # 3) Verify that the artifact signature was signed by the public key in the
         #    signing certificate.
         # 4) Verify the inclusion proof supplied by Rekor for this artifact,
         #    if we're doing online verification.
