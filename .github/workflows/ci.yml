@@ -9,7 +9,49 @@ on:
     - cron: '0 12 * * *'
 
 jobs:
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+
+      # adapted from Warehouse's bin/licenses
+      - run: |
+          for fn in $(find . -type f -name "*.py"); do
+            if [[ ! "$(head -5 $fn | grep "^ *\(#\|\*\|\/\/\) .* License\(d*\)")" ]]; then
+              echo "${fn} is missing a license"
+              exit 1
+            fi
+          done
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+
+      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
+
+      - name: deps
+        run: make dev SIGSTORE_EXTRA=lint
+
+      - name: lint
+        run: make lint
+
+  check-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+
+      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
+
+      - name: deps
+        run: make dev
+
+      - name: check-readme
+        run: make check-readme
+
   test:
+    # We don't bother running the tests unless the basic lints pass.
+    needs: [licenses, lint, check-readme]
     permissions:
       # Needed to access the workflow's OIDC identity.
       id-token: write
@@ -38,6 +80,9 @@ jobs:
         uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70 # v2.1.0
 
   test-offline:
+    # We don't bother running the offline tests unless the normal tests pass,
+    # since they're a strict subset.
+    needs: [test]
     strategy:
       matrix:
         python:
@@ -64,36 +109,3 @@ jobs:
           # "online-only" test markers, since any test that's online
           # but not marked as such will fail.
           unshare --map-root-user --net make test TEST_ARGS="--skip-online"
-
-  licenses:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
-      # adapted from Warehouse's bin/licenses
-      - run: |
-          for fn in $(find . -type f -name "*.py"); do
-            if [[ ! "$(head -5 $fn | grep "^ *\(#\|\*\|\/\/\) .* License\(d*\)")" ]]; then
-              echo "${fn} is missing a license"
-              exit 1
-            fi
-          done
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
-      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
-      - name: deps
-        run: make dev SIGSTORE_EXTRA=lint
-      - name: lint
-        run: make lint
-
-  check-readme:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
-      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
-      - name: deps
-        run: make dev
-      - name: check-readme
-        run: make check-readme
