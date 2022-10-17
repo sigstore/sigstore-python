@@ -3,6 +3,7 @@ pip-wheel-metadata/
 *.egg-info/
 __pycache__/
 .coverage*
+coverage.xml
 html/
 dist/
 .python-version
