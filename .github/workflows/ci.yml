@@ -23,13 +23,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+
       - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
         with:
           python-version: ${{ matrix.python }}
+
       - name: deps
         run: make dev SIGSTORE_EXTRA=test
+
       - name: test
         run: make test
+
+      - name: upload coverage
+        uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70 # v2.1.0
+
+  test-offline:
+    strategy:
+      matrix:
+        python:
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+
+      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: deps
+        run: make dev SIGSTORE_EXTRA=test
+
       - name: test (offline)
         run: |
           # We use `unshare` to "un-share" the default networking namespace,
