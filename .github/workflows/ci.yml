@@ -78,7 +78,8 @@ jobs:
 
       - name: upload coverage
         uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70 # v3.1.1
-        files: ./.coverage
+        with:
+          files: ./.coverage
 
   test-offline:
     # We don't bother running the offline tests unless the normal tests pass,
