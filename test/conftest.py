@@ -71,6 +71,9 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "online: mark test as requiring network connectivity"
     )
+    config.addinivalue_line(
+        "markers", "ambient_oidc: mark test as requiring an ambient OIDC identity"
+    )
 
 
 @pytest.fixture
