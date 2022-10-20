@@ -169,6 +169,10 @@ def verify_sct(
 
     try:
         logger.debug(f"attempting to verify SCT with key ID {sct.log_id.hex()}")
+        # NOTE(ww): In terms of the DER structure, the SCT's `LogID` contains a
+        # singular `opaque key_id[32]`. Cryptography's APIs don't bother
+        # to expose this trivial single member, so we use the `log_id`
+        # attribute directly.
         ct_keyring.verify(
             key_id=sct.log_id, signature=sct.signature, data=digitally_signed
         )
