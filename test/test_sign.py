@@ -31,11 +31,11 @@ def test_signer_staging():
 
 
 @pytest.mark.online
+@pytest.mark.ambient_oidc
 @pytest.mark.parametrize("signer", [Signer.production(), Signer.staging()])
 def test_sign_rekor_entry_consistent(signer):
     token = detect_credential()
-    if token is None:
-        pytest.skip("no ambient credentials; skipping")
+    assert token is not None
 
     payload = secrets.token_bytes(32)
     expected_entry = signer.sign(payload, token).log_entry
