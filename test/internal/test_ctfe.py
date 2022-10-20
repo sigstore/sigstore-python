@@ -16,6 +16,13 @@ from sigstore._internal.ctfe import CTKeyring
 
 
 class TestCTKeyring:
+    def test_keyring_cardinalities(self):
+        production = CTKeyring.production()
+        staging = CTKeyring.staging()
+
+        assert len(production._keyring) == 2
+        assert len(staging._keyring) == 3
+
     def test_production_staging_both_initialize(self):
         keyrings = [CTKeyring.production(), CTKeyring.staging()]
         for keyring in keyrings:
