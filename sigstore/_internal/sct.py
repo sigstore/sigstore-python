@@ -16,29 +16,28 @@
 Utilities for verifying signed certificate timestamps.
 """
 
-import hashlib
 import logging
 import struct
 from datetime import timezone
-from typing import List, Optional, Union
+from typing import List, Optional
 
-import cryptography.hazmat.primitives.asymmetric.padding as padding
-from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import Certificate, ExtendedKeyUsage
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
-    SignatureAlgorithm,
     SignedCertificateTimestamp,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
+
+from sigstore._internal.ctfe import CTKeyring, CTKeyringError
+from sigstore._utils import key_id
 
 logger = logging.getLogger(__name__)
 
 
 def _pack_signed_entry(
-    sct: SignedCertificateTimestamp, cert: Certificate, issuer_key_hash: Optional[bytes]
+    sct: SignedCertificateTimestamp, cert: Certificate, issuer_key_id: Optional[bytes]
 ) -> bytes:
     fields = []
     if sct.entry_type == LogEntryType.X509_CERTIFICATE:
@@ -48,18 +47,18 @@ def _pack_signed_entry(
         pack_format = "!BBB{cert_der_len}s"
         cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
     elif sct.entry_type == LogEntryType.PRE_CERTIFICATE:
-        if not issuer_key_hash or len(issuer_key_hash) != 32:
+        if not issuer_key_id or len(issuer_key_id) != 32:
             raise InvalidSctError("API misuse: issuer key hash missing")
 
         # When dealing with a precertificate, our signed entry looks like this:
         #
-        # [0]: issuer_key_hash[32]
+        # [0]: issuer_key_id[32]
         # [1]: opaque TBSCertificate<1..2^24-1>
         pack_format = "!32sBBB{cert_der_len}s"
 
         # Precertificates must have their SCT list extension filtered out.
         cert_der = cert.tbs_precertificate_bytes
-        fields.append(issuer_key_hash)
+        fields.append(issuer_key_id)
     else:
         raise InvalidSctError(f"unknown SCT log entry type: {sct.entry_type!r}")
 
@@ -81,7 +80,7 @@ def _pack_signed_entry(
 def _pack_digitally_signed(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
-    issuer_key_hash: Optional[bytes],
+    issuer_key_id: Optional[bytes],
 ) -> bytes:
     """
     Packs the contents of `cert` (and some pieces of `sct`) into a structured
@@ -99,7 +98,7 @@ def _pack_digitally_signed(
     # This constructs the "core" `signed_entry` field, which is either
     # the public bytes of the cert *or* the TBSPrecertificate (with some
     # filtering), depending on whether our SCT is for a precertificate.
-    signed_entry = _pack_signed_entry(sct, cert, issuer_key_hash)
+    signed_entry = _pack_signed_entry(sct, cert, issuer_key_id)
 
     # Assemble a format string with the certificate length baked in and then pack the digitally
     # signed data
@@ -133,15 +132,6 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
     return issuer
 
 
-def _issuer_key_hash(cert: Certificate) -> bytes:
-    issuer_key: bytes = cert.public_key().public_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-
-    return hashlib.sha256(issuer_key).digest()
-
-
 class InvalidSctError(Exception):
     pass
 
@@ -150,19 +140,26 @@ def verify_sct(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
     chain: List[Certificate],
-    ctfe_key: Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey],
+    ct_keyring: CTKeyring,
 ) -> None:
     """Verify a signed certificate timestamp"""
 
-    issuer_key_hash = None
+    issuer_key_id = None
     if sct.entry_type == LogEntryType.PRE_CERTIFICATE:
         # If we're verifying an SCT for a precertificate, we need to
         # find its issuer in the chain and calculate a hash over
         # its public key information, as part of the "binding" proof
         # that ties the issuer to the final certificate.
-        issuer_key_hash = _issuer_key_hash(_get_issuer_cert(chain))
+        issuer_pubkey = _get_issuer_cert(chain).public_key()
 
-    digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_hash)
+        if not isinstance(issuer_pubkey, (rsa.RSAPublicKey, ec.EllipticCurvePublicKey)):
+            raise InvalidSctError(
+                f"invalid issuer pubkey format (not ECDSA or RSA): {issuer_pubkey}"
+            )
+
+        issuer_key_id = key_id(issuer_pubkey)
+
+    digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_id)
 
     if not isinstance(sct.signature_hash_algorithm, hashes.SHA256):
         raise InvalidSctError(
@@ -171,27 +168,9 @@ def verify_sct(
         )
 
     try:
-        if sct.signature_algorithm == SignatureAlgorithm.RSA and isinstance(
-            ctfe_key, rsa.RSAPublicKey
-        ):
-            ctfe_key.verify(
-                signature=sct.signature,
-                data=digitally_signed,
-                padding=padding.PKCS1v15(),
-                algorithm=hashes.SHA256(),
-            )
-        elif sct.signature_algorithm == SignatureAlgorithm.ECDSA and isinstance(
-            ctfe_key, ec.EllipticCurvePublicKey
-        ):
-            ctfe_key.verify(
-                signature=sct.signature,
-                data=digitally_signed,
-                signature_algorithm=ec.ECDSA(hashes.SHA256()),
-            )
-        else:
-            raise InvalidSctError(
-                "Found unexpected signature type in SCT: signature type of"
-                f"{sct.signature_algorithm} and CTFE key type of {type(ctfe_key)}"
-            )
-    except InvalidSignature as inval_sig:
+        logger.debug(f"attempting to verify SCT with key ID {sct.log_id.hex()}")
+        ct_keyring.verify(
+            key_id=sct.log_id, signature=sct.signature, data=digitally_signed
+        )
+    except CTKeyringError as inval_sig:
         raise InvalidSctError from inval_sig
