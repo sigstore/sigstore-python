@@ -53,7 +53,7 @@ def _pack_signed_entry(
         cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
     elif sct.entry_type == LogEntryType.PRE_CERTIFICATE:
         if not issuer_key_id or len(issuer_key_id) != 32:
-            raise InvalidSctError("API misuse: issuer key hash missing")
+            raise InvalidSctError("API misuse: issuer key ID missing")
 
         # When dealing with a precertificate, our signed entry looks like this:
         #
