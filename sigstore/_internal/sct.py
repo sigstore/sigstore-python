@@ -19,6 +19,7 @@ Utilities for verifying signed certificate timestamps.
 import logging
 import struct
 from datetime import timezone
+from textwrap import dedent
 from typing import List, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -30,7 +31,11 @@ from cryptography.x509.certificate_transparency import (
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
 
-from sigstore._internal.ctfe import CTKeyring, CTKeyringError
+from sigstore._internal.ctfe import (
+    CTKeyring,
+    CTKeyringError,
+    CTKeyringLookupError,
+)
 from sigstore._utils import key_id
 
 logger = logging.getLogger(__name__)
@@ -176,5 +181,29 @@ def verify_sct(
         ct_keyring.verify(
             key_id=sct.log_id, signature=sct.signature, data=digitally_signed
         )
-    except CTKeyringError as inval_sig:
-        raise InvalidSctError from inval_sig
+    except CTKeyringLookupError as exc:
+        # We specialize this error case, since it usually indicates one of
+        # two conditions: either the current sigstore client is out-of-date,
+        # or that the SCT is well-formed but invalid for the current configuration
+        # (indicating that the user has asked for the wrong instance).
+        #
+        # TODO(ww): Longer term, this should be specialized elsewhere.
+        raise InvalidSctError(
+            dedent(
+                f"""
+                Invalid key ID in SCT: not found in current keyring.
+
+                This may be a result of an outdated `sigstore` installation.
+
+                Consider upgrading with:
+
+                    python -m pip install --upgrade sigstore
+
+                Additional context:
+
+                {exc}
+                """
+            ),
+        )
+    except CTKeyringError as exc:
+        raise InvalidSctError from exc

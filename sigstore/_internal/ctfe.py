@@ -30,6 +30,19 @@ from sigstore._utils import PublicKey, key_id, load_pem_public_key
 
 
 class CTKeyringError(Exception):
+    """
+    Raised on failure by `CTKeyring.verify()`.
+    """
+
+    pass
+
+
+class CTKeyringLookupError(CTKeyringError):
+    """
+    A specialization of `CTKeyringError`, indicating that the specified
+    key ID wasn't found in the keyring.
+    """
+
     pass
 
 
@@ -91,7 +104,7 @@ class CTKeyring:
         if key is None:
             # If we don't have a key corresponding to this key ID, we can't
             # possibly verify the signature.
-            raise CTKeyringError(f"no known key for key ID {key_id.hex()}")
+            raise CTKeyringLookupError(f"no known key for key ID {key_id.hex()}")
 
         try:
             if isinstance(key, rsa.RSAPublicKey):
