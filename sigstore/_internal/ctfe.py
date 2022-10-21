@@ -121,7 +121,7 @@ class CTKeyring:
                     signature_algorithm=ec.ECDSA(hashes.SHA256()),
                 )
             else:
-                # Unreachable.
-                raise CTKeyringError("unreachable")
+                # NOTE(ww): Unreachable without API misuse.
+                raise CTKeyringError(f"unsupported key type: {key}")
         except InvalidSignature as exc:
             raise CTKeyringError("invalid signature") from exc
