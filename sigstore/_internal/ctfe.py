@@ -18,7 +18,6 @@ Functionality for interacting with CT ("CTFE") signing keys.
 
 from __future__ import annotations
 
-import fnmatch
 from importlib import resources
 from typing import List
 
@@ -42,41 +41,50 @@ class CTKeyring:
     This structure exists to facilitate key rotation in a CT log.
     """
 
-    def __init__(self, keys: List[PublicKey]):
+    def __init__(self, keys: List[PublicKey] = []):
         self._keyring = {}
         for key in keys:
             self._keyring[key_id(key)] = key
 
     @classmethod
     def staging(cls) -> CTKeyring:
-        keys = []
-        for resource in resources.contents("sigstore._store"):
-            # All CTFE pubkeys for the staging instance share the `.staging.pub` suffix.
-            if not fnmatch.fnmatch(resource, "ctfe*.staging.pub"):
-                continue
+        """
+        Returns a `CTKeyring` instance capable of verifying SCTs from
+        Sigstore's staging deployment.
+        """
+        keyring = cls()
+        keyring._add_resource("ctfe.staging.pub")
+        keyring._add_resource("ctfe_2022.staging.pub")
+        keyring._add_resource("ctfe_2022.2.staging.pub")
 
-            key_pem = resources.read_binary("sigstore._store", resource)
-            key = load_pem_public_key(key_pem)
-            keys.append(key)
-
-        return cls(keys)
+        return keyring
 
     @classmethod
     def production(cls) -> CTKeyring:
-        keys = []
-        for resource in resources.contents("sigstore._store"):
-            # We only load resources that look like CTFE pubkeys that are *not*
-            # staging instance pubkeys.
-            if not fnmatch.fnmatch(resource, "ctfe*.pub") or fnmatch.fnmatch(
-                resource, "ctfe*.staging.pub"
-            ):
-                continue
+        """
+        Returns a `CTKeyring` instance capable of verifying SCTs from
+        Sigstore's production deployment.
+        """
+        keyring = cls()
+        keyring._add_resource("ctfe.pub")
+        keyring._add_resource("ctfe_2022.pub")
 
-            key_pem = resources.read_binary("sigstore._store", resource)
-            key = load_pem_public_key(key_pem)
-            keys.append(key)
+        return keyring
 
-        return cls(keys)
+    def _add_resource(self, name: str) -> None:
+        """
+        Adds a key to the current keyring, as identified by its
+        resource name under `sigstore._store`.
+        """
+        key_pem = resources.read_binary("sigstore._store", name)
+        self.add(key_pem)
+
+    def add(self, key_pem: bytes) -> None:
+        """
+        Adds a PEM-encoded key to the current keyring.
+        """
+        key = load_pem_public_key(key_pem)
+        self._keyring[key_id(key)] = key
 
     def verify(self, *, key_id: bytes, signature: bytes, data: bytes) -> None:
         key = self._keyring.get(key_id)
