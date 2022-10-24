@@ -1,78 +1,131 @@
+name: Release
+
 on:
   release:
     types:
       - published
 
-name: release
-
-permissions:
-  # Needed to access the workflow's OIDC identity.
-  id-token: write
-
-  # Needed to upload release assets.
-  contents: write
-
 jobs:
-  pypi:
-    name: Build, sign and publish release to PyPI
+  build:
+    name: Build and sign artifacts
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
     steps:
-    - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
 
-    - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
+      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
 
-    - name: deps
-      run: python -m pip install -U build
+      - name: deps
+        run: python -m pip install -U build
 
-    - name: build
-      run: python -m build
+      - name: build
+        run: python -m build
 
-    - name: sign
-      run: |
-        mkdir -p smoketest-artifacts
+      - name: sign
+        run: |
+          mkdir -p smoketest-artifacts
 
-        # we smoke-test sigstore by installing each of the distributions
-        # we've built in a fresh environment and using each to sign and
-        # verify for itself, using the ambient OIDC identity
-        for dist in dist/*; do
-          dist_base="$(basename "${dist}")"
+          # we smoke-test sigstore by installing each of the distributions
+          # we've built in a fresh environment and using each to sign and
+          # verify for itself, using the ambient OIDC identity
+          for dist in dist/*; do
+            dist_base="$(basename "${dist}")"
 
-          python -m venv smoketest-env
+            python -m venv smoketest-env
 
-          ./smoketest-env/bin/python -m pip install "${dist}"
+            ./smoketest-env/bin/python -m pip install "${dist}"
 
-          # NOTE: signing artifacts currently go in a separate directory,
-          # to avoid confusing the package uploader (which otherwise tries
-          # to upload them to PyPI and fails). Future versions of twine
-          # and the gh-action-pypi-publish action should support these artifacts.
-          ./smoketest-env/bin/python -m \
-            sigstore sign "${dist}" \
-            --output-signature smoketest-artifacts/"${dist_base}.sig" \
-            --output-certificate smoketest-artifacts/"${dist_base}.crt"
+            # NOTE: signing artifacts currently go in a separate directory,
+            # to avoid confusing the package uploader (which otherwise tries
+            # to upload them to PyPI and fails). Future versions of twine
+            # and the gh-action-pypi-publish action should support these artifacts.
+            ./smoketest-env/bin/python -m \
+              sigstore sign "${dist}" \
+              --output-signature smoketest-artifacts/"${dist_base}.sig" \
+              --output-certificate smoketest-artifacts/"${dist_base}.crt"
 
-          ./smoketest-env/bin/python -m \
-            sigstore verify "${dist}" \
-            --cert "smoketest-artifacts/${dist_base}.crt" \
-            --signature "smoketest-artifacts/${dist_base}.sig" \
-            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            ./smoketest-env/bin/python -m \
+              sigstore verify "${dist}" \
+              --cert "smoketest-artifacts/${dist_base}.crt" \
+              --signature "smoketest-artifacts/${dist_base}.sig" \
+              --cert-oidc-issuer https://token.actions.githubusercontent.com
 
-          rm -rf smoketest-env
-        done
+            rm -rf smoketest-env
+          done
 
-    - name: publish
-      uses: pypa/gh-action-pypi-publish@717ba43cfbb0387f6ce311b169a825772f54d295
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
+      - name: Generate hashes for provenance
+        shell: bash
+        id: hash
+        run: |
+          # sha256sum generates sha256 hash for all artifacts.
+          # base64 -w0 encodes to base64 and outputs on a single line.
+          # sha256sum artifact1 artifact2 ... | base64 -w0
+          echo "hashes=$(sha256sum ./dist/* | base64 -w0)" >> $GITHUB_OUTPUT
 
-    - name: upload artifacts to github
-      # Confusingly, this action also supports updating releases, not
-      # just creating them. This is what we want here, since we've manually
-      # created the release that triggered the action.
-      uses: softprops/action-gh-release@v1
-      with:
-        # dist/ contains the built packages, which smoketest-artifacts/
-        # contains the signatures and certificates.
-        files: |
-          dist/*
-          smoketest-artifacts/*
+      - name: Upload built packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: built-packages
+          path: ./dist/
+          if-no-files-found: warn
+
+      - name: Upload smoketest-artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: smoketest-artifacts
+          path: smoketest-artifacts/
+          if-no-files-found: warn
+
+  generate-provenance:
+    needs: [build]
+    name: Generate build provenance
+    permissions:
+      actions: read   # To read the workflow path.
+      id-token: write # To sign the provenance.
+      contents: write # To add assets to a release.
+    # Currently this action needs to be referred by tag. More details at:
+    # https://github.com/slsa-framework/slsa-github-generator#verification-of-provenance
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.2.1
+    with:
+      attestation-name: provenance-sigstore-${{ github.event.release.tag_name }}.intoto.jsonl
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+      upload-assets: true
+
+  release-pypi:
+    needs: [build, generate-provenance]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Download artifacts diretories # goes to current working directory
+        uses: actions/download-artifact@v3
+
+      - name: publish
+        uses: pypa/gh-action-pypi-publish@717ba43cfbb0387f6ce311b169a825772f54d295
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}
+          packages_dir: built-packages/
+
+  release-github:
+    needs: [build, generate-provenance]
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to upload release assets.
+      contents: write
+    steps:
+      - name: Download artifacts diretories # goes to current working directory
+        uses: actions/download-artifact@v3
+
+      - name: Upload artifacts to github
+        # Confusingly, this action also supports updating releases, not
+        # just creating them. This is what we want here, since we've manually
+        # created the release that triggered the action.
+        uses: softprops/action-gh-release@v1
+        with:
+          # smoketest-artifacts/ contains the signatures and certificates.
+          files: |
+            built-packages/*
+            smoketest-artifacts/*
