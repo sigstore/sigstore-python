@@ -97,7 +97,7 @@ class Signer:
         cert = certificate_response.cert  # noqa
         chain = certificate_response.chain
 
-        verify_sct(sct, cert, chain, self._rekor._ctfe_pubkey)
+        verify_sct(sct, cert, chain, self._rekor._ct_keyring)
 
         logger.debug("Successfully verified SCT...")
 
