@@ -27,8 +27,10 @@ from urllib.parse import urljoin
 
 import requests
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
+
+from sigstore._internal.ctfe import CTKeyring
 
 logger = logging.getLogger(__name__)
 
@@ -272,7 +274,7 @@ class RekorEntriesRetrieve(Endpoint):
 class RekorClient:
     """The internal Rekor client"""
 
-    def __init__(self, url: str, pubkey: bytes, ctfe_pubkey: bytes) -> None:
+    def __init__(self, url: str, pubkey: bytes, ct_keyring: CTKeyring) -> None:
         self.url = urljoin(url, "api/v1/")
         self.session = requests.Session()
         self.session.headers.update(
@@ -287,16 +289,7 @@ class RekorClient:
             raise RekorClientError(f"Invalid public key type: {pubkey}")
         self._pubkey = pubkey
 
-        ctfe_pubkey = serialization.load_pem_public_key(ctfe_pubkey)
-        if not isinstance(
-            ctfe_pubkey,
-            (
-                rsa.RSAPublicKey,
-                ec.EllipticCurvePublicKey,
-            ),
-        ):
-            raise RekorClientError(f"Invalid CTFE public key type: {ctfe_pubkey}")
-        self._ctfe_pubkey = ctfe_pubkey
+        self._ct_keyring = ct_keyring
 
     def __del__(self) -> None:
         self.session.close()
@@ -304,14 +297,12 @@ class RekorClient:
     @classmethod
     def production(cls) -> RekorClient:
         return cls(
-            DEFAULT_REKOR_URL, _DEFAULT_REKOR_ROOT_PUBKEY, _DEFAULT_REKOR_CTFE_PUBKEY
+            DEFAULT_REKOR_URL, _DEFAULT_REKOR_ROOT_PUBKEY, CTKeyring.production()
         )
 
     @classmethod
     def staging(cls) -> RekorClient:
-        return cls(
-            STAGING_REKOR_URL, _STAGING_REKOR_ROOT_PUBKEY, _STAGING_REKOR_CTFE_PUBKEY
-        )
+        return cls(STAGING_REKOR_URL, _STAGING_REKOR_ROOT_PUBKEY, CTKeyring.staging())
 
     @property
     def log(self) -> RekorLog:

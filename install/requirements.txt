@@ -154,9 +154,9 @@ pydantic==1.10.2 \
     --hash=sha256:e0bedafe4bc165ad0a56ac0bd7695df25c50f76961da29c050712596cf092d6d \
     --hash=sha256:e9069e1b01525a96e6ff49e25876d90d5a563bc31c658289a8772ae186552236
     # via sigstore
-pyjwt==2.5.0 \
-    --hash=sha256:8d82e7087868e94dd8d7d418e5088ce64f7daab4b36db654cbaedb46f9d1ca80 \
-    --hash=sha256:e77ab89480905d86998442ac5788f35333fa85f65047a534adc38edf3c88fc3b
+pyjwt==2.6.0 \
+    --hash=sha256:69285c7e31fc44f68a1feb309e948e0df53259d579295e6cfe2b1792329f05fd \
+    --hash=sha256:d83c3d892a77bbb74d3e1a2cfa90afaadb60945205d1095d9221f04466f64c14
     # via sigstore
 pyopenssl==22.1.0 \
     --hash=sha256:7a83b7b272dd595222d672f5ce29aa030f1fb837630ef229f62e72e395ce8968 \
@@ -170,9 +170,9 @@ securesystemslib==0.25.0 \
     --hash=sha256:04bc11593edd68405939d3dfc318080bfb31f1ebb5d81c7911914b42dfd4bf2f \
     --hash=sha256:10d5a066e70cb87704c9bf2cef1ef6d8a06fab5ef7602dd59c26d06251317a11
     # via sigstore
-sigstore==0.6.7 \
-    --hash=sha256:8ddb5d0dbca2464bf6033a53817d251080170764557ef941697284d1c7d2f0fb \
-    --hash=sha256:ce140a7198e46430d60f56dea847baf924ea2f50550af776322f014ac352c15f
+sigstore==0.6.8 \
+    --hash=sha256:578d3e5ce18701d229ac22bc8aa839fabb19af1d4cf50960c6d089ab8e7c5f55 \
+    --hash=sha256:8a823cb44320c4f94d0378e76fb0850272722a6d9c271bf00a84b9eb9e05bc97
     # via -r requirements.in
 typing-extensions==4.4.0 \
     --hash=sha256:1511434bb92bf8dd198c12b1cc812e800d4181cfcb867674e0f8279cc93087aa \

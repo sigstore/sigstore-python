@@ -22,6 +22,7 @@ from textwrap import dedent
 from typing import Optional, TextIO, Union, cast
 
 from sigstore import __version__
+from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.oidc.ambient import (
     GitHubOidcPermissionCredentialError,
@@ -35,6 +36,7 @@ from sigstore._internal.oidc.oauth import (
 )
 from sigstore._internal.rekor.client import DEFAULT_REKOR_URL, RekorClient
 from sigstore._sign import Signer
+from sigstore._utils import load_pem_public_key
 from sigstore._verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,
@@ -357,10 +359,11 @@ def _sign(args: argparse.Namespace) -> None:
     elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
         signer = Signer.production()
     else:
+        ct_keyring = CTKeyring([load_pem_public_key(args.ctfe_pem.read())])
         signer = Signer(
             fulcio=FulcioClient(args.fulcio_url),
             rekor=RekorClient(
-                args.rekor_url, args.rekor_root_pubkey.read(), args.ctfe_pem.read()
+                args.rekor_url, args.rekor_root_pubkey.read(), ct_keyring
             ),
         )
 
