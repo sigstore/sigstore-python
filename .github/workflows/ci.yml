@@ -20,6 +20,7 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
+          - "3.11"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
