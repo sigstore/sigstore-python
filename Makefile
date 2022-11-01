@@ -67,7 +67,8 @@ test:
 		pytest --cov=$(PY_MODULE) test/ $(T) $(TEST_ARGS) && \
 		python -m coverage report -m $(COV_ARGS)
 
-	# Only generate an XML coverage report if explicitly requested.
+	@# Only generate an XML coverage report if explicitly requested.
+	@# NOTE: This will not mask a failure above.
 	[ -n "$(COV_REPORT)" ] && \
 		. ./env/bin/activate && \
 		python -m coverage xml || exit 0
