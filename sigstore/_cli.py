@@ -337,6 +337,14 @@ def main() -> None:
 
 
 def _sign(args: argparse.Namespace) -> None:
+    # `--rekor-bundle` is a temporary option, pending stabilization of the
+    # Sigstore bundle format.
+    if args.rekor_bundle:
+        logger.warning(
+            "--rekor-bundle is a temporary format, and will be removed in an "
+            "upcoming release of sigstore-python in favor of Sigstore-style bundles"
+        )
+
     # `--no-default-files` has no effect on `--{signature,certificate,rekor-bundle}`, but we
     # forbid it because it indicates user confusion.
     if args.no_default_files and (
@@ -448,6 +456,14 @@ def _sign(args: argparse.Namespace) -> None:
 
 
 def _verify(args: argparse.Namespace) -> None:
+    # `--rekor-bundle` is a temporary option, pending stabilization of the
+    # Sigstore bundle format.
+    if args.rekor_bundle:
+        logger.warning(
+            "--rekor-bundle is a temporary format, and will be removed in an "
+            "upcoming release of sigstore-python in favor of Sigstore-style bundles"
+        )
+
     # The presence of --rekor-bundle implies --require-rekor-offline.
     args.require_rekor_offline = args.require_rekor_offline or args.rekor_bundle
 
