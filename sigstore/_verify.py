@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import datetime
 import hashlib
+import json
 import logging
 from importlib import resources
 from typing import List, Optional, cast
@@ -50,7 +51,7 @@ from sigstore._internal.merkle import (
     InvalidInclusionProofError,
     verify_merkle_inclusion,
 )
-from sigstore._internal.rekor import RekorClient, RekorInclusionProof
+from sigstore._internal.rekor import RekorClient, RekorEntry
 from sigstore._internal.set import InvalidSetError, verify_set
 
 logger = logging.getLogger(__name__)
@@ -123,6 +124,7 @@ class Verifier:
         signature: bytes,
         expected_cert_email: Optional[str] = None,
         expected_cert_oidc_issuer: Optional[str] = None,
+        offline_rekor_entry: Optional[RekorEntry] = None,
     ) -> VerificationResult:
         """Public API for verifying.
 
@@ -135,6 +137,13 @@ class Verifier:
         `expected_cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
 
         `expected_cert_oidc_issuer` is the expected OIDC Issuer Extension within `certificate`.
+
+        `offline_rekor_entry` is an optional offline `RekorEntry` to verify against. If supplied,
+        verification will be done against this entry rather than the against the online
+        transparency log. Offline Rekor entries do not carry their Merkle inclusion
+        proofs, and as such are verified only against their Signed Entry Timestamps.
+        This is a slightly weaker verification verification mode, as it does not
+        demonstrate inclusion in the log.
 
         Returns a `VerificationResult` which will be truthy or falsey depending on
         success.
@@ -154,17 +163,18 @@ class Verifier:
 
         # In order to verify an artifact, we need to achieve the following:
         #
-        # 1) Verify that the signing certificate is signed by the root certificate and that the
-        #    signing certificate was valid at the time of signing.
-        # 2) Verify that the signing certiticate belongs to the signer
-        # 3) Verify that the signature was signed by the public key in the signing certificate
-        #
-        # And optionally, if we're performing verification online:
-        #
-        # 4) Verify the inclusion proof supplied by Rekor for this artifact
-        # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
-        # 6) Verify that the signing certificate was valid at the time of signing by comparing the
-        #    expiry against the integrated timestamp
+        # 1) Verify that the signing certificate is signed by the certificate
+        #    chain and that the signing certificate was valid at the time
+        #    of signing.
+        # 2) Verify that the signing certificate belongs to the signer.
+        # 3) Verify that the artifact signature was signed by the public key in the
+        #    signing certificate.
+        # 4) Verify the inclusion proof supplied by Rekor for this artifact,
+        #    if we're doing online verification.
+        # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this
+        #    artifact.
+        # 6) Verify that the signing certificate was valid at the time of
+        #    signing by comparing the expiry against the integrated timestamp.
 
         # 1) Verify that the signing certificate is signed by the root certificate and that the
         #    signing certificate was valid at the time of signing.
@@ -236,27 +246,103 @@ class Verifier:
 
         logger.debug("Successfully verified signature...")
 
-        # Retrieve the relevant Rekor entry to verify the inclusion proof and SET
-        entry = self._rekor.log.entries.retrieve.post(
-            signature.decode(),
-            sha256_artifact_hash,
-            base64.b64encode(certificate).decode(),
-        )
-        if entry is None:
-            return RekorEntryMissing(
-                signature=signature.decode(), sha256_artifact_hash=sha256_artifact_hash
+        entry: Optional[RekorEntry]
+        if offline_rekor_entry is not None:
+            # NOTE: CVE-2022-36056 in cosign happened because the offline Rekor
+            # entry was not matched against the other signing materials: an
+            # adversary could present a *valid but unrelated* Rekor entry
+            # and cosign would perform verification "as if" the entry was a
+            # legitimate entry for the certificate and signature.
+            # The steps below avoid this by decomposing the Rekor entry's
+            # body and confirming that it contains the same signature,
+            # certificate, and artifact hash as the rest of the verification
+            # process.
+
+            # TODO(ww): This should all go in a separate API, probably under the
+            # RekorEntry class.
+            logger.debug(
+                "offline Rekor entry: ensuring contents match signing materials"
             )
 
-        # 4) Verify the inclusion proof supplied by Rekor for this artifact
-        inclusion_proof = RekorInclusionProof.parse_obj(
-            entry.verification.get("inclusionProof")
-        )
-        try:
-            verify_merkle_inclusion(inclusion_proof, entry)
-        except InvalidInclusionProofError as inval_inclusion_proof:
-            return VerificationFailure(
-                reason=f"invalid Rekor inclusion proof: {inval_inclusion_proof}"
+            try:
+                entry_body = json.loads(base64.b64decode(offline_rekor_entry.body))
+            except Exception:
+                return VerificationFailure(
+                    reason="couldn't parse offline Rekor entry's body"
+                )
+
+            # The Rekor entry's body should be a hashedrekord object.
+            # TODO: This should use a real data model, ideally generated from
+            # Rekor's official JSON schema.
+            kind, version = entry_body.get("kind"), entry_body.get("apiVersion")
+            if kind != "hashedrekord" or version != "0.0.1":
+                return VerificationFailure(
+                    reason=(
+                        f"Rekor entry is of unsupported kind ('{kind}') or API "
+                        f"version ('{version}')"
+                    )
+                )
+
+            spec = entry_body["spec"]
+            expected_sig, expected_cert, expected_hash = (
+                spec["signature"]["content"],
+                load_pem_x509_certificate(
+                    base64.b64decode(spec["signature"]["publicKey"]["content"])
+                ),
+                spec["data"]["hash"]["value"],
             )
+
+            if expected_sig != signature.decode():
+                return VerificationFailure(
+                    reason=(
+                        f"Rekor entry's signature ('{expected_sig}') does not "
+                        f"match supplied signature ('{signature.decode()}')"
+                    )
+                )
+
+            if expected_cert != cert:
+                return VerificationFailure(
+                    reason=(
+                        f"Rekor entry's certificate ('{expected_cert}') does not "
+                        f"match supplied certificate ('{cert}')"
+                    )
+                )
+
+            if expected_hash != sha256_artifact_hash:
+                return VerificationFailure(
+                    reason=(
+                        f"Rekor entry's hash ('{expected_hash}') does not "
+                        f"match supplied hash ('{sha256_artifact_hash}')"
+                    )
+                )
+
+            logger.debug("offline Rekor entry matches signing artifacts!")
+            entry = offline_rekor_entry
+        else:
+            # Retrieve the relevant Rekor entry to verify the inclusion proof and SET.
+            entry = self._rekor.log.entries.retrieve.post(
+                signature.decode(),
+                sha256_artifact_hash,
+                base64.b64encode(certificate).decode(),
+            )
+            if entry is None:
+                return RekorEntryMissing(
+                    signature=signature.decode(),
+                    sha256_artifact_hash=sha256_artifact_hash,
+                )
+
+        # 4) Verify the inclusion proof supplied by Rekor for this artifact.
+        #
+        # We skip the inclusion proof for offline Rekor bundles.
+        if offline_rekor_entry is None:
+            try:
+                verify_merkle_inclusion(entry)
+            except InvalidInclusionProofError as inval_inclusion_proof:
+                return VerificationFailure(
+                    reason=f"invalid Rekor inclusion proof: {inval_inclusion_proof}"
+                )
+        else:
+            logger.debug("offline Rekor entry: skipping Merkle inclusion proof")
 
         # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         try:
@@ -274,7 +360,7 @@ class Verifier:
                 reason="invalid signing cert: expired at time of Rekor entry"
             )
 
-        logger.debug(f"Successfully verified Rekor entry at index {entry.log_index}..")
+        logger.debug(f"Successfully verified Rekor entry at index {entry.log_index}")
         return VerificationSuccess()
 
 

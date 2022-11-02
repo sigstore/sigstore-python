@@ -15,6 +15,7 @@ build
 *.pem
 *.sh
 *.pub
+*.rekor
 
 # Don't ignore these files when we intend to include them
 !sigstore/_store/*.crt
@@ -23,3 +24,4 @@ build
 !test/assets/*.txt
 !test/assets/*.crt
 !test/assets/*.sig
+!test/assets/*.rekor
