@@ -88,7 +88,7 @@ def test_verifier_san_email(signed_asset):
         a_assets[0],
         a_assets[1],
         a_assets[2],
-        expected_cert_email="william@yossarian.net",
+        expected_cert_identity="william@yossarian.net",
     )
 
 
@@ -101,6 +101,6 @@ def test_verifier_san_uri(signed_asset):
         a_assets[0],
         a_assets[1],
         a_assets[2],
-        expected_cert_email="https://github.com/sigstore/"
+        expected_cert_identity="https://github.com/sigstore/"
         "sigstore-python/.github/workflows/ci.yml@refs/pull/288/merge",
     )
