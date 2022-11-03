@@ -272,7 +272,18 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     verification_options = verify.add_argument_group("Extended verification options")
-    verification_options.add_argument(
+
+    # NOTE: `--cert-email` and `--cert-identity` are mutually exclusive, until
+    # `--cert-email` is removed entirely.
+    cert_identity_options = verification_options.add_mutually_exclusive_group()
+    cert_identity_options.add_argument(
+        "--cert-identity",
+        metavar="IDENTITY",
+        type=str,
+        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
+        help="The identity to check for in the certificate's Subject Alternative Name",
+    )
+    cert_identity_options.add_argument(
         "--cert-email",
         metavar="EMAIL",
         type=str,
@@ -464,6 +475,14 @@ def _verify(args: argparse.Namespace) -> None:
             "upcoming release of sigstore-python in favor of Sigstore-style bundles"
         )
 
+    # `--cert-email` is a deprecated alias for `--cert-identity`.
+    if args.cert_email and not args.cert_identity:
+        logger.warning(
+            "--cert-email is a deprecated alias for --cert-identity, and will be removed "
+            "in an upcoming release of sigstore-python"
+        )
+        args.cert_identity = args.cert_email
+
     # The presence of --rekor-bundle implies --require-rekor-offline.
     args.require_rekor_offline = args.require_rekor_offline or args.rekor_bundle
 
@@ -543,7 +562,7 @@ def _verify(args: argparse.Namespace) -> None:
             input_=file.read_bytes(),
             certificate=certificate,
             signature=signature,
-            expected_cert_email=args.cert_email,
+            expected_cert_identity=args.cert_identity,
             expected_cert_oidc_issuer=args.cert_oidc_issuer,
             offline_rekor_entry=entry,
         )
