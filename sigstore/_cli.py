@@ -34,7 +34,12 @@ from sigstore._internal.oidc.oauth import (
     STAGING_OAUTH_ISSUER,
     get_identity_token,
 )
-from sigstore._internal.rekor.client import DEFAULT_REKOR_URL, RekorClient
+from sigstore._internal.rekor.client import (
+    DEFAULT_REKOR_URL,
+    RekorBundle,
+    RekorClient,
+    RekorEntry,
+)
 from sigstore._sign import Signer
 from sigstore._utils import load_pem_public_key
 from sigstore._verify import (
@@ -164,7 +169,7 @@ def _parser() -> argparse.ArgumentParser:
         "--no-default-files",
         action="store_true",
         default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
-        help="Don't emit the default output files ({input}.sig and {input}.crt)",
+        help="Don't emit the default output files ({input}.sig, {input}.crt, {input}.rekor)",
     )
     output_options.add_argument(
         "--signature",
@@ -184,6 +189,17 @@ def _parser() -> argparse.ArgumentParser:
         default=os.getenv("SIGSTORE_OUTPUT_CERTIFICATE"),
         help=(
             "Write a single certificate to the given file; does not work with multiple input files"
+        ),
+    )
+    output_options.add_argument(
+        "--rekor-bundle",
+        "--output-rekor-bundle",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_BUNDLE"),
+        help=(
+            "Write a single offline Rekor bundle to the given file; does not work with "
+            "multiple input files"
         ),
     )
     output_options.add_argument(
@@ -247,6 +263,13 @@ def _parser() -> argparse.ArgumentParser:
         default=os.getenv("SIGSTORE_SIGNATURE"),
         help="The signature to verify against; not used with multiple inputs",
     )
+    input_options.add_argument(
+        "--rekor-bundle",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_REKOR_BUNDLE"),
+        help="The offline Rekor bundle to verify with; not used with multiple inputs",
+    )
 
     verification_options = verify.add_argument_group("Extended verification options")
     verification_options.add_argument(
@@ -262,6 +285,12 @@ def _parser() -> argparse.ArgumentParser:
         type=str,
         default=os.getenv("SIGSTORE_CERT_OIDC_ISSUER"),
         help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
+    )
+    verification_options.add_argument(
+        "--require-rekor-offline",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_REQUIRE_REKOR_OFFLINE"),
+        help="Require offline Rekor verification with a bundle; implied by --rekor-bundle",
     )
 
     instance_options = verify.add_argument_group("Sigstore instance options")
@@ -308,20 +337,32 @@ def main() -> None:
 
 
 def _sign(args: argparse.Namespace) -> None:
-    # `--no-default-files` has no effect on `--{signature,certificate}`, but we
+    # `--rekor-bundle` is a temporary option, pending stabilization of the
+    # Sigstore bundle format.
+    if args.rekor_bundle:
+        logger.warning(
+            "--rekor-bundle is a temporary format, and will be removed in an "
+            "upcoming release of sigstore-python in favor of Sigstore-style bundles"
+        )
+
+    # `--no-default-files` has no effect on `--{signature,certificate,rekor-bundle}`, but we
     # forbid it because it indicates user confusion.
-    if args.no_default_files and (args.signature or args.certificate):
+    if args.no_default_files and (
+        args.signature or args.certificate or args.rekor_bundle
+    ):
         args._parser.error(
-            "--no-default-files may not be combined with --signature or "
-            "--certificate",
+            "--no-default-files may not be combined with --signature, "
+            "--certificate, or --rekor-bundle",
         )
 
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
-    if (args.signature or args.certificate) and len(args.files) > 1:
+    if (args.signature or args.certificate or args.rekor_bundle) and len(
+        args.files
+    ) > 1:
         args._parser.error(
-            "Error: --signature and --certificate can't be used with explicit "
-            "outputs for multiple inputs",
+            "Error: --signature, --certificate, and --rekor-bundle can't be used "
+            "with explicit outputs for multiple inputs",
         )
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
@@ -331,10 +372,11 @@ def _sign(args: argparse.Namespace) -> None:
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert = args.signature, args.certificate
-        if not sig and not cert and not args.no_default_files:
+        sig, cert, bundle = args.signature, args.certificate, args.rekor_bundle
+        if not sig and not cert and not bundle and not args.no_default_files:
             sig = file.parent / f"{file.name}.sig"
             cert = file.parent / f"{file.name}.crt"
+            bundle = file.parent / f"{file.name}.rekor"
 
         if not args.overwrite:
             extants = []
@@ -342,6 +384,8 @@ def _sign(args: argparse.Namespace) -> None:
                 extants.append(str(sig))
             if cert and cert.exists():
                 extants.append(str(cert))
+            if bundle and bundle.exists():
+                extants.append(str(bundle))
 
             if extants:
                 args._parser.error(
@@ -349,7 +393,7 @@ def _sign(args: argparse.Namespace) -> None:
                     f"{', '.join(extants)}"
                 )
 
-        output_map[file] = {"cert": cert, "sig": sig}
+        output_map[file] = {"cert": cert, "sig": sig, "bundle": bundle}
 
     # Select the signer to use.
     if args.staging:
@@ -396,20 +440,41 @@ def _sign(args: argparse.Namespace) -> None:
             sig_output = sys.stdout
 
         print(result.b64_signature, file=sig_output)
-        if outputs["sig"]:
-            print(f"Signature written to file {outputs['sig']}")
+        if outputs["sig"] is not None:
+            print(f"Signature written to {outputs['sig']}")
 
         if outputs["cert"] is not None:
-            cert_output = open(outputs["cert"], "w")
-            print(result.cert_pem, file=cert_output)
-            print(f"Certificate written to file {outputs['cert']}")
+            with outputs["cert"].open(mode="w") as io:
+                print(result.cert_pem, file=io)
+            print(f"Certificate written to {outputs['cert']}")
+
+        if outputs["bundle"] is not None:
+            with outputs["bundle"].open(mode="w") as io:
+                bundle = result.log_entry.to_bundle()
+                print(bundle.json(by_alias=True), file=io)
+            print(f"Rekor bundle written to {outputs['bundle']}")
 
 
 def _verify(args: argparse.Namespace) -> None:
-    # Fail if `--certificate` or `--signature` is specified and we have more than one input.
-    if (args.certificate or args.signature) and len(args.files) > 1:
+    # `--rekor-bundle` is a temporary option, pending stabilization of the
+    # Sigstore bundle format.
+    if args.rekor_bundle:
+        logger.warning(
+            "--rekor-bundle is a temporary format, and will be removed in an "
+            "upcoming release of sigstore-python in favor of Sigstore-style bundles"
+        )
+
+    # The presence of --rekor-bundle implies --require-rekor-offline.
+    args.require_rekor_offline = args.require_rekor_offline or args.rekor_bundle
+
+    # Fail if --certificate, --signature, or --rekor-bundle is specified and we
+    # have more than one input.
+    if (args.certificate or args.signature or args.rekor_bundle) and len(
+        args.files
+    ) > 1:
         args._parser.error(
-            "--certificate and --signature can only be used with a single input file"
+            "--certificate, --signature, and --rekor-bundle can only be used "
+            "with a single input file"
         )
 
     # The converse of `sign`: we build up an expected input map and check
@@ -419,24 +484,31 @@ def _verify(args: argparse.Namespace) -> None:
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert = args.signature, args.certificate
+        sig, cert, bundle = args.signature, args.certificate, args.rekor_bundle
         if sig is None:
             sig = file.parent / f"{file.name}.sig"
         if cert is None:
             cert = file.parent / f"{file.name}.crt"
+        if bundle is None:
+            bundle = file.parent / f"{file.name}.rekor"
 
         missing = []
         if not sig.is_file():
             missing.append(str(sig))
         if not cert.is_file():
             missing.append(str(cert))
+        if not bundle.is_file() and args.require_rekor_offline:
+            # NOTE: We only produce errors on missing bundle files
+            # if the user has explicitly requested offline-only verification.
+            # Otherwise, we fall back on online verification.
+            missing.append(str(bundle))
 
         if missing:
             args._parser.error(
                 f"Missing verification materials for {(file)}: {', '.join(missing)}"
             )
 
-        input_map[file] = {"cert": cert, "sig": sig}
+        input_map[file] = {"cert": cert, "sig": sig, "bundle": bundle}
 
     if args.staging:
         logger.debug("verify: staging instances requested")
@@ -459,6 +531,12 @@ def _verify(args: argparse.Namespace) -> None:
         logger.debug(f"Using signature from: {inputs['sig']}")
         signature = inputs["sig"].read_bytes().rstrip()
 
+        entry: Optional[RekorEntry] = None
+        if inputs["bundle"].is_file():
+            logger.debug(f"Using offline Rekor bundle from: {inputs['bundle']}")
+            bundle = RekorBundle.parse_file(inputs["bundle"])
+            entry = bundle.to_entry()
+
         logger.debug(f"Verifying contents from: {file}")
 
         result = verifier.verify(
@@ -467,6 +545,7 @@ def _verify(args: argparse.Namespace) -> None:
             signature=signature,
             expected_cert_email=args.cert_email,
             expected_cert_oidc_issuer=args.cert_oidc_issuer,
+            offline_rekor_entry=entry,
         )
 
         if result:

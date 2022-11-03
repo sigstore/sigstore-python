@@ -29,6 +29,7 @@ import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
+from securesystemslib.formats import encode_canonical
 
 from sigstore._internal.ctfe import CTKeyring
 
@@ -48,15 +49,97 @@ _STAGING_REKOR_CTFE_PUBKEY = resources.read_binary(
 )
 
 
+class RekorBundle(BaseModel):
+    """
+    Represents an offline Rekor bundle.
+
+    This model contains most of the same information as `RekorEntry`, but
+    with a slightly different layout.
+
+    See: <https://github.com/sigstore/cosign/blob/main/specs/SIGNATURE_SPEC.md#properties>
+    """
+
+    class Config:
+        allow_population_by_field_name = True
+
+    class _Payload(BaseModel):
+        body: StrictStr = Field(alias="body")
+        integrated_time: StrictInt = Field(alias="integratedTime")
+        log_index: StrictInt = Field(alias="logIndex")
+        log_id: StrictStr = Field(alias="logID")
+
+        class Config:
+            allow_population_by_field_name = True
+
+    signed_entry_timestamp: StrictStr = Field(alias="SignedEntryTimestamp")
+    payload: RekorBundle._Payload = Field(alias="Payload")
+
+    def to_entry(self) -> RekorEntry:
+        """
+        Creates a `RekorEntry` from this offline Rekor bundle.
+        """
+
+        return RekorEntry(
+            uuid=None,
+            body=self.payload.body,
+            integrated_time=self.payload.integrated_time,
+            log_id=self.payload.log_id,
+            log_index=self.payload.log_index,
+            inclusion_proof=None,
+            signed_entry_timestamp=self.signed_entry_timestamp,
+        )
+
+
 @dataclass(frozen=True)
 class RekorEntry:
-    uuid: str
+    """
+    Represents a Rekor log entry.
+
+    Log entries are retrieved from Rekor after signing or verification events,
+    or generated from "offline" Rekor bundles supplied by the user.
+    """
+
+    uuid: Optional[str]
+    """
+    This entry's unique ID in the Rekor instance it was retrieved from.
+
+    For sharded Rekor deployments, IDs are unique per-shard.
+
+    Not present for `RekorEntry` instances loaded from offline bundles.
+    """
+
     body: str
+    """
+    The base64-encoded body of the Rekor entry.
+    """
+
     integrated_time: int
+    """
+    The UNIX time at which this entry was integrated into the Rekor log.
+    """
+
     log_id: str
+    """
+    The log's ID (as the SHA256 hash of the DER-encoded public key for the log
+    at the time of entry inclusion).
+    """
+
     log_index: int
-    verification: dict
-    raw_data: dict
+    """
+    The index of this entry within the log.
+    """
+
+    inclusion_proof: Optional[RekorInclusionProof]
+    """
+    An optional inclusion proof for this log entry.
+
+    Only present for entries retrieved from online logs.
+    """
+
+    signed_entry_timestamp: str
+    """
+    The base64-encoded Signed Entry Timestamp (SET) for this log entry.
+    """
 
     @classmethod
     def from_response(cls, dict_: Dict[str, Any]) -> RekorEntry:
@@ -73,9 +156,42 @@ class RekorEntry:
             integrated_time=entry["integratedTime"],
             log_id=entry["logID"],
             log_index=entry["logIndex"],
-            verification=entry["verification"],
-            raw_data=entry,
+            inclusion_proof=RekorInclusionProof.parse_obj(
+                entry["verification"]["inclusionProof"]
+            ),
+            signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
         )
+
+    def to_bundle(self) -> RekorBundle:
+        """
+        Returns a `RekorBundle` for this `RekorEntry`.
+        """
+
+        return RekorBundle(
+            signed_entry_timestamp=self.signed_entry_timestamp,
+            payload=RekorBundle._Payload(
+                body=self.body,
+                integrated_time=self.integrated_time,
+                log_index=self.log_index,
+                log_id=self.log_id,
+            ),
+        )
+
+    def encode_canonical(self) -> bytes:
+        """
+        Returns a canonicalized JSON (RFC 8785) representation of the Rekor log entry.
+
+        This encoded representation is suitable for verification against
+        the Signed Entry Timestamp.
+        """
+        payload = {
+            "body": self.body,
+            "integratedTime": self.integrated_time,
+            "logID": self.log_id,
+            "logIndex": self.log_index,
+        }
+
+        return encode_canonical(payload).encode()  # type: ignore
 
 
 @dataclass(frozen=True)
@@ -180,7 +296,7 @@ class RekorEntries(Endpoint):
         sha256_artifact_hash: str,
         b64_cert: str,
     ) -> RekorEntry:
-        # TODO(ww): Dedupe this payload construction with the retrive endpoint below.
+        # TODO(ww): Dedupe this payload construction with the retrieve endpoint below.
         data = {
             "kind": "hashedrekord",
             "apiVersion": "0.0.1",

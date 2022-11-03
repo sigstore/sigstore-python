@@ -77,12 +77,30 @@ def pytest_configure(config):
 
 
 @pytest.fixture
+def asset():
+    def _asset(name: str) -> Path:
+        return _ASSETS / name
+
+    return _asset
+
+
+@pytest.fixture
 def signed_asset():
     def _signed_asset(name: str) -> Tuple[bytes, bytes, bytes]:
         file = _ASSETS / name
         cert = _ASSETS / f"{name}.crt"
         sig = _ASSETS / f"{name}.sig"
+        bundle = _ASSETS / f"{name}.rekor"
 
-        return (file.read_bytes(), cert.read_bytes(), sig.read_bytes())
+        bundle_bytes = None
+        if bundle.is_file():
+            bundle_bytes = bundle.read_bytes()
+
+        return (
+            file.read_bytes(),
+            cert.read_bytes().rstrip(),
+            sig.read_bytes().rstrip(),
+            bundle_bytes,
+        )
 
     return _signed_asset

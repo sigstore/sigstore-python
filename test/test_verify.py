@@ -14,6 +14,7 @@
 
 import pytest
 
+from sigstore._internal.rekor.client import RekorBundle
 from sigstore._verify import (
     CertificateVerificationFailure,
     VerificationFailure,
@@ -48,6 +49,15 @@ def test_verifier_multiple_verifications(signed_asset):
     verifier = Verifier.staging()
     for assets in [a_assets, b_assets]:
         assert verifier.verify(assets[0], assets[1], assets[2])
+
+
+@pytest.mark.online
+def test_verifier_offline_rekor_bundle(signed_asset):
+    assets = signed_asset("offline-rekor.txt")
+    entry = RekorBundle.parse_raw(assets[3]).to_entry()
+
+    verifier = Verifier.staging()
+    assert verifier.verify(assets[0], assets[1], assets[2], offline_rekor_entry=entry)
 
 
 def test_verify_result_boolish():

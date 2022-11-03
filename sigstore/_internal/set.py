@@ -21,7 +21,6 @@ import base64
 import cryptography.hazmat.primitives.asymmetric.ec as ec
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from securesystemslib.formats import encode_canonical
 
 from sigstore._internal.rekor import RekorClient, RekorEntry
 
@@ -34,27 +33,15 @@ def verify_set(client: RekorClient, entry: RekorEntry) -> None:
     """
     Verify the Signed Entry Timestamp for a given Rekor `entry` using the given `client`.
     """
-
-    # Put together the payload
-    #
-    # This involves removing any non-required fields (verification and attestation) and then
-    # canonicalizing the remaining JSON in accordance with IETF's RFC 8785.
-    raw_data = entry.raw_data.copy()
-    raw_data.pop("verification", None)
-    raw_data.pop("attestation", None)
-    canon_data: bytes = encode_canonical(raw_data).encode()
-
     # Decode the SET field
-    signed_entry_ts: bytes = base64.b64decode(
-        entry.verification["signedEntryTimestamp"].encode()
-    )
+    signed_entry_ts: bytes = base64.b64decode(entry.signed_entry_timestamp)
 
     # Validate the SET
     try:
         client._pubkey.verify(
             signature=signed_entry_ts,
-            data=canon_data,
+            data=entry.encode_canonical(),
             signature_algorithm=ec.ECDSA(hashes.SHA256()),
         )
     except InvalidSignature as inval_sig:
-        raise InvalidSetError from inval_sig
+        raise InvalidSetError("invalid signature") from inval_sig

@@ -12,10 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+
 import pytest
 from pydantic import ValidationError
 
 from sigstore._internal.rekor import client
+
+
+class TestRekorBundle:
+    def test_parses_and_converts_to_log_entry(self, asset):
+        path = asset("example.bundle")
+        bundle = client.RekorBundle.parse_file(path)
+
+        assert bundle.payload.integrated_time == 1624396085
+        assert bundle.payload.log_index == 5179
+        assert (
+            bundle.payload.log_id
+            == "c0d23d6ad406973f9559f3ba2d1ca01f84147d8ffc5b8445c224f98b9591801d"
+        )
+
+        raw = json.loads(path.read_text())
+        assert raw["SignedEntryTimestamp"] == bundle.signed_entry_timestamp
+        assert raw["Payload"]["body"] == bundle.payload.body
+
+        entry = bundle.to_entry()
+        assert isinstance(entry, client.RekorEntry)
+        assert entry.uuid is None
+        assert entry.body == bundle.payload.body
+        assert entry.integrated_time == bundle.payload.integrated_time
+        assert entry.log_id == bundle.payload.log_id
+        assert entry.log_index == bundle.payload.log_index
+        assert entry.inclusion_proof is None
+        assert entry.signed_entry_timestamp == bundle.signed_entry_timestamp
+
+        # Round-tripping from RekorBundle -> RekorEntry -> RekorBundle is lossless.
+        assert entry.to_bundle() == bundle
 
 
 class TestRekorInclusionProof:
