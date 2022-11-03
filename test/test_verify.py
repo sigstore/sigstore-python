@@ -64,3 +64,43 @@ def test_verify_result_boolish():
     assert not VerificationFailure(reason="foo")
     assert not CertificateVerificationFailure(reason="foo", exception=ValueError("bar"))
     assert VerificationSuccess()
+
+
+@pytest.mark.online
+def test_verifier_issuer(signed_asset):
+    a_assets = signed_asset("a.txt")
+
+    verifier = Verifier.staging()
+    assert verifier.verify(
+        a_assets[0],
+        a_assets[1],
+        a_assets[2],
+        expected_cert_oidc_issuer="https://github.com/login/oauth",
+    )
+
+
+@pytest.mark.online
+def test_verifier_san_email(signed_asset):
+    a_assets = signed_asset("a.txt")
+
+    verifier = Verifier.staging()
+    assert verifier.verify(
+        a_assets[0],
+        a_assets[1],
+        a_assets[2],
+        expected_cert_email="william@yossarian.net",
+    )
+
+
+@pytest.mark.online
+def test_verifier_san_uri(signed_asset):
+    a_assets = signed_asset("c.txt")
+
+    verifier = Verifier.staging()
+    assert verifier.verify(
+        a_assets[0],
+        a_assets[1],
+        a_assets[2],
+        expected_cert_email="https://github.com/sigstore/"
+        "sigstore-python/.github/workflows/ci.yml@refs/pull/288/merge",
+    )
