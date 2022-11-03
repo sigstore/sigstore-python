@@ -123,7 +123,7 @@ class Verifier:
         input_: bytes,
         certificate: bytes,
         signature: bytes,
-        expected_cert_email: Optional[str] = None,
+        expected_cert_identity: Optional[str] = None,
         expected_cert_oidc_issuer: Optional[str] = None,
         offline_rekor_entry: Optional[RekorEntry] = None,
     ) -> VerificationResult:
@@ -135,7 +135,8 @@ class Verifier:
 
         `signature` is a base64-encoded signature for `file`.
 
-        `expected_cert_email` is the expected Subject Alternative Name (SAN) within `certificate`.
+        `expected_cert_identity` is the expected Subject Alternative Name (SAN)
+        within `certificate`.
 
         `expected_cert_oidc_issuer` is the expected OIDC Issuer Extension within `certificate`.
 
@@ -207,16 +208,16 @@ class Verifier:
                 reason="Extended usage does not contain `code signing`"
             )
 
-        if expected_cert_email is not None:
+        if expected_cert_identity is not None:
             # Check that SubjectAlternativeName contains signer identity
             san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-            if expected_cert_email not in san_ext.value.get_values_for_type(
+            if expected_cert_identity not in san_ext.value.get_values_for_type(
                 RFC822Name
-            ) and expected_cert_email not in san_ext.value.get_values_for_type(
+            ) and expected_cert_identity not in san_ext.value.get_values_for_type(
                 UniformResourceIdentifier
             ):
                 return VerificationFailure(
-                    reason=f"Subject name does not contain identity: {expected_cert_email}"
+                    reason=f"Subject name does not contain identity: {expected_cert_identity}"
                 )
 
         if expected_cert_oidc_issuer is not None:
