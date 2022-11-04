@@ -104,3 +104,17 @@ def test_verifier_san_uri(signed_asset):
         expected_cert_identity="https://github.com/sigstore/"
         "sigstore-python/.github/workflows/ci.yml@refs/pull/288/merge",
     )
+
+
+@pytest.mark.online
+def test_verifier_issuer_and_san(signed_asset):
+    a_assets = signed_asset("a.txt")
+
+    verifier = Verifier.staging()
+    assert verifier.verify(
+        a_assets[0],
+        a_assets[1],
+        a_assets[2],
+        expected_cert_identity="william@yossarian.net",
+        expected_cert_oidc_issuer="https://github.com/login/oauth",
+    )
