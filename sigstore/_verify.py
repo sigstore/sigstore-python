@@ -34,9 +34,6 @@ from cryptography.x509 import (
     ExtensionNotFound,
     KeyUsage,
     ObjectIdentifier,
-    RFC822Name,
-    SubjectAlternativeName,
-    UniformResourceIdentifier,
     load_pem_x509_certificate,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
@@ -54,6 +51,7 @@ from sigstore._internal.merkle import (
 )
 from sigstore._internal.rekor import RekorClient, RekorEntry
 from sigstore._internal.set import InvalidSetError, verify_set
+from sigstore._utils import cert_contains_identity
 
 logger = logging.getLogger(__name__)
 
@@ -208,17 +206,12 @@ class Verifier:
                 reason="Extended usage does not contain `code signing`"
             )
 
-        if expected_cert_identity is not None:
-            # Check that SubjectAlternativeName contains signer identity
-            san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-            if expected_cert_identity not in san_ext.value.get_values_for_type(
-                RFC822Name
-            ) and expected_cert_identity not in san_ext.value.get_values_for_type(
-                UniformResourceIdentifier
-            ):
-                return VerificationFailure(
-                    reason=f"Subject name does not contain identity: {expected_cert_identity}"
-                )
+        if expected_cert_identity is not None and not cert_contains_identity(
+            cert, expected_cert_identity
+        ):
+            return VerificationFailure(
+                reason=f"Subject name does not contain identity: {expected_cert_identity}"
+            )
 
         if expected_cert_oidc_issuer is not None:
             # Check that the OIDC issuer extension is present, and contains the expected
