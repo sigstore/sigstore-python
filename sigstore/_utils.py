@@ -23,6 +23,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import (
     Certificate,
+    OtherName,
     RFC822Name,
     SubjectAlternativeName,
     UniformResourceIdentifier,
@@ -72,8 +73,9 @@ def cert_contains_identity(cert: Certificate, expected_cert_identity: str) -> bo
     Check that the certificate's SubjectAlternativeName contains a given identity.
     """
     san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-    return expected_cert_identity in san_ext.value.get_values_for_type(
-        RFC822Name
-    ) or expected_cert_identity in san_ext.value.get_values_for_type(
-        UniformResourceIdentifier
+    return (
+        expected_cert_identity in san_ext.value.get_values_for_type(RFC822Name)
+        or expected_cert_identity
+        in san_ext.value.get_values_for_type(UniformResourceIdentifier)
+        or expected_cert_identity in san_ext.value.get_values_for_type(OtherName)
     )
