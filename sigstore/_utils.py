@@ -23,6 +23,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import (
     Certificate,
+    ObjectIdentifier,
     OtherName,
     RFC822Name,
     SubjectAlternativeName,
@@ -77,5 +78,8 @@ def cert_contains_identity(cert: Certificate, expected_cert_identity: str) -> bo
         expected_cert_identity in san_ext.value.get_values_for_type(RFC822Name)
         or expected_cert_identity
         in san_ext.value.get_values_for_type(UniformResourceIdentifier)
-        or expected_cert_identity in san_ext.value.get_values_for_type(OtherName)
+        or OtherName(
+            ObjectIdentifier("1.3.6.1.4.1.57264.1.7"), expected_cert_identity.encode()
+        )
+        in san_ext.value.get_values_for_type(OtherName)
     )
