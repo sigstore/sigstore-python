@@ -16,6 +16,7 @@
 Shared utilities.
 """
 
+import base64
 import hashlib
 from typing import Union
 
@@ -53,6 +54,14 @@ def load_pem_public_key(key_pem: bytes) -> PublicKey:
         raise InvalidKey(f"invalid key format (not ECDSA or RSA): {key}")
 
     return key
+
+
+def base64_encode_pem_cert(cert: Certificate) -> str:
+    """
+    Returns a string containing a base64-encoded PEM-encoded X.509 certificate.
+    """
+
+    return base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
 
 
 def key_id(key: PublicKey) -> bytes:

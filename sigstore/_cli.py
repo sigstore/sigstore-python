@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import base64
 import logging
 import os
 import sys
@@ -46,6 +47,7 @@ from sigstore._verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,
     VerificationFailure,
+    VerificationMaterials,
     Verifier,
 )
 
@@ -544,11 +546,11 @@ def _verify(args: argparse.Namespace) -> None:
     for file, inputs in input_map.items():
         # Load the signing certificate
         logger.debug(f"Using certificate from: {inputs['cert']}")
-        certificate = inputs["cert"].read_bytes().rstrip()
+        cert_pem = inputs["cert"].read_text()
 
         # Load the signature
         logger.debug(f"Using signature from: {inputs['sig']}")
-        signature = inputs["sig"].read_bytes().rstrip()
+        b64_signature = inputs["sig"].read_text()
 
         entry: Optional[RekorEntry] = None
         if inputs["bundle"].is_file():
@@ -558,13 +560,17 @@ def _verify(args: argparse.Namespace) -> None:
 
         logger.debug(f"Verifying contents from: {file}")
 
-        result = verifier.verify(
+        materials = VerificationMaterials(
             input_=file.read_bytes(),
-            certificate=certificate,
-            signature=signature,
+            cert_pem=cert_pem,
+            signature=base64.b64decode(b64_signature),
+            offline_rekor_entry=entry,
+        )
+
+        result = verifier.verify(
+            materials=materials,
             expected_cert_identity=args.cert_identity,
             expected_cert_oidc_issuer=args.cert_oidc_issuer,
-            offline_rekor_entry=entry,
         )
 
         if result:
