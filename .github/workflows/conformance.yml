@@ -1,0 +1,23 @@
+name: Conformance Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  conformance:
+    permissions:
+      # Needed to access the workflow's OIDC identity.
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
+      - name: install sigstore-python
+        run: python -m pip install .
+      - uses: trailofbits/sigstore-conformance@v0.0.1
+        with:
+          entrypoint: ${{ github.workspace }}/.github/sigstore-python-conformance
