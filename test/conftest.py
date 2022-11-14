@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import os
 from pathlib import Path
 from typing import Tuple
@@ -23,6 +24,9 @@ from sigstore._internal.oidc.ambient import (
     GitHubOidcPermissionCredentialError,
     detect_credential,
 )
+from sigstore._internal.rekor.client import RekorBundle
+from sigstore._verify import VerificationMaterials
+from sigstore._verify.policy import VerificationSuccess
 
 _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
@@ -85,22 +89,34 @@ def asset():
 
 
 @pytest.fixture
-def signed_asset():
-    def _signed_asset(name: str) -> Tuple[bytes, bytes, bytes]:
+def signing_materials():
+    def _signing_materials(name: str) -> Tuple[bytes, bytes, bytes]:
         file = _ASSETS / name
         cert = _ASSETS / f"{name}.crt"
         sig = _ASSETS / f"{name}.sig"
         bundle = _ASSETS / f"{name}.rekor"
 
-        bundle_bytes = None
+        entry = None
         if bundle.is_file():
-            bundle_bytes = bundle.read_bytes()
+            bundle = RekorBundle.parse_file(bundle)
+            entry = bundle.to_entry()
 
-        return (
-            file.read_bytes(),
-            cert.read_bytes().rstrip(),
-            sig.read_bytes().rstrip(),
-            bundle_bytes,
+        materials = VerificationMaterials(
+            input_=file.read_bytes(),
+            cert_pem=cert.read_text(),
+            signature=base64.b64decode(sig.read_text()),
+            offline_rekor_entry=entry,
         )
 
-    return _signed_asset
+        return materials
+
+    return _signing_materials
+
+
+@pytest.fixture
+def null_policy():
+    class NullPolicy:
+        def verify(self, cert):
+            return VerificationSuccess()
+
+    return NullPolicy()

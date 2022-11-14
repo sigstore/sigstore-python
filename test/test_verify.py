@@ -14,12 +14,12 @@
 
 import pytest
 
-from sigstore._internal.rekor.client import RekorBundle
 from sigstore._verify import (
     CertificateVerificationFailure,
     VerificationFailure,
     VerificationSuccess,
     Verifier,
+    policy,
 )
 
 
@@ -34,30 +34,28 @@ def test_verifier_staging():
 
 
 @pytest.mark.online
-def test_verifier_one_verification(signed_asset):
-    a_assets = signed_asset("a.txt")
+def test_verifier_one_verification(signing_materials, null_policy):
+    materials = signing_materials("a.txt")
 
     verifier = Verifier.staging()
-    assert verifier.verify(a_assets[0], a_assets[1], a_assets[2])
+    assert verifier.verify(materials, null_policy)
 
 
 @pytest.mark.online
-def test_verifier_multiple_verifications(signed_asset):
-    a_assets = signed_asset("a.txt")
-    b_assets = signed_asset("b.txt")
+def test_verifier_multiple_verifications(signing_materials, null_policy):
+    a_materials = signing_materials("a.txt")
+    b_materials = signing_materials("b.txt")
 
     verifier = Verifier.staging()
-    for assets in [a_assets, b_assets]:
-        assert verifier.verify(assets[0], assets[1], assets[2])
+    for materials in [a_materials, b_materials]:
+        assert verifier.verify(materials, null_policy)
 
 
-@pytest.mark.online
-def test_verifier_offline_rekor_bundle(signed_asset):
-    assets = signed_asset("offline-rekor.txt")
-    entry = RekorBundle.parse_raw(assets[3]).to_entry()
+def test_verifier_offline_rekor_bundle(signing_materials, null_policy):
+    materials = signing_materials("offline-rekor.txt")
 
     verifier = Verifier.staging()
-    assert verifier.verify(assets[0], assets[1], assets[2], offline_rekor_entry=entry)
+    assert verifier.verify(materials, null_policy)
 
 
 def test_verify_result_boolish():
@@ -67,54 +65,33 @@ def test_verify_result_boolish():
 
 
 @pytest.mark.online
-def test_verifier_issuer(signed_asset):
-    a_assets = signed_asset("a.txt")
+def test_verifier_email_identity(signing_materials):
+    materials = signing_materials("a.txt")
+    policy_ = policy.Identity(
+        identity="william@yossarian.net",
+        issuer="https://github.com/login/oauth",
+    )
 
     verifier = Verifier.staging()
     assert verifier.verify(
-        a_assets[0],
-        a_assets[1],
-        a_assets[2],
-        expected_cert_oidc_issuer="https://github.com/login/oauth",
+        materials,
+        policy_,
     )
 
 
 @pytest.mark.online
-def test_verifier_san_email(signed_asset):
-    a_assets = signed_asset("a.txt")
-
-    verifier = Verifier.staging()
-    assert verifier.verify(
-        a_assets[0],
-        a_assets[1],
-        a_assets[2],
-        expected_cert_identity="william@yossarian.net",
+def test_verifier_uri_identity(signing_materials):
+    materials = signing_materials("c.txt")
+    policy_ = policy.Identity(
+        identity=(
+            "https://github.com/sigstore/"
+            "sigstore-python/.github/workflows/ci.yml@refs/pull/288/merge"
+        ),
+        issuer="https://token.actions.githubusercontent.com",
     )
 
-
-@pytest.mark.online
-def test_verifier_san_uri(signed_asset):
-    a_assets = signed_asset("c.txt")
-
     verifier = Verifier.staging()
     assert verifier.verify(
-        a_assets[0],
-        a_assets[1],
-        a_assets[2],
-        expected_cert_identity="https://github.com/sigstore/"
-        "sigstore-python/.github/workflows/ci.yml@refs/pull/288/merge",
-    )
-
-
-@pytest.mark.online
-def test_verifier_issuer_and_san(signed_asset):
-    a_assets = signed_asset("a.txt")
-
-    verifier = Verifier.staging()
-    assert verifier.verify(
-        a_assets[0],
-        a_assets[1],
-        a_assets[2],
-        expected_cert_identity="william@yossarian.net",
-        expected_cert_oidc_issuer="https://github.com/login/oauth",
+        materials,
+        policy_,
     )
