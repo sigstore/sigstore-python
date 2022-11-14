@@ -25,7 +25,7 @@ try:
     from typing import Protocol
 except ImportError:
     # TODO(ww): Remove when our minimum Python is 3.8.
-    from typing_extensions import Protocol
+    from typing_extensions import Protocol  # type: ignore[assignment]
 
 from cryptography.x509 import (
     Certificate,
