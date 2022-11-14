@@ -30,7 +30,7 @@ from cryptography.x509 import (
     SubjectAlternativeName,
     UniformResourceIdentifier,
 )
-from pydantic import BaseModel, StrictStr
+from pydantic import BaseModel
 
 _OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
 _OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
@@ -76,7 +76,7 @@ class AnyOf:
             )
 
 
-class _OIDCIssuerMixin(BaseModel):
+class _OIDCIssuer:
     """
     Verifies the certificate's OIDC issuer, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.1`.
@@ -84,7 +84,8 @@ class _OIDCIssuerMixin(BaseModel):
     See: <https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md#1361415726411--issuer>
     """
 
-    issuer: StrictStr
+    def __init__(self, *, issuer: str):
+        self._issuer = issuer
 
     def verify(self, cert: Certificate) -> VerificationResult:
         # Check that the OIDC issuer extension is present, and contains the expected
@@ -99,19 +100,29 @@ class _OIDCIssuerMixin(BaseModel):
         # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
         # by `get_extension_for_oid` above.
         issuer_value = oidc_issuer.value.decode()  # type: ignore[attr-defined]
-        if issuer_value != self.issuer:
+        if issuer_value != self._issuer:
             return VerificationFailure(
                 reason=(
                     "Certificate's OIDC issuer does not match "
-                    f"(got {issuer_value}, expected {self.issuer})"
+                    f"(got {issuer_value}, expected {self._issuer})"
                 )
             )
 
         return VerificationSuccess()
 
 
-class Identity(_OIDCIssuerMixin):
-    identity: StrictStr
+class Identity(_OIDCIssuer):
+    """
+    Verifies the certificate's "identity", corresponding to the X.509v3 SAN.
+    Identities are verified modulo an OIDC issuer, so the issuer's URI
+    is also required.
+
+    Supported SAN types include emails, URIs, and Sigstore-specific "other names".
+    """
+
+    def __init__(self, *, identity: str, issuer: str):
+        super().__init__(issuer=issuer)
+        self._identity = identity
 
     def verify(self, cert: Certificate) -> VerificationResult:
         issuer_verified = super().verify(cert)
@@ -120,16 +131,16 @@ class Identity(_OIDCIssuerMixin):
 
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
         verified = (
-            self.identity in san_ext.value.get_values_for_type(RFC822Name)
-            or self.identity
+            self._identity in san_ext.value.get_values_for_type(RFC822Name)
+            or self._identity
             in san_ext.value.get_values_for_type(UniformResourceIdentifier)
-            or OtherName(_OTHERNAME_OID, self.identity.encode())
+            or OtherName(_OTHERNAME_OID, self._identity.encode())
             in san_ext.value.get_values_for_type(OtherName)
         )
 
         if not verified:
             return VerificationFailure(
-                reason=f"Certificate's SANs do not match {self.identity}"
+                reason=f"Certificate's SANs do not match {self._identity}"
             )
 
         return VerificationSuccess()
