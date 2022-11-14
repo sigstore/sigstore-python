@@ -49,6 +49,7 @@ from sigstore._verify import (
     VerificationFailure,
     VerificationMaterials,
     Verifier,
+    policy,
 )
 
 logger = logging.getLogger(__name__)
@@ -567,10 +568,14 @@ def _verify(args: argparse.Namespace) -> None:
             offline_rekor_entry=entry,
         )
 
+        policy_ = policy.Identity(
+            identity=args.cert_identity,
+            issuer=args.cert_oidc_issuer,
+        )
+
         result = verifier.verify(
             materials=materials,
-            expected_cert_identity=args.cert_identity,
-            expected_cert_oidc_issuer=args.cert_oidc_issuer,
+            policy=policy_,
         )
 
         if result:

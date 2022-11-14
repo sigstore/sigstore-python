@@ -33,7 +33,6 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
     Certificate,
     ExtendedKeyUsage,
-    ExtensionNotFound,
     KeyUsage,
     ObjectIdentifier,
     load_pem_x509_certificate,
@@ -45,7 +44,6 @@ from OpenSSL.crypto import (  # type: ignore[import]
     X509StoreContext,
     X509StoreContextError,
 )
-from pydantic import BaseModel
 
 from sigstore._internal.merkle import (
     InvalidInclusionProofError,
@@ -53,7 +51,12 @@ from sigstore._internal.merkle import (
 )
 from sigstore._internal.rekor import RekorClient, RekorEntry
 from sigstore._internal.set import InvalidSetError, verify_set
-from sigstore._utils import cert_contains_identity
+from sigstore._verify.policy import (
+    VerificationFailure,
+    VerificationPolicy,
+    VerificationResult,
+    VerificationSuccess,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -133,10 +136,6 @@ class VerificationMaterials:
         self.offline_rekor_entry = offline_rekor_entry
 
 
-class VerificationPolicy:
-    pass
-
-
 class Verifier:
     def __init__(self, *, rekor: RekorClient, fulcio_certificate_chain: List[bytes]):
         """
@@ -179,17 +178,13 @@ class Verifier:
     def verify(
         self,
         materials: VerificationMaterials,
-        expected_cert_identity: Optional[str] = None,
-        expected_cert_oidc_issuer: Optional[str] = None,
+        policy: VerificationPolicy,
     ) -> VerificationResult:
         """Public API for verifying.
 
         `materials` are the `VerificationMaterials` to verify.
 
-        `expected_cert_identity` is the expected Subject Alternative Name (SAN)
-        within `certificate`.
-
-        `expected_cert_oidc_issuer` is the expected OIDC Issuer Extension within `certificate`.
+        `policy` is the `VerificationPolicy` to verify against.
 
         Returns a `VerificationResult` which will be truthy or falsey depending on
         success.
@@ -249,32 +244,9 @@ class Verifier:
                 reason="Extended usage does not contain `code signing`"
             )
 
-        if expected_cert_identity is not None and not cert_contains_identity(
-            materials.certificate, expected_cert_identity
-        ):
-            return VerificationFailure(
-                reason=f"Subject name does not contain identity: {expected_cert_identity}"
-            )
-
-        if expected_cert_oidc_issuer is not None:
-            # Check that the OIDC issuer extension is present, and contains the expected
-            # issuer string (which is probably a URL).
-            try:
-                oidc_issuer = materials.certificate.extensions.get_extension_for_oid(
-                    _OIDC_ISSUER_OID
-                ).value
-            except ExtensionNotFound:
-                return VerificationFailure(
-                    reason="Certificate does not contain OIDC issuer extension"
-                )
-
-            # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
-            # by `get_extension_for_oid` above.
-            issuer_value = oidc_issuer.value  # type: ignore[attr-defined]
-            if issuer_value != expected_cert_oidc_issuer.encode():
-                return VerificationFailure(
-                    reason=f"Certificate's OIDC issuer does not match (got {issuer_value})"
-                )
+        policy_check = policy.verify(materials.certificate)
+        if not policy_check:
+            return policy_check
 
         logger.debug("Successfully verified signing certificate validity...")
 
@@ -342,7 +314,7 @@ class Verifier:
                 return VerificationFailure(
                     reason=(
                         f"Rekor entry's signature ('{expected_sig}') does not "
-                        f"match supplied signature ('{materials.signature}')"
+                        f"match supplied signature ('{materials.signature.decode()}')"
                     )
                 )
 
@@ -408,22 +380,6 @@ class Verifier:
 
         logger.debug(f"Successfully verified Rekor entry at index {entry.log_index}")
         return VerificationSuccess()
-
-
-class VerificationResult(BaseModel):
-    success: bool
-
-    def __bool__(self) -> bool:
-        return self.success
-
-
-class VerificationSuccess(VerificationResult):
-    success: bool = True
-
-
-class VerificationFailure(VerificationResult):
-    success: bool = False
-    reason: str
 
 
 class RekorEntryMissing(VerificationFailure):
