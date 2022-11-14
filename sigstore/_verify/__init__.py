@@ -34,7 +34,6 @@ from cryptography.x509 import (
     Certificate,
     ExtendedKeyUsage,
     KeyUsage,
-    ObjectIdentifier,
     load_pem_x509_certificate,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
@@ -72,14 +71,6 @@ STAGING_FULCIO_ROOT_CERT = resources.read_binary(
 STAGING_FULCIO_INTERMEDIATE_CERT = resources.read_binary(
     "sigstore._store", "fulcio_intermediate.crt.staging.pem"
 )
-
-# From: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
-_OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
-_OIDC_GITHUB_WORKFLOW_TRIGGER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.2")
-_OIDC_GITHUB_WORKFLOW_SHA_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.3")
-_OIDC_GITHUB_WORKFLOW_NAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.4")
-_OIDC_GITHUB_WORKFLOW_REPOSITORY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.5")
-_OIDC_GITHUB_WORKFLOW_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.6")
 
 
 @dataclass(init=False)

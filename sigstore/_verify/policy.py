@@ -20,7 +20,12 @@ passed into an individual verification step are verified.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Protocol
+
+try:
+    from typing import Protocol
+except ImportError:
+    # TODO(ww): Remove when our minimum Python is 3.8.
+    from typing_extensions import Protocol
 
 from cryptography.x509 import (
     Certificate,
@@ -33,7 +38,13 @@ from cryptography.x509 import (
 )
 from pydantic import BaseModel
 
+# From: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
 _OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
+_OIDC_GITHUB_WORKFLOW_TRIGGER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.2")
+_OIDC_GITHUB_WORKFLOW_SHA_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.3")
+_OIDC_GITHUB_WORKFLOW_NAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.4")
+_OIDC_GITHUB_WORKFLOW_REPOSITORY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.5")
+_OIDC_GITHUB_WORKFLOW_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.6")
 _OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
 
 
