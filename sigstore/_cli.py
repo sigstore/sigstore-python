@@ -615,7 +615,7 @@ def _verify(args: argparse.Namespace) -> None:
 
                         Signature: {result.signature}
 
-                        Artifact hash: {result.sha256_artifact_hash}
+                        Artifact hash: {result.artifact_hash}
                         """
                     ),
                     file=sys.stderr,

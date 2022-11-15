@@ -154,6 +154,7 @@ class VerificationMaterials:
         """
         Returns a `RekorEntry` for the current signing materials.
         """
+        entry: RekorEntry | None
         if self._offline_rekor_entry is not None:
             logger.debug("using offline rekor entry")
             entry = self._offline_rekor_entry
