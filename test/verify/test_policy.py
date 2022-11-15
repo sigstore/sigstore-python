@@ -33,7 +33,7 @@ class TestAnyOf:
         assert result == VerificationFailure(reason="0 of 0 policies succeeded")
 
     def test_fails_no_children_match(self, signing_materials):
-        materials_ = signing_materials("a.txt")
+        materials = signing_materials("a.txt")
         policy_ = policy.AnyOf(
             [
                 policy.Identity(identity="foo", issuer="bar"),
@@ -41,12 +41,12 @@ class TestAnyOf:
             ]
         )
 
-        result = policy_.verify(materials_.certificate)
+        result = policy_.verify(materials.certificate)
         assert not result
         assert result == VerificationFailure(reason="0 of 2 policies succeeded")
 
     def test_succeeds(self, signing_materials):
-        materials_ = signing_materials("a.txt")
+        materials = signing_materials("a.txt")
         policy_ = policy.AnyOf(
             [
                 policy.Identity(identity="foo", issuer="bar"),
@@ -58,6 +58,21 @@ class TestAnyOf:
             ]
         )
 
-        result = policy_.verify(materials_.certificate)
+        result = policy_.verify(materials.certificate)
         assert result
         assert result == VerificationSuccess()
+
+
+class TestIdentity:
+    def test_fails_no_san_match(self, signing_materials):
+        materials = signing_materials("a.txt")
+        policy_ = policy.Identity(
+            identity="bad@ident.example.com",
+            issuer="https://github.com/login/oauth",
+        )
+
+        result = policy_.verify(materials.certificate)
+        assert not result
+        assert result == VerificationFailure(
+            reason="Certificate's SANs do not match bad@ident.example.com"
+        )
