@@ -36,7 +36,12 @@ from cryptography.x509 import (
     SubjectAlternativeName,
     UniformResourceIdentifier,
 )
-from pydantic import BaseModel
+
+from sigstore._verify.models import (
+    VerificationFailure,
+    VerificationResult,
+    VerificationSuccess,
+)
 
 # From: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
 _OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
@@ -46,22 +51,6 @@ _OIDC_GITHUB_WORKFLOW_NAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.4")
 _OIDC_GITHUB_WORKFLOW_REPOSITORY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.5")
 _OIDC_GITHUB_WORKFLOW_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.6")
 _OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
-
-
-class VerificationResult(BaseModel):
-    success: bool
-
-    def __bool__(self) -> bool:
-        return self.success
-
-
-class VerificationSuccess(VerificationResult):
-    success: bool = True
-
-
-class VerificationFailure(VerificationResult):
-    success: bool = False
-    reason: str
 
 
 class VerificationPolicy(Protocol):
