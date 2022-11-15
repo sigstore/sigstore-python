@@ -14,13 +14,9 @@
 
 import pytest
 
-from sigstore._verify import (
-    CertificateVerificationFailure,
-    VerificationFailure,
-    VerificationSuccess,
-    Verifier,
-    policy,
-)
+from sigstore._verify import policy
+from sigstore._verify.models import VerificationFailure, VerificationSuccess
+from sigstore._verify.verifier import CertificateVerificationFailure, Verifier
 
 
 def test_verifier_production():
