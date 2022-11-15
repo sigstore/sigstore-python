@@ -18,12 +18,10 @@ Verification API machinery.
 
 from __future__ import annotations
 
-import base64
 import datetime
-import json
 import logging
 from importlib import resources
-from typing import List, Optional, cast
+from typing import List, cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -45,8 +43,10 @@ from sigstore._internal.merkle import (
     InvalidInclusionProofError,
     verify_merkle_inclusion,
 )
-from sigstore._internal.rekor import RekorClient, RekorEntry
+from sigstore._internal.rekor import RekorClient
 from sigstore._internal.set import InvalidSetError, verify_set
+from sigstore._verify.models import InvalidRekorEntry as InvalidRekorEntryError
+from sigstore._verify.models import RekorEntryMissing as RekorEntryMissingError
 from sigstore._verify.models import (
     VerificationFailure,
     VerificationMaterials,
@@ -79,7 +79,7 @@ class RekorEntryMissing(VerificationFailure):
 
     reason: str = "Rekor has no entry for the given verification materials"
     signature: str
-    sha256_artifact_hash: str
+    artifact_hash: str
 
 
 class CertificateVerificationFailure(VerificationFailure):
@@ -166,11 +166,13 @@ class Verifier:
         # 2) Verify that the signing certificate belongs to the signer.
         # 3) Verify that the artifact signature was signed by the public key in the
         #    signing certificate.
-        # 4) Verify the inclusion proof supplied by Rekor for this artifact,
+        # 4) Verify that the Rekor entry is consistent with the other signing
+        #    materials (preventing CVE-2022-36056)
+        # 5) Verify the inclusion proof supplied by Rekor for this artifact,
         #    if we're doing online verification.
-        # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this
+        # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this
         #    artifact.
-        # 6) Verify that the signing certificate was valid at the time of
+        # 7) Verify that the signing certificate was valid at the time of
         #    signing by comparing the expiry against the integrated timestamp.
 
         # 1) Verify that the signing certificate is signed by the root certificate and that the
@@ -222,97 +224,24 @@ class Verifier:
 
         logger.debug("Successfully verified signature...")
 
-        entry: Optional[RekorEntry]
-        if materials.offline_rekor_entry is not None:
-            # NOTE: CVE-2022-36056 in cosign happened because the offline Rekor
-            # entry was not matched against the other signing materials: an
-            # adversary could present a *valid but unrelated* Rekor entry
-            # and cosign would perform verification "as if" the entry was a
-            # legitimate entry for the certificate and signature.
-            # The steps below avoid this by decomposing the Rekor entry's
-            # body and confirming that it contains the same signature,
-            # certificate, and artifact hash as the rest of the verification
-            # process.
-
-            # TODO(ww): This should all go in a separate API, probably under the
-            # RekorEntry class.
-            logger.debug(
-                "offline Rekor entry: ensuring contents match signing materials"
+        # 4) Retrieve the Rekor entry for this artifact (potentially from
+        # an offline entry), confirming its consistency with the other
+        # artifacts in the process.
+        try:
+            entry = materials.rekor_entry(self._rekor)
+        except RekorEntryMissingError:
+            return RekorEntryMissing(
+                signature=materials.signature, artifact_hash=materials.artifact_hash
+            )
+        except InvalidRekorEntryError:
+            return VerificationFailure(
+                reason="Rekor entry contents do not match other signing materials"
             )
 
-            try:
-                entry_body = json.loads(
-                    base64.b64decode(materials.offline_rekor_entry.body)
-                )
-            except Exception:
-                return VerificationFailure(
-                    reason="couldn't parse offline Rekor entry's body"
-                )
-
-            # The Rekor entry's body should be a hashedrekord object.
-            # TODO: This should use a real data model, ideally generated from
-            # Rekor's official JSON schema.
-            kind, version = entry_body.get("kind"), entry_body.get("apiVersion")
-            if kind != "hashedrekord" or version != "0.0.1":
-                return VerificationFailure(
-                    reason=(
-                        f"Rekor entry is of unsupported kind ('{kind}') or API "
-                        f"version ('{version}')"
-                    )
-                )
-
-            spec = entry_body["spec"]
-            expected_sig, expected_cert, expected_hash = (
-                spec["signature"]["content"],
-                load_pem_x509_certificate(
-                    base64.b64decode(spec["signature"]["publicKey"]["content"])
-                ),
-                spec["data"]["hash"]["value"],
-            )
-
-            if base64.b64decode(expected_sig) != materials.signature:
-                return VerificationFailure(
-                    reason=(
-                        f"Rekor entry's signature ('{expected_sig}') does not "
-                        f"match supplied signature ('{materials.signature.decode()}')"
-                    )
-                )
-
-            if expected_cert != materials.certificate:
-                return VerificationFailure(
-                    reason=(
-                        f"Rekor entry's certificate ('{expected_cert}') does not "
-                        f"match supplied certificate ('{materials.certificate}')"
-                    )
-                )
-
-            if expected_hash != materials.artifact_hash:
-                return VerificationFailure(
-                    reason=(
-                        f"Rekor entry's hash ('{expected_hash}') does not "
-                        f"match supplied hash ('{materials.artifact_hash}')"
-                    )
-                )
-
-            logger.debug("offline Rekor entry matches signing artifacts!")
-            entry = materials.offline_rekor_entry
-        else:
-            # Retrieve the relevant Rekor entry to verify the inclusion proof and SET.
-            entry = self._rekor.log.entries.retrieve.post(
-                materials.signature,
-                materials.artifact_hash,
-                materials.certificate,
-            )
-            if entry is None:
-                return RekorEntryMissing(
-                    signature=materials.signature,
-                    sha256_artifact_hash=materials.artifact_hash,
-                )
-
-        # 4) Verify the inclusion proof supplied by Rekor for this artifact.
+        # 5) Verify the inclusion proof supplied by Rekor for this artifact.
         #
         # We skip the inclusion proof for offline Rekor bundles.
-        if materials.offline_rekor_entry is None:
+        if materials._offline_rekor_entry is None:
             try:
                 verify_merkle_inclusion(entry)
             except InvalidInclusionProofError as inval_inclusion_proof:
@@ -322,13 +251,13 @@ class Verifier:
         else:
             logger.debug("offline Rekor entry: skipping Merkle inclusion proof")
 
-        # 5) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
+        # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         try:
             verify_set(self._rekor, entry)
         except InvalidSetError as inval_set:
             return VerificationFailure(reason=f"invalid Rekor entry SET: {inval_set}")
 
-        # 6) Verify that the signing certificate was valid at the time of signing
+        # 7) Verify that the signing certificate was valid at the time of signing
         integrated_time = datetime.datetime.utcfromtimestamp(entry.integrated_time)
         if (
             integrated_time < materials.certificate.not_valid_before

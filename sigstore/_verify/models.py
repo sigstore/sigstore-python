@@ -18,13 +18,19 @@ Common (base) models for the verification APIs.
 
 from __future__ import annotations
 
+import base64
 import hashlib
+import json
+import logging
 from dataclasses import dataclass
 
 from cryptography.x509 import Certificate, load_pem_x509_certificate
 from pydantic import BaseModel
 
-from sigstore._internal.rekor import RekorEntry
+from sigstore._internal.rekor import RekorClient, RekorEntry
+from sigstore._utils import base64_encode_pem_cert
+
+logger = logging.getLogger(__name__)
 
 
 class VerificationResult(BaseModel):
@@ -58,6 +64,31 @@ class VerificationFailure(VerificationResult):
     reason: str
 
 
+class RekorEntryMissing(Exception):
+    """
+    Raised if `VerificationMaterials.rekor_entry()` fails to find an entry
+    in the Rekor log.
+
+    This is an internal exception; users should not see it.
+    """
+
+    pass
+
+
+class InvalidRekorEntry(Exception):
+    """
+    Raised if the effective Rekor entry in `VerificationMaterials.rekor_entry()`
+    does not match the other materials in `VerificationMaterials`.
+
+    This can only happen in two scenarios:
+
+    * A user has supplied the wrong offline entry, potentially maliciously;
+    * The Rekor log responded with the wrong entry, suggesting a server error.
+    """
+
+    pass
+
+
 @dataclass(init=False)
 class VerificationMaterials:
     """
@@ -84,7 +115,7 @@ class VerificationMaterials:
     The raw signature.
     """
 
-    offline_rekor_entry: RekorEntry | None
+    _offline_rekor_entry: RekorEntry | None
     """
     An optional offline Rekor entry.
 
@@ -95,6 +126,14 @@ class VerificationMaterials:
     proofs, and as such are verified only against their Signed Entry Timestamps.
     This is a slightly weaker verification verification mode, as it does not
     demonstrate inclusion in the log.
+
+    NOTE: This is **intentionally not a public field**. The `rekor_entry()`
+    method should be used to access a Rekor log entry for these materials,
+    as it performs the online lookup if an offline entry is not provided
+    and, **critically**, validates that the entry's contents match the other
+    signing materials. Without this check an adversary could present a
+    **valid but unrelated** Rekor entry during verification, similar
+    to CVE-2022-36056 in cosign.
     """
 
     def __init__(
@@ -109,4 +148,57 @@ class VerificationMaterials:
         self.artifact_hash = hashlib.sha256(self.input_).hexdigest()
         self.certificate = load_pem_x509_certificate(cert_pem.encode())
         self.signature = signature
-        self.offline_rekor_entry = offline_rekor_entry
+        self._offline_rekor_entry = offline_rekor_entry
+
+    def rekor_entry(self, client: RekorClient) -> RekorEntry:
+        """
+        Returns a `RekorEntry` for the current signing materials.
+        """
+        if self._offline_rekor_entry is not None:
+            logger.debug("using offline rekor entry")
+            entry = self._offline_rekor_entry
+        else:
+            logger.debug("retrieving rekor entry")
+            entry = client.log.entries.retrieve.post(
+                self.signature,
+                self.artifact_hash,
+                self.certificate,
+            )
+
+        if entry is None:
+            raise RekorEntryMissing
+
+        # To verify that an entry matches our other signing materials,
+        # we transform our signature, artifact hash, and certificate
+        # into a "hashedrekord" style payload and compare it against the
+        # entry's own body.
+        #
+        # This is done by:
+        #
+        # * Serializing the certificate as PEM, and then base64-encoding it;
+        # * base64-encoding the signature;
+        # * Packing the resulting cert, signature, and hash into the
+        #   hashedrekord body format;
+        # * Comparing that body against the entry's own body, which
+        #   is extracted from its base64(json(...)) encoding.
+
+        logger.debug("Rekor entry: ensuring contents match signing materials")
+
+        expected_body = {
+            "kind": "hashedrekord",
+            "apiVersion": "0.0.1",
+            "spec": {
+                "signature": {
+                    "content": base64.b64encode(self.signature).decode(),
+                    "publicKey": {"content": base64_encode_pem_cert(self.certificate)},
+                },
+                "data": {"hash": {"algorithm": "sha256", "value": self.artifact_hash}},
+            },
+        }
+
+        actual_body = json.loads(base64.b64decode(entry.body))
+
+        if expected_body != actual_body:
+            raise InvalidRekorEntry
+
+        return entry
