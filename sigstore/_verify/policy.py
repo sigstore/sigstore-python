@@ -23,7 +23,7 @@ from abc import abstractmethod
 
 try:
     from typing import Protocol
-except ImportError:
+except ImportError:  # pragma: no cover
     # TODO(ww): Remove when our minimum Python is 3.8.
     from typing_extensions import Protocol  # type: ignore[assignment]
 
@@ -56,7 +56,7 @@ _OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
 class VerificationPolicy(Protocol):
     @abstractmethod
     def verify(self, cert: Certificate) -> VerificationResult:
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
 
 class AnyOf:
