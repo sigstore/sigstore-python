@@ -151,7 +151,7 @@ class VerificationMaterials:
         self._offline_rekor_entry = offline_rekor_entry
 
     @property
-    def has_offline_rekor_entry(self):
+    def has_offline_rekor_entry(self) -> bool:
         """
         Returns whether or not these `VerificationMaterials` contain an offline Rekor
         entry.
