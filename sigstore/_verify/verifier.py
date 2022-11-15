@@ -241,7 +241,7 @@ class Verifier:
         # 5) Verify the inclusion proof supplied by Rekor for this artifact.
         #
         # We skip the inclusion proof for offline Rekor bundles.
-        if materials._offline_rekor_entry is None:
+        if not materials.has_offline_rekor_entry:
             try:
                 verify_merkle_inclusion(entry)
             except InvalidInclusionProofError as inval_inclusion_proof:

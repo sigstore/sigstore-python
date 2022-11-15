@@ -150,6 +150,16 @@ class VerificationMaterials:
         self.signature = signature
         self._offline_rekor_entry = offline_rekor_entry
 
+    @property
+    def has_offline_rekor_entry(self):
+        """
+        Returns whether or not these `VerificationMaterials` contain an offline Rekor
+        entry.
+
+        If false, `VerificationMaterials.rekor_entry()` performs an online lookup.
+        """
+        return self._offline_rekor_entry is not None
+
     def rekor_entry(self, client: RekorClient) -> RekorEntry:
         """
         Returns a `RekorEntry` for the current signing materials.
