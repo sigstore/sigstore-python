@@ -93,10 +93,6 @@ class RekorBundle(BaseModel):
         )
 
 
-class RekorEntryMatchError(Exception):
-    pass
-
-
 @dataclass(frozen=True)
 class RekorEntry:
     """
