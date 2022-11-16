@@ -105,6 +105,54 @@ def _single_x509v3_extension(
     return decorator
 
 
+@_single_x509v3_extension(oid=_OIDC_ISSUER_OID)
+class Issuer:
+    """
+    Verifies the certificate's OIDC issuer, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.1`.
+    """
+
+
+@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_TRIGGER_OID)
+class GitHubWorkflowTrigger:
+    """
+    Verifies the certificate's GitHub Actions workflow trigger,
+    identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.2`.
+    """
+
+
+@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_SHA_OID)
+class GitHubWorkflowSHA:
+    """
+    Verifies the certificate's GitHub Actions workflow commit SHA,
+    identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.3`.
+    """
+
+
+@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_NAME_OID)
+class GitHubWorkflowName:
+    """
+    Verifies the certificate's GitHub Actions workflow name,
+    identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.4`.
+    """
+
+
+@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_REPOSITORY_OID)
+class GitHubWorkflowRepository:
+    """
+    Verifies the certificate's GitHub Actions workflow repository,
+    identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.5`.
+    """
+
+
+@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_REF_OID)
+class GitHubWorkflowRef:
+    """
+    Verifies the certificate's GitHub Actions workflow ref,
+    identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.6`.
+    """
+
+
 class VerificationPolicy(Protocol):
     @abstractmethod
     def verify(self, cert: Certificate) -> VerificationResult:
@@ -164,16 +212,6 @@ class AllOf:
         return VerificationSuccess()
 
 
-@_single_x509v3_extension(oid=_OIDC_ISSUER_OID)
-class Issuer:
-    """
-    Verifies the certificate's OIDC issuer, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.1`.
-
-    See: <https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md#1361415726411--issuer>
-    """
-
-
 class Identity:
     """
     Verifies the certificate's "identity", corresponding to the X.509v3 SAN.
@@ -209,8 +247,3 @@ class Identity:
             )
 
         return VerificationSuccess()
-
-
-@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_REF_OID)
-class GitHubWorkflowRef:
-    ...
