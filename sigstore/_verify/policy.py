@@ -85,7 +85,7 @@ class _SingleX509ExtPolicy(ABC):
         return VerificationSuccess()
 
 
-class Issuer(_SingleX509ExtPolicy):
+class OIDCIssuer(_SingleX509ExtPolicy):
     """
     Verifies the certificate's OIDC issuer, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.1`.
@@ -209,7 +209,7 @@ class Identity:
 
     def __init__(self, *, identity: str, issuer: str):
         self._identity = identity
-        self._issuer = Issuer(issuer)
+        self._issuer = OIDCIssuer(issuer)
 
     def verify(self, cert: Certificate) -> VerificationResult:
         issuer_verified: VerificationResult = self._issuer.verify(cert)
