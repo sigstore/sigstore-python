@@ -185,10 +185,12 @@ class Identity:
 
     def __init__(self, *, identity: str, issuer: str):
         self._identity = identity
-        self._issuer = Issuer(issuer)
+        self._issuer = Issuer(issuer)  # type: ignore[call-arg]
 
     def verify(self, cert: Certificate) -> VerificationResult:
-        issuer_verified = self._issuer.verify(cert)
+        issuer_verified: VerificationResult = self._issuer.verify(  # type: ignore[attr-defined]
+            cert
+        )
         if not issuer_verified:
             return issuer_verified
 
