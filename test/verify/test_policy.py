@@ -63,6 +63,57 @@ class TestAnyOf:
         assert result == VerificationSuccess()
 
 
+class TestAllOf:
+    def test_trivially_false(self):
+        policy_ = policy.AllOf([])
+        result = policy_.verify(pretend.stub())
+        assert not result
+        assert result == VerificationFailure(reason="no child policies to verify")
+
+    def test_fails_not_all_children_match(self, signing_materials):
+        materials = signing_materials("a.txt")
+        policy_ = policy.AllOf(
+            [
+                policy.Identity(identity="foo", issuer="bar"),
+                policy.Identity(identity="baz", issuer="quux"),
+                policy.Identity(
+                    identity="william@yossarian.net",
+                    issuer="https://github.com/login/oauth",
+                ),
+            ]
+        )
+
+        result = policy_.verify(materials.certificate)
+        assert not result
+        assert result == VerificationFailure(
+            reason=(
+                "2 of 3 policies failed: "
+                "Certificate's OIDC issuer does not match "
+                "(got https://github.com/login/oauth, expected bar), "
+                "Certificate's OIDC issuer does not match "
+                "(got https://github.com/login/oauth, expected quux)"
+            )
+        )
+
+    def test_succeeds(self, signing_materials):
+        materials = signing_materials("a.txt")
+        policy_ = policy.AllOf(
+            [
+                policy.Identity(
+                    identity="william@yossarian.net",
+                    issuer="https://github.com/login/oauth",
+                ),
+                policy.Identity(
+                    identity="william@yossarian.net",
+                    issuer="https://github.com/login/oauth",
+                ),
+            ]
+        )
+
+        result = policy_.verify(materials.certificate)
+        assert result
+
+
 class TestIdentity:
     def test_fails_no_san_match(self, signing_materials):
         materials = signing_materials("a.txt")

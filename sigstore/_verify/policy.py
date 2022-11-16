@@ -62,6 +62,8 @@ class VerificationPolicy(Protocol):
 class AnyOf:
     """
     The "any of" policy, corresponding to a logical OR between child policies.
+
+    An empty list of child policies is considered trivially invalid.
     """
 
     def __init__(self, children: list[VerificationPolicy]):
@@ -75,6 +77,34 @@ class AnyOf:
             return VerificationFailure(
                 reason=f"0 of {len(self._children)} policies succeeded"
             )
+
+
+class AllOf:
+    """
+    The "all of" policy, corresponding to a logical AND between child
+    policies.
+
+    An empty list of child policies is considered trivially invalid.
+    """
+
+    def __init__(self, children: list[VerificationPolicy]):
+        self._children = children
+
+    def verify(self, cert: Certificate) -> VerificationResult:
+        # Without this, we'd consider empty lists of child policies trivially valid.
+        # This is almost certainly not what the user wants and is a potential
+        # source of API misuse, so we explicitly disallow it.
+        if len(self._children) < 1:
+            return VerificationFailure(reason="no child policies to verify")
+
+        results = [child.verify(cert) for child in self._children]
+        failures = [result.reason for result in results if not result]  # type: ignore[attr-defined]
+        if len(failures) > 0:
+            inner_reasons = ", ".join(failures)
+            return VerificationFailure(
+                reason=f"{len(failures)} of {len(self._children)} policies failed: {inner_reasons}"
+            )
+        return VerificationSuccess()
 
 
 class _OIDCIssuer:
