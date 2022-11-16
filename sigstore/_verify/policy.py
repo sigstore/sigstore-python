@@ -19,8 +19,8 @@ passed into an individual verification step are verified.
 
 from __future__ import annotations
 
-from abc import abstractmethod
-from typing import Callable, Type, TypeVar, cast
+from abc import ABC, abstractmethod
+from typing import cast
 
 try:
     from typing import Protocol
@@ -54,103 +54,89 @@ _OIDC_GITHUB_WORKFLOW_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.6")
 _OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
 
 
-_T = TypeVar("_T")
+class _SingleX509ExtPolicy(ABC):
+    oid: ObjectIdentifier
+
+    def __init__(self, value: str) -> None:
+        self._value = value
+
+    def verify(self, cert: Certificate) -> VerificationResult:
+        try:
+            ext = cert.extensions.get_extension_for_oid(self.oid).value
+        except ExtensionNotFound:
+            return VerificationFailure(
+                reason=(
+                    f"Certificate does not contain {self.__class__.__name__} "
+                    f"({self.oid.dotted_string}) extension"
+                )
+            )
+
+        # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
+        # by `get_extension_for_oid` above.
+        ext_value = ext.value.decode()  # type: ignore[attr-defined]
+        if ext_value != self._value:
+            return VerificationFailure(
+                reason=(
+                    f"Certificate's {self.__class__.__name__} does not match "
+                    f"(got {ext_value}, expected {self._value})"
+                )
+            )
+
+        return VerificationSuccess()
 
 
-def _single_x509v3_extension(
-    *, oid: ObjectIdentifier
-) -> Callable[[type[_T]], type[_T]]:
-    """
-    A class-generating decorator for policies that only involve a single X.509v3
-    extension's value.
-
-    See `Issuer` and `GitHubWorkflowRef` for examples of use.
-    """
-
-    def decorator(cls: Type[_T]) -> Type[_T]:
-        # NOTE(ww): mypy explicitly doesn't support decorator class chicanery.
-        class Klass(cls):  # type: ignore[valid-type,misc]
-            def __init__(self, value: str) -> None:
-                self._value = value
-
-            def verify(self, cert: Certificate) -> VerificationResult:
-                try:
-                    ext = cert.extensions.get_extension_for_oid(oid).value
-                except ExtensionNotFound:
-                    return VerificationFailure(
-                        reason=(
-                            f"Certificate does not contain {cls.__name__} "
-                            f"({oid.dotted_string}) extension"
-                        )
-                    )
-
-                # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
-                # by `get_extension_for_oid` above.
-                ext_value = ext.value.decode()  # type: ignore[attr-defined]
-                if ext_value != self._value:
-                    return VerificationFailure(
-                        reason=(
-                            f"Certificate's {cls.__name__} does not match "
-                            f"(got {ext_value}, expected {self._value})"
-                        )
-                    )
-
-                return VerificationSuccess()
-
-        Klass.__name__ = cls.__name__
-        Klass.__qualname__ = cls.__qualname__
-        Klass.__doc__ = cls.__doc__
-        return Klass
-
-    return decorator
-
-
-@_single_x509v3_extension(oid=_OIDC_ISSUER_OID)
-class Issuer:
+class Issuer(_SingleX509ExtPolicy):
     """
     Verifies the certificate's OIDC issuer, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.1`.
     """
 
+    oid = _OIDC_ISSUER_OID
 
-@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_TRIGGER_OID)
-class GitHubWorkflowTrigger:
+
+class GitHubWorkflowTrigger(_SingleX509ExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow trigger,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.2`.
     """
 
+    oid = _OIDC_GITHUB_WORKFLOW_TRIGGER_OID
 
-@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_SHA_OID)
-class GitHubWorkflowSHA:
+
+class GitHubWorkflowSHA(_SingleX509ExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow commit SHA,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.3`.
     """
 
+    oid = _OIDC_GITHUB_WORKFLOW_SHA_OID
 
-@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_NAME_OID)
-class GitHubWorkflowName:
+
+class GitHubWorkflowName(_SingleX509ExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow name,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.4`.
     """
 
+    oid = _OIDC_GITHUB_WORKFLOW_NAME_OID
 
-@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_REPOSITORY_OID)
-class GitHubWorkflowRepository:
+
+class GitHubWorkflowRepository(_SingleX509ExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow repository,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.5`.
     """
 
+    oid = _OIDC_GITHUB_WORKFLOW_REPOSITORY_OID
 
-@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_REF_OID)
-class GitHubWorkflowRef:
+
+class GitHubWorkflowRef(_SingleX509ExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow ref,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.6`.
     """
+
+    oid = _OIDC_GITHUB_WORKFLOW_REF_OID
 
 
 class VerificationPolicy(Protocol):
@@ -223,12 +209,10 @@ class Identity:
 
     def __init__(self, *, identity: str, issuer: str):
         self._identity = identity
-        self._issuer = Issuer(issuer)  # type: ignore[call-arg]
+        self._issuer = Issuer(issuer)
 
     def verify(self, cert: Certificate) -> VerificationResult:
-        issuer_verified: VerificationResult = self._issuer.verify(  # type: ignore[attr-defined]
-            cert
-        )
+        issuer_verified: VerificationResult = self._issuer.verify(cert)
         if not issuer_verified:
             return issuer_verified
 
