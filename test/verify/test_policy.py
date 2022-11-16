@@ -88,9 +88,9 @@ class TestAllOf:
         assert result == VerificationFailure(
             reason=(
                 "2 of 3 policies failed: "
-                "Certificate's OIDC issuer does not match "
+                "Certificate's Issuer does not match "
                 "(got https://github.com/login/oauth, expected bar), "
-                "Certificate's OIDC issuer does not match "
+                "Certificate's Issuer does not match "
                 "(got https://github.com/login/oauth, expected quux)"
             )
         )

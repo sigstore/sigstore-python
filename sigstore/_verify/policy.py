@@ -20,7 +20,7 @@ passed into an individual verification step are verified.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import cast
+from typing import Callable, Type, TypeVar, cast
 
 try:
     from typing import Protocol
@@ -52,6 +52,57 @@ _OIDC_GITHUB_WORKFLOW_NAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.4")
 _OIDC_GITHUB_WORKFLOW_REPOSITORY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.5")
 _OIDC_GITHUB_WORKFLOW_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.6")
 _OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
+
+
+_T = TypeVar("_T")
+
+
+def _single_x509v3_extension(
+    *, oid: ObjectIdentifier
+) -> Callable[[type[_T]], type[_T]]:
+    """
+    A class-generating decorator for policies that only involve a single X.509v3
+    extension's value.
+
+    See `Issuer` and `GitHubWorkflowRef` for examples of use.
+    """
+
+    def decorator(cls: Type[_T]) -> Type[_T]:
+        # NOTE(ww): mypy explicitly doesn't support decorator class chicanery.
+        class Klass(cls):  # type: ignore[valid-type,misc]
+            def __init__(self, value: str) -> None:
+                self._value = value
+
+            def verify(self, cert: Certificate) -> VerificationResult:
+                try:
+                    ext = cert.extensions.get_extension_for_oid(oid).value
+                except ExtensionNotFound:
+                    return VerificationFailure(
+                        reason=(
+                            f"Certificate does not contain {cls.__name__} "
+                            f"({oid.dotted_string}) extension"
+                        )
+                    )
+
+                # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
+                # by `get_extension_for_oid` above.
+                ext_value = ext.value.decode()  # type: ignore[attr-defined]
+                if ext_value != self._value:
+                    return VerificationFailure(
+                        reason=(
+                            f"Certificate's {cls.__name__} does not match "
+                            f"(got {ext_value}, expected {self._value})"
+                        )
+                    )
+
+                return VerificationSuccess()
+
+        Klass.__name__ = cls.__name__
+        Klass.__qualname__ = cls.__qualname__
+        Klass.__doc__ = cls.__doc__
+        return Klass
+
+    return decorator
 
 
 class VerificationPolicy(Protocol):
@@ -113,7 +164,8 @@ class AllOf:
         return VerificationSuccess()
 
 
-class _OIDCIssuer:
+@_single_x509v3_extension(oid=_OIDC_ISSUER_OID)
+class Issuer:
     """
     Verifies the certificate's OIDC issuer, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.1`.
@@ -121,34 +173,8 @@ class _OIDCIssuer:
     See: <https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md#1361415726411--issuer>
     """
 
-    def __init__(self, *, issuer: str):
-        self._issuer = issuer
 
-    def verify(self, cert: Certificate) -> VerificationResult:
-        # Check that the OIDC issuer extension is present, and contains the expected
-        # issuer string (which is probably a URL).
-        try:
-            oidc_issuer = cert.extensions.get_extension_for_oid(_OIDC_ISSUER_OID).value
-        except ExtensionNotFound:
-            return VerificationFailure(
-                reason="Certificate does not contain OIDC issuer extension"
-            )
-
-        # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
-        # by `get_extension_for_oid` above.
-        issuer_value = oidc_issuer.value.decode()  # type: ignore[attr-defined]
-        if issuer_value != self._issuer:
-            return VerificationFailure(
-                reason=(
-                    "Certificate's OIDC issuer does not match "
-                    f"(got {issuer_value}, expected {self._issuer})"
-                )
-            )
-
-        return VerificationSuccess()
-
-
-class Identity(_OIDCIssuer):
+class Identity:
     """
     Verifies the certificate's "identity", corresponding to the X.509v3 SAN.
     Identities are verified modulo an OIDC issuer, so the issuer's URI
@@ -158,11 +184,11 @@ class Identity(_OIDCIssuer):
     """
 
     def __init__(self, *, identity: str, issuer: str):
-        super().__init__(issuer=issuer)
         self._identity = identity
+        self._issuer = Issuer(issuer)
 
     def verify(self, cert: Certificate) -> VerificationResult:
-        issuer_verified = super().verify(cert)
+        issuer_verified = self._issuer.verify(cert)
         if not issuer_verified:
             return issuer_verified
 
@@ -181,3 +207,8 @@ class Identity(_OIDCIssuer):
             )
 
         return VerificationSuccess()
+
+
+@_single_x509v3_extension(oid=_OIDC_GITHUB_WORKFLOW_REF_OID)
+class GitHubWorkflowRef:
+    ...
