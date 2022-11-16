@@ -20,6 +20,7 @@ passed into an individual verification step are verified.
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import cast
 
 try:
     from typing import Protocol
@@ -97,8 +98,13 @@ class AllOf:
         if len(self._children) < 1:
             return VerificationFailure(reason="no child policies to verify")
 
+        # NOTE(ww): We need the cast here because MyPy can't tell that
+        # `VerificationResult.__bool__` is invariant with
+        # `VerificationSuccess | VerificationFailure`.
         results = [child.verify(cert) for child in self._children]
-        failures = [result.reason for result in results if not result]  # type: ignore[attr-defined]
+        failures = [
+            cast(VerificationFailure, result).reason for result in results if not result
+        ]
         if len(failures) > 0:
             inner_reasons = ", ".join(failures)
             return VerificationFailure(
