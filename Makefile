@@ -20,10 +20,10 @@ SIGSTORE_EXTRA := dev
 # Otherwise, run all tests and enable coverage assertions, since we expect
 # complete test coverage.
 ifneq ($(TESTS),)
-	TEST_ARGS := -x -k $(TESTS)
+	TEST_ARGS := -x -k $(TESTS) $(TEST_ARGS)
 	COV_ARGS :=
 else
-	TEST_ARGS :=
+	TEST_ARGS := $(TEST_ARGS)
 # TODO: Reenable coverage testing
 #	COV_ARGS := --fail-under 100
 endif
