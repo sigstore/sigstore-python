@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+
+"""
+A wrapper to convert `sigstore-conformance` CLI protocol invocations to match `sigstore-python`.
+
+The client conformance test suite will exercise `sigstore-python` via this wrapper. The suite can be
+found at: https://github.com/trailofbits/sigstore-conformance.
+"""
+
+import subprocess
+import sys
+
+ARG_REPLACEMENTS = {
+    "--certificate-email": "--cert-email",
+    "--certificate-oidc-issuer": "--cert-oidc-issuer",
+}
+
+# Trim the script name.
+fixed_args = sys.argv[1:]
+
+# Replace incompatible flags.
+fixed_args = [
+    ARG_REPLACEMENTS[arg] if arg in ARG_REPLACEMENTS else arg for arg in fixed_args
+]
+
+# Prepend the `sigstore-python` executable name.
+fixed_args = ["sigstore"] + fixed_args
+
+subprocess.run(fixed_args, text=True, check=True)
