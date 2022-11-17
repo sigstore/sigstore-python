@@ -6,6 +6,7 @@ sigstore-python
 [![PyPI version](https://badge.fury.io/py/sigstore.svg)](https://pypi.org/project/sigstore)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python/badge)](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python)
 [![SLSA](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/)
+![Conformance Tests](https://github.com/sigstore/sigstore-python/workflows/Conformance%20Tests/badge.svg)
 <!--- @end-badges@ --->
 
 ⚠️ This project is not ready for general-purpose use! ⚠️
