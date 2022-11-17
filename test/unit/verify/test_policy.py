@@ -25,6 +25,20 @@ class TestVerificationPolicy:
             policy.VerificationPolicy(pretend.stub())
 
 
+class TestUnsafeNoOp:
+    def test_succeeds(self, monkeypatch):
+        logger = pretend.stub(warning=pretend.call_recorder(lambda s: None))
+        monkeypatch.setattr(policy, "logger", logger)
+
+        policy_ = policy.UnsafeNoOp()
+        assert policy_.verify(pretend.stub())
+        assert logger.warning.calls == [
+            pretend.call(
+                "unsafe (no-op) verification policy used! no verification performed!"
+            )
+        ]
+
+
 class TestAnyOf:
     def test_trivially_false(self):
         policy_ = policy.AnyOf([])

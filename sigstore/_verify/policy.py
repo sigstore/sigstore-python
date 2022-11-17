@@ -19,6 +19,7 @@ passed into an individual verification step are verified.
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import cast
 
@@ -43,6 +44,8 @@ from sigstore._verify.models import (
     VerificationResult,
     VerificationSuccess,
 )
+
+logger = logging.getLogger(__name__)
 
 # From: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
 _OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
@@ -195,6 +198,25 @@ class AllOf:
             return VerificationFailure(
                 reason=f"{len(failures)} of {len(self._children)} policies failed: {inner_reasons}"
             )
+        return VerificationSuccess()
+
+
+class UnsafeNoOp:
+    """
+    The "no-op" policy, corresponding to a no-op "verification".
+
+    **This policy is fundamentally insecure. You cannot use it safely.
+    It must not be used to verify any sort of certificate identity, because
+    it cannot do so. Using this policy is equivalent to reducing the
+    verification proof down to an integrity check against a completely
+    untrusted and potentially attacker-created signature. It must only
+    be used for testing purposes.**
+    """
+
+    def verify(self, cert: Certificate) -> VerificationResult:
+        logger.warning(
+            "unsafe (no-op) verification policy used! no verification performed!"
+        )
         return VerificationSuccess()
 
 
