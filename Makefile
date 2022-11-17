@@ -8,6 +8,8 @@ ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
 # Optionally overridden by the user in the `release` target.
 BUMP_ARGS :=
 
+T := test/unit
+
 # Optionally overridden by the user in the `test` target.
 TESTS :=
 
