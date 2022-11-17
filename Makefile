@@ -3,8 +3,7 @@ SHELL := /bin/bash
 PY_MODULE := sigstore
 
 ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
-	$(shell find test -name '*.py') \
-	$(shell find .github -name '*.py')
+	$(shell find test -name '*.py')
 
 # Optionally overridden by the user in the `release` target.
 BUMP_ARGS :=
