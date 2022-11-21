@@ -238,18 +238,22 @@ class Identity:
         if not issuer_verified:
             return issuer_verified
 
-        san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-        verified = (
-            self._identity in san_ext.value.get_values_for_type(RFC822Name)
-            or self._identity
-            in san_ext.value.get_values_for_type(UniformResourceIdentifier)
-            or OtherName(_OTHERNAME_OID, self._identity.encode())
-            in san_ext.value.get_values_for_type(OtherName)
+        # Build a set of all valid identities.
+        san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName).value
+        all_sans = set(san_ext.get_values_for_type(RFC822Name))
+        all_sans.update(san_ext.get_values_for_type(UniformResourceIdentifier))
+        all_sans.update(
+            [
+                on.value.decode()
+                for on in san_ext.get_values_for_type(OtherName)
+                if on.type_id == _OTHERNAME_OID
+            ]
         )
 
+        verified = self._identity in all_sans
         if not verified:
             return VerificationFailure(
-                reason=f"Certificate's SANs do not match {self._identity}"
+                reason=f"Certificate's SANs do not match {self._identity}; actual SANs: {all_sans}"
             )
 
         return VerificationSuccess()

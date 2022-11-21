@@ -139,5 +139,8 @@ class TestIdentity:
         result = policy_.verify(materials.certificate)
         assert not result
         assert result == VerificationFailure(
-            reason="Certificate's SANs do not match bad@ident.example.com"
+            reason=(
+                "Certificate's SANs do not match bad@ident.example.com; "
+                "actual SANs: {'william@yossarian.net'}"
+            )
         )
