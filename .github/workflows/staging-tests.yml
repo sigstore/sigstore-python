@@ -11,6 +11,7 @@ on:
   push:
     branches:
       - main
+      - ww/fix-integration
   schedule:
     - cron: '0 */8 * * *'
 
