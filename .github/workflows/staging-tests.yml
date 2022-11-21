@@ -44,7 +44,7 @@ jobs:
           # also test it.
           ./staging-env/bin/python -m sigstore verify --staging \
             --cert-oidc-issuer https://token.actions.githubusercontent.com \
-            --cert-identity ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/.workflows/staging-tests.yml@${GITHUB_REF} \
+            --cert-identity ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/staging-tests.yml@${GITHUB_REF} \
             README.md
 
       - name: generate an issue if staging tests fail
