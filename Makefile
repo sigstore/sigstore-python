@@ -20,12 +20,18 @@ SIGSTORE_EXTRA := dev
 # Otherwise, run all tests and enable coverage assertions, since we expect
 # complete test coverage.
 ifneq ($(TESTS),)
-	TEST_ARGS := -x -k $(TESTS)
+	TEST_ARGS := -x -k $(TESTS) $(TEST_ARGS)
 	COV_ARGS :=
 else
-	TEST_ARGS :=
+	TEST_ARGS := $(TEST_ARGS)
 # TODO: Reenable coverage testing
 #	COV_ARGS := --fail-under 100
+endif
+
+ifneq ($(T),)
+	T := $(T)
+else
+	T := test/unit
 endif
 
 .PHONY: all
@@ -64,7 +70,7 @@ reformat:
 .PHONY: test
 test:
 	. env/bin/activate && \
-		pytest --cov=$(PY_MODULE) test/unit/ $(T) $(TEST_ARGS) && \
+		pytest --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
 		python -m coverage report -m $(COV_ARGS)
 
 .PHONY: doc

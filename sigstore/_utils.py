@@ -16,19 +16,13 @@
 Shared utilities.
 """
 
+import base64
 import hashlib
 from typing import Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from cryptography.x509 import (
-    Certificate,
-    ObjectIdentifier,
-    OtherName,
-    RFC822Name,
-    SubjectAlternativeName,
-    UniformResourceIdentifier,
-)
+from cryptography.x509 import Certificate
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
@@ -55,6 +49,14 @@ def load_pem_public_key(key_pem: bytes) -> PublicKey:
     return key
 
 
+def base64_encode_pem_cert(cert: Certificate) -> str:
+    """
+    Returns a string containing a base64-encoded PEM-encoded X.509 certificate.
+    """
+
+    return base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
+
+
 def key_id(key: PublicKey) -> bytes:
     """
     Returns an RFC 6962-style "key ID" for the given public key.
@@ -67,19 +69,3 @@ def key_id(key: PublicKey) -> bytes:
     )
 
     return hashlib.sha256(public_bytes).digest()
-
-
-def cert_contains_identity(cert: Certificate, expected_cert_identity: str) -> bool:
-    """
-    Check that the certificate's SubjectAlternativeName contains a given identity.
-    """
-    san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName)
-    return (
-        expected_cert_identity in san_ext.value.get_values_for_type(RFC822Name)
-        or expected_cert_identity
-        in san_ext.value.get_values_for_type(UniformResourceIdentifier)
-        or OtherName(
-            ObjectIdentifier("1.3.6.1.4.1.57264.1.7"), expected_cert_identity.encode()
-        )
-        in san_ext.value.get_values_for_type(OtherName)
-    )

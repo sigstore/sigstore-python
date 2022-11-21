@@ -18,6 +18,7 @@ Client implementation for interacting with Rekor.
 
 from __future__ import annotations
 
+import base64
 import logging
 from abc import ABC
 from dataclasses import dataclass
@@ -28,10 +29,12 @@ from urllib.parse import urljoin
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509 import Certificate
 from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
 from securesystemslib.formats import encode_canonical
 
 from sigstore._internal.ctfe import CTKeyring
+from sigstore._utils import base64_encode_pem_cert
 
 logger = logging.getLogger(__name__)
 
@@ -329,9 +332,9 @@ class RekorEntries(Endpoint):
 class RekorEntriesRetrieve(Endpoint):
     def post(
         self,
-        b64_artifact_signature: str,
-        sha256_artifact_hash: str,
-        b64_cert: str,
+        signature: bytes,
+        artifact_hash: str,
+        certificate: Certificate,
     ) -> Optional[RekorEntry]:
         """
         Retrieves an extant Rekor entry, identified by its artifact signature,
@@ -347,13 +350,15 @@ class RekorEntriesRetrieve(Endpoint):
                     "apiVersion": "0.0.1",
                     "spec": {
                         "signature": {
-                            "content": b64_artifact_signature,
-                            "publicKey": {"content": b64_cert},
+                            "content": base64.b64encode(signature).decode(),
+                            "publicKey": {
+                                "content": base64_encode_pem_cert(certificate),
+                            },
                         },
                         "data": {
                             "hash": {
                                 "algorithm": "sha256",
-                                "value": sha256_artifact_hash,
+                                "value": artifact_hash,
                             }
                         },
                     },

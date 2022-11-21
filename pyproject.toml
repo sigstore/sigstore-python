@@ -58,6 +58,8 @@ lint = [
   "interrogate",
   "mypy",
   "types-requests",
+  # Needed for protocol typing in 3.7; remove when our minimum Python is 3.8.
+  "typing-extensions; python_version < '3.8'",
   # TODO(ww): Re-enable once dependency on types-cryptography is dropped.
   # See: https://github.com/python/typeshed/issues/8699
   # "types-pyOpenSSL",

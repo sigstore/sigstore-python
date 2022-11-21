@@ -152,9 +152,8 @@ Verifying:
 <!-- @begin-sigstore-verify-help@ -->
 ```
 usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
-                       [--rekor-bundle FILE]
-                       [--cert-identity IDENTITY | --cert-email EMAIL]
-                       [--cert-oidc-issuer URL] [--require-rekor-offline]
+                       [--rekor-bundle FILE] --cert-identity IDENTITY
+                       --cert-oidc-issuer URL [--require-rekor-offline]
                        [--staging] [--rekor-url URL]
                        FILE [FILE ...]
 
@@ -177,8 +176,6 @@ Extended verification options:
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
                         Alternative Name (default: None)
-  --cert-email EMAIL    The email address to check for in the certificate's
-                        Subject Alternative Name (default: None)
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
                         OIDC issuer extension (default: None)
