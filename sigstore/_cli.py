@@ -276,6 +276,12 @@ def _parser() -> argparse.ArgumentParser:
 
     verification_options = verify.add_argument_group("Extended verification options")
     verification_options.add_argument(
+        "--cert-email",
+        metavar="EMAIL",
+        type=str,
+        help="Deprecated; causes an error. Use --cert-identity instead",
+    )
+    verification_options.add_argument(
         "--cert-identity",
         metavar="IDENTITY",
         type=str,
@@ -461,6 +467,15 @@ def _sign(args: argparse.Namespace) -> None:
 
 
 def _verify(args: argparse.Namespace) -> None:
+    # `--cert-email` has been functionally removed, but we check for it
+    # explicitly to provide a nicer error message than just a missing
+    # option.
+    if args.cert_email:
+        args._parser.error(
+            "--cert-email is a disabled alias for --cert-identity; "
+            "use --cert-identity instead"
+        )
+
     # `--rekor-bundle` is a temporary option, pending stabilization of the
     # Sigstore bundle format.
     if args.rekor_bundle:
