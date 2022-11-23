@@ -152,9 +152,9 @@ Verifying:
 <!-- @begin-sigstore-verify-help@ -->
 ```
 usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
-                       [--rekor-bundle FILE] --cert-identity IDENTITY
-                       --cert-oidc-issuer URL [--require-rekor-offline]
-                       [--staging] [--rekor-url URL]
+                       [--rekor-bundle FILE] [--cert-email EMAIL]
+                       --cert-identity IDENTITY --cert-oidc-issuer URL
+                       [--require-rekor-offline] [--staging] [--rekor-url URL]
                        FILE [FILE ...]
 
 positional arguments:
@@ -173,6 +173,8 @@ Verification inputs:
                         multiple inputs (default: None)
 
 Extended verification options:
+  --cert-email EMAIL    Deprecated; causes an error. Use --cert-identity
+                        instead (default: None)
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
                         Alternative Name (default: None)
