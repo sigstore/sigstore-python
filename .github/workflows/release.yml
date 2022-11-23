@@ -51,7 +51,8 @@ jobs:
               sigstore verify "${dist}" \
               --cert "smoketest-artifacts/${dist_base}.crt" \
               --signature "smoketest-artifacts/${dist_base}.sig" \
-              --cert-oidc-issuer https://token.actions.githubusercontent.com
+              --cert-oidc-issuer https://token.actions.githubusercontent.com \
+              --cert-identity ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/staging-tests.yml@${GITHUB_REF}
 
             rm -rf smoketest-env
           done
