@@ -91,8 +91,8 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
                      [--certificate FILE] [--rekor-bundle FILE] [--overwrite]
-                     [--staging] [--rekor-url URL] [--fulcio-url URL]
-                     [--ctfe FILE] [--rekor-root-pubkey FILE]
+                     [--staging] [--rekor-url URL] [--rekor-root-pubkey FILE]
+                     [--fulcio-url URL] [--ctfe FILE]
                      FILE [FILE ...]
 
 positional arguments:
@@ -155,6 +155,7 @@ usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
                        [--rekor-bundle FILE] [--cert-email EMAIL]
                        --cert-identity IDENTITY --cert-oidc-issuer URL
                        [--require-rekor-offline] [--staging] [--rekor-url URL]
+                       [--rekor-root-pubkey FILE]
                        FILE [FILE ...]
 
 positional arguments:
