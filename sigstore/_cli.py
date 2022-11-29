@@ -20,7 +20,7 @@ import sys
 from importlib import resources
 from pathlib import Path
 from textwrap import dedent
-from typing import Optional, TextIO, Union, cast
+from typing import List, Optional, TextIO, Union, cast
 
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
@@ -106,6 +106,13 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
         type=str,
         default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
         help="The Rekor instance to use (conflicts with --staging)",
+    )
+    group.add_argument(
+        "--rekor-root-pubkey",
+        metavar="FILE",
+        type=argparse.FileType("rb"),
+        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
+        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY", _Embedded("rekor.pub")),
     )
 
 
@@ -229,13 +236,6 @@ def _parser() -> argparse.ArgumentParser:
         help="A PEM-encoded public key for the CT log (conflicts with --staging)",
         default=os.getenv("SIGSTORE_CTFE", _Embedded("ctfe.pub")),
     )
-    instance_options.add_argument(
-        "--rekor-root-pubkey",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY", _Embedded("rekor.pub")),
-    )
 
     sign.add_argument(
         "files",
@@ -275,6 +275,17 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     verification_options = verify.add_argument_group("Extended verification options")
+    verification_options.add_argument(
+        "--certificate-chain",
+        metavar="FILE",
+        type=argparse.FileType("rb"),
+        help=(
+            "Path to a list of CA certificates in PEM format which will be needed when building "
+            "the certificate chain for the signing certificate; must start with the parent "
+            "intermediate CA certificate of the signing certificate and end with the root "
+            "certificate"
+        ),
+    )
     verification_options.add_argument(
         "--cert-email",
         metavar="EMAIL",
@@ -536,10 +547,26 @@ def _verify(args: argparse.Namespace) -> None:
     elif args.rekor_url == DEFAULT_REKOR_URL:
         verifier = Verifier.production()
     else:
-        # TODO: We need CLI flags that allow the user to figure the Fulcio cert chain
-        # for verification.
-        args._parser.error(
-            "Custom Rekor and Fulcio configuration for verification isn't fully supported yet!",
+        if not args.certificate_chain:
+            args._parser.error(
+                "Custom Rekor URL used without specifying --certificate-chain"
+            )
+
+        try:
+            certificate_chain = _split_certificate_chain(
+                args.certificate_chain.read_text()
+            )
+        except SplitCertificateChainError as error:
+            args._parser.error(f"Failed to split certificate chain: {error}")
+
+        verifier = Verifier(
+            rekor=RekorClient(
+                url=args.rekor_url,
+                pubkey=args.rekor_root_pubkey.read(),
+                # We don't use the CT keyring in verification so we can supply an empty keyring
+                ct_keyring=CTKeyring(),
+            ),
+            fulcio_certificate_chain=certificate_chain,
         )
 
     for file, inputs in input_map.items():
@@ -692,3 +719,35 @@ def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
             issuer,
         )
     return token
+
+
+class SplitCertificateChainError(Exception):
+    pass
+
+
+def _split_certificate_chain(chain_pem: str) -> List[bytes]:
+    PEM_BEGIN_CERTIFICATE = "-----BEGIN CERTIFICATE-----"
+
+    # Use the "begin certificate" marker as a delimiter to split the chain
+    certificate_chain = chain_pem.split(PEM_BEGIN_CERTIFICATE)
+
+    # Check for no certificates.
+    if not certificate_chain:
+        raise SplitCertificateChainError("empty PEM file")
+
+    # The first entry in the list should be empty since we split by the "begin certificate" marker
+    # and there should be nothing before the first certificate
+    if certificate_chain[0]:
+        raise SplitCertificateChainError(
+            "encountered unrecognized content before first PEM entry"
+        )
+
+    # Remove the empty entry
+    certificate_chain = certificate_chain[1:]
+
+    # Add the delimiters back into each entry since this is required for valid PEM
+    certificate_chain = [
+        (PEM_BEGIN_CERTIFICATE + c).encode() for c in certificate_chain
+    ]
+
+    return certificate_chain
