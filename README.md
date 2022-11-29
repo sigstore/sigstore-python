@@ -152,9 +152,10 @@ Verifying:
 <!-- @begin-sigstore-verify-help@ -->
 ```
 usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
-                       [--rekor-bundle FILE] [--cert-email EMAIL]
-                       --cert-identity IDENTITY --cert-oidc-issuer URL
-                       [--require-rekor-offline] [--staging] [--rekor-url URL]
+                       [--rekor-bundle FILE] [--certificate-chain FILE]
+                       [--cert-email EMAIL] --cert-identity IDENTITY
+                       --cert-oidc-issuer URL [--require-rekor-offline]
+                       [--staging] [--rekor-url URL]
                        [--rekor-root-pubkey FILE]
                        FILE [FILE ...]
 
@@ -174,6 +175,12 @@ Verification inputs:
                         multiple inputs (default: None)
 
 Extended verification options:
+  --certificate-chain FILE
+                        Path to a list of CA certificates in PEM format which
+                        will be needed when building the certificate chain for
+                        the signing certificate; must start with the parent
+                        intermediate CA certificate of the signing certificate
+                        and end with the root certificate (default: None)
   --cert-email EMAIL    Deprecated; causes an error. Use --cert-identity
                         instead (default: None)
   --cert-identity IDENTITY
