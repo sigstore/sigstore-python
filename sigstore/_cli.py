@@ -281,9 +281,7 @@ def _parser() -> argparse.ArgumentParser:
         type=argparse.FileType("rb"),
         help=(
             "Path to a list of CA certificates in PEM format which will be needed when building "
-            "the certificate chain for the signing certificate; must start with the parent "
-            "intermediate CA certificate of the signing certificate and end with the root "
-            "certificate"
+            "the certificate chain for the signing certificate"
         ),
     )
     verification_options.add_argument(

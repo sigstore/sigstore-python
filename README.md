@@ -178,9 +178,7 @@ Extended verification options:
   --certificate-chain FILE
                         Path to a list of CA certificates in PEM format which
                         will be needed when building the certificate chain for
-                        the signing certificate; must start with the parent
-                        intermediate CA certificate of the signing certificate
-                        and end with the root certificate (default: None)
+                        the signing certificate (default: None)
   --cert-email EMAIL    Deprecated; causes an error. Use --cert-identity
                         instead (default: None)
   --cert-identity IDENTITY
