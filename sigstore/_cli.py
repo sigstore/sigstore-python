@@ -42,7 +42,11 @@ from sigstore._internal.rekor.client import (
     RekorEntry,
 )
 from sigstore._sign import Signer
-from sigstore._utils import load_pem_public_key
+from sigstore._utils import (
+    SplitCertificateChainError,
+    load_pem_public_key,
+    split_certificate_chain,
+)
 from sigstore._verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,
@@ -106,6 +110,13 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
         type=str,
         default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
         help="The Rekor instance to use (conflicts with --staging)",
+    )
+    group.add_argument(
+        "--rekor-root-pubkey",
+        metavar="FILE",
+        type=argparse.FileType("rb"),
+        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
+        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY", _Embedded("rekor.pub")),
     )
 
 
@@ -229,13 +240,6 @@ def _parser() -> argparse.ArgumentParser:
         help="A PEM-encoded public key for the CT log (conflicts with --staging)",
         default=os.getenv("SIGSTORE_CTFE", _Embedded("ctfe.pub")),
     )
-    instance_options.add_argument(
-        "--rekor-root-pubkey",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY", _Embedded("rekor.pub")),
-    )
 
     sign.add_argument(
         "files",
@@ -275,6 +279,15 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     verification_options = verify.add_argument_group("Extended verification options")
+    verification_options.add_argument(
+        "--certificate-chain",
+        metavar="FILE",
+        type=argparse.FileType("r"),
+        help=(
+            "Path to a list of CA certificates in PEM format which will be needed when building "
+            "the certificate chain for the signing certificate"
+        ),
+    )
     verification_options.add_argument(
         "--cert-email",
         metavar="EMAIL",
@@ -536,10 +549,24 @@ def _verify(args: argparse.Namespace) -> None:
     elif args.rekor_url == DEFAULT_REKOR_URL:
         verifier = Verifier.production()
     else:
-        # TODO: We need CLI flags that allow the user to figure the Fulcio cert chain
-        # for verification.
-        args._parser.error(
-            "Custom Rekor and Fulcio configuration for verification isn't fully supported yet!",
+        if not args.certificate_chain:
+            args._parser.error(
+                "Custom Rekor URL used without specifying --certificate-chain"
+            )
+
+        try:
+            certificate_chain = split_certificate_chain(args.certificate_chain.read())
+        except SplitCertificateChainError as error:
+            args._parser.error(f"Failed to parse certificate chain: {error}")
+
+        verifier = Verifier(
+            rekor=RekorClient(
+                url=args.rekor_url,
+                pubkey=args.rekor_root_pubkey.read(),
+                # We don't use the CT keyring in verification so we can supply an empty keyring
+                ct_keyring=CTKeyring(),
+            ),
+            fulcio_certificate_chain=certificate_chain,
         )
 
     for file, inputs in input_map.items():

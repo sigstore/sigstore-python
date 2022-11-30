@@ -91,8 +91,8 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
                      [--certificate FILE] [--rekor-bundle FILE] [--overwrite]
-                     [--staging] [--rekor-url URL] [--fulcio-url URL]
-                     [--ctfe FILE] [--rekor-root-pubkey FILE]
+                     [--staging] [--rekor-url URL] [--rekor-root-pubkey FILE]
+                     [--fulcio-url URL] [--ctfe FILE]
                      FILE [FILE ...]
 
 positional arguments:
@@ -136,14 +136,14 @@ Sigstore instance options:
                         default production instances (default: False)
   --rekor-url URL       The Rekor instance to use (conflicts with --staging)
                         (default: https://rekor.sigstore.dev)
-  --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
-                        (default: https://fulcio.sigstore.dev)
-  --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
-                        with --staging) (default: ctfe.pub (embedded))
   --rekor-root-pubkey FILE
                         A PEM-encoded root public key for Rekor itself
                         (conflicts with --staging) (default: rekor.pub
                         (embedded))
+  --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
+                        (default: https://fulcio.sigstore.dev)
+  --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
+                        with --staging) (default: ctfe.pub (embedded))
 ```
 <!-- @end-sigstore-sign-help@ -->
 
@@ -152,9 +152,11 @@ Verifying:
 <!-- @begin-sigstore-verify-help@ -->
 ```
 usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
-                       [--rekor-bundle FILE] [--cert-email EMAIL]
-                       --cert-identity IDENTITY --cert-oidc-issuer URL
-                       [--require-rekor-offline] [--staging] [--rekor-url URL]
+                       [--rekor-bundle FILE] [--certificate-chain FILE]
+                       [--cert-email EMAIL] --cert-identity IDENTITY
+                       --cert-oidc-issuer URL [--require-rekor-offline]
+                       [--staging] [--rekor-url URL]
+                       [--rekor-root-pubkey FILE]
                        FILE [FILE ...]
 
 positional arguments:
@@ -173,6 +175,10 @@ Verification inputs:
                         multiple inputs (default: None)
 
 Extended verification options:
+  --certificate-chain FILE
+                        Path to a list of CA certificates in PEM format which
+                        will be needed when building the certificate chain for
+                        the signing certificate (default: None)
   --cert-email EMAIL    Deprecated; causes an error. Use --cert-identity
                         instead (default: None)
   --cert-identity IDENTITY
@@ -190,6 +196,10 @@ Sigstore instance options:
                         default production instances (default: False)
   --rekor-url URL       The Rekor instance to use (conflicts with --staging)
                         (default: https://rekor.sigstore.dev)
+  --rekor-root-pubkey FILE
+                        A PEM-encoded root public key for Rekor itself
+                        (conflicts with --staging) (default: rekor.pub
+                        (embedded))
 ```
 <!-- @end-sigstore-verify-help@ -->
 
