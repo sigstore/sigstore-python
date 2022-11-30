@@ -557,7 +557,7 @@ def _verify(args: argparse.Namespace) -> None:
                 args.certificate_chain.read_text()
             )
         except SplitCertificateChainError as error:
-            args._parser.error(f"Failed to split certificate chain: {error}")
+            args._parser.error(f"Failed to parse certificate chain: {error}")
 
         verifier = Verifier(
             rekor=RekorClient(
