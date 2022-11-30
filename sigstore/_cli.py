@@ -726,12 +726,12 @@ class SplitCertificateChainError(Exception):
 def _split_certificate_chain(chain_pem: str) -> List[bytes]:
     PEM_BEGIN_CERTIFICATE = "-----BEGIN CERTIFICATE-----"
 
+    # Check for no certificates
+    if not chain_pem:
+        raise SplitCertificateChainError("empty PEM file")
+
     # Use the "begin certificate" marker as a delimiter to split the chain
     certificate_chain = chain_pem.split(PEM_BEGIN_CERTIFICATE)
-
-    # Check for no certificates.
-    if not certificate_chain:
-        raise SplitCertificateChainError("empty PEM file")
 
     # The first entry in the list should be empty since we split by the "begin certificate" marker
     # and there should be nothing before the first certificate
