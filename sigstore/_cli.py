@@ -42,7 +42,11 @@ from sigstore._internal.rekor.client import (
     RekorEntry,
 )
 from sigstore._sign import Signer
-from sigstore._utils import load_pem_public_key
+from sigstore._utils import (
+    SplitCertificateChainError,
+    load_pem_public_key,
+    split_certificate_chain,
+)
 from sigstore._verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,
@@ -278,7 +282,7 @@ def _parser() -> argparse.ArgumentParser:
     verification_options.add_argument(
         "--certificate-chain",
         metavar="FILE",
-        type=argparse.FileType("rb"),
+        type=argparse.FileType("r"),
         help=(
             "Path to a list of CA certificates in PEM format which will be needed when building "
             "the certificate chain for the signing certificate"
@@ -551,9 +555,7 @@ def _verify(args: argparse.Namespace) -> None:
             )
 
         try:
-            certificate_chain = _split_certificate_chain(
-                args.certificate_chain.read_text()
-            )
+            certificate_chain = split_certificate_chain(args.certificate_chain.read())
         except SplitCertificateChainError as error:
             args._parser.error(f"Failed to parse certificate chain: {error}")
 
@@ -717,35 +719,3 @@ def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
             issuer,
         )
     return token
-
-
-class SplitCertificateChainError(Exception):
-    pass
-
-
-def _split_certificate_chain(chain_pem: str) -> List[bytes]:
-    PEM_BEGIN_CERTIFICATE = "-----BEGIN CERTIFICATE-----"
-
-    # Check for no certificates
-    if not chain_pem:
-        raise SplitCertificateChainError("empty PEM file")
-
-    # Use the "begin certificate" marker as a delimiter to split the chain
-    certificate_chain = chain_pem.split(PEM_BEGIN_CERTIFICATE)
-
-    # The first entry in the list should be empty since we split by the "begin certificate" marker
-    # and there should be nothing before the first certificate
-    if certificate_chain[0]:
-        raise SplitCertificateChainError(
-            "encountered unrecognized content before first PEM entry"
-        )
-
-    # Remove the empty entry
-    certificate_chain = certificate_chain[1:]
-
-    # Add the delimiters back into each entry since this is required for valid PEM
-    certificate_chain = [
-        (PEM_BEGIN_CERTIFICATE + c).encode() for c in certificate_chain
-    ]
-
-    return certificate_chain

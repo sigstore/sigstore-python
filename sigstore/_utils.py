@@ -18,7 +18,7 @@ Shared utilities.
 
 import base64
 import hashlib
-from typing import Union
+from typing import List, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -69,3 +69,38 @@ def key_id(key: PublicKey) -> bytes:
     )
 
     return hashlib.sha256(public_bytes).digest()
+
+
+class SplitCertificateChainError(Exception):
+    pass
+
+
+def split_certificate_chain(chain_pem: str) -> List[bytes]:
+    """
+    Returns a list of PEM bytes for each individual certificate in the chain.
+    """
+    PEM_BEGIN_CERTIFICATE = "-----BEGIN CERTIFICATE-----"
+
+    # Check for no certificates
+    if not chain_pem:
+        raise SplitCertificateChainError("empty PEM file")
+
+    # Use the "begin certificate" marker as a delimiter to split the chain
+    certificate_chain = chain_pem.split(PEM_BEGIN_CERTIFICATE)
+
+    # The first entry in the list should be empty since we split by the "begin certificate" marker
+    # and there should be nothing before the first certificate
+    if certificate_chain[0]:
+        raise SplitCertificateChainError(
+            "encountered unrecognized content before first PEM entry"
+        )
+
+    # Remove the empty entry
+    certificate_chain = certificate_chain[1:]
+
+    # Add the delimiters back into each entry since this is required for valid PEM
+    certificate_chain = [
+        (PEM_BEGIN_CERTIFICATE + c).encode() for c in certificate_chain
+    ]
+
+    return certificate_chain
