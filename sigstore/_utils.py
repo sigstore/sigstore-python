@@ -79,14 +79,14 @@ def split_certificate_chain(chain_pem: str) -> List[bytes]:
     """
     Returns a list of PEM bytes for each individual certificate in the chain.
     """
-    PEM_BEGIN_CERTIFICATE = "-----BEGIN CERTIFICATE-----"
+    pem_header = "-----BEGIN CERTIFICATE-----"
 
     # Check for no certificates
     if not chain_pem:
         raise SplitCertificateChainError("empty PEM file")
 
     # Use the "begin certificate" marker as a delimiter to split the chain
-    certificate_chain = chain_pem.split(PEM_BEGIN_CERTIFICATE)
+    certificate_chain = chain_pem.split(pem_header)
 
     # The first entry in the list should be empty since we split by the "begin certificate" marker
     # and there should be nothing before the first certificate
@@ -100,7 +100,7 @@ def split_certificate_chain(chain_pem: str) -> List[bytes]:
 
     # Add the delimiters back into each entry since this is required for valid PEM
     certificate_chain = [
-        (PEM_BEGIN_CERTIFICATE + c).encode() for c in certificate_chain
+        (pem_header + c).encode() for c in certificate_chain
     ]
 
     return certificate_chain
