@@ -20,7 +20,7 @@ import sys
 from importlib import resources
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Optional, TextIO, Union, cast
+from typing import Optional, TextIO, Union, cast
 
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring

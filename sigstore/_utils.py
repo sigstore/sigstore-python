@@ -16,9 +16,11 @@
 Shared utilities.
 """
 
+from __future__ import annotations
+
 import base64
 import hashlib
-from typing import List, Union
+from typing import Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -75,7 +77,7 @@ class SplitCertificateChainError(Exception):
     pass
 
 
-def split_certificate_chain(chain_pem: str) -> List[bytes]:
+def split_certificate_chain(chain_pem: str) -> list[bytes]:
     """
     Returns a list of PEM bytes for each individual certificate in the chain.
     """
