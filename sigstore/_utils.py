@@ -99,8 +99,6 @@ def split_certificate_chain(chain_pem: str) -> List[bytes]:
     certificate_chain = certificate_chain[1:]
 
     # Add the delimiters back into each entry since this is required for valid PEM
-    certificate_chain = [
-        (pem_header + c).encode() for c in certificate_chain
-    ]
+    certificate_chain = [(pem_header + c).encode() for c in certificate_chain]
 
     return certificate_chain
