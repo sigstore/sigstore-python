@@ -119,9 +119,9 @@ def sha256_streaming(io: IO[bytes]) -> bytes:
     # of systems in terms of minimizing syscall overhead.
     view = memoryview(bytearray(128 * 1024))
 
-    nbytes = io.readinto(view)
+    nbytes = io.readinto(view)  # type: ignore
     while nbytes:
         sha256.update(view[:nbytes])
-        nbytes = io.readinto(view)
+        nbytes = io.readinto(view)  # type: ignore
 
     return sha256.digest()
