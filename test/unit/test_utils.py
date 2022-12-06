@@ -14,7 +14,9 @@
 
 
 import hashlib
+import io
 
+import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
@@ -56,3 +58,15 @@ kGzKLC0+6/yBmWTr2M98CIY/vg==
         hashlib.sha256(public_key).hexdigest()
         == "086c0ea25b60e3c44a994d0d5f40b81a0d44f21d63df19315e6ddfbe47373817"
     )
+
+
+@pytest.mark.parametrize(
+    "size", [0, 1, 2, 4, 8, 32, 128, 1024, 128 * 1024, 1024 * 1024, 128 * 1024 * 1024]
+)
+def test_sha256_streaming(size):
+    buf = b"x" * size
+
+    expected_digest = hashlib.sha256(buf).digest()
+    actual_digest = utils.sha256_streaming(io.BytesIO(buf))
+
+    assert expected_digest == actual_digest
