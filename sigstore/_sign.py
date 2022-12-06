@@ -15,12 +15,13 @@
 from __future__ import annotations
 
 import base64
-import hashlib
 import logging
+from typing import IO
 
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509.oid import NameOID
 from pydantic import BaseModel
 
@@ -28,6 +29,7 @@ from sigstore._internal.fulcio import FulcioClient
 from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor import RekorClient, RekorEntry
 from sigstore._internal.sct import verify_sct
+from sigstore._utils import sha256_streaming
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +58,11 @@ class Signer:
 
     def sign(
         self,
-        input_: bytes,
+        input_: IO[bytes],
         identity_token: str,
     ) -> SigningResult:
         """Public API for signing blobs"""
-        sha256_artifact_hash = hashlib.sha256(input_).hexdigest()
+        input_digest = sha256_streaming(input_)
 
         logger.debug("Generating ephemeral keys...")
         private_key = ec.generate_private_key(ec.SECP384R1())
@@ -102,7 +104,9 @@ class Signer:
         logger.debug("Successfully verified SCT...")
 
         # Sign artifact
-        artifact_signature = private_key.sign(input_, ec.ECDSA(hashes.SHA256()))
+        artifact_signature = private_key.sign(
+            input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
+        )
         b64_artifact_signature = base64.b64encode(artifact_signature).decode()
 
         # Prepare inputs
@@ -113,7 +117,7 @@ class Signer:
         # Create the transparency log entry
         entry = self._rekor.log.entries.post(
             b64_artifact_signature=b64_artifact_signature,
-            sha256_artifact_hash=sha256_artifact_hash,
+            sha256_artifact_hash=input_digest.hex(),
             b64_cert=b64_cert.decode(),
         )
 

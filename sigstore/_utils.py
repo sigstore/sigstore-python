@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
-from typing import Union
+from typing import IO, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -104,3 +104,24 @@ def split_certificate_chain(chain_pem: str) -> list[bytes]:
     certificate_chain = [(pem_header + c).encode() for c in certificate_chain]
 
     return certificate_chain
+
+
+def sha256_streaming(io: IO[bytes]) -> bytes:
+    """
+    Compute the SHA256 of a stream.
+
+    This function does its own internal buffering, so an unbuffered stream
+    should be supplied for optimal performance.
+    """
+
+    sha256 = hashlib.sha256()
+    # Per coreutils' ioblksize.h: 128KB performs optimally across a range
+    # of systems in terms of minimizing syscall overhead.
+    view = memoryview(bytearray(128 * 1024))
+
+    nbytes = io.readinto(view)
+    while nbytes:
+        sha256.update(view[:nbytes])
+        nbytes = io.readinto(view)
+
+    return sha256.digest()
