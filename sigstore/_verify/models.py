@@ -19,16 +19,16 @@ Common (base) models for the verification APIs.
 from __future__ import annotations
 
 import base64
-import hashlib
 import json
 import logging
 from dataclasses import dataclass
+from typing import IO
 
 from cryptography.x509 import Certificate, load_pem_x509_certificate
 from pydantic import BaseModel
 
 from sigstore._internal.rekor import RekorClient, RekorEntry
-from sigstore._utils import base64_encode_pem_cert
+from sigstore._utils import base64_encode_pem_cert, sha256_streaming
 
 logger = logging.getLogger(__name__)
 
@@ -95,14 +95,9 @@ class VerificationMaterials:
     Represents the materials needed to perform a Sigstore verification.
     """
 
-    input_: bytes
+    input_digest: bytes
     """
-    The input that was signed for.
-    """
-
-    artifact_hash: str
-    """
-    The hex-encoded SHA256 hash of `input_`.
+    The SHA256 hash of the verification input, as raw bytes.
     """
 
     certificate: Certificate
@@ -139,13 +134,12 @@ class VerificationMaterials:
     def __init__(
         self,
         *,
-        input_: bytes,
+        input_: IO[bytes],
         cert_pem: str,
         signature: bytes,
         offline_rekor_entry: RekorEntry | None,
     ):
-        self.input_ = input_
-        self.artifact_hash = hashlib.sha256(self.input_).hexdigest()
+        self.input_digest = sha256_streaming(input_)
         self.certificate = load_pem_x509_certificate(cert_pem.encode())
         self.signature = signature
         self._offline_rekor_entry = offline_rekor_entry
@@ -172,7 +166,7 @@ class VerificationMaterials:
             logger.debug("retrieving rekor entry")
             entry = client.log.entries.retrieve.post(
                 self.signature,
-                self.artifact_hash,
+                self.input_digest.hex(),
                 self.certificate,
             )
 
@@ -203,7 +197,9 @@ class VerificationMaterials:
                     "content": base64.b64encode(self.signature).decode(),
                     "publicKey": {"content": base64_encode_pem_cert(self.certificate)},
                 },
-                "data": {"hash": {"algorithm": "sha256", "value": self.artifact_hash}},
+                "data": {
+                    "hash": {"algorithm": "sha256", "value": self.input_digest.hex()}
+                },
             },
         }
 

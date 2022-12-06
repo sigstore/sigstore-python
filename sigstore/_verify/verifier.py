@@ -26,6 +26,7 @@ from typing import List, cast
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509 import (
     ExtendedKeyUsage,
     KeyUsage,
@@ -217,7 +218,9 @@ class Verifier:
             signing_key = materials.certificate.public_key()
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
             signing_key.verify(
-                materials.signature, materials.input_, ec.ECDSA(hashes.SHA256())
+                materials.signature,
+                materials.input_digest,
+                ec.ECDSA(Prehashed(hashes.SHA256())),
             )
         except InvalidSignature:
             return VerificationFailure(reason="Signature is invalid for input")
@@ -231,7 +234,8 @@ class Verifier:
             entry = materials.rekor_entry(self._rekor)
         except RekorEntryMissingError:
             return RekorEntryMissing(
-                signature=materials.signature, artifact_hash=materials.artifact_hash
+                signature=materials.signature,
+                artifact_hash=materials.input_digest.hex(),
             )
         except InvalidRekorEntryError:
             return VerificationFailure(

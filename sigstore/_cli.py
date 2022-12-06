@@ -587,12 +587,13 @@ def _verify(args: argparse.Namespace) -> None:
 
         logger.debug(f"Verifying contents from: {file}")
 
-        materials = VerificationMaterials(
-            input_=file.read_bytes(),
-            cert_pem=cert_pem,
-            signature=base64.b64decode(b64_signature),
-            offline_rekor_entry=entry,
-        )
+        with file.open(mode="rb", buffering=0) as io:
+            materials = VerificationMaterials(
+                input_=io,
+                cert_pem=cert_pem,
+                signature=base64.b64decode(b64_signature),
+                offline_rekor_entry=entry,
+            )
 
         policy_ = policy.Identity(
             identity=args.cert_identity,
