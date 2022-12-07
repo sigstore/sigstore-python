@@ -114,6 +114,18 @@ def sha256_streaming(io: IO[bytes]) -> bytes:
     should be supplied for optimal performance.
     """
 
+    # NOTE: This function performs a SHA256 digest over a stream.
+    # The stream's size is not checked, meaning that the stream's source
+    # is implicitly trusted: if an attacker is able to truncate the stream's
+    # source prematurely, then they could conceivably produce a digest
+    # for a partial stream. This in turn could conceivably result
+    # in a valid signature for an unintended (truncated) input.
+    #
+    # This is currently outside of sigstore-python's threat model: we
+    # assume that the stream is trusted.
+    #
+    # See: https://github.com/sigstore/sigstore-python/pull/329#discussion_r1041215972
+
     sha256 = hashlib.sha256()
     # Per coreutils' ioblksize.h: 128KB performs optimally across a range
     # of systems in terms of minimizing syscall overhead.
