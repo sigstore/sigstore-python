@@ -101,12 +101,13 @@ def signing_materials():
             bundle = RekorBundle.parse_file(bundle)
             entry = bundle.to_entry()
 
-        materials = VerificationMaterials(
-            input_=file.read_bytes(),
-            cert_pem=cert.read_text(),
-            signature=base64.b64decode(sig.read_text()),
-            offline_rekor_entry=entry,
-        )
+        with file.open(mode="rb", buffering=0) as io:
+            materials = VerificationMaterials(
+                input_=io,
+                cert_pem=cert.read_text(),
+                signature=base64.b64decode(sig.read_text()),
+                offline_rekor_entry=entry,
+            )
 
         return materials
 

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import secrets
 
 import pytest
@@ -37,7 +38,7 @@ def test_sign_rekor_entry_consistent(signer):
     token = detect_credential()
     assert token is not None
 
-    payload = secrets.token_bytes(32)
+    payload = io.BytesIO(secrets.token_bytes(32))
     expected_entry = signer.sign(payload, token).log_entry
     actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
 
