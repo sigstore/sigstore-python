@@ -30,7 +30,7 @@ jobs:
       - name: deps
         run: make dev SIGSTORE_EXTRA=test
       - name: test
-        run: make test
+        run: make test TEST_ARGS="-vv"
       - name: test (offline)
         run: |
           # We use `unshare` to "un-share" the default networking namespace,
@@ -38,7 +38,7 @@ jobs:
           # This in turn effectively exercises the correctness of our
           # "online-only" test markers, since any test that's online
           # but not marked as such will fail.
-          unshare --map-root-user --net make test TEST_ARGS="--skip-online"
+          unshare --map-root-user --net make test TEST_ARGS="--skip-online -vv"
 
   licenses:
     runs-on: ubuntu-latest
