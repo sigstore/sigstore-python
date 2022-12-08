@@ -49,11 +49,11 @@ env/pyvenv.cfg: pyproject.toml
 dev: env/pyvenv.cfg
 
 .PHONY: run
-run:
+run: env/pyvenv.cfg
 	@. env/bin/activate && sigstore $(ARGS)
 
 .PHONY: lint
-lint:
+lint: env/pyvenv.cfg
 	. env/bin/activate && \
 		black --check $(ALL_PY_SRCS) && \
 		isort --check $(ALL_PY_SRCS) && \
@@ -62,30 +62,30 @@ lint:
 		bandit -c pyproject.toml -r $(PY_MODULE)
 
 .PHONY: reformat
-reformat:
+reformat: env/pyvenv.cfg
 	. env/bin/activate && \
 		black $(ALL_PY_SRCS) && \
 		isort $(ALL_PY_SRCS)
 
 .PHONY: test
-test:
+test: env/pyvenv.cfg
 	. env/bin/activate && \
 		pytest --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
 		python -m coverage report -m $(COV_ARGS)
 
 .PHONY: doc
-doc:
+doc: env/pyvenv.cfg
 	. env/bin/activate && \
 		command -v pdoc3 && \
 		PYTHONWARNINGS='error::UserWarning' pdoc --force --html $(PY_MODULE)
 
 .PHONY: package
-package:
+package: env/pyvenv.cfg
 	. env/bin/activate && \
 		python3 -m build
 
 .PHONY: release
-release:
+release: env/pyvenv.cfg
 	@. env/bin/activate && \
 		NEXT_VERSION=$$(bump $(BUMP_ARGS)) && \
 		git add $(PY_MODULE)/_version.py && git diff --quiet --exit-code && \
