@@ -9,6 +9,9 @@ on:
 
 jobs:
   conformance:
+    # TODO: Come up with a way to share OIDC identities with third-party PRs.
+    # See: https://github.com/trailofbits/sigstore-conformance/issues/55
+    if: (github.event_name != 'pull_request') || !github.event.pull_request.head.repo.fork
     permissions:
       # Needed to access the workflow's OIDC identity.
       id-token: write
