@@ -23,15 +23,17 @@ from sigstore._internal import sct
 
 
 @pytest.mark.parametrize(
-    "precert_bytes",
+    "precert_bytes_len",
     [
-        b"tbs",
-        b"x" * 255,
-        b"x" * 1024,
-        b"x" * 16777215,
+        3,
+        255,
+        1024,
+        16777215,
     ],
 )
-def test_pack_digitally_signed(precert_bytes):
+def test_pack_digitally_signed(precert_bytes_len):
+    precert_bytes = b"x" * precert_bytes_len
+
     mock_sct = pretend.stub(
         version=pretend.stub(value=0),
         timestamp=datetime.datetime.fromtimestamp(
