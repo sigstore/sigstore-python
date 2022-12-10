@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
-      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a
+      - uses: actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9
       - name: install sigstore-python
         run: python -m pip install .
       - uses: trailofbits/sigstore-conformance@4b6b3c2877f7fd629d33c654b75143ecfcc68e2b
