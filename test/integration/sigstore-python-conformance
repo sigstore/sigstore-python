@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 ARG_REPLACEMENTS = {
-    "--certificate-email": "--cert-identity",
+    "--certificate-identity": "--cert-identity",
     "--certificate-oidc-issuer": "--cert-oidc-issuer",
 }
 
