@@ -18,6 +18,6 @@ jobs:
       - uses: actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9
       - name: install sigstore-python
         run: python -m pip install .
-      - uses: trailofbits/sigstore-conformance@4b6b3c2877f7fd629d33c654b75143ecfcc68e2b
+      - uses: trailofbits/sigstore-conformance@5570a249b6d84f6a04e195a0811704ebe2167e32
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance
