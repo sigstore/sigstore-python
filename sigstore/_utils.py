@@ -20,11 +20,17 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import sys
 from typing import IO, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import Certificate
+
+if sys.version_info < (3, 11):
+    import importlib_resources as resources
+else:
+    from importlib import resources
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
@@ -137,3 +143,11 @@ def sha256_streaming(io: IO[bytes]) -> bytes:
         nbytes = io.readinto(view)  # type: ignore
 
     return sha256.digest()
+
+
+def read_embedded(name: str) -> bytes:
+    """
+    Read a resource embedded in this distribution of sigstore-python,
+    returning its contents as bytes.
+    """
+    return resources.files("sigstore._store").joinpath(name).read_bytes()
