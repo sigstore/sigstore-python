@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pretend
 import pytest
-import requests
 
 from sigstore._internal.oidc import issuer
 
@@ -27,5 +25,4 @@ def test_fail_init_url():
 
 @pytest.mark.online
 def test_init_url():
-    issuer_ = issuer.Issuer("https://accounts.google.com")
-    assert True
+    issuer.Issuer("https://accounts.google.com")
