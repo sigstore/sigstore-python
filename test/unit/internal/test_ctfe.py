@@ -12,10 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pretend
+
 from sigstore._internal.ctfe import CTKeyring
 
 
 class TestCTKeyring:
+    def test_keyring_init(self):
+        pubkey = pretend.stub(
+            public_bytes=pretend.call_recorder(lambda encoding, format: bytes(0))
+        )
+        ctkeyring = CTKeyring([pubkey])
+        assert len(ctkeyring._keyring) == 1
+
     def test_keyring_cardinalities(self):
         production = CTKeyring.production()
         staging = CTKeyring.staging()
