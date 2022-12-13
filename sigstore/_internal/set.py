@@ -26,6 +26,10 @@ from sigstore._internal.rekor import RekorClient, RekorEntry
 
 
 class InvalidSetError(Exception):
+    """
+    Raised during SET verification if an SET is invalid in some way.
+    """
+
     pass
 
 
@@ -33,10 +37,9 @@ def verify_set(client: RekorClient, entry: RekorEntry) -> None:
     """
     Verify the Signed Entry Timestamp for a given Rekor `entry` using the given `client`.
     """
-    # Decode the SET field
-    signed_entry_ts: bytes = base64.b64decode(entry.signed_entry_timestamp)
 
-    # Validate the SET
+    signed_entry_ts = base64.b64decode(entry.signed_entry_timestamp)
+
     try:
         client._pubkey.verify(
             signature=signed_entry_ts,
