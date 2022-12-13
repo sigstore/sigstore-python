@@ -47,9 +47,27 @@ def test_detect_github_bad_env(monkeypatch):
     ]
 
 
-def test_detect_github_bad_permissions(monkeypatch):
+def test_detect_github_bad_request_token(monkeypatch):
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.delenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", raising=False)
+    monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "fakeurl")
+
+    logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
+    monkeypatch.setattr(ambient, "logger", logger)
+
+    with pytest.raises(
+        ambient.AmbientCredentialError,
+        match="GitHub: missing or insufficient OIDC token permissions?",
+    ):
+        ambient.detect_github()
+    assert logger.debug.calls == [
+        pretend.call("GitHub: looking for OIDC credentials"),
+    ]
+
+
+def test_detect_github_bad_request_url(monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "faketoken")
     monkeypatch.delenv("ACTIONS_ID_TOKEN_REQUEST_URL", raising=False)
 
     logger = pretend.stub(debug=pretend.call_recorder(lambda s: None))
