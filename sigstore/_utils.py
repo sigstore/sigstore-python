@@ -36,6 +36,10 @@ PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
 
 class InvalidKey(Exception):
+    """
+    Raised when loading a key fails.
+    """
+
     pass
 
 
@@ -80,6 +84,10 @@ def key_id(key: PublicKey) -> bytes:
 
 
 class SplitCertificateChainError(Exception):
+    """
+    Raised when splitting a sequence of PEM-formatted certificates fails.
+    """
+
     pass
 
 
