@@ -17,7 +17,6 @@ import base64
 import logging
 import os
 import sys
-from importlib import resources
 from pathlib import Path
 from textwrap import dedent
 from typing import Optional, TextIO, Union, cast
@@ -45,6 +44,7 @@ from sigstore._sign import Signer
 from sigstore._utils import (
     SplitCertificateChainError,
     load_pem_public_key,
+    read_embedded,
     split_certificate_chain,
 )
 from sigstore._verify import (
@@ -70,7 +70,7 @@ class _Embedded:
         self._name = name
 
     def read(self) -> bytes:
-        return resources.read_binary("sigstore._store", self._name)
+        return read_embedded(self._name)
 
     def __repr__(self) -> str:
         return f"{self._name} (embedded)"

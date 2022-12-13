@@ -26,10 +26,11 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
-  "cryptography>=38",
+  "cryptography >= 38",
+  "importlib_resources ~= 5.7; python_version < '3.11'",
   "pydantic",
-  "pyjwt>=2.1",
-  "pyOpenSSL>=22.0.0",
+  "pyjwt >= 2.1",
+  "pyOpenSSL >= 22.0.0",
   "requests",
   "securesystemslib",
 ]
@@ -66,7 +67,7 @@ lint = [
 ]
 dev = [
   "build",
-  "bump>=1.3.2",
+  "bump >= 1.3.2",
   "pdoc3",
   "sigstore[test,lint]",
 ]
