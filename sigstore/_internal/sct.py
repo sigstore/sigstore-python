@@ -138,6 +138,10 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
 
 
 class InvalidSctError(Exception):
+    """
+    Raised during SCT verification if an SCT is invalid in some way.
+    """
+
     pass
 
 
@@ -147,7 +151,14 @@ def verify_sct(
     chain: List[Certificate],
     ct_keyring: CTKeyring,
 ) -> None:
-    """Verify a signed certificate timestamp"""
+    """
+    Verify a signed certificate timestamp.
+
+    An SCT is verified by reconstructing its "digitally-signed" payload
+    and verifying that the signature provided in the SCT is valid against
+    one of the keys present in the CT keyring (i.e., the keys used by the CT
+    log to sign SCTs).
+    """
 
     issuer_key_id = None
     if sct.entry_type == LogEntryType.PRE_CERTIFICATE:
