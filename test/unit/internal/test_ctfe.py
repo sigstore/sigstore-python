@@ -15,7 +15,8 @@
 import pretend
 import pytest
 
-from sigstore._internal.ctfe import CTKeyring, CTKeyringLookupError
+from sigstore._internal.ctfe import CTKeyring, CTKeyringLookupError, CTKeyringError
+from sigstore._utils import key_id
 
 
 class TestCTKeyring:
@@ -50,7 +51,7 @@ class TestCTKeyring:
         # for the wrong instance.
         assert production_key_ids.isdisjoint(staging_key_ids)
 
-    def test_verify_empty_keyring(self):
+    def test_verify_fail_empty_keyring(self):
         ctkeyring = CTKeyring()
         key_id = pretend.stub(hex=pretend.call_recorder(lambda: pretend.stub()))
         signature = pretend.stub()
@@ -58,3 +59,15 @@ class TestCTKeyring:
 
         with pytest.raises(CTKeyringLookupError, match="no known key for key ID?"):
             ctkeyring.verify(key_id=key_id, signature=signature, data=data)
+
+    def test_verify_fail_keytype(self):
+        psuedo_key = pretend.stub(
+            public_bytes=pretend.call_recorder(lambda encoding, format: bytes(0))
+        )
+        ctkeyring = CTKeyring([psuedo_key])
+
+        signature = pretend.stub()
+        data = pretend.stub()
+
+        with pytest.raises(CTKeyringError, match="unsupported key type:?"):
+            ctkeyring.verify(key_id=key_id(psuedo_key), signature=signature, data=data)
