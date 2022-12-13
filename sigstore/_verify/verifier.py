@@ -92,6 +92,10 @@ class CertificateVerificationFailure(VerificationFailure):
 
 
 class Verifier:
+    """
+    The primary API for verification operations.
+    """
+
     def __init__(self, *, rekor: RekorClient, fulcio_certificate_chain: List[bytes]):
         """
         Create a new `Verifier`.
@@ -112,6 +116,9 @@ class Verifier:
 
     @classmethod
     def production(cls) -> Verifier:
+        """
+        Return a `Verifier` instance configured against Sigstore's production-level services.
+        """
         return cls(
             rekor=RekorClient.production(),
             fulcio_certificate_chain=[
@@ -122,6 +129,9 @@ class Verifier:
 
     @classmethod
     def staging(cls) -> Verifier:
+        """
+        Return a `Verifier` instance configured against Sigstore's staging-level services.
+        """
         return cls(
             rekor=RekorClient.staging(),
             fulcio_certificate_chain=[

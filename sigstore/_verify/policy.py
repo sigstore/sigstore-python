@@ -58,12 +58,27 @@ _OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
 
 
 class _SingleX509ExtPolicy(ABC):
+    """
+    An ABC for verification policies that boil down to checking a single
+    X.509 extension's value.
+    """
+
     oid: ObjectIdentifier
+    """
+    The OID of the extension being checked.
+    """
 
     def __init__(self, value: str) -> None:
+        """
+        Creates the new policy, with `value` as the expected value during
+        verification.
+        """
         self._value = value
 
     def verify(self, cert: Certificate) -> VerificationResult:
+        """
+        Verify this policy against `cert`.
+        """
         try:
             ext = cert.extensions.get_extension_for_oid(self.oid).value
         except ExtensionNotFound:
@@ -143,8 +158,16 @@ class GitHubWorkflowRef(_SingleX509ExtPolicy):
 
 
 class VerificationPolicy(Protocol):
+    """
+    A protocol type describing the interface that all verification policies
+    conform to.
+    """
+
     @abstractmethod
     def verify(self, cert: Certificate) -> VerificationResult:
+        """
+        Verify the given `cert` against this policy, returning a `VerificationResult`.
+        """
         raise NotImplementedError  # pragma: no cover
 
 
@@ -156,9 +179,15 @@ class AnyOf:
     """
 
     def __init__(self, children: list[VerificationPolicy]):
+        """
+        Create a new `AnyOf`, with the given child policies.
+        """
         self._children = children
 
     def verify(self, cert: Certificate) -> VerificationResult:
+        """
+        Verify `cert` against the policy.
+        """
         verified = any(child.verify(cert) for child in self._children)
         if verified:
             return VerificationSuccess()
@@ -177,9 +206,17 @@ class AllOf:
     """
 
     def __init__(self, children: list[VerificationPolicy]):
+        """
+        Create a new `AllOf`, with the given child policies.
+        """
+
         self._children = children
 
     def verify(self, cert: Certificate) -> VerificationResult:
+        """
+        Verify `cert` against the policy.
+        """
+
         # Without this, we'd consider empty lists of child policies trivially valid.
         # This is almost certainly not what the user wants and is a potential
         # source of API misuse, so we explicitly disallow it.
@@ -214,6 +251,10 @@ class UnsafeNoOp:
     """
 
     def verify(self, cert: Certificate) -> VerificationResult:
+        """
+        Verify `cert` against the policy.
+        """
+
         logger.warning(
             "unsafe (no-op) verification policy used! no verification performed!"
         )
@@ -230,10 +271,18 @@ class Identity:
     """
 
     def __init__(self, *, identity: str, issuer: str):
+        """
+        Create a new `Identity`, with the given expected identity and issuer values.
+        """
+
         self._identity = identity
         self._issuer = OIDCIssuer(issuer)
 
     def verify(self, cert: Certificate) -> VerificationResult:
+        """
+        Verify `cert` against the policy.
+        """
+
         issuer_verified: VerificationResult = self._issuer.verify(cert)
         if not issuer_verified:
             return issuer_verified
