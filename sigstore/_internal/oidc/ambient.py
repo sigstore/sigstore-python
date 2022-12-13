@@ -27,10 +27,10 @@ from sigstore._internal.oidc import DEFAULT_AUDIENCE, IdentityError
 
 logger = logging.getLogger(__name__)
 
-GCP_PRODUCT_NAME_FILE = "/sys/class/dmi/id/product_name"
-GCP_TOKEN_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/token"  # noqa # nosec B105
-GCP_IDENTITY_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"  # noqa # nosec B105
-GCP_GENERATEIDTOKEN_REQUEST_URL = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/{}:generateIdToken"  # noqa
+_GCP_PRODUCT_NAME_FILE = "/sys/class/dmi/id/product_name"
+_GCP_TOKEN_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/token"  # noqa # nosec B105
+_GCP_IDENTITY_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"  # noqa # nosec B105
+_GCP_GENERATEIDTOKEN_REQUEST_URL = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/{}:generateIdToken"  # noqa
 
 
 class AmbientCredentialError(IdentityError):
@@ -78,6 +78,15 @@ class _GitHubTokenPayload(BaseModel):
 
 
 def detect_github() -> Optional[str]:
+    """
+    Detect and return a GitHub Actions ambient OIDC credential.
+
+    Returns `None` if the context is not a GitHub Actions environment.
+
+    Raises if the environment is GitHub Actions, but is incorrect or
+    insufficiently permissioned for an OIDC credential.
+    """
+
     logger.debug("GitHub: looking for OIDC credentials")
     if not os.getenv("GITHUB_ACTIONS"):
         logger.debug("GitHub: environment doesn't look like a GH action; giving up")
@@ -123,6 +132,14 @@ def detect_github() -> Optional[str]:
 
 
 def detect_gcp() -> Optional[str]:
+    """
+    Detect an return a Google Cloud Platform ambient OIDC credential.
+
+    Returns `None` if the context is not a GCP environment.
+
+    Raises if the environment is GCP, but is incorrect or
+    insufficiently permissioned for an OIDC credential.
+    """
     logger.debug("GCP: looking for OIDC credentials")
 
     service_account_name = os.getenv("GOOGLE_SERVICE_ACCOUNT_NAME")
@@ -131,7 +148,7 @@ def detect_gcp() -> Optional[str]:
 
         logger.debug("GCP: requesting access token")
         resp = requests.get(
-            GCP_TOKEN_REQUEST_URL,
+            _GCP_TOKEN_REQUEST_URL,
             params={"scopes": "https://www.googleapis.com/auth/cloud-platform"},
             headers={"Metadata-Flavor": "Google"},
         )
@@ -148,7 +165,7 @@ def detect_gcp() -> Optional[str]:
             raise AmbientCredentialError("GCP: access token missing from response")
 
         resp = requests.post(
-            GCP_GENERATEIDTOKEN_REQUEST_URL.format(service_account_name),
+            _GCP_GENERATEIDTOKEN_REQUEST_URL.format(service_account_name),
             json={"audience": "sigstore", "includeEmail": True},
             headers={
                 "Authorization": f"Bearer {access_token}",
@@ -175,7 +192,7 @@ def detect_gcp() -> Optional[str]:
         logger.debug("GCP: GOOGLE_SERVICE_ACCOUNT_NAME not set; skipping impersonation")
 
         try:
-            with open(GCP_PRODUCT_NAME_FILE) as f:
+            with open(_GCP_PRODUCT_NAME_FILE) as f:
                 name = f.read().strip()
         except OSError:
             logger.debug(
@@ -191,7 +208,7 @@ def detect_gcp() -> Optional[str]:
 
         logger.debug("GCP: requesting OIDC token")
         resp = requests.get(
-            GCP_IDENTITY_REQUEST_URL,
+            _GCP_IDENTITY_REQUEST_URL,
             params={"audience": DEFAULT_AUDIENCE, "format": "full"},
             headers={"Metadata-Flavor": "Google"},
         )

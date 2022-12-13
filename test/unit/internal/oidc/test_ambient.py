@@ -355,7 +355,7 @@ def test_detect_gcp_request_fails(monkeypatch):
         ambient.detect_gcp()
     assert requests.get.calls == [
         pretend.call(
-            ambient.GCP_IDENTITY_REQUEST_URL,
+            ambient._GCP_IDENTITY_REQUEST_URL,
             params={"audience": "sigstore", "format": "full"},
             headers={"Metadata-Flavor": "Google"},
         )
@@ -383,7 +383,7 @@ def test_detect_gcp(monkeypatch, product_name):
     assert ambient.detect_gcp() == "fakejwt"
     assert requests.get.calls == [
         pretend.call(
-            ambient.GCP_IDENTITY_REQUEST_URL,
+            ambient._GCP_IDENTITY_REQUEST_URL,
             params={"audience": "sigstore", "format": "full"},
             headers={"Metadata-Flavor": "Google"},
         )
