@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Top-level signing APIs for sigstore-python.
+"""
+
 from __future__ import annotations
 
 import base64
@@ -35,6 +39,10 @@ logger = logging.getLogger(__name__)
 
 
 class Signer:
+    """
+    The primary API for signing operations.
+    """
+
     def __init__(self, *, fulcio: FulcioClient, rekor: RekorClient):
         """
         Create a new `Signer`.
@@ -50,10 +58,16 @@ class Signer:
 
     @classmethod
     def production(cls) -> Signer:
+        """
+        Return a `Signer` instance configured against Sigstore's production-level services.
+        """
         return cls(fulcio=FulcioClient.production(), rekor=RekorClient.production())
 
     @classmethod
     def staging(cls) -> Signer:
+        """
+        Return a `Signer` instance configured against Sigstore's staging-level services.
+        """
         return cls(fulcio=FulcioClient.staging(), rekor=RekorClient.staging())
 
     def sign(
