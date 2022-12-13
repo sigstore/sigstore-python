@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import pretend
+import pytest
 
-from sigstore._internal.ctfe import CTKeyring
+from sigstore._internal.ctfe import CTKeyring, CTKeyringLookupError
 
 
 class TestCTKeyring:
@@ -48,3 +49,12 @@ class TestCTKeyring:
         # should never overlap. Overlapping would imply loading keys intended
         # for the wrong instance.
         assert production_key_ids.isdisjoint(staging_key_ids)
+
+    def test_verify_empty_keyring(self):
+        ctkeyring = CTKeyring()
+        key_id = pretend.stub(hex=pretend.call_recorder(lambda: pretend.stub()))
+        signature = pretend.stub()
+        data = pretend.stub()
+
+        with pytest.raises(CTKeyringLookupError, match="no known key for key ID?"):
+            ctkeyring.verify(key_id=key_id, signature=signature, data=data)
