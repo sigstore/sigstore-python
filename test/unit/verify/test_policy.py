@@ -14,10 +14,10 @@
 
 import pretend
 import pytest
+from cryptography.x509 import ExtensionNotFound
 
 from sigstore._verify import policy
 from sigstore._verify.models import VerificationFailure, VerificationSuccess
-from cryptography.x509 import ExtensionNotFound
 
 
 class TestVerificationPolicy:
@@ -85,7 +85,7 @@ class TestAllOf:
         assert not result
         assert result == VerificationFailure(reason="no child policies to verify")
 
-    def test_foo(self, signing_materials):
+    def test_certificate_extension_not_found(self):
         policy_ = policy.AllOf([policy.Identity(identity="foo", issuer="bar")])
         cert_ = pretend.stub(
             extensions=pretend.stub(

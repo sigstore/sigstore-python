@@ -15,7 +15,11 @@
 import pretend
 import pytest
 
-from sigstore._internal.ctfe import CTKeyring, CTKeyringLookupError, CTKeyringError
+from sigstore._internal.ctfe import (
+    CTKeyring,
+    CTKeyringError,
+    CTKeyringLookupError,
+)
 from sigstore._utils import key_id
 
 
