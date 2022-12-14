@@ -14,6 +14,7 @@
 
 import pretend
 import pytest
+from cryptography.x509 import ExtensionNotFound
 
 from sigstore._verify import policy
 from sigstore._verify.models import VerificationFailure, VerificationSuccess
@@ -83,6 +84,26 @@ class TestAllOf:
         result = policy_.verify(pretend.stub())
         assert not result
         assert result == VerificationFailure(reason="no child policies to verify")
+
+    def test_certificate_extension_not_found(self):
+        policy_ = policy.AllOf([policy.Identity(identity="foo", issuer="bar")])
+        cert_ = pretend.stub(
+            extensions=pretend.stub(
+                get_extension_for_oid=pretend.raiser(
+                    ExtensionNotFound(oid=pretend.stub(), msg=pretend.stub())
+                )
+            )
+        )
+
+        result = policy_.verify(cert_)
+        assert not result
+        assert result == VerificationFailure(
+            reason=(
+                "1 of 1 policies failed: "
+                "Certificate does not contain OIDCIssuer "
+                "(1.3.6.1.4.1.57264.1.1) extension"
+            )
+        )
 
     def test_fails_not_all_children_match(self, signing_materials):
         materials = signing_materials("a.txt")
