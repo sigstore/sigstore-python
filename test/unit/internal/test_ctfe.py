@@ -12,10 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sigstore._internal.ctfe import CTKeyring
+import pretend
+import pytest
+
+from sigstore._internal.ctfe import (
+    CTKeyring,
+    CTKeyringError,
+    CTKeyringLookupError,
+)
+from sigstore._utils import key_id
 
 
 class TestCTKeyring:
+    def test_keyring_init(self):
+        pubkey = pretend.stub(
+            public_bytes=pretend.call_recorder(lambda encoding, format: bytes(0))
+        )
+        ctkeyring = CTKeyring([pubkey])
+        assert len(ctkeyring._keyring) == 1
+
     def test_keyring_cardinalities(self):
         production = CTKeyring.production()
         staging = CTKeyring.staging()
@@ -39,3 +54,24 @@ class TestCTKeyring:
         # should never overlap. Overlapping would imply loading keys intended
         # for the wrong instance.
         assert production_key_ids.isdisjoint(staging_key_ids)
+
+    def test_verify_fail_empty_keyring(self):
+        ctkeyring = CTKeyring()
+        key_id = pretend.stub(hex=pretend.call_recorder(lambda: pretend.stub()))
+        signature = pretend.stub()
+        data = pretend.stub()
+
+        with pytest.raises(CTKeyringLookupError, match="no known key for key ID?"):
+            ctkeyring.verify(key_id=key_id, signature=signature, data=data)
+
+    def test_verify_fail_keytype(self):
+        psuedo_key = pretend.stub(
+            public_bytes=pretend.call_recorder(lambda encoding, format: bytes(0))
+        )
+        ctkeyring = CTKeyring([psuedo_key])
+
+        signature = pretend.stub()
+        data = pretend.stub()
+
+        with pytest.raises(CTKeyringError, match="unsupported key type:?"):
+            ctkeyring.verify(key_id=key_id(psuedo_key), signature=signature, data=data)
