@@ -22,7 +22,6 @@ import base64
 import logging
 from abc import ABC
 from dataclasses import dataclass
-from importlib import resources
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
@@ -34,22 +33,18 @@ from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
 from securesystemslib.formats import encode_canonical
 
 from sigstore._internal.ctfe import CTKeyring
-from sigstore._utils import base64_encode_pem_cert
+from sigstore._utils import base64_encode_pem_cert, read_embedded
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
 
-_DEFAULT_REKOR_ROOT_PUBKEY = resources.read_binary("sigstore._store", "rekor.pub")
-_STAGING_REKOR_ROOT_PUBKEY = resources.read_binary(
-    "sigstore._store", "rekor.staging.pub"
-)
+_DEFAULT_REKOR_ROOT_PUBKEY = read_embedded("rekor.pub")
+_STAGING_REKOR_ROOT_PUBKEY = read_embedded("rekor.staging.pub")
 
-_DEFAULT_REKOR_CTFE_PUBKEY = resources.read_binary("sigstore._store", "ctfe.pub")
-_STAGING_REKOR_CTFE_PUBKEY = resources.read_binary(
-    "sigstore._store", "ctfe.staging.pub"
-)
+_DEFAULT_REKOR_CTFE_PUBKEY = read_embedded("ctfe.pub")
+_STAGING_REKOR_CTFE_PUBKEY = read_embedded("ctfe.staging.pub")
 
 
 class RekorBundle(BaseModel):

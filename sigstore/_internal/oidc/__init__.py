@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+OIDC functionality for sigstore-python.
+"""
+
 import jwt
 
 # See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
@@ -25,11 +29,22 @@ DEFAULT_AUDIENCE = "sigstore"
 
 
 class IdentityError(Exception):
+    """
+    Raised on any OIDC token format or claim error.
+    """
+
     pass
 
 
 class Identity:
+    """
+    A wrapper for an OIDC "identity", as extracted from an OIDC token.
+    """
+
     def __init__(self, identity_token: str) -> None:
+        """
+        Create a new `Identity` from the given OIDC token.
+        """
         identity_jwt = jwt.decode(identity_token, options={"verify_signature": False})
 
         iss = identity_jwt.get("iss")

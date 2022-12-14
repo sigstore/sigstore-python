@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Helper that queries the OpenID configuration for a given issuer and extracts its endpoints
+Helper that queries the OpenID configuration for a given issuer and extracts its endpoints.
 """
 
 import urllib.parse
@@ -22,11 +22,26 @@ import requests
 
 
 class IssuerError(Exception):
+    """
+    Raised on any communication or format error with an OIDC issuer.
+    """
+
     pass
 
 
 class Issuer:
+    """
+    Represents an OIDC issuer (IdP).
+    """
+
     def __init__(self, base_url: str) -> None:
+        """
+        Create a new `Issuer` from the given base URL.
+
+        This URL is used to locate an OpenID Connect configuration file,
+        which is then used to bootstrap the issuer's state (such
+        as authorization and token endpoints).
+        """
         oidc_config_url = urllib.parse.urljoin(
             f"{base_url}/", ".well-known/openid-configuration"
         )

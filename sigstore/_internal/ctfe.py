@@ -18,7 +18,6 @@ Functionality for interacting with CT ("CTFE") signing keys.
 
 from __future__ import annotations
 
-from importlib import resources
 from typing import List
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
@@ -26,7 +25,12 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
-from sigstore._utils import PublicKey, key_id, load_pem_public_key
+from sigstore._utils import (
+    PublicKey,
+    key_id,
+    load_pem_public_key,
+    read_embedded,
+)
 
 
 class CTKeyringError(Exception):
@@ -89,7 +93,7 @@ class CTKeyring:
         Adds a key to the current keyring, as identified by its
         resource name under `sigstore._store`.
         """
-        key_pem = resources.read_binary("sigstore._store", name)
+        key_pem = read_embedded(name)
         self.add(key_pem)
 
     def add(self, key_pem: bytes) -> None:

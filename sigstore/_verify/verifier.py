@@ -20,12 +20,12 @@ from __future__ import annotations
 
 import datetime
 import logging
-from importlib import resources
 from typing import List, cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509 import (
     ExtendedKeyUsage,
     KeyUsage,
@@ -45,6 +45,7 @@ from sigstore._internal.merkle import (
 )
 from sigstore._internal.rekor import RekorClient
 from sigstore._internal.set import InvalidSetError, verify_set
+from sigstore._utils import read_embedded
 from sigstore._verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore._verify.models import RekorEntryMissing as RekorEntryMissingError
 from sigstore._verify.models import (
@@ -57,18 +58,11 @@ from sigstore._verify.policy import VerificationPolicy
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_FULCIO_ROOT_CERT = read_embedded("fulcio.crt.pem")
+_DEFAULT_FULCIO_INTERMEDIATE_CERT = read_embedded("fulcio_intermediate.crt.pem")
 
-_DEFAULT_FULCIO_ROOT_CERT = resources.read_binary("sigstore._store", "fulcio.crt.pem")
-_DEFAULT_FULCIO_INTERMEDIATE_CERT = resources.read_binary(
-    "sigstore._store", "fulcio_intermediate.crt.pem"
-)
-
-_STAGING_FULCIO_ROOT_CERT = resources.read_binary(
-    "sigstore._store", "fulcio.crt.staging.pem"
-)
-_STAGING_FULCIO_INTERMEDIATE_CERT = resources.read_binary(
-    "sigstore._store", "fulcio_intermediate.crt.staging.pem"
-)
+_STAGING_FULCIO_ROOT_CERT = read_embedded("fulcio.crt.staging.pem")
+_STAGING_FULCIO_INTERMEDIATE_CERT = read_embedded("fulcio_intermediate.crt.staging.pem")
 
 
 class RekorEntryMissing(VerificationFailure):
@@ -217,7 +211,9 @@ class Verifier:
             signing_key = materials.certificate.public_key()
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
             signing_key.verify(
-                materials.signature, materials.input_, ec.ECDSA(hashes.SHA256())
+                materials.signature,
+                materials.input_digest,
+                ec.ECDSA(Prehashed(hashes.SHA256())),
             )
         except InvalidSignature:
             return VerificationFailure(reason="Signature is invalid for input")
@@ -231,7 +227,8 @@ class Verifier:
             entry = materials.rekor_entry(self._rekor)
         except RekorEntryMissingError:
             return RekorEntryMissing(
-                signature=materials.signature, artifact_hash=materials.artifact_hash
+                signature=materials.signature,
+                artifact_hash=materials.input_digest.hex(),
             )
         except InvalidRekorEntryError:
             return VerificationFailure(

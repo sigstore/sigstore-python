@@ -20,16 +20,26 @@ from __future__ import annotations
 
 import base64
 import hashlib
-from typing import Union
+import sys
+from typing import IO, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import Certificate
 
+if sys.version_info < (3, 11):
+    import importlib_resources as resources
+else:
+    from importlib import resources
+
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
 
 class InvalidKey(Exception):
+    """
+    Raised when loading a key fails.
+    """
+
     pass
 
 
@@ -74,6 +84,10 @@ def key_id(key: PublicKey) -> bytes:
 
 
 class SplitCertificateChainError(Exception):
+    """
+    Raised when splitting a sequence of PEM-formatted certificates fails.
+    """
+
     pass
 
 
@@ -104,3 +118,44 @@ def split_certificate_chain(chain_pem: str) -> list[bytes]:
     certificate_chain = [(pem_header + c).encode() for c in certificate_chain]
 
     return certificate_chain
+
+
+def sha256_streaming(io: IO[bytes]) -> bytes:
+    """
+    Compute the SHA256 of a stream.
+
+    This function does its own internal buffering, so an unbuffered stream
+    should be supplied for optimal performance.
+    """
+
+    # NOTE: This function performs a SHA256 digest over a stream.
+    # The stream's size is not checked, meaning that the stream's source
+    # is implicitly trusted: if an attacker is able to truncate the stream's
+    # source prematurely, then they could conceivably produce a digest
+    # for a partial stream. This in turn could conceivably result
+    # in a valid signature for an unintended (truncated) input.
+    #
+    # This is currently outside of sigstore-python's threat model: we
+    # assume that the stream is trusted.
+    #
+    # See: https://github.com/sigstore/sigstore-python/pull/329#discussion_r1041215972
+
+    sha256 = hashlib.sha256()
+    # Per coreutils' ioblksize.h: 128KB performs optimally across a range
+    # of systems in terms of minimizing syscall overhead.
+    view = memoryview(bytearray(128 * 1024))
+
+    nbytes = io.readinto(view)  # type: ignore
+    while nbytes:
+        sha256.update(view[:nbytes])
+        nbytes = io.readinto(view)  # type: ignore
+
+    return sha256.digest()
+
+
+def read_embedded(name: str) -> bytes:
+    """
+    Read a resource embedded in this distribution of sigstore-python,
+    returning its contents as bytes.
+    """
+    return resources.files("sigstore._store").joinpath(name).read_bytes()

@@ -17,7 +17,6 @@ import base64
 import logging
 import os
 import sys
-from importlib import resources
 from pathlib import Path
 from textwrap import dedent
 from typing import Optional, TextIO, Union, cast
@@ -45,6 +44,7 @@ from sigstore._sign import Signer
 from sigstore._utils import (
     SplitCertificateChainError,
     load_pem_public_key,
+    read_embedded,
     split_certificate_chain,
 )
 from sigstore._verify import (
@@ -70,7 +70,7 @@ class _Embedded:
         self._name = name
 
     def read(self) -> bytes:
-        return resources.read_binary("sigstore._store", self._name)
+        return read_embedded(self._name)
 
     def __repr__(self) -> str:
         return f"{self._name} (embedded)"
@@ -447,10 +447,11 @@ def _sign(args: argparse.Namespace) -> None:
 
     for file, outputs in output_map.items():
         logger.debug(f"signing for {file.name}")
-        result = signer.sign(
-            input_=file.read_bytes(),
-            identity_token=args.identity_token,
-        )
+        with file.open(mode="rb", buffering=0) as io:
+            result = signer.sign(
+                input_=io,
+                identity_token=args.identity_token,
+            )
 
         print("Using ephemeral certificate:")
         print(result.cert_pem)
@@ -586,12 +587,13 @@ def _verify(args: argparse.Namespace) -> None:
 
         logger.debug(f"Verifying contents from: {file}")
 
-        materials = VerificationMaterials(
-            input_=file.read_bytes(),
-            cert_pem=cert_pem,
-            signature=base64.b64decode(b64_signature),
-            offline_rekor_entry=entry,
-        )
+        with file.open(mode="rb", buffering=0) as io:
+            materials = VerificationMaterials(
+                input_=io,
+                cert_pem=cert_pem,
+                signature=base64.b64decode(b64_signature),
+                offline_rekor_entry=entry,
+            )
 
         policy_ = policy.Identity(
             identity=args.cert_identity,
