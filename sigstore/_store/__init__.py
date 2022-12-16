@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+An empty module, used to assist Python's resource machinery in embedding
+assets.
+"""
+
 
 # NOTE: This is arguably incorrect, since _store only contains non-Python files.
 # However, due to how `importlib.resources` is designed, only top-level resources
@@ -27,12 +32,15 @@
 #
 # https://storage.googleapis.com/tuf-root-staging
 #   * ctfe.staging.pub
+#   * ctfe_2022.staging.pub
+#   * ctfe_2022.2.staging.pub
 #   * fulcio.crt.staging.pem
 #   * fulcio_intermediate.crt.staging.pem
 #   * rekor.staging.pub
 #
 # https://storage.googleapis.com/sigstore-tuf-root
 #   * ctfe.pub
+#   * ctfe_2022.pub
 #   * fulcio.crt.pem
 #   * fulcio_intermediate.crt.pem
 #   * rekor.pub

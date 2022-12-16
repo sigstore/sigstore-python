@@ -42,8 +42,17 @@ class VerificationResult(BaseModel):
     """
 
     success: bool
+    """
+    Represents the status of this result.
+    """
 
     def __bool__(self) -> bool:
+        """
+        Returns a boolean representation of this result.
+
+        `VerificationSuccess` is always `True`, and `VerificationFailure`
+        is always `False`.
+        """
         return self.success
 
 
@@ -53,6 +62,9 @@ class VerificationSuccess(VerificationResult):
     """
 
     success: bool = True
+    """
+    See `VerificationResult.success`.
+    """
 
 
 class VerificationFailure(VerificationResult):
@@ -61,7 +73,14 @@ class VerificationFailure(VerificationResult):
     """
 
     success: bool = False
+    """
+    See `VerificationResult.success`.
+    """
+
     reason: str
+    """
+    A human-readable explanation or description of the verification failure.
+    """
 
 
 class RekorEntryMissing(Exception):
@@ -139,6 +158,12 @@ class VerificationMaterials:
         signature: bytes,
         offline_rekor_entry: RekorEntry | None,
     ):
+        """
+        Create a new `VerificationMaterials` from the given materials.
+
+        Effect: `input_` is consumed as part of construction.
+        """
+
         self.input_digest = sha256_streaming(input_)
         self.certificate = load_pem_x509_certificate(cert_pem.encode())
         self.signature = signature

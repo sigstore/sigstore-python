@@ -86,6 +86,10 @@ omit = ["sigstore/_cli.py"]
 # environment, or the CLI (which is documented separately).
 exclude = ["env", "test", "sigstore/_cli.py"]
 ignore-semiprivate = true
+ignore-private = true
+# Ignore nested classes for docstring coverage because we use them primarily
+# for pydantic model configuration.
+ignore-nested-classes = true
 fail-under = 100
 
 [tool.mypy]

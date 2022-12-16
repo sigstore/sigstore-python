@@ -30,11 +30,15 @@ from sigstore._internal.rekor import RekorEntry
 
 
 class InvalidInclusionProofError(Exception):
+    """
+    Raised if the Merkle inclusion proof fails.
+    """
+
     pass
 
 
-LEAF_HASH_PREFIX = 0
-NODE_HASH_PREFIX = 1
+_LEAF_HASH_PREFIX = 0
+_NODE_HASH_PREFIX = 1
 
 
 def _decomp_inclusion_proof(index: int, size: int) -> Tuple[int, int]:
@@ -81,18 +85,18 @@ def _chain_border_right(seed: bytes, hashes: List[str]) -> bytes:
 
 def _hash_children(lhs: bytes, rhs: bytes) -> bytes:
     pattern = f"B{len(lhs)}s{len(rhs)}s"
-    data = struct.pack(pattern, NODE_HASH_PREFIX, lhs, rhs)
+    data = struct.pack(pattern, _NODE_HASH_PREFIX, lhs, rhs)
     return hashlib.sha256(data).digest()
 
 
 def _hash_leaf(leaf: bytes) -> bytes:
     pattern = f"B{len(leaf)}s"
-    data = struct.pack(pattern, LEAF_HASH_PREFIX, leaf)
+    data = struct.pack(pattern, _LEAF_HASH_PREFIX, leaf)
     return hashlib.sha256(data).digest()
 
 
 def verify_merkle_inclusion(entry: RekorEntry) -> None:
-    """Verify the Merkle Inclusion Proof for a given Rekor entry"""
+    """Verify the Merkle Inclusion Proof for a given Rekor entry."""
     inclusion_proof = entry.inclusion_proof
     if inclusion_proof is None:
         raise InvalidInclusionProofError("Rekor entry has no inclusion proof")

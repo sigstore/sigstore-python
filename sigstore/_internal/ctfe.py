@@ -59,6 +59,10 @@ class CTKeyring:
     """
 
     def __init__(self, keys: List[PublicKey] = []):
+        """
+        Create a new `CTKeyring`, with `keys` as the initial set of signing
+        keys.
+        """
         self._keyring = {}
         for key in keys:
             self._keyring[key_id(key)] = key
@@ -104,6 +108,13 @@ class CTKeyring:
         self._keyring[key_id(key)] = key
 
     def verify(self, *, key_id: bytes, signature: bytes, data: bytes) -> None:
+        """
+        Verify that `signature` is a valid signature for `data`, using the
+        key identified by `key_id`.
+
+        Raises if `key_id` does not match a key in the `CTKeyring`, or if
+        the signature is invalid.
+        """
         key = self._keyring.get(key_id)
         if key is None:
             # If we don't have a key corresponding to this key ID, we can't
