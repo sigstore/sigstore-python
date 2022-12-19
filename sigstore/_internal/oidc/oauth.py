@@ -48,12 +48,12 @@ AUTH_SUCCESS_HTML = """
 """
 
 
-class OAuthFlow:
+class _OAuthFlow:
     def __init__(self, client_id: str, client_secret: str, issuer: Issuer):
         self._client_id = client_id
         self._client_secret = client_secret
         self._issuer = issuer
-        self._server = OAuthRedirectServer(
+        self._server = _OAuthRedirectServer(
             self._client_id, self._client_secret, self._issuer
         )
         self._server_thread = threading.Thread(
@@ -61,7 +61,7 @@ class OAuthFlow:
             args=(self._server,),
         )
 
-    def __enter__(self) -> OAuthRedirectServer:
+    def __enter__(self) -> _OAuthRedirectServer:
         self._server_thread.start()
 
         return self._server
@@ -71,13 +71,13 @@ class OAuthFlow:
         self._server_thread.join()
 
 
-class OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
+class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, _format: str, *_args: Any) -> None:
         pass
 
     def do_GET(self) -> None:
         logger.debug(f"GET: {self.path} with {dict(self.headers)}")
-        server = cast(OAuthRedirectServer, self.server)
+        server = cast(_OAuthRedirectServer, self.server)
 
         # If the auth response has already been populated, the main thread will be stopping this
         # thread and accessing the auth response shortly so we should stop servicing any requests.
@@ -111,7 +111,7 @@ class OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
 OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
 
 
-class OAuthSession:
+class _OAuthSession:
     def __init__(self, client_id: str, client_secret: str, issuer: Issuer):
         self.__poison = False
 
@@ -162,10 +162,10 @@ class OAuthSession:
         }
 
 
-class OAuthRedirectServer(http.server.HTTPServer):
+class _OAuthRedirectServer(http.server.HTTPServer):
     def __init__(self, client_id: str, client_secret: str, issuer: Issuer) -> None:
-        super().__init__(("localhost", 0), OAuthRedirectHandler)
-        self.oauth_session = OAuthSession(client_id, client_secret, issuer)
+        super().__init__(("localhost", 0), _OAuthRedirectHandler)
+        self.oauth_session = _OAuthSession(client_id, client_secret, issuer)
         self.auth_response: Optional[Dict[str, List[str]]] = None
         self._is_out_of_band = False
 
@@ -215,7 +215,7 @@ def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> st
     force_oob = os.getenv("SIGSTORE_OAUTH_FORCE_OOB") is not None
 
     code: str
-    with OAuthFlow(client_id, client_secret, issuer) as server:
+    with _OAuthFlow(client_id, client_secret, issuer) as server:
         # Launch web browser
         if not force_oob and webbrowser.open(server.base_uri):
             print("Waiting for browser interaction...")
