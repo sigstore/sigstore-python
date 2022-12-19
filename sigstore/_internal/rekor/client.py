@@ -361,12 +361,19 @@ class RekorEntries(_Endpoint):
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:
+        """
+        Returns a `RekorEntriesRetrieve` capable of retrieving entries.
+        """
         return RekorEntriesRetrieve(
             urljoin(self.url, "retrieve/"), session=self.session
         )
 
 
 class RekorEntriesRetrieve(_Endpoint):
+    """
+    Represents the entry retrieval endpoints on a Rekor instance.
+    """
+
     def post(
         self,
         signature: bytes,
@@ -433,6 +440,9 @@ class RekorClient:
     """The internal Rekor client"""
 
     def __init__(self, url: str, pubkey: bytes, ct_keyring: CTKeyring) -> None:
+        """
+        Create a new `RekorClient` from the given URL.
+        """
         self.url = urljoin(url, "api/v1/")
         self.session = requests.Session()
         self.session.headers.update(
@@ -450,18 +460,30 @@ class RekorClient:
         self._ct_keyring = ct_keyring
 
     def __del__(self) -> None:
+        """
+        Terminates the underlying network session.
+        """
         self.session.close()
 
     @classmethod
     def production(cls) -> RekorClient:
+        """
+        Returns a `RekorClient` populated with the default Rekor production instance.
+        """
         return cls(
             DEFAULT_REKOR_URL, _DEFAULT_REKOR_ROOT_PUBKEY, CTKeyring.production()
         )
 
     @classmethod
     def staging(cls) -> RekorClient:
+        """
+        Returns a `RekorClient` populated with the default Rekor staging instance.
+        """
         return cls(STAGING_REKOR_URL, _STAGING_REKOR_ROOT_PUBKEY, CTKeyring.staging())
 
     @property
     def log(self) -> RekorLog:
+        """
+        Returns a `RekorLog` adapter for making requests to a Rekor log.
+        """
         return RekorLog(urljoin(self.url, "log/"), session=self.session)

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+OAuth2 flow functionality for `sigstore-python`.
+"""
+
 from __future__ import annotations
 
 import base64
