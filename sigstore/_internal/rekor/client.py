@@ -34,7 +34,7 @@ from securesystemslib.formats import encode_canonical
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import base64_encode_pem_cert, read_embedded
+from sigstore._utils import base64_encode_pem_cert
 
 logger = logging.getLogger(__name__)
 

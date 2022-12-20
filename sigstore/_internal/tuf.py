@@ -16,10 +16,9 @@ import logging
 import shutil
 from importlib import resources
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from urllib import parse
 
-from tuf.api.metadata import Metadata, Timestamp
 from tuf.ngclient import Updater
 
 logger = logging.getLogger(__name__)
@@ -41,7 +40,7 @@ def _get_dirs(url: str) -> Tuple[Path, Path]:
 class TrustUpdater:
     def __init__(self, url: str) -> None:
         self._repo_url = url
-        self._updater = None
+        self._updater: Optional[Updater] = None
 
         self._metadata_dir, self._targets_dir = _get_dirs(url)
 
@@ -70,9 +69,9 @@ class TrustUpdater:
     def staging(cls) -> "TrustUpdater":
         return cls(STAGING_TUF_URL)
 
-    def _setup(self) -> None:
+    def _setup(self) -> "Updater":
         """Initialize and update the toplevel TUF metadata"""
-        self._updater = Updater(
+        updater = Updater(
             metadata_dir=str(self._metadata_dir),
             metadata_base_url=f"{self._repo_url}",
             target_base_url=f"{self._repo_url}targets/",
@@ -81,14 +80,16 @@ class TrustUpdater:
 
         # NOTE: we would like to avoid refresh if the toplevel metadata is valid.
         # https://github.com/theupdateframework/python-tuf/issues/2225
-        self._updater.refresh()
+        updater.refresh()
+        return updater
 
     def get_ctfe_keys(self) -> List[bytes]:
         """Return the active CTFE public keys contents"""
         if not self._updater:
-            self._setup()
+            self._updater = self._setup()
 
         ctfes = []
+        assert self._updater._trusted_set.targets
         targets = self._updater._trusted_set.targets.signed.targets
         for target_info in targets.values():
             custom = target_info.unrecognized_fields["custom"]["sigstore"]
@@ -107,8 +108,9 @@ class TrustUpdater:
     def get_rekor_key(self) -> bytes:
         """Return the rekor public key content"""
         if not self._updater:
-            self._setup()
+            self._updater = self._setup()
 
+        assert self._updater._trusted_set.targets
         targets = self._updater._trusted_set.targets.signed.targets
         for target, target_info in targets.items():
             custom = target_info.unrecognized_fields["custom"]["sigstore"]

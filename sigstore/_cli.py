@@ -42,10 +42,7 @@ from sigstore._internal.rekor.client import (
 )
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._sign import Signer
-from sigstore._utils import (
-    SplitCertificateChainError,
-    split_certificate_chain,
-)
+from sigstore._utils import SplitCertificateChainError, split_certificate_chain
 from sigstore._verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,

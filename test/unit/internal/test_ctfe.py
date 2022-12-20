@@ -15,17 +15,17 @@
 import pretend
 import pytest
 
-from sigstore._internal.ctfe import (
-    CTKeyring,
-    CTKeyringError,
-    CTKeyringLookupError,
-)
-from sigstore._utils import key_id
+from sigstore._internal.ctfe import CTKeyring, CTKeyringLookupError
 
 
 class TestCTKeyring:
     def test_keyring_init(self):
-        keybytes = b"-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbfwR+RJudXscgRBRpKX1XFDy3Pyu\ndDxz/SfnRi1fT8ekpfBd2O1uoz7jr3Z8nKzxA69EUQ+eFCFI3zeubPWU7w==\n-----END PUBLIC KEY-----"
+        keybytes = (
+            b"-----BEGIN PUBLIC KEY-----\n"
+            b"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbfwR+RJudXscgRBRpKX1XFDy3Pyu\n"
+            b"dDxz/SfnRi1fT8ekpfBd2O1uoz7jr3Z8nKzxA69EUQ+eFCFI3zeubPWU7w==\n"
+            b"-----END PUBLIC KEY-----"
+        )
         ctkeyring = CTKeyring([keybytes])
         assert len(ctkeyring._keyring) == 1
 
