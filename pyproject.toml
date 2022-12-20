@@ -33,6 +33,7 @@ dependencies = [
   "pyOpenSSL >= 22.0.0",
   "requests",
   "securesystemslib",
+  "tuf >= 2.0.0",
 ]
 requires-python = ">=3.7"
 
