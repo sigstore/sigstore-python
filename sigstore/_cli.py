@@ -549,10 +549,16 @@ def _verify(args: argparse.Namespace) -> None:
         except SplitCertificateChainError as error:
             args._parser.error(f"Failed to parse certificate chain: {error}")
 
+        if args.rekor_root_pubkey is not None:
+            rekor_key = args.rekor_root_pubkey.read()
+        else:
+            updater = TrustUpdater.production()
+            rekor_key = updater.get_rekor_key()
+
         verifier = Verifier(
             rekor=RekorClient(
                 url=args.rekor_url,
-                pubkey=args.rekor_root_pubkey.read(),
+                pubkey=rekor_key,
                 # We don't use the CT keyring in verification so we can supply an empty keyring
                 ct_keyring=CTKeyring(),
             ),
