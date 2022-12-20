@@ -406,20 +406,10 @@ class RekorClient:
         self.session.close()
 
     @classmethod
-    def production(cls) -> RekorClient:
-        updater = TrustUpdater.production()
+    def with_updater(cls, updater: TrustUpdater) -> RekorClient:
         rekor_key = updater.get_rekor_key()
         ctfe_keys = updater.get_ctfe_keys()
-
         return cls(DEFAULT_REKOR_URL, rekor_key, CTKeyring(ctfe_keys))
-
-    @classmethod
-    def staging(cls) -> RekorClient:
-        updater = TrustUpdater.staging()
-        rekor_key = updater.get_rekor_key()
-        ctfe_keys = updater.get_ctfe_keys()
-
-        return cls(STAGING_REKOR_URL, rekor_key, CTKeyring(ctfe_keys))
 
     @property
     def log(self) -> RekorLog:

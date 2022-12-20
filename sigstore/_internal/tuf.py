@@ -122,3 +122,25 @@ class TrustUpdater:
                     return f.read()
 
         raise Exception("Rekor key not found in TUF metadata")
+
+    def get_fulcio_certs(self) -> List[bytes]:
+        """Return the active Fulcio certificate contents"""
+        if not self._updater:
+            self._updater = self._setup()
+
+        certs = []
+        assert self._updater._trusted_set.targets
+        targets = self._updater._trusted_set.targets.signed.targets
+        for target_info in targets.values():
+            custom = target_info.unrecognized_fields["custom"]["sigstore"]
+            if custom["status"] == "Active" and custom["usage"] == "Fulcio":
+                path = self._updater.find_cached_target(target_info)
+                if path is None:
+                    path = self._updater.download_target(target_info)
+                with open(path, "rb") as f:
+                    certs.append(f.read())
+
+        if not certs:
+            raise Exception("Fulcio certificates not found in TUF metadata")
+
+        return certs

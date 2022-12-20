@@ -45,6 +45,7 @@ from sigstore._internal.merkle import (
 )
 from sigstore._internal.rekor import RekorClient
 from sigstore._internal.set import InvalidSetError, verify_set
+from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import read_embedded
 from sigstore._verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore._verify.models import RekorEntryMissing as RekorEntryMissingError
@@ -57,12 +58,6 @@ from sigstore._verify.models import (
 from sigstore._verify.policy import VerificationPolicy
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_FULCIO_ROOT_CERT = read_embedded("fulcio.crt.pem")
-_DEFAULT_FULCIO_INTERMEDIATE_CERT = read_embedded("fulcio_intermediate.crt.pem")
-
-_STAGING_FULCIO_ROOT_CERT = read_embedded("fulcio.crt.staging.pem")
-_STAGING_FULCIO_INTERMEDIATE_CERT = read_embedded("fulcio_intermediate.crt.staging.pem")
 
 
 class RekorEntryMissing(VerificationFailure):
@@ -119,12 +114,10 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's production-level services.
         """
+        updater = TrustUpdater.production()
         return cls(
-            rekor=RekorClient.production(),
-            fulcio_certificate_chain=[
-                _DEFAULT_FULCIO_ROOT_CERT,
-                _DEFAULT_FULCIO_INTERMEDIATE_CERT,
-            ],
+            rekor=RekorClient.with_updater(updater),
+            fulcio_certificate_chain=updater.get_fulcio_certs(),
         )
 
     @classmethod
@@ -132,12 +125,10 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's staging-level services.
         """
+        updater = TrustUpdater.staging()
         return cls(
-            rekor=RekorClient.staging(),
-            fulcio_certificate_chain=[
-                _STAGING_FULCIO_ROOT_CERT,
-                _STAGING_FULCIO_INTERMEDIATE_CERT,
-            ],
+            rekor=RekorClient.with_updater(updater),
+            fulcio_certificate_chain=updater.get_fulcio_certs()
         )
 
     def verify(
