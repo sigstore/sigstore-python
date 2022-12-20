@@ -128,7 +128,7 @@ class Verifier:
         updater = TrustUpdater.staging()
         return cls(
             rekor=RekorClient.with_updater(updater),
-            fulcio_certificate_chain=updater.get_fulcio_certs()
+            fulcio_certificate_chain=updater.get_fulcio_certs(),
         )
 
     def verify(
