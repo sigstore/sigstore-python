@@ -24,7 +24,7 @@ from tuf.ngclient import Updater
 logger = logging.getLogger(__name__)
 
 DEFAULT_TUF_URL = "https://sigstore-tuf-root.storage.googleapis.com/"
-STAGING_TUF_URL = "https://sigstore-preprod-tuf-root.storage.googleapis.com/"
+STAGING_TUF_URL = "https://tuf-root-staging.storage.googleapis.com/"
 
 
 def _get_dirs(url: str) -> Tuple[Path, Path]:
@@ -47,12 +47,16 @@ class TrustUpdater:
         # intialize metadata dir
         tuf_root = self._metadata_dir / "root.json"
         if not tuf_root.exists():
-            if self._repo_url not in [DEFAULT_TUF_URL, STAGING_TUF_URL]:
+            if self._repo_url == DEFAULT_TUF_URL:
+                fname = "root.json"
+            elif self._repo_url == STAGING_TUF_URL:
+                fname = "staging-root.json"
+            else:
                 raise Exception(f"TUF root not found in {tuf_root}")
 
             self._metadata_dir.mkdir(parents=True, exist_ok=True)
-            with resources.path("sigstore._store", "root.json") as res:
-                shutil.copy2(res, self._metadata_dir)
+            with resources.path("sigstore._store", fname) as res:
+                shutil.copy2(res, tuf_root)
 
         # intialize targets cache dir
         # TODO: Pre-populate with any targets we ship with sources
