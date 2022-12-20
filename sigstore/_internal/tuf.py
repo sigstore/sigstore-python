@@ -59,10 +59,6 @@ class TrustUpdater:
         # TODO: Pre-populate with any targets we ship with sources
         self._targets_dir.mkdir(parents=True, exist_ok=True)
 
-        # this metadata refresh could be done lazily but currently that
-        # is not needed (if TrustUpdater is created it is always used)
-        self._setup()
-
         logger.debug("TUF metadata: %s", self._metadata_dir)
         logger.debug("TUF targets cache: %s", self._targets_dir)
 
@@ -89,6 +85,9 @@ class TrustUpdater:
 
     def get_ctfe_keys(self) -> List[bytes]:
         """Return the active CTFE public keys contents"""
+        if not self._updater:
+            self._setup()
+
         ctfes = []
         targets = self._updater._trusted_set.targets.signed.targets
         for target_info in targets.values():
@@ -107,6 +106,9 @@ class TrustUpdater:
 
     def get_rekor_key(self) -> bytes:
         """Return the rekor public key content"""
+        if not self._updater:
+            self._setup()
+
         targets = self._updater._trusted_set.targets.signed.targets
         for target, target_info in targets.items():
             custom = target_info.unrecognized_fields["custom"]["sigstore"]

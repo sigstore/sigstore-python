@@ -40,11 +40,10 @@ from sigstore._internal.rekor.client import (
     RekorClient,
     RekorEntry,
 )
+from sigstore._internal.tuf import TrustUpdater
 from sigstore._sign import Signer
 from sigstore._utils import (
     SplitCertificateChainError,
-    load_pem_public_key,
-    read_embedded,
     split_certificate_chain,
 )
 from sigstore._verify import (
@@ -58,22 +57,6 @@ from sigstore._verify import (
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
-
-
-class _Embedded:
-    """
-    A repr-wrapper for reading embedded resources, needed to help `argparse`
-    render defaults correctly.
-    """
-
-    def __init__(self, name: str) -> None:
-        self._name = name
-
-    def read(self) -> bytes:
-        return read_embedded(self._name)
-
-    def __repr__(self) -> str:
-        return f"{self._name} (embedded)"
 
 
 def _boolify_env(envvar: str) -> bool:
@@ -116,7 +99,7 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
         metavar="FILE",
         type=argparse.FileType("rb"),
         help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY", _Embedded("rekor.pub")),
+        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY"),
     )
 
 
@@ -238,7 +221,7 @@ def _parser() -> argparse.ArgumentParser:
         metavar="FILE",
         type=argparse.FileType("rb"),
         help="A PEM-encoded public key for the CT log (conflicts with --staging)",
-        default=os.getenv("SIGSTORE_CTFE", _Embedded("ctfe.pub")),
+        default=os.getenv("SIGSTORE_CTFE"),
     )
 
     sign.add_argument(
@@ -427,12 +410,21 @@ def _sign(args: argparse.Namespace) -> None:
     elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
         signer = Signer.production()
     else:
-        ct_keyring = CTKeyring([args.ctfe_pem.read()])
+        # Assume "production" keys if none are given as arguments
+        updater = TrustUpdater.production()
+        if args.ctfe_pem is not None:
+            ctfe_keys = [args.ctfe_pem.read()]
+        else:
+            ctfe_keys = updater.get_ctfe_keys()
+        if args.rekor_root_pubkey is not None:
+            rekor_key = args.rekor_root_pubkey.read()
+        else:
+            rekor_key = updater.get_rekor_key()
+
+        ct_keyring = CTKeyring(ctfe_keys)
         signer = Signer(
             fulcio=FulcioClient(args.fulcio_url),
-            rekor=RekorClient(
-                args.rekor_url, args.rekor_root_pubkey.read(), ct_keyring
-            ),
+            rekor=RekorClient(args.rekor_url, rekor_key, ct_keyring),
         )
 
     # The order of precedence is as follows:
