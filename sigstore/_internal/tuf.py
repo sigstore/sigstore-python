@@ -35,12 +35,13 @@ def _get_dirs(url: str) -> Tuple[Path, Path]:
     These directories are not guaranteed to already exist.
     """
 
-    builder = appdirs.AppDirs("sigstore-python", parse.quote(url, safe=""))
+    builder = appdirs.AppDirs("sigstore-python", "sigstore")
+    tuf_base = parse.quote(url, safe="")
 
     data_dir = Path(builder.user_data_dir)
     cache_dir = Path(builder.user_cache_dir)
 
-    return (data_dir / "tuf"), (cache_dir / "tuf")
+    return (data_dir / tuf_base), (cache_dir / tuf_base)
 
 
 class TrustUpdater:
