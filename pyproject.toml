@@ -26,6 +26,7 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
+  "appdirs ~= 1.4",
   "cryptography >= 38",
   "importlib_resources ~= 5.7; python_version < '3.11'",
   "pydantic",

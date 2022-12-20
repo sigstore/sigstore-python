@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 from urllib import parse
 
+import appdirs
 from tuf.ngclient import Updater
 
 logger = logging.getLogger(__name__)
@@ -28,13 +29,18 @@ STAGING_TUF_URL = "https://tuf-root-staging.storage.googleapis.com/"
 
 
 def _get_dirs(url: str) -> Tuple[Path, Path]:
-    """Return metadata dir and target cache dir for URL"""
-    # NOTE: this is not great for windows: should maybe depend on appdirs?
-    # TODO: there should be URL normalization if URLs come from user
-    dir = parse.quote(url, safe="")
-    md_dir = Path.home() / ".local" / "share" / "sigstore-python" / "tuf" / dir
-    targets_dir = Path.home() / ".cache" / "sigstore-python" / "tuf" / dir
-    return md_dir, targets_dir
+    """
+    Given a TUF repository URL, return suitable local metadata and cache directories.
+
+    These directories are not guaranteed to already exist.
+    """
+
+    builder = appdirs.AppDirs("sigstore-python", parse.quote(url, safe=""))
+
+    data_dir = Path(builder.user_data_dir)
+    cache_dir = Path(builder.user_cache_dir)
+
+    return (data_dir / "tuf"), (cache_dir / "tuf")
 
 
 class TrustUpdater:
