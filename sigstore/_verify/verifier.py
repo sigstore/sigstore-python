@@ -46,7 +46,6 @@ from sigstore._internal.merkle import (
 from sigstore._internal.rekor import RekorClient
 from sigstore._internal.set import InvalidSetError, verify_set
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import read_embedded
 from sigstore._verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore._verify.models import RekorEntryMissing as RekorEntryMissingError
 from sigstore._verify.models import (
