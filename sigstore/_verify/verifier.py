@@ -18,6 +18,7 @@ Verification API machinery.
 
 from __future__ import annotations
 
+import base64
 import datetime
 import logging
 from typing import List, cast
@@ -43,7 +44,11 @@ from sigstore._internal.merkle import (
     InvalidInclusionProofError,
     verify_merkle_inclusion,
 )
-from sigstore._internal.rekor import RekorClient
+from sigstore._internal.rekor.client import (
+    DEFAULT_REKOR_URL,
+    STAGING_REKOR_URL,
+    RekorClient,
+)
 from sigstore._internal.set import InvalidSetError, verify_set
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._verify.models import InvalidRekorEntry as InvalidRekorEntryError
@@ -66,8 +71,16 @@ class RekorEntryMissing(VerificationFailure):
     """
 
     reason: str = "Rekor has no entry for the given verification materials"
+
     signature: str
+    """
+    The signature present during lookup failure, encoded with base64.
+    """
+
     artifact_hash: str
+    """
+    The artifact hash present during lookup failure, encoded as a hex string.
+    """
 
 
 class CertificateVerificationFailure(VerificationFailure):
@@ -115,7 +128,7 @@ class Verifier:
         """
         updater = TrustUpdater.production()
         return cls(
-            rekor=RekorClient.with_updater(updater),
+            rekor=updater.rekor_client(DEFAULT_REKOR_URL),
             fulcio_certificate_chain=updater.get_fulcio_certs(),
         )
 
@@ -126,7 +139,7 @@ class Verifier:
         """
         updater = TrustUpdater.staging()
         return cls(
-            rekor=RekorClient.with_updater(updater),
+            rekor=updater.rekor_client(STAGING_REKOR_URL),
             fulcio_certificate_chain=updater.get_fulcio_certs(),
         )
 
@@ -227,7 +240,7 @@ class Verifier:
             entry = materials.rekor_entry(self._rekor)
         except RekorEntryMissingError:
             return RekorEntryMissing(
-                signature=materials.signature,
+                signature=base64.b64encode(materials.signature).decode(),
                 artifact_hash=materials.input_digest.hex(),
             )
         except InvalidRekorEntryError:

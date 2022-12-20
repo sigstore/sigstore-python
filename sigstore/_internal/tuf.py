@@ -22,6 +22,9 @@ from urllib import parse
 import appdirs
 from tuf.ngclient import Updater
 
+from sigstore._internal.ctfe import CTKeyring
+from sigstore._internal.rekor.client import RekorClient
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_TUF_URL = "https://sigstore-tuf-root.storage.googleapis.com/"
@@ -79,6 +82,16 @@ class TrustUpdater:
     @classmethod
     def staging(cls) -> "TrustUpdater":
         return cls(STAGING_TUF_URL)
+
+    def rekor_client(self, rekor_url: str) -> RekorClient:
+        """
+        Create a `RekorClient` from the current updater.
+        """
+        return RekorClient(
+            rekor_url,
+            self.get_rekor_key(),
+            CTKeyring(self.get_ctfe_keys()),
+        )
 
     def _setup(self) -> "Updater":
         """Initialize and update the toplevel TUF metadata"""

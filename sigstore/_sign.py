@@ -31,7 +31,12 @@ from pydantic import BaseModel
 
 from sigstore._internal.fulcio import FulcioClient
 from sigstore._internal.oidc import Identity
-from sigstore._internal.rekor import RekorClient, RekorEntry
+from sigstore._internal.rekor.client import (
+    DEFAULT_REKOR_URL,
+    STAGING_REKOR_URL,
+    RekorClient,
+    RekorEntry,
+)
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import sha256_streaming
@@ -63,7 +68,7 @@ class Signer:
         Return a `Signer` instance configured against Sigstore's production-level services.
         """
         updater = TrustUpdater.production()
-        rekor = RekorClient.with_updater(updater)
+        rekor = updater.rekor_client(DEFAULT_REKOR_URL)
         return cls(fulcio=FulcioClient.production(), rekor=rekor)
 
     @classmethod
@@ -72,7 +77,7 @@ class Signer:
         Return a `Signer` instance configured against Sigstore's staging-level services.
         """
         updater = TrustUpdater.staging()
-        rekor = RekorClient.with_updater(updater)
+        rekor = updater.rekor_client(STAGING_REKOR_URL)
         return cls(fulcio=FulcioClient.staging(), rekor=rekor)
 
     def sign(
