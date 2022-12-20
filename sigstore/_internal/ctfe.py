@@ -25,12 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
-from sigstore._utils import (
-    PublicKey,
-    key_id,
-    load_pem_public_key,
-    read_embedded,
-)
+from sigstore._utils import key_id, load_pem_public_key
 
 
 class CTKeyringError(Exception):
@@ -58,47 +53,15 @@ class CTKeyring:
     This structure exists to facilitate key rotation in a CT log.
     """
 
-    def __init__(self, keys: List[PublicKey] = []):
+    def __init__(self, keys: List[bytes] = []):
         """
         Create a new `CTKeyring`, with `keys` as the initial set of signing
         keys.
         """
         self._keyring = {}
-        for key in keys:
+        for key_bytes in keys:
+            key = load_pem_public_key(key_bytes)
             self._keyring[key_id(key)] = key
-
-    @classmethod
-    def staging(cls) -> CTKeyring:
-        """
-        Returns a `CTKeyring` instance capable of verifying SCTs from
-        Sigstore's staging deployment.
-        """
-        keyring = cls()
-        keyring._add_resource("ctfe.staging.pub")
-        keyring._add_resource("ctfe_2022.staging.pub")
-        keyring._add_resource("ctfe_2022.2.staging.pub")
-
-        return keyring
-
-    @classmethod
-    def production(cls) -> CTKeyring:
-        """
-        Returns a `CTKeyring` instance capable of verifying SCTs from
-        Sigstore's production deployment.
-        """
-        keyring = cls()
-        keyring._add_resource("ctfe.pub")
-        keyring._add_resource("ctfe_2022.pub")
-
-        return keyring
-
-    def _add_resource(self, name: str) -> None:
-        """
-        Adds a key to the current keyring, as identified by its
-        resource name under `sigstore._store`.
-        """
-        key_pem = read_embedded(name)
-        self.add(key_pem)
 
     def add(self, key_pem: bytes) -> None:
         """

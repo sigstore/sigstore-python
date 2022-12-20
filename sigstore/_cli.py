@@ -427,7 +427,7 @@ def _sign(args: argparse.Namespace) -> None:
     elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
         signer = Signer.production()
     else:
-        ct_keyring = CTKeyring([load_pem_public_key(args.ctfe_pem.read())])
+        ct_keyring = CTKeyring([args.ctfe_pem.read()])
         signer = Signer(
             fulcio=FulcioClient(args.fulcio_url),
             rekor=RekorClient(

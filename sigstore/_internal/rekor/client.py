@@ -33,18 +33,13 @@ from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
 from securesystemslib.formats import encode_canonical
 
 from sigstore._internal.ctfe import CTKeyring
+from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import base64_encode_pem_cert, read_embedded
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
-
-_DEFAULT_REKOR_ROOT_PUBKEY = read_embedded("rekor.pub")
-_STAGING_REKOR_ROOT_PUBKEY = read_embedded("rekor.staging.pub")
-
-_DEFAULT_REKOR_CTFE_PUBKEY = read_embedded("ctfe.pub")
-_STAGING_REKOR_CTFE_PUBKEY = read_embedded("ctfe.staging.pub")
 
 
 class RekorBundle(BaseModel):
@@ -412,13 +407,19 @@ class RekorClient:
 
     @classmethod
     def production(cls) -> RekorClient:
-        return cls(
-            DEFAULT_REKOR_URL, _DEFAULT_REKOR_ROOT_PUBKEY, CTKeyring.production()
-        )
+        updater = TrustUpdater.production()
+        rekor_key = updater.get_rekor_key()
+        ctfe_keys = updater.get_ctfe_keys()
+
+        return cls(DEFAULT_REKOR_URL, rekor_key, CTKeyring(ctfe_keys))
 
     @classmethod
     def staging(cls) -> RekorClient:
-        return cls(STAGING_REKOR_URL, _STAGING_REKOR_ROOT_PUBKEY, CTKeyring.staging())
+        updater = TrustUpdater.staging()
+        rekor_key = updater.get_rekor_key()
+        ctfe_keys = updater.get_ctfe_keys()
+
+        return cls(STAGING_REKOR_URL, rekor_key, CTKeyring(ctfe_keys))
 
     @property
     def log(self) -> RekorLog:
