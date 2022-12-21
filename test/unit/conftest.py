@@ -14,6 +14,7 @@
 
 import base64
 import os
+from collections import defaultdict
 from pathlib import Path
 from typing import Tuple
 
@@ -132,13 +133,30 @@ def null_policy():
 @pytest.fixture
 def mock_staging_tuf(monkeypatch):
     """Mock that prevents tuf module from making requests: it returns staging
-    assets from a local directory instead"""
+    assets from a local directory instead
+
+    Return a tuple of dicts with the requested files and counts"""
+
+    success = defaultdict(int)
+    failure = defaultdict(int)
 
     class MockFetcher(FetcherInterface):
         def _fetch(self, url: str):
-            filename = _TUF_ASSETS / os.path.basename(url)
-            if filename.is_file():
-                return open(filename, "rb")
+            filename = os.path.basename(url)
+            filepath = _TUF_ASSETS / filename
+            if filepath.is_file():
+                success[filename] += 1
+                return open(filepath, "rb")
+
+            failure[filename] += 1
             raise DownloadHTTPError("File not found", 404)
 
     monkeypatch.setattr(tuf, "_fetcher", MockFetcher())
+
+    return success, failure
+
+
+@pytest.fixture
+def temp_home(monkeypatch, tmp_path: Path):
+    """Set HOME to point to a test-specific tmp directory"""
+    monkeypatch.setenv("HOME", str(tmp_path))
