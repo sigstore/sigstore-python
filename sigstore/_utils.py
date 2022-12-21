@@ -20,17 +20,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import sys
 from typing import IO, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import Certificate
-
-if sys.version_info < (3, 11):
-    import importlib_resources as resources
-else:
-    from importlib import resources
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
