@@ -45,6 +45,16 @@ def _get_dirs(url: str) -> Tuple[Path, Path]:
 
 
 class TrustUpdater:
+    """Internal trust root (certificates and keys) downloader.
+
+    TrustUpdater discovers the currently valid certificates and keys and
+    securely downloads them from the remote TUF repository at 'url'.
+
+    TrustUpdater expects to find an initial root.json in either the local
+    metadata directory for this URL, or (as special case for the sigstore.dev
+    production and staging instances) in the application resources.
+    """
+
     def __init__(self, url: str) -> None:
         self._repo_url = url
         self._updater: Optional[Updater] = None
@@ -95,7 +105,10 @@ class TrustUpdater:
         return updater
 
     def get_ctfe_keys(self) -> List[bytes]:
-        """Return the active CTFE public keys contents"""
+        """Return the active CTFE public keys contents.
+
+        May download files from the remote repository.
+        """
         if not self._updater:
             self._updater = self._setup()
 
@@ -117,7 +130,10 @@ class TrustUpdater:
         return ctfes
 
     def get_rekor_key(self) -> bytes:
-        """Return the rekor public key content"""
+        """Return the rekor public key content.
+
+        May download files from the remote repository.
+        """
         if not self._updater:
             self._updater = self._setup()
 
@@ -135,7 +151,10 @@ class TrustUpdater:
         raise Exception("Rekor key not found in TUF metadata")
 
     def get_fulcio_certs(self) -> List[bytes]:
-        """Return the active Fulcio certificate contents"""
+        """Return the active Fulcio certificate contents.
+
+        May download files from the remote repository.
+        """
         if not self._updater:
             self._updater = self._setup()
 
