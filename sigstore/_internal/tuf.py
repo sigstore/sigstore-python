@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_TUF_URL = "https://sigstore-tuf-root.storage.googleapis.com/"
 STAGING_TUF_URL = "https://tuf-root-staging.storage.googleapis.com/"
 
+# for tests to override
+_fetcher = None
+
 
 def _get_dirs(url: str) -> Tuple[Path, Path]:
     """
@@ -97,6 +100,7 @@ class TrustUpdater:
             metadata_base_url=f"{self._repo_url}",
             target_base_url=f"{self._repo_url}targets/",
             target_dir=str(self._targets_dir),
+            fetcher=_fetcher,
         )
 
         # NOTE: we would like to avoid refresh if the toplevel metadata is valid.

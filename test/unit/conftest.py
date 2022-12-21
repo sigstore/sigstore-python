@@ -18,7 +18,10 @@ from pathlib import Path
 from typing import Tuple
 
 import pytest
+from tuf.api.exceptions import DownloadHTTPError
+from tuf.ngclient import FetcherInterface
 
+from sigstore._internal import tuf
 from sigstore._internal.oidc.ambient import (
     AmbientCredentialError,
     GitHubOidcPermissionCredentialError,
@@ -30,6 +33,9 @@ from sigstore._verify.policy import VerificationSuccess
 
 _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
+
+_TUF_ASSETS = (Path(__file__).parent / "assets-staging-tuf").resolve()
+assert _TUF_ASSETS.is_dir()
 
 
 def _is_ambient_env():
@@ -121,3 +127,18 @@ def null_policy():
             return VerificationSuccess()
 
     return NullPolicy()
+
+
+@pytest.fixture
+def mock_staging_tuf(monkeypatch):
+    """Mock that prevents tuf module from making requests: it returns staging
+    assets from a local directory instead"""
+
+    class MockFetcher(FetcherInterface):
+        def _fetch(self, url: str):
+            filename = _TUF_ASSETS / os.path.basename(url)
+            if filename.is_file():
+                return open(filename, "rb")
+            raise DownloadHTTPError("File not found", 404)
+
+    monkeypatch.setattr(tuf, "_fetcher", MockFetcher())

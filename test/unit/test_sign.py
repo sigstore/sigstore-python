@@ -21,12 +21,13 @@ from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._sign import Signer
 
 
+@pytest.mark.online
 def test_signer_production():
     signer = Signer.production()
     assert signer is not None
 
 
-def test_signer_staging():
+def test_signer_staging(mock_staging_tuf):
     signer = Signer.staging()
     assert signer is not None
 
