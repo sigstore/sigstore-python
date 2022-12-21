@@ -35,7 +35,7 @@ from sigstore._verify.policy import VerificationSuccess
 _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
 
-_TUF_ASSETS = (Path(__file__).parent / "assets-staging-tuf").resolve()
+_TUF_ASSETS = (_ASSETS / "staging-tuf").resolve()
 assert _TUF_ASSETS.is_dir()
 
 
