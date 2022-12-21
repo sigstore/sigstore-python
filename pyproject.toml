@@ -114,3 +114,4 @@ exclude_dirs = ["./test"]
 
 [tool.ruff]
 line-length = 100
+select = ["E", "F", "W", "UP"]
