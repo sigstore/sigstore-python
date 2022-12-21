@@ -44,11 +44,7 @@ from sigstore._internal.merkle import (
     InvalidInclusionProofError,
     verify_merkle_inclusion,
 )
-from sigstore._internal.rekor.client import (
-    DEFAULT_REKOR_URL,
-    STAGING_REKOR_URL,
-    RekorClient,
-)
+from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSetError, verify_set
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._verify.models import InvalidRekorEntry as InvalidRekorEntryError
@@ -128,7 +124,7 @@ class Verifier:
         """
         updater = TrustUpdater.production()
         return cls(
-            rekor=updater.rekor_client(DEFAULT_REKOR_URL),
+            rekor=RekorClient.production(updater),
             fulcio_certificate_chain=updater.get_fulcio_certs(),
         )
 
@@ -139,7 +135,7 @@ class Verifier:
         """
         updater = TrustUpdater.staging()
         return cls(
-            rekor=updater.rekor_client(STAGING_REKOR_URL),
+            rekor=RekorClient.staging(updater),
             fulcio_certificate_chain=updater.get_fulcio_certs(),
         )
 
