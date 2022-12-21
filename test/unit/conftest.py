@@ -96,6 +96,14 @@ def asset():
 
 
 @pytest.fixture
+def tuf_asset():
+    def _tuf_asset(name: str) -> Path:
+        return _TUF_ASSETS / name
+
+    return _tuf_asset
+
+
+@pytest.fixture
 def signing_materials():
     def _signing_materials(name: str) -> Tuple[bytes, bytes, bytes]:
         file = _ASSETS / name

@@ -78,3 +78,10 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, temp_home):
     # Expect no requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
+
+
+def test_updater_staging_get(mock_staging_tuf, temp_home, tuf_asset):
+    """Test that one of the get-methods returns the expected content"""
+    updater = TrustUpdater.staging()
+    with open(tuf_asset("rekor.pub"), "rb") as f:
+        assert updater.get_rekor_key() == f.read()
