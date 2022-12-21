@@ -104,29 +104,33 @@ class TrustUpdater:
         updater.refresh()
         return updater
 
+    def _get(self, usage: str) -> List[bytes]:
+        """Return all active targets with given usage"""
+        if not self._updater:
+            self._updater = self._setup()
+
+        data = []
+        assert self._updater._trusted_set.targets
+        targets = self._updater._trusted_set.targets.signed.targets
+        for target_info in targets.values():
+            custom = target_info.unrecognized_fields["custom"]["sigstore"]
+            if custom["status"] == "Active" and custom["usage"] == usage:
+                path = self._updater.find_cached_target(target_info)
+                if path is None:
+                    path = self._updater.download_target(target_info)
+                with open(path, "rb") as f:
+                    data.append(f.read())
+
+        return data
+
     def get_ctfe_keys(self) -> List[bytes]:
         """Return the active CTFE public keys contents.
 
         May download files from the remote repository.
         """
-        if not self._updater:
-            self._updater = self._setup()
-
-        ctfes = []
-        assert self._updater._trusted_set.targets
-        targets = self._updater._trusted_set.targets.signed.targets
-        for target_info in targets.values():
-            custom = target_info.unrecognized_fields["custom"]["sigstore"]
-            if custom["status"] == "Active" and custom["usage"] == "CTFE":
-                path = self._updater.find_cached_target(target_info)
-                if path is None:
-                    path = self._updater.download_target(target_info)
-                with open(path, "rb") as f:
-                    ctfes.append(f.read())
-
+        ctfes = self._get("CTFE")
         if not ctfes:
             raise Exception("CTFE keys not found in TUF metadata")
-
         return ctfes
 
     def get_rekor_key(self) -> bytes:
@@ -134,43 +138,17 @@ class TrustUpdater:
 
         May download files from the remote repository.
         """
-        if not self._updater:
-            self._updater = self._setup()
-
-        assert self._updater._trusted_set.targets
-        targets = self._updater._trusted_set.targets.signed.targets
-        for target, target_info in targets.items():
-            custom = target_info.unrecognized_fields["custom"]["sigstore"]
-            if custom["status"] == "Active" and custom["usage"] == "Rekor":
-                path = self._updater.find_cached_target(target_info)
-                if path is None:
-                    path = self._updater.download_target(target_info)
-                with open(path, "rb") as f:
-                    return f.read()
-
-        raise Exception("Rekor key not found in TUF metadata")
+        keys = self._get("Rekor")
+        if len(keys) != 1:
+            raise Exception("Did not find one active Rekor key in TUF metadata")
+        return keys[0]
 
     def get_fulcio_certs(self) -> List[bytes]:
         """Return the active Fulcio certificate contents.
 
         May download files from the remote repository.
         """
-        if not self._updater:
-            self._updater = self._setup()
-
-        certs = []
-        assert self._updater._trusted_set.targets
-        targets = self._updater._trusted_set.targets.signed.targets
-        for target_info in targets.values():
-            custom = target_info.unrecognized_fields["custom"]["sigstore"]
-            if custom["status"] == "Active" and custom["usage"] == "Fulcio":
-                path = self._updater.find_cached_target(target_info)
-                if path is None:
-                    path = self._updater.download_target(target_info)
-                with open(path, "rb") as f:
-                    certs.append(f.read())
-
+        certs = self._get("Fulcio")
         if not certs:
             raise Exception("Fulcio certificates not found in TUF metadata")
-
         return certs
