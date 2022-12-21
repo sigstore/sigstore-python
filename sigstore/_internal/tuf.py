@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import logging
-import shutil
-from importlib import resources
 from pathlib import Path
 from typing import List, Optional, Tuple
 from urllib import parse
 
 import appdirs
 from tuf.ngclient import Updater
+
+from sigstore._utils import read_embedded
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +75,9 @@ class TrustUpdater:
                 raise Exception(f"TUF root not found in {tuf_root}")
 
             self._metadata_dir.mkdir(parents=True, exist_ok=True)
-            with resources.path("sigstore._store", fname) as res:
-                shutil.copy2(res, tuf_root)
+            root_json = read_embedded(fname)
+            with tuf_root.open("wb") as io:
+                io.write(root_json)
 
         # intialize targets cache dir
         # TODO: Pre-populate with any targets we ship with sources
