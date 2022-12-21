@@ -151,11 +151,3 @@ def sha256_streaming(io: IO[bytes]) -> bytes:
         nbytes = io.readinto(view)  # type: ignore
 
     return sha256.digest()
-
-
-def read_embedded(name: str) -> bytes:
-    """
-    Read a resource embedded in this distribution of sigstore-python,
-    returning its contents as bytes.
-    """
-    return resources.files("sigstore._store").joinpath(name).read_bytes()
