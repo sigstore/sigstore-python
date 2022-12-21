@@ -53,7 +53,12 @@ from sigstore._verify import (
 )
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
+level = os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper()
+logging.basicConfig(level=level)
+
+# workaround to make tuf less verbose https://github.com/theupdateframework/python-tuf/pull/2243
+if level == "INFO":
+    logging.getLogger("tuf").setLevel("WARNING")
 
 
 def _boolify_env(envvar: str) -> bool:
