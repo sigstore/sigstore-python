@@ -32,10 +32,7 @@ def test_signer_staging(mock_staging_tuf):
     assert signer is not None
 
 
-@pytest.mark.online
-@pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production(), Signer.staging()])
-def test_sign_rekor_entry_consistent(signer):
+def _test_sign_rekor_entry_consistent(signer: Signer):
     token = detect_credential()
     assert token is not None
 
@@ -48,3 +45,15 @@ def test_sign_rekor_entry_consistent(signer):
     assert expected_entry.integrated_time == actual_entry.integrated_time
     assert expected_entry.log_id == actual_entry.log_id
     assert expected_entry.log_index == actual_entry.log_index
+
+
+@pytest.mark.online
+@pytest.mark.ambient_oidc
+def test_sign_rekor_entry_consistent_production():
+    _test_sign_rekor_entry_consistent(Signer.production())
+
+
+@pytest.mark.online
+@pytest.mark.ambient_oidc
+def test_sign_rekor_entry_consistent_staging():
+    _test_sign_rekor_entry_consistent(Signer.staging())
