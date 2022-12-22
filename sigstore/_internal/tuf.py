@@ -115,8 +115,9 @@ class TrustUpdater:
             self._updater = self._setup()
 
         data = []
-        assert self._updater._trusted_set.targets  # nosec: assert for mypys benefit
-        targets = self._updater._trusted_set.targets.signed.targets
+
+        # NOTE: _updater has been fully initialized at this point, but mypy can't see that.
+        targets = self._updater._trusted_set.targets.signed.targets  # type: ignore[union-attr]
         for target_info in targets.values():
             custom = target_info.unrecognized_fields["custom"]["sigstore"]
             if custom["status"] == "Active" and custom["usage"] == usage:
