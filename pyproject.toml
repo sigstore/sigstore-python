@@ -53,11 +53,11 @@ test = [
 ]
 lint = [
   "bandit",
-  "flake8",
   "black",
   "isort",
   "interrogate",
   "mypy",
+  "ruff",
   "types-requests",
   # Needed for protocol typing in 3.7; remove when our minimum Python is 3.8.
   "typing-extensions; python_version < '3.8'",
@@ -111,3 +111,10 @@ plugins = ["pydantic.mypy"]
 
 [tool.bandit]
 exclude_dirs = ["./test"]
+
+[tool.ruff]
+line-length = 100
+# TODO: Enable "UP" here once Pydantic allows us to:
+# See: https://github.com/pydantic/pydantic/issues/4146
+select = ["E", "F", "W"]
+target-version = "py37"
