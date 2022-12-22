@@ -12,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+
 from sigstore._utils import read_embedded
 
 
-def test_store_reads_fulcio_root_cert():
-    fulcio_crt = read_embedded("fulcio.crt.pem").strip()
-    lines = fulcio_crt.split(b"\n")
-
-    assert lines[0].startswith(b"-----BEGIN CERTIFICATE-----")
-    assert lines[-1].startswith(b"-----END CERTIFICATE-----")
+def test_store_reads_root_json():
+    root_json = read_embedded("root.json")
+    assert json.loads(root_json)
 
 
-def test_store_reads_ctfe_pub():
-    ctfe_pub = read_embedded("ctfe.pub").strip()
-    lines = ctfe_pub.split(b"\n")
-
-    assert lines[0].startswith(b"-----BEGIN PUBLIC KEY-----")
-    assert lines[-1].startswith(b"-----END PUBLIC KEY-----")
+def test_store_reads_staging_root_json():
+    root_json = read_embedded("staging-root.json")
+    assert json.loads(root_json)

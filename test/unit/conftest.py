@@ -14,11 +14,15 @@
 
 import base64
 import os
+from collections import defaultdict
 from pathlib import Path
-from typing import Tuple
+from typing import Iterator, Tuple
 
 import pytest
+from tuf.api.exceptions import DownloadHTTPError
+from tuf.ngclient import FetcherInterface
 
+from sigstore._internal import tuf
 from sigstore._internal.oidc.ambient import (
     AmbientCredentialError,
     GitHubOidcPermissionCredentialError,
@@ -30,6 +34,9 @@ from sigstore._verify.policy import VerificationSuccess
 
 _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
+
+_TUF_ASSETS = (_ASSETS / "staging-tuf").resolve()
+assert _TUF_ASSETS.is_dir()
 
 
 def _is_ambient_env():
@@ -89,6 +96,14 @@ def asset():
 
 
 @pytest.fixture
+def tuf_asset():
+    def _tuf_asset(name: str) -> Path:
+        return _TUF_ASSETS / name
+
+    return _tuf_asset
+
+
+@pytest.fixture
 def signing_materials():
     def _signing_materials(name: str) -> Tuple[bytes, bytes, bytes]:
         file = _ASSETS / name
@@ -121,3 +136,36 @@ def null_policy():
             return VerificationSuccess()
 
     return NullPolicy()
+
+
+@pytest.fixture
+def mock_staging_tuf(monkeypatch):
+    """Mock that prevents tuf module from making requests: it returns staging
+    assets from a local directory instead
+
+    Return a tuple of dicts with the requested files and counts"""
+
+    success = defaultdict(int)
+    failure = defaultdict(int)
+
+    class MockFetcher(FetcherInterface):
+        def _fetch(self, url: str) -> Iterator[bytes]:
+            filename = os.path.basename(url)
+            filepath = _TUF_ASSETS / filename
+            if filepath.is_file():
+                success[filename] += 1
+                # NOTE: leaves file open: could return a function yielding contents
+                return open(filepath, "rb")
+
+            failure[filename] += 1
+            raise DownloadHTTPError("File not found", 404)
+
+    monkeypatch.setattr(tuf, "_fetcher", MockFetcher())
+
+    return success, failure
+
+
+@pytest.fixture
+def temp_home(monkeypatch, tmp_path: Path):
+    """Set HOME to point to a test-specific tmp directory"""
+    monkeypatch.setenv("HOME", str(tmp_path))

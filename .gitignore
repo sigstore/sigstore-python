@@ -21,7 +21,5 @@ build
 !sigstore/_store/*.crt
 !sigstore/_store/*.pem
 !sigstore/_store/*.pub
-!test/unit/assets/*.txt
-!test/unit/assets/*.crt
-!test/unit/assets/*.sig
-!test/unit/assets/*.rekor
+!test/unit/assets/*
+!test/unit/assets/staging-tuf/*

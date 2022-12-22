@@ -21,20 +21,25 @@ from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._sign import Signer
 
 
+@pytest.mark.online
 def test_signer_production():
     signer = Signer.production()
     assert signer is not None
 
 
-def test_signer_staging():
+def test_signer_staging(mock_staging_tuf):
     signer = Signer.staging()
     assert signer is not None
 
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production(), Signer.staging()])
-def test_sign_rekor_entry_consistent(signer):
+@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
+def test_sign_rekor_entry_consistent_production(signer):
+    # NOTE: The actual signer instance is produced lazily, so that parameter
+    # expansion doesn't fail in offline tests.
+    signer = signer()
+
     token = detect_credential()
     assert token is not None
 
