@@ -79,8 +79,8 @@ class TrustUpdater:
             with tuf_root.open("wb") as io:
                 io.write(root_json)
 
-        # intialize targets cache dir
-        # TODO: Pre-populate with any targets we ship with sources
+        # Initialize targets cache dir
+        # NOTE: Could prime the cache here with any embedded certs/keys
         self._targets_dir.mkdir(parents=True, exist_ok=True)
 
         logger.debug(f"TUF metadata: {self._metadata_dir}")
