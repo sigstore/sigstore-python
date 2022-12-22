@@ -11,7 +11,9 @@ sigstore-python
 
 ⚠️ This project is not ready for general-purpose use! ⚠️
 
-`sigstore` is a tool for signing and verifying Python package distributions.
+`sigstore` is a Python tool for generating and verifying Sigstore signatures.
+You can use it to sign and verify Python package distributions, or anything
+else!
 
 ## Features
 
