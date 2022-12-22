@@ -138,12 +138,11 @@ Sigstore instance options:
                         (default: https://rekor.sigstore.dev)
   --rekor-root-pubkey FILE
                         A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging) (default: rekor.pub
-                        (embedded))
+                        (conflicts with --staging) (default: None)
   --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
                         (default: https://fulcio.sigstore.dev)
   --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
-                        with --staging) (default: ctfe.pub (embedded))
+                        with --staging) (default: None)
 ```
 <!-- @end-sigstore-sign-help@ -->
 
@@ -198,8 +197,7 @@ Sigstore instance options:
                         (default: https://rekor.sigstore.dev)
   --rekor-root-pubkey FILE
                         A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging) (default: rekor.pub
-                        (embedded))
+                        (conflicts with --staging) (default: None)
 ```
 <!-- @end-sigstore-verify-help@ -->
 

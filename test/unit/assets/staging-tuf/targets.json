@@ -1,0 +1,88 @@
+{
+  "signatures": [
+    {
+      "keyid": "5d2da8f9ad58e2006befdc5724defb2bddca032c4c20934a48365c8af9fe91c4",
+      "sig": "f8e9b911e87e875c56511dae7fc30512305de2d5be437b78b07c532396f08750445bb423b9972e103f84ddf871c656fa3221b26f3655c57c1b47e45a190bcf07"
+    }
+  ],
+  "signed": {
+    "_type": "targets",
+    "expires": "2032-10-20T18:54:05Z",
+    "spec_version": "1.0",
+    "targets": {
+      "ctfe.pub": {
+        "custom": {
+          "sigstore": {
+            "status": "Active",
+            "usage": "CTFE"
+          }
+        },
+        "hashes": {
+          "sha512": "b861189e48df51186a39612230fba6b02af951f7b35ad9375e8ca182d0e085d470e26d69f7cd4d7450a0f223991e8e5a4ddf8f1968caa15255de8e37035af43a"
+        },
+        "length": 775
+      },
+      "ctfe_2022.pub": {
+        "custom": {
+          "sigstore": {
+            "status": "Active",
+            "usage": "CTFE"
+          }
+        },
+        "hashes": {
+          "sha512": "ab975a75600fc366a837536d0dcba841b755552d21bb114498ff8ac9d2403f76643f5b91269bce5d124a365514719a3edee9dcc2b046cb173f51af659911fcd3"
+        },
+        "length": 178
+      },
+      "ctfe_2022_2.pub": {
+        "custom": {
+          "sigstore": {
+            "status": "Active",
+            "usage": "CTFE"
+          }
+        },
+        "hashes": {
+          "sha512": "3d035f94e1b14ac84627a28afdbed9a34861fb84239f76d73aa1a99f52262bfd95c4fa0ee71f1fd7e3bfb998d89cd5e0f0eafcff9fa7fa87c6e23484fc1e0cec"
+        },
+        "length": 178
+      },
+      "fulcio.crt.pem": {
+        "custom": {
+          "sigstore": {
+            "status": "Active",
+            "usage": "Fulcio"
+          }
+        },
+        "hashes": {
+          "sha512": "c69ae618883a0c89c282c0943a1ad0c16b0a7788f74e47a1adefc631dac48a0c4449d8c3de7455ae7d772e43c4a87e341f180b0614a46a86006969f8a7b84532"
+        },
+        "length": 741
+      },
+      "fulcio_intermediate.crt.pem": {
+        "custom": {
+          "sigstore": {
+            "status": "Active",
+            "usage": "Fulcio"
+          }
+        },
+        "hashes": {
+          "sha512": "90659875a02f73d1026055427c6d857c556e410e23748ff88aeb493227610fd2f5fbdd95ef2a21565f91438dfb3e073f50c4c9dd06f9a601b5d9b064d5cb60b4"
+        },
+        "length": 790
+      },
+      "rekor.pub": {
+        "custom": {
+          "sigstore": {
+            "status": "Active",
+            "usage": "Rekor"
+          }
+        },
+        "hashes": {
+          "sha512": "09ab08698a67354a95d3b8897d9ce7eaef05f06f5ed5f0202d79c228579858ecc5816b7e1b7cc6786abe7d6aaa758e1fcb05900cb749235186c3bf9522d6d7ce"
+        },
+        "length": 178
+      }
+    },
+    "version": 1
+  }
+}
