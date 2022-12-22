@@ -18,7 +18,7 @@ jobs:
   staging-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
+      - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
 
       - uses: actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9
 
