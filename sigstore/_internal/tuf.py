@@ -94,7 +94,7 @@ class TrustUpdater:
     def staging(cls) -> "TrustUpdater":
         return cls(STAGING_TUF_URL)
 
-    def _setup(self) -> "Updater":
+    def _setup(self) -> Updater:
         """Initialize and update the toplevel TUF metadata"""
         updater = Updater(
             metadata_dir=str(self._metadata_dir),
@@ -115,7 +115,7 @@ class TrustUpdater:
             self._updater = self._setup()
 
         data = []
-        assert self._updater._trusted_set.targets
+        assert self._updater._trusted_set.targets  # nosec: assert for mypys benefit
         targets = self._updater._trusted_set.targets.signed.targets
         for target_info in targets.values():
             custom = target_info.unrecognized_fields["custom"]["sigstore"]
