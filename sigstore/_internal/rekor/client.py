@@ -464,6 +464,8 @@ class RekorClient:
     def production(cls, updater: TrustUpdater) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor production instance.
+
+        updater must be a `TrustUpdater` for the production TUF repository.
         """
         rekor_key = updater.get_rekor_key()
         ctfe_keys = updater.get_ctfe_keys()
@@ -474,6 +476,8 @@ class RekorClient:
     def staging(cls, updater: TrustUpdater) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor staging instance.
+
+        updater must be a `TrustUpdater` for the staging TUF repository.
         """
         rekor_key = updater.get_rekor_key()
         ctfe_keys = updater.get_ctfe_keys()
