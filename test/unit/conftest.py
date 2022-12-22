@@ -16,7 +16,7 @@ import base64
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import Tuple
+from typing import Iterator, Tuple
 
 import pytest
 from tuf.api.exceptions import DownloadHTTPError
@@ -149,11 +149,12 @@ def mock_staging_tuf(monkeypatch):
     failure = defaultdict(int)
 
     class MockFetcher(FetcherInterface):
-        def _fetch(self, url: str):
+        def _fetch(self, url: str) -> Iterator[bytes]:
             filename = os.path.basename(url)
             filepath = _TUF_ASSETS / filename
             if filepath.is_file():
                 success[filename] += 1
+                # NOTE: leaves file open: could return a function yielding contents
                 return open(filepath, "rb")
 
             failure[filename] += 1
