@@ -26,21 +26,3 @@ assets.
 # Why do we bother with `importlib` at all? Because we might be installed as a
 # ZIP file or an Egg, which in turn means that our resource files don't actually
 # exist separately on disk. `importlib` is the only reliable way to access them.
-
-
-# Index of files by source:
-#
-# https://storage.googleapis.com/tuf-root-staging
-#   * ctfe.staging.pub
-#   * ctfe_2022.staging.pub
-#   * ctfe_2022.2.staging.pub
-#   * fulcio.crt.staging.pem
-#   * fulcio_intermediate.crt.staging.pem
-#   * rekor.staging.pub
-#
-# https://storage.googleapis.com/sigstore-tuf-root
-#   * ctfe.pub
-#   * ctfe_2022.pub
-#   * fulcio.crt.pem
-#   * fulcio_intermediate.crt.pem
-#   * rekor.pub

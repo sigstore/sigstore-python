@@ -19,12 +19,13 @@ from sigstore._verify.models import VerificationFailure, VerificationSuccess
 from sigstore._verify.verifier import CertificateVerificationFailure, Verifier
 
 
+@pytest.mark.online
 def test_verifier_production():
     verifier = Verifier.production()
     assert verifier is not None
 
 
-def test_verifier_staging():
+def test_verifier_staging(mock_staging_tuf):
     verifier = Verifier.staging()
     assert verifier is not None
 
@@ -47,7 +48,9 @@ def test_verifier_multiple_verifications(signing_materials, null_policy):
         assert verifier.verify(materials, null_policy)
 
 
-def test_verifier_offline_rekor_bundle(signing_materials, null_policy):
+def test_verifier_offline_rekor_bundle(
+    signing_materials, null_policy, mock_staging_tuf
+):
     materials = signing_materials("offline-rekor.txt")
 
     verifier = Verifier.staging()

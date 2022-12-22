@@ -15,7 +15,8 @@
 import pretend
 import pytest
 
-from sigstore._internal.rekor import RekorClient
+from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.tuf import TrustUpdater
 from sigstore._verify.models import InvalidRekorEntry
 
 
@@ -36,6 +37,7 @@ class TestVerificationMaterials:
         materials = signing_materials("a.txt")
         assert materials._offline_rekor_entry is None
 
-        client = RekorClient.staging()
+        tuf = TrustUpdater.staging()
+        client = RekorClient.staging(tuf)
         entry = materials.rekor_entry(client)
         assert entry is not None
