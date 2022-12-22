@@ -71,6 +71,9 @@ class SCTHashAlgorithm(IntEnum):
     SHA512 = 6
 
     def to_cryptography(self) -> hashes.HashAlgorithm:
+        """
+        Converts this `SCTHashAlgorithm` into a `cryptography.hashes` object.
+        """
         if self != SCTHashAlgorithm.SHA256:
             raise FulcioSCTError(f"unexpected hash algorithm: {self!r}")
 
@@ -119,19 +122,31 @@ class DetachedFulcioSCT(BaseModel):
 
     @property
     def entry_type(self) -> LogEntryType:
+        """
+        Returns the kind of CT log entry this detached SCT is signing for.
+        """
         return LogEntryType.X509_CERTIFICATE
 
     @property
     def signature_hash_algorithm(self) -> hashes.HashAlgorithm:
+        """
+        Returns the hash algorithm used in this detached SCT's signature.
+        """
         hash_ = SCTHashAlgorithm(self.digitally_signed[0])
         return hash_.to_cryptography()
 
     @property
     def signature_algorithm(self) -> SignatureAlgorithm:
+        """
+        Returns the signature algorithm used in this detached SCT's signature.
+        """
         return SignatureAlgorithm(self.digitally_signed[1])
 
     @property
     def signature(self) -> bytes:
+        """
+        Returns the raw signature inside the detached SCT.
+        """
         (sig_size,) = struct.unpack("!H", self.digitally_signed[2:4])
         if len(self.digitally_signed[4:]) != sig_size:
             raise FulcioSCTError(
@@ -163,10 +178,14 @@ class FulcioTrustBundleResponse:
 
 
 class FulcioClientError(Exception):
+    """
+    Raised on any error in the Fulcio client.
+    """
+
     pass
 
 
-class Endpoint(ABC):
+class _Endpoint(ABC):
     def __init__(self, url: str, session: requests.Session) -> None:
         self.url = url
         self.session = session
@@ -181,7 +200,11 @@ def _serialize_cert_request(req: CertificateSigningRequest) -> str:
     return json.dumps(data)
 
 
-class FulcioSigningCert(Endpoint):
+class FulcioSigningCert(_Endpoint):
+    """
+    Fulcio REST API signing certificate functionality.
+    """
+
     def post(
         self, req: CertificateSigningRequest, token: str
     ) -> FulcioCertificateSigningResponse:
@@ -273,7 +296,11 @@ class FulcioSigningCert(Endpoint):
         return FulcioCertificateSigningResponse(cert, chain, sct)
 
 
-class FulcioTrustBundle(Endpoint):
+class FulcioTrustBundle(_Endpoint):
+    """
+    Fulcio REST API trust bundle functionality.
+    """
+
     def get(self) -> FulcioTrustBundleResponse:
         """Get the certificate chains from Fulcio"""
         resp: requests.Response = self.session.get(self.url)
@@ -303,24 +330,39 @@ class FulcioClient:
         self.session = requests.Session()
 
     def __del__(self) -> None:
+        """
+        Destroys the underlying network session.
+        """
         self.session.close()
 
     @classmethod
     def production(cls) -> FulcioClient:
+        """
+        Returns a `FulcioClient` for the Sigstore production instance of Fulcio.
+        """
         return cls(DEFAULT_FULCIO_URL)
 
     @classmethod
     def staging(cls) -> FulcioClient:
+        """
+        Returns a `FulcioClient` for the Sigstore staging instance of Fulcio.
+        """
         return cls(STAGING_FULCIO_URL)
 
     @property
     def signing_cert(self) -> FulcioSigningCert:
+        """
+        Returns a model capable of interacting with Fulcio's signing certificate endpoints.
+        """
         return FulcioSigningCert(
             urljoin(self.url, SIGNING_CERT_ENDPOINT), session=self.session
         )
 
     @property
     def trust_bundle(self) -> FulcioTrustBundle:
+        """
+        Returns a model capable of interacting with Fulcio's trust bundle endpoints.
+        """
         return FulcioTrustBundle(
             urljoin(self.url, TRUST_BUNDLE_ENDPOINT), session=self.session
         )

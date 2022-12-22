@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+TUF functionality for `sigstore-python`.
+"""
+
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -59,6 +65,12 @@ class TrustUpdater:
     """
 
     def __init__(self, url: str) -> None:
+        """
+        Create a new `TrustUpdater`, pulling from the given `url`.
+
+        The URL is expected to match one of `sigstore-python`'s known TUF
+        roots, i.e. for the production or staging Sigstore TUF repos.
+        """
         self._repo_url = url
         self._updater: Optional[Updater] = None
 
@@ -87,11 +99,17 @@ class TrustUpdater:
         logger.debug(f"TUF targets cache: {self._targets_dir}")
 
     @classmethod
-    def production(cls) -> "TrustUpdater":
+    def production(cls) -> TrustUpdater:
+        """
+        Returns a `TrustUpdater` for the Sigstore production instances.
+        """
         return cls(DEFAULT_TUF_URL)
 
     @classmethod
-    def staging(cls) -> "TrustUpdater":
+    def staging(cls) -> TrustUpdater:
+        """
+        Returns a `TrustUpdater` for the Sigstore staging instances.
+        """
         return cls(STAGING_TUF_URL)
 
     def _setup(self) -> Updater:
