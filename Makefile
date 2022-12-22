@@ -57,13 +57,14 @@ lint: env/pyvenv.cfg
 	. env/bin/activate && \
 		black --check $(ALL_PY_SRCS) && \
 		isort --check $(ALL_PY_SRCS) && \
-		flake8 $(ALL_PY_SRCS) && \
+		ruff $(ALL_PY_SRCS) && \
 		mypy $(PY_MODULE) && \
 		bandit -c pyproject.toml -r $(PY_MODULE)
 
 .PHONY: reformat
 reformat: env/pyvenv.cfg
 	. env/bin/activate && \
+		ruff --fix $(ALL_PY_SRCS) && \
 		black $(ALL_PY_SRCS) && \
 		isort $(ALL_PY_SRCS)
 

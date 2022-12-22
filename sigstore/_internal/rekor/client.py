@@ -136,6 +136,10 @@ class RekorEntry:
 
     @classmethod
     def from_response(cls, dict_: Dict[str, Any]) -> RekorEntry:
+        """
+        Create a new `RekorEntry` from the given API response.
+        """
+
         # Assumes we only get one entry back
         entries = list(dict_.items())
         if len(entries) != 1:
@@ -189,6 +193,10 @@ class RekorEntry:
 
 @dataclass(frozen=True)
 class RekorLogInfo:
+    """
+    Represents information about the Rekor log.
+    """
+
     root_hash: str
     tree_size: int
     signed_tree_head: str
@@ -197,6 +205,9 @@ class RekorLogInfo:
 
     @classmethod
     def from_response(cls, dict_: Dict[str, Any]) -> RekorLogInfo:
+        """
+        Create a new `RekorLogInfo` from the given API response.
+        """
         return cls(
             root_hash=dict_["rootHash"],
             tree_size=dict_["treeSize"],
@@ -207,6 +218,10 @@ class RekorLogInfo:
 
 
 class RekorInclusionProof(BaseModel):
+    """
+    Represents an inclusion proof for a Rekor log entry.
+    """
+
     log_index: StrictInt = Field(..., alias="logIndex")
     root_hash: StrictStr = Field(..., alias="rootHash")
     tree_size: StrictInt = Field(..., alias="treeSize")
@@ -216,19 +231,19 @@ class RekorInclusionProof(BaseModel):
         allow_population_by_field_name = True
 
     @validator("log_index")
-    def log_index_positive(cls, v: int) -> int:
+    def _log_index_positive(cls, v: int) -> int:
         if v < 0:
             raise ValueError(f"Inclusion proof has invalid log index: {v} < 0")
         return v
 
     @validator("tree_size")
-    def tree_size_positive(cls, v: int) -> int:
+    def _tree_size_positive(cls, v: int) -> int:
         if v < 0:
             raise ValueError(f"Inclusion proof has invalid tree size: {v} < 0")
         return v
 
     @validator("tree_size")
-    def log_index_within_tree_size(
+    def _log_index_within_tree_size(
         cls, v: int, values: Dict[str, Any], **kwargs: Any
     ) -> int:
         if "log_index" in values and v <= values["log_index"]:
@@ -240,17 +255,28 @@ class RekorInclusionProof(BaseModel):
 
 
 class RekorClientError(Exception):
+    """
+    A generic error in the Rekor client.
+    """
+
     pass
 
 
-class Endpoint(ABC):
+class _Endpoint(ABC):
     def __init__(self, url: str, session: requests.Session) -> None:
         self.url = url
         self.session = session
 
 
-class RekorLog(Endpoint):
+class RekorLog(_Endpoint):
+    """
+    Represents a Rekor instance's log endpoint.
+    """
+
     def get(self) -> RekorLogInfo:
+        """
+        Returns information about the Rekor instance's log.
+        """
         resp: requests.Response = self.session.get(self.url)
         try:
             resp.raise_for_status()
@@ -260,13 +286,26 @@ class RekorLog(Endpoint):
 
     @property
     def entries(self) -> RekorEntries:
+        """
+        Returns a `RekorEntries` capable of accessing detailed information
+        about individual log entries.
+        """
         return RekorEntries(urljoin(self.url, "entries/"), session=self.session)
 
 
-class RekorEntries(Endpoint):
+class RekorEntries(_Endpoint):
+    """
+    Represents the individual log entry endpoints on a Rekor instance.
+    """
+
     def get(
         self, *, uuid: Optional[str] = None, log_index: Optional[int] = None
     ) -> RekorEntry:
+        """
+        Retrieve a specific log entry, either by UUID or by log index.
+
+        Either `uuid` or `log_index` must be present, but not both.
+        """
         if not (bool(uuid) ^ bool(log_index)):
             raise RekorClientError("uuid or log_index required, but not both")
 
@@ -289,6 +328,9 @@ class RekorEntries(Endpoint):
         sha256_artifact_hash: str,
         b64_cert: str,
     ) -> RekorEntry:
+        """
+        Submit a new entry for inclusion in the Rekor log.
+        """
         # TODO(ww): Dedupe this payload construction with the retrieve endpoint below.
         data = {
             "kind": "hashedrekord",
@@ -314,12 +356,19 @@ class RekorEntries(Endpoint):
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:
+        """
+        Returns a `RekorEntriesRetrieve` capable of retrieving entries.
+        """
         return RekorEntriesRetrieve(
             urljoin(self.url, "retrieve/"), session=self.session
         )
 
 
-class RekorEntriesRetrieve(Endpoint):
+class RekorEntriesRetrieve(_Endpoint):
+    """
+    Represents the entry retrieval endpoints on a Rekor instance.
+    """
+
     def post(
         self,
         signature: bytes,
@@ -386,6 +435,9 @@ class RekorClient:
     """The internal Rekor client"""
 
     def __init__(self, url: str, pubkey: bytes, ct_keyring: CTKeyring) -> None:
+        """
+        Create a new `RekorClient` from the given URL.
+        """
         self.url = urljoin(url, "api/v1/")
         self.session = requests.Session()
         self.session.headers.update(
@@ -403,10 +455,16 @@ class RekorClient:
         self._ct_keyring = ct_keyring
 
     def __del__(self) -> None:
+        """
+        Terminates the underlying network session.
+        """
         self.session.close()
 
     @classmethod
     def production(cls, updater: TrustUpdater) -> RekorClient:
+        """
+        Returns a `RekorClient` populated with the default Rekor production instance.
+        """
         rekor_key = updater.get_rekor_key()
         ctfe_keys = updater.get_ctfe_keys()
 
@@ -414,6 +472,9 @@ class RekorClient:
 
     @classmethod
     def staging(cls, updater: TrustUpdater) -> RekorClient:
+        """
+        Returns a `RekorClient` populated with the default Rekor staging instance.
+        """
         rekor_key = updater.get_rekor_key()
         ctfe_keys = updater.get_ctfe_keys()
 
@@ -421,4 +482,7 @@ class RekorClient:
 
     @property
     def log(self) -> RekorLog:
+        """
+        Returns a `RekorLog` adapter for making requests to a Rekor log.
+        """
         return RekorLog(urljoin(self.url, "log/"), session=self.session)

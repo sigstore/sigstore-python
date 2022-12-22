@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@d171c3b028d844f2bf14e9fdec0c58114451e4bf
       - uses: actions/setup-python@2c3dd9e7e29afd70cc0950079bde6c979d1f69f9
         with:
-          python-version: "3.x"
+          python-version: "3.7"
       - name: deps
         run: make dev SIGSTORE_EXTRA=lint
       - name: lint

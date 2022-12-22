@@ -158,4 +158,4 @@ def read_embedded(name: str) -> bytes:
     Read a resource embedded in this distribution of sigstore-python,
     returning its contents as bytes.
     """
-    return resources.files("sigstore._store").joinpath(name).read_bytes()
+    return resources.files("sigstore._store").joinpath(name).read_bytes()  # type: ignore
