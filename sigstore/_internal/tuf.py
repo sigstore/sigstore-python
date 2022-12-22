@@ -83,8 +83,8 @@ class TrustUpdater:
         # TODO: Pre-populate with any targets we ship with sources
         self._targets_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.debug("TUF metadata: %s", self._metadata_dir)
-        logger.debug("TUF targets cache: %s", self._targets_dir)
+        logger.debug(f"TUF metadata: {self._metadata_dir}")
+        logger.debug(f"TUF targets cache: {self._targets_dir}")
 
     @classmethod
     def production(cls) -> "TrustUpdater":
