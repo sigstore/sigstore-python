@@ -35,7 +35,7 @@ def test_signer_staging(mock_staging_tuf):
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 @pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_sign_rekor_entry_consistent_production(signer):
+def test_sign_rekor_entry_consistent(signer):
     # NOTE: The actual signer instance is produced lazily, so that parameter
     # expansion doesn't fail in offline tests.
     signer = signer()
