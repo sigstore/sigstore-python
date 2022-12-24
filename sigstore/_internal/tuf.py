@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
 from urllib import parse
 
 import appdirs
@@ -37,7 +36,7 @@ STAGING_TUF_URL = "https://tuf-root-staging.storage.googleapis.com/"
 _fetcher = None
 
 
-def _get_dirs(url: str) -> Tuple[Path, Path]:
+def _get_dirs(url: str) -> tuple[Path, Path]:
     """
     Given a TUF repository URL, return suitable local metadata and cache directories.
 
@@ -72,7 +71,7 @@ class TrustUpdater:
         roots, i.e. for the production or staging Sigstore TUF repos.
         """
         self._repo_url = url
-        self._updater: Optional[Updater] = None
+        self._updater: Updater | None = None
 
         self._metadata_dir, self._targets_dir = _get_dirs(url)
 
@@ -116,8 +115,8 @@ class TrustUpdater:
         """Initialize and update the toplevel TUF metadata"""
         updater = Updater(
             metadata_dir=str(self._metadata_dir),
-            metadata_base_url=f"{self._repo_url}",
-            target_base_url=f"{self._repo_url}targets/",
+            metadata_base_url=self._repo_url,
+            target_base_url=parse.urljoin(f"{self._repo_url}/", "targets/"),
             target_dir=str(self._targets_dir),
             fetcher=_fetcher,
         )
@@ -127,7 +126,7 @@ class TrustUpdater:
         updater.refresh()
         return updater
 
-    def _get(self, usage: str) -> List[bytes]:
+    def _get(self, usage: str) -> list[bytes]:
         """Return all active targets with given usage"""
         if not self._updater:
             self._updater = self._setup()
@@ -147,7 +146,7 @@ class TrustUpdater:
 
         return data
 
-    def get_ctfe_keys(self) -> List[bytes]:
+    def get_ctfe_keys(self) -> list[bytes]:
         """Return the active CTFE public keys contents.
 
         May download files from the remote repository.
@@ -167,7 +166,7 @@ class TrustUpdater:
             raise Exception("Did not find one active Rekor key in TUF metadata")
         return keys[0]
 
-    def get_fulcio_certs(self) -> List[bytes]:
+    def get_fulcio_certs(self) -> list[bytes]:
         """Return the active Fulcio certificate contents.
 
         May download files from the remote repository.
