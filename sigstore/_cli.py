@@ -54,12 +54,11 @@ from sigstore._verify import (
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-level = os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper()
 
 # NOTE: We configure the top package logger, rather than the root logger,
 # to avoid overly verbose logging in third-party code by default.
 package_logger = logging.getLogger("sigstore")
-package_logger.setLevel(level)
+package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
 
 
 def _boolify_env(envvar: str) -> bool:
