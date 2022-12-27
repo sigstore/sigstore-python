@@ -75,7 +75,7 @@ class TrustUpdater:
 
         self._metadata_dir, self._targets_dir = _get_dirs(url)
 
-        # intialize metadata dir
+        # Initialize metadata dir
         tuf_root = self._metadata_dir / "root.json"
         if not tuf_root.exists():
             if self._repo_url == DEFAULT_TUF_URL:
