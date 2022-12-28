@@ -52,13 +52,13 @@ from sigstore._verify import (
     policy,
 )
 
+logging.basicConfig()
 logger = logging.getLogger(__name__)
-level = os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper()
-logging.basicConfig(level=level)
 
-# workaround to make tuf less verbose https://github.com/theupdateframework/python-tuf/pull/2243
-if level == "INFO":
-    logging.getLogger("tuf").setLevel("WARNING")
+# NOTE: We configure the top package logger, rather than the root logger,
+# to avoid overly verbose logging in third-party code by default.
+package_logger = logging.getLogger("sigstore")
+package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
 
 
 def _boolify_env(envvar: str) -> bool:
@@ -145,6 +145,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "-V", "--version", action="version", version=f"%(prog)s {__version__}"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="run with additional debug logging; supply multiple times to increase verbosity",
     )
     subcommands = parser.add_subparsers(required=True, dest="subcommand")
 
@@ -323,6 +330,12 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = _parser()
     args = parser.parse_args()
+
+    # Configure logging upfront, so that we don't miss anything.
+    if args.verbose >= 1:
+        package_logger.setLevel("DEBUG")
+    if args.verbose >= 2:
+        logging.getLogger().setLevel("DEBUG")
 
     logger.debug(f"parsed arguments {args}")
 

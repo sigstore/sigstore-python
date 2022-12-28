@@ -8,6 +8,18 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* `sigstore` now supports the `-v`/`--verbose` flag as an alternative to
+  `SIGSTORE_LOGLEVEL` for debug logging
+  ([#372](https://github.com/sigstore/sigstore-python/pull/372))
+
+### Changed
+
+* The default behavior of `SIGSTORE_LOGLEVEL` has changed; the logger
+  configured is now the `sigstore.*` hierarchy logger, rather than the "root"
+  logger ([#372](https://github.com/sigstore/sigstore-python/pull/372))
+
 ## [0.9.0]
 
 ### Added

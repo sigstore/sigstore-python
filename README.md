@@ -71,7 +71,7 @@ Top-level:
 
 <!-- @begin-sigstore-help@ -->
 ```
-usage: sigstore [-h] [-V] {sign,verify,get-identity-token} ...
+usage: sigstore [-h] [-V] [-v] {sign,verify,get-identity-token} ...
 
 a tool for signing and verifying Python package distributions
 
@@ -81,6 +81,8 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -V, --version         show program's version number and exit
+  -v, --verbose         run with additional debug logging; supply multiple
+                        times to increase verbosity (default: 0)
 ```
 <!-- @end-sigstore-help@ -->
 
