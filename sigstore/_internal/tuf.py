@@ -44,12 +44,12 @@ def _get_dirs(url: str) -> tuple[Path, Path]:
     """
 
     builder = appdirs.AppDirs("sigstore-python", "sigstore")
-    tuf_base = parse.quote(url, safe="")
+    repo_base = parse.quote(url, safe="")
 
-    data_dir = Path(builder.user_data_dir)
-    cache_dir = Path(builder.user_cache_dir)
+    tuf_data_dir = Path(builder.user_data_dir) / "tuf"
+    tuf_cache_dir = Path(builder.user_cache_dir) / "tuf"
 
-    return (data_dir / tuf_base), (cache_dir / tuf_base)
+    return (tuf_data_dir / repo_base), (tuf_cache_dir / repo_base)
 
 
 class TrustUpdater:
@@ -75,7 +75,7 @@ class TrustUpdater:
 
         self._metadata_dir, self._targets_dir = _get_dirs(url)
 
-        # intialize metadata dir
+        # Initialize metadata dir
         tuf_root = self._metadata_dir / "root.json"
         if not tuf_root.exists():
             if self._repo_url == DEFAULT_TUF_URL:
