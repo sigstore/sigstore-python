@@ -82,9 +82,9 @@ def _boolify_env(envvar: str) -> bool:
         raise ValueError(f"can't coerce '{val}' to a boolean")
 
 
-def _set_default_subparser(parser: argparse.ArgumentParser, name: str) -> None:
+def _set_default_verify_subparser(parser: argparse.ArgumentParser, name: str) -> None:
     """
-    An argparse patch for configuring a default subparser.
+    An argparse patch for configuring a default subparser for `sigstore verify`.
 
     Adapted from <https://stackoverflow.com/a/26379693>
     """
@@ -100,11 +100,12 @@ def _set_default_subparser(parser: argparse.ArgumentParser, name: str) -> None:
                 if sp_name in sys.argv[1:]:
                     subparser_found = True
         if not subparser_found:
-            # NOTE: We expect the default subparser to take exactly one
-            # positional argument (e.g. `sigstore verify identity foo.txt`), so
-            # we insert the subparser's name right before that positional should
-            # appear.
-            sys.argv.insert(len(sys.argv) - 1, name)
+            # If `sigstore verify identity` wasn't passed explicitly, we need
+            # to insert the `identity` subcommand into the correct position
+            # within `sys.argv`. To do that, we get the index of the `verify`
+            # subcommand, and insert it directly after it.
+            verify_idx = sys.argv.index("verify")
+            sys.argv.insert(verify_idx + 1, name)
 
 
 def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
@@ -357,7 +358,7 @@ def _parser() -> argparse.ArgumentParser:
 
     # `sigstore verify` defaults to `sigstore verify identity`, for backwards
     # compatibility.
-    _set_default_subparser(verify, "identity")
+    _set_default_verify_subparser(verify, "identity")
 
     # `sigstore get-identity-token`
     get_identity_token = subcommands.add_parser("get-identity-token")
