@@ -124,7 +124,7 @@ check-readme:
 	      < README.md | sed '1d;$$d' \
 	  ) \
 	  <( \
-	    $(MAKE) -s run ARGS="verify --help" \
+	    $(MAKE) -s run ARGS="verify identity --help" \
 	  )
 
 
