@@ -267,12 +267,15 @@ def _parser() -> argparse.ArgumentParser:
 
     # `sigstore verify`
     verify = subcommands.add_parser(
-        "verify", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        "verify",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     verify_subcommand = verify.add_subparsers(dest="verify_subcommand")
 
     # `sigstore verify identity`
-    verify_identity = verify_subcommand.add_parser("identity")
+    verify_identity = verify_subcommand.add_parser(
+        "identity", help="verify against a known identity and identity provider"
+    )
     input_options = verify_identity.add_argument_group("Verification inputs")
     input_options.add_argument(
         "--certificate",
