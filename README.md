@@ -153,6 +153,13 @@ Sigstore instance options:
 
 ### Verifying
 
+#### Identities
+
+This is the most common verification done with `sigstore`, and therefore
+the one you probably want: you can use it to verify that a signature was
+produced by a particular identity (like `hamilcar@example.com`), as attested
+to by a particular OIDC provider (like `https://github.com/login/oauth`).
+
 <!-- @begin-sigstore-verify-identity-help@ -->
 ```
 usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
@@ -206,6 +213,10 @@ Sigstore instance options:
                         (conflicts with --staging) (default: None)
 ```
 <!-- @end-sigstore-verify-identity-help@ -->
+
+For backwards compatibility, `sigstore verify [args ...]` is equivalent to
+`sigstore verify identity [args ...]`, but the latter form is **strongly**
+preferred.
 
 ## Example uses
 
@@ -272,50 +283,30 @@ same directory as the file being verified:
 
 ```console
 # looks for foo.txt.sig and foo.txt.crt
-$ python -m sigstore verify foo.txt
+$ python -m sigstore verify identity foo.txt \
+    --cert-identity 'hamilcar@example.com' \
+    --cert-oidc-issuer 'https://github.com/login/oauth'
 ```
 
 Multiple files can be verified at once:
 
 ```console
 # looks for {foo,bar}.txt.{sig,crt}
-$ python -m sigstore verify foo.txt bar.txt
+$ python -m sigstore verify identity foo.txt bar.txt \
+    --cert-identity 'hamilcar@example.com' \
+    --cert-oidc-issuer 'https://github.com/login/oauth'
 ```
 
 If your signature and certificate are at different paths, you can specify them
 explicitly (but only for one file at a time):
 
 ```console
-$ python -m sigstore verify \
+$ python -m sigstore verify identity foo.txt \
     --certificate some/other/path/foo.crt \
     --signature some/other/path/foo.sig \
-    foo.txt
+    --cert-identity 'hamilcar@example.com' \
+    --cert-oidc-issuer 'https://github.com/login/oauth'
 ```
-
-### Extended verification against OpenID Connect claims
-
-By default, `sigstore verify` only checks the validity of the certificate,
-the correctness of the signature, and the consistency of both with the
-certificate transparency log.
-
-To assert further details about the signature (such as *who* or *what* signed for the artifact),
-you can test against the OpenID Connect claims embedded within it.
-
-For example, to accept the signature and certificate only if they correspond to a particular
-email identity:
-
-```console
-$ python -m sigstore verify --cert-email developer@example.com foo.txt
-```
-
-Or to accept only if the OpenID Connect issuer is the expected one:
-
-```console
-$ python -m sigstore verify --cert-oidc-issuer https://github.com/login/oauth foo.txt
-```
-
-These options can be combined, and further extended validation options (e.g., for
-signing results from GitHub Actions) are under development.
 
 ## Licensing
 
