@@ -21,6 +21,8 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Optional, TextIO, Union, cast
 
+from cryptography.x509 import load_pem_x509_certificates
+
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
@@ -42,7 +44,6 @@ from sigstore._internal.rekor.client import (
 )
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._sign import Signer
-from sigstore._utils import SplitCertificateChainError, split_certificate_chain
 from sigstore._verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,
@@ -563,9 +564,11 @@ def _verify(args: argparse.Namespace) -> None:
             )
 
         try:
-            certificate_chain = split_certificate_chain(args.certificate_chain.read())
-        except SplitCertificateChainError as error:
-            args._parser.error(f"Failed to parse certificate chain: {error}")
+            certificate_chain = load_pem_x509_certificates(
+                args.certificate_chain.read()
+            )
+        except ValueError as error:
+            args._parser.error(f"Invalid certificate chain: {error}")
 
         if args.rekor_root_pubkey is not None:
             rekor_key = args.rekor_root_pubkey.read()

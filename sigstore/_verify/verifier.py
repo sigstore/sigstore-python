@@ -27,11 +27,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
-from cryptography.x509 import (
-    ExtendedKeyUsage,
-    KeyUsage,
-    load_pem_x509_certificate,
-)
+from cryptography.x509 import Certificate, ExtendedKeyUsage, KeyUsage
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import (  # type: ignore[import]
     X509,
@@ -99,7 +95,9 @@ class Verifier:
     The primary API for verification operations.
     """
 
-    def __init__(self, *, rekor: RekorClient, fulcio_certificate_chain: List[bytes]):
+    def __init__(
+        self, *, rekor: RekorClient, fulcio_certificate_chain: List[Certificate]
+    ):
         """
         Create a new `Verifier`.
 
@@ -112,8 +110,7 @@ class Verifier:
         self._rekor = rekor
 
         self._fulcio_certificate_chain: List[X509] = []
-        for parent_cert_pem in fulcio_certificate_chain:
-            parent_cert = load_pem_x509_certificate(parent_cert_pem)
+        for parent_cert in fulcio_certificate_chain:
             parent_cert_ossl = X509.from_cryptography(parent_cert)
             self._fulcio_certificate_chain.append(parent_cert_ossl)
 

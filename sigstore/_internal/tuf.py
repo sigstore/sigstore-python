@@ -23,6 +23,7 @@ from pathlib import Path
 from urllib import parse
 
 import appdirs
+from cryptography.x509 import Certificate, load_pem_x509_certificate
 from tuf.ngclient import Updater
 
 from sigstore._utils import read_embedded
@@ -166,7 +167,7 @@ class TrustUpdater:
             raise Exception("Did not find one active Rekor key in TUF metadata")
         return keys[0]
 
-    def get_fulcio_certs(self) -> list[bytes]:
+    def get_fulcio_certs(self) -> list[Certificate]:
         """Return the active Fulcio certificate contents.
 
         May download files from the remote repository.
@@ -174,4 +175,4 @@ class TrustUpdater:
         certs = self._get("Fulcio")
         if not certs:
             raise Exception("Fulcio certificates not found in TUF metadata")
-        return certs
+        return [load_pem_x509_certificate(c) for c in certs]
