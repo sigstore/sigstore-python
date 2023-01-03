@@ -100,12 +100,17 @@ def _set_default_verify_subparser(parser: argparse.ArgumentParser, name: str) ->
                 if sp_name in sys.argv[1:]:
                     subparser_found = True
         if not subparser_found:
-            # If `sigstore verify identity` wasn't passed explicitly, we need
-            # to insert the `identity` subcommand into the correct position
-            # within `sys.argv`. To do that, we get the index of the `verify`
-            # subcommand, and insert it directly after it.
-            verify_idx = sys.argv.index("verify")
-            sys.argv.insert(verify_idx + 1, name)
+            try:
+                # If `sigstore verify identity` wasn't passed explicitly, we need
+                # to insert the `identity` subcommand into the correct position
+                # within `sys.argv`. To do that, we get the index of the `verify`
+                # subcommand, and insert it directly after it.
+                verify_idx = sys.argv.index("verify")
+                sys.argv.insert(verify_idx + 1, name)
+            except ValueError:
+                # This happens when we invoke `sigstore sign`, since there's no
+                # `verify` subcommand to insert under. We do nothing in this case.
+                pass
 
 
 def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
