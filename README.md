@@ -86,7 +86,8 @@ options:
 ```
 <!-- @end-sigstore-help@ -->
 
-Signing:
+
+### Signing
 
 <!-- @begin-sigstore-sign-help@ -->
 ```
@@ -150,22 +151,23 @@ Sigstore instance options:
 ```
 <!-- @end-sigstore-sign-help@ -->
 
-Verifying:
+### Verifying
 
-<!-- @begin-sigstore-verify-help@ -->
+<!-- @begin-sigstore-verify-identity-help@ -->
 ```
-usage: sigstore verify [-h] [--certificate FILE] [--signature FILE]
-                       [--rekor-bundle FILE] [--certificate-chain FILE]
-                       [--cert-email EMAIL] --cert-identity IDENTITY
-                       --cert-oidc-issuer URL [--require-rekor-offline]
-                       [--staging] [--rekor-url URL]
-                       [--rekor-root-pubkey FILE]
-                       FILE [FILE ...]
+usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
+                                [--rekor-bundle FILE]
+                                [--certificate-chain FILE]
+                                [--cert-email EMAIL] --cert-identity IDENTITY
+                                --cert-oidc-issuer URL
+                                [--require-rekor-offline] [--staging]
+                                [--rekor-url URL] [--rekor-root-pubkey FILE]
+                                FILE [FILE ...]
 
 positional arguments:
   FILE                  The file to verify
 
-options:
+optionals:
   -h, --help            show this help message and exit
 
 Verification inputs:
@@ -203,7 +205,7 @@ Sigstore instance options:
                         A PEM-encoded root public key for Rekor itself
                         (conflicts with --staging) (default: None)
 ```
-<!-- @end-sigstore-verify-help@ -->
+<!-- @end-sigstore-verify-identity-help@ -->
 
 ## Example uses
 
