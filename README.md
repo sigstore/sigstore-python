@@ -167,7 +167,7 @@ usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
 positional arguments:
   FILE                  The file to verify
 
-optionals:
+options:
   -h, --help            show this help message and exit
 
 Verification inputs:
