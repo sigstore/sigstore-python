@@ -84,7 +84,7 @@ def _boolify_env(envvar: str) -> bool:
 
 def _set_default_subparser(parser: argparse.ArgumentParser, name: str) -> None:
     """
-    A monkeypatch for configuring a default subparser.
+    An argparse patch for configuring a default subparser.
 
     Adapted from <https://stackoverflow.com/a/26379693>
     """
@@ -100,10 +100,11 @@ def _set_default_subparser(parser: argparse.ArgumentParser, name: str) -> None:
                 if sp_name in sys.argv[1:]:
                     subparser_found = True
         if not subparser_found:
-            # insert default in last position before global positional
-            # arguments, this implies no global options are specified after
-            # first positional argument
-            sys.argv.insert(len(sys.argv), name)
+            # NOTE: We expect the default subparser to take exactly one
+            # positional argument (e.g. `sigstore verify identity foo.txt`), so
+            # we insert the subparser's name right before that positional should
+            # appear.
+            sys.argv.insert(len(sys.argv) - 1, name)
 
 
 def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
