@@ -82,6 +82,30 @@ def _boolify_env(envvar: str) -> bool:
         raise ValueError(f"can't coerce '{val}' to a boolean")
 
 
+def _set_default_subparser(parser: argparse.ArgumentParser, name: str) -> None:
+    """
+    A monkeypatch for configuring a default subparser.
+
+    Adapted from <https://stackoverflow.com/a/26379693>
+    """
+    subparser_found = False
+    for arg in sys.argv[1:]:
+        if arg in ["-h", "--help"]:  # global help if no subparser
+            break
+    else:
+        for x in parser._subparsers._actions:  # type: ignore[union-attr]
+            if not isinstance(x, argparse._SubParsersAction):
+                continue
+            for sp_name in x._name_parser_map.keys():
+                if sp_name in sys.argv[1:]:
+                    subparser_found = True
+        if not subparser_found:
+            # insert default in last position before global positional
+            # arguments, this implies no global options are specified after
+            # first positional argument
+            sys.argv.insert(len(sys.argv), name)
+
+
 def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
     group.add_argument(
         "--staging",
@@ -245,8 +269,11 @@ def _parser() -> argparse.ArgumentParser:
     verify = subcommands.add_parser(
         "verify", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+    verify_subcommand = verify.add_subparsers(dest="verify_subcommand")
 
-    input_options = verify.add_argument_group("Verification inputs")
+    # `sigstore verify identity`
+    verify_identity = verify_subcommand.add_parser("identity")
+    input_options = verify_identity.add_argument_group("Verification inputs")
     input_options.add_argument(
         "--certificate",
         "--cert",
@@ -270,7 +297,9 @@ def _parser() -> argparse.ArgumentParser:
         help="The offline Rekor bundle to verify with; not used with multiple inputs",
     )
 
-    verification_options = verify.add_argument_group("Extended verification options")
+    verification_options = verify_identity.add_argument_group(
+        "Extended verification options"
+    )
     verification_options.add_argument(
         "--certificate-chain",
         metavar="FILE",
@@ -309,16 +338,20 @@ def _parser() -> argparse.ArgumentParser:
         help="Require offline Rekor verification with a bundle; implied by --rekor-bundle",
     )
 
-    instance_options = verify.add_argument_group("Sigstore instance options")
+    instance_options = verify_identity.add_argument_group("Sigstore instance options")
     _add_shared_instance_options(instance_options)
 
-    verify.add_argument(
+    verify_identity.add_argument(
         "files",
         metavar="FILE",
         type=Path,
         nargs="+",
         help="The file to verify",
     )
+
+    # `sigstore verify` defaults to `sigstore verify identity`, for backwards
+    # compatibility.
+    _set_default_subparser(verify, "identity")
 
     # `sigstore get-identity-token`
     get_identity_token = subcommands.add_parser("get-identity-token")
