@@ -78,7 +78,7 @@ a tool for signing and verifying Python package distributions
 positional arguments:
   {sign,verify,get-identity-token}
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   -V, --version         show program's version number and exit
   -v, --verbose         run with additional debug logging; supply multiple
@@ -103,7 +103,7 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
 positional arguments:
   FILE                  The file to sign
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
 
 OpenID Connect options:
@@ -167,7 +167,7 @@ usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
 positional arguments:
   FILE                  The file to verify
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
 
 Verification inputs:
