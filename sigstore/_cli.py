@@ -120,6 +120,9 @@ def _set_default_verify_subparser(parser: argparse.ArgumentParser, name: str) ->
 
 
 def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
+    """
+    Common Sigstore instance options, shared between all `sigstore` subcommands.
+    """
     group.add_argument(
         "--staging",
         action="store_true",
@@ -142,9 +145,64 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
     )
 
 
+def _add_shared_input_options(group: argparse._ArgumentGroup) -> None:
+    """
+    Common input options, shared between all `sigstore verify` subcommands.
+    """
+    group.add_argument(
+        "--certificate",
+        "--cert",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_CERTIFICATE"),
+        help="The PEM-encoded certificate to verify against; not used with multiple inputs",
+    )
+    group.add_argument(
+        "--signature",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_SIGNATURE"),
+        help="The signature to verify against; not used with multiple inputs",
+    )
+    group.add_argument(
+        "--rekor-bundle",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_REKOR_BUNDLE"),
+        help="The offline Rekor bundle to verify with; not used with multiple inputs",
+    )
+    group.add_argument(
+        "files",
+        metavar="FILE",
+        type=Path,
+        nargs="+",
+        help="The file to verify",
+    )
+
+
+def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
+    group.add_argument(
+        "--cert-identity",
+        metavar="IDENTITY",
+        type=str,
+        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
+        help="The identity to check for in the certificate's Subject Alternative Name",
+        required=True,
+    )
+    group.add_argument(
+        "--require-rekor-offline",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_REQUIRE_REKOR_OFFLINE"),
+        help="Require offline Rekor verification with a bundle; implied by --rekor-bundle",
+    )
+
+
 def _add_shared_oidc_options(
     group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
 ) -> None:
+    """
+    Common OIDC options, shared between `sigstore sign` and `sigstore get-identity-token`.
+    """
     group.add_argument(
         "--oidc-client-id",
         metavar="ID",
@@ -292,54 +350,15 @@ def _parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     input_options = verify_identity.add_argument_group("Verification inputs")
-    input_options.add_argument(
-        "--certificate",
-        "--cert",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_CERTIFICATE"),
-        help="The PEM-encoded certificate to verify against; not used with multiple inputs",
-    )
-    input_options.add_argument(
-        "--signature",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_SIGNATURE"),
-        help="The signature to verify against; not used with multiple inputs",
-    )
-    input_options.add_argument(
-        "--rekor-bundle",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_REKOR_BUNDLE"),
-        help="The offline Rekor bundle to verify with; not used with multiple inputs",
-    )
+    _add_shared_input_options(input_options)
 
-    verification_options = verify_identity.add_argument_group(
-        "Extended verification options"
-    )
-    verification_options.add_argument(
-        "--certificate-chain",
-        metavar="FILE",
-        type=argparse.FileType("r"),
-        help=(
-            "Path to a list of CA certificates in PEM format which will be needed when building "
-            "the certificate chain for the signing certificate"
-        ),
-    )
+    verification_options = verify_identity.add_argument_group("Verification options")
+    _add_shared_verification_options(verification_options)
     verification_options.add_argument(
         "--cert-email",
         metavar="EMAIL",
         type=str,
         help="Deprecated; causes an error. Use --cert-identity instead",
-    )
-    verification_options.add_argument(
-        "--cert-identity",
-        metavar="IDENTITY",
-        type=str,
-        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
-        help="The identity to check for in the certificate's Subject Alternative Name",
-        required=True,
     )
     verification_options.add_argument(
         "--cert-oidc-issuer",
@@ -349,22 +368,17 @@ def _parser() -> argparse.ArgumentParser:
         help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
         required=True,
     )
-    verification_options.add_argument(
-        "--require-rekor-offline",
-        action="store_true",
-        default=_boolify_env("SIGSTORE_REQUIRE_REKOR_OFFLINE"),
-        help="Require offline Rekor verification with a bundle; implied by --rekor-bundle",
-    )
 
     instance_options = verify_identity.add_argument_group("Sigstore instance options")
     _add_shared_instance_options(instance_options)
-
-    verify_identity.add_argument(
-        "files",
+    instance_options.add_argument(
+        "--certificate-chain",
         metavar="FILE",
-        type=Path,
-        nargs="+",
-        help="The file to verify",
+        type=argparse.FileType("r"),
+        help=(
+            "Path to a list of CA certificates in PEM format which will be needed when building "
+            "the certificate chain for the Fulcio signing certificate"
+        ),
     )
 
     # `sigstore verify github`
@@ -374,40 +388,57 @@ def _parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    verify_github.add_argument(
+    input_options = verify_github.add_argument_group("Verification inputs")
+    _add_shared_input_options(input_options)
+
+    verification_options = verify_github.add_argument_group("Verification options")
+    _add_shared_verification_options(verification_options)
+    verification_options.add_argument(
         "--workflow-trigger",
         metavar="EVENT",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_TRIGGER"),
         help="The GitHub Actions event name that triggered the workflow",
     )
-    verify_github.add_argument(
+    verification_options.add_argument(
         "--workflow-sha",
         metavar="SHA",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_SHA"),
         help="The `git` commit SHA that the workflow run was invoked with",
     )
-    verify_github.add_argument(
+    verification_options.add_argument(
         "--workflow-name",
         metavar="NAME",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_NAME"),
         help="The name of the workflow that was triggered",
     )
-    verify_github.add_argument(
+    verification_options.add_argument(
         "--workflow-repository",
         metavar="REPO",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_REPOSITORY"),
         help="The repository slug that the workflow was triggered under",
     )
-    verify_github.add_argument(
+    verification_options.add_argument(
         "--workflow-ref",
         metavar="REF",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_REF"),
         help="The `git` ref that the workflow was invoked with",
+    )
+
+    instance_options = verify_github.add_argument_group("Sigstore instance options")
+    _add_shared_instance_options(instance_options)
+    instance_options.add_argument(
+        "--certificate-chain",
+        metavar="FILE",
+        type=argparse.FileType("r"),
+        help=(
+            "Path to a list of CA certificates in PEM format which will be needed when building "
+            "the certificate chain for the Fulcio signing certificate"
+        ),
     )
 
     # `sigstore verify` defaults to `sigstore verify identity`, for backwards
