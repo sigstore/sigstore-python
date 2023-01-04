@@ -153,7 +153,7 @@ Sigstore instance options:
 
 ### Verifying
 
-#### Identities
+#### Generic identities
 
 This is the most common verification done with `sigstore`, and therefore
 the one you probably want: you can use it to verify that a signature was
@@ -163,16 +163,12 @@ to by a particular OIDC provider (like `https://github.com/login/oauth`).
 <!-- @begin-sigstore-verify-identity-help@ -->
 ```
 usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
-                                [--rekor-bundle FILE]
-                                [--certificate-chain FILE]
-                                [--cert-email EMAIL] --cert-identity IDENTITY
-                                --cert-oidc-issuer URL
-                                [--require-rekor-offline] [--staging]
+                                [--rekor-bundle FILE] --cert-identity IDENTITY
+                                [--require-rekor-offline] [--cert-email EMAIL]
+                                --cert-oidc-issuer URL [--staging]
                                 [--rekor-url URL] [--rekor-root-pubkey FILE]
+                                [--certificate-chain FILE]
                                 FILE [FILE ...]
-
-positional arguments:
-  FILE                  The file to verify
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -185,23 +181,20 @@ Verification inputs:
                         multiple inputs (default: None)
   --rekor-bundle FILE   The offline Rekor bundle to verify with; not used with
                         multiple inputs (default: None)
+  FILE                  The file to verify
 
-Extended verification options:
-  --certificate-chain FILE
-                        Path to a list of CA certificates in PEM format which
-                        will be needed when building the certificate chain for
-                        the signing certificate (default: None)
-  --cert-email EMAIL    Deprecated; causes an error. Use --cert-identity
-                        instead (default: None)
+Verification options:
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
                         Alternative Name (default: None)
-  --cert-oidc-issuer URL
-                        The OIDC issuer URL to check for in the certificate's
-                        OIDC issuer extension (default: None)
   --require-rekor-offline
                         Require offline Rekor verification with a bundle;
                         implied by --rekor-bundle (default: False)
+  --cert-email EMAIL    Deprecated; causes an error. Use --cert-identity
+                        instead (default: None)
+  --cert-oidc-issuer URL
+                        The OIDC issuer URL to check for in the certificate's
+                        OIDC issuer extension (default: None)
 
 Sigstore instance options:
   --staging             Use sigstore's staging instances, instead of the
@@ -211,12 +204,79 @@ Sigstore instance options:
   --rekor-root-pubkey FILE
                         A PEM-encoded root public key for Rekor itself
                         (conflicts with --staging) (default: None)
+  --certificate-chain FILE
+                        Path to a list of CA certificates in PEM format which
+                        will be needed when building the certificate chain for
+                        the Fulcio signing certificate (default: None)
 ```
 <!-- @end-sigstore-verify-identity-help@ -->
 
 For backwards compatibility, `sigstore verify [args ...]` is equivalent to
 `sigstore verify identity [args ...]`, but the latter form is **strongly**
 preferred.
+
+#### Signatures from GitHub Actions
+
+<!-- @begin-sigstore-verify-github-help@ -->
+```
+usage: sigstore verify github [-h] [--certificate FILE] [--signature FILE]
+                              [--rekor-bundle FILE] --cert-identity IDENTITY
+                              [--require-rekor-offline]
+                              [--workflow-trigger EVENT] [--workflow-sha SHA]
+                              [--workflow-name NAME]
+                              [--workflow-repository REPO]
+                              [--workflow-ref REF] [--staging]
+                              [--rekor-url URL] [--rekor-root-pubkey FILE]
+                              [--certificate-chain FILE]
+                              FILE [FILE ...]
+
+optional arguments:
+  -h, --help            show this help message and exit
+
+Verification inputs:
+  --certificate FILE, --cert FILE
+                        The PEM-encoded certificate to verify against; not
+                        used with multiple inputs (default: None)
+  --signature FILE      The signature to verify against; not used with
+                        multiple inputs (default: None)
+  --rekor-bundle FILE   The offline Rekor bundle to verify with; not used with
+                        multiple inputs (default: None)
+  FILE                  The file to verify
+
+Verification options:
+  --cert-identity IDENTITY
+                        The identity to check for in the certificate's Subject
+                        Alternative Name (default: None)
+  --require-rekor-offline
+                        Require offline Rekor verification with a bundle;
+                        implied by --rekor-bundle (default: False)
+  --workflow-trigger EVENT
+                        The GitHub Actions event name that triggered the
+                        workflow (default: None)
+  --workflow-sha SHA    The `git` commit SHA that the workflow run was invoked
+                        with (default: None)
+  --workflow-name NAME  The name of the workflow that was triggered (default:
+                        None)
+  --workflow-repository REPO
+                        The repository slug that the workflow was triggered
+                        under (default: None)
+  --workflow-ref REF    The `git` ref that the workflow was invoked with
+                        (default: None)
+
+Sigstore instance options:
+  --staging             Use sigstore's staging instances, instead of the
+                        default production instances (default: False)
+  --rekor-url URL       The Rekor instance to use (conflicts with --staging)
+                        (default: https://rekor.sigstore.dev)
+  --rekor-root-pubkey FILE
+                        A PEM-encoded root public key for Rekor itself
+                        (conflicts with --staging) (default: None)
+  --certificate-chain FILE
+                        Path to a list of CA certificates in PEM format which
+                        will be needed when building the certificate chain for
+                        the Fulcio signing certificate (default: None)
+```
+<!-- @end-sigstore-verify-github-help@ -->
 
 ## Example uses
 
