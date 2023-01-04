@@ -107,6 +107,11 @@ def _set_default_verify_subparser(parser: argparse.ArgumentParser, name: str) ->
                 # subcommand, and insert it directly after it.
                 verify_idx = sys.argv.index("verify")
                 sys.argv.insert(verify_idx + 1, name)
+                logger.warning(
+                    "`sigstore verify` without a subcommand will be treated as "
+                    "`sigstore verify identity`, but this behavior will be deprecated "
+                    "in a future release"
+                )
             except ValueError:
                 # This happens when we invoke `sigstore sign`, since there's no
                 # `verify` subcommand to insert under. We do nothing in this case.
