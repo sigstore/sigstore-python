@@ -367,6 +367,49 @@ def _parser() -> argparse.ArgumentParser:
         help="The file to verify",
     )
 
+    # `sigstore verify github`
+    verify_github = verify_subcommand.add_parser(
+        "github",
+        help="verify against GitHub Actions-specific claims",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    verify_github.add_argument(
+        "--workflow-trigger",
+        metavar="EVENT",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_TRIGGER"),
+        help="The GitHub Actions event name that triggered the workflow",
+    )
+    verify_github.add_argument(
+        "--workflow-sha",
+        metavar="SHA",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_SHA"),
+        help="The `git` commit SHA that the workflow run was invoked with",
+    )
+    verify_github.add_argument(
+        "--workflow-name",
+        metavar="NAME",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_NAME"),
+        help="The name of the workflow that was triggered",
+    )
+    verify_github.add_argument(
+        "--workflow-repository",
+        metavar="REPO",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_REPOSITORY"),
+        help="The repository slug that the workflow was triggered under",
+    )
+    verify_github.add_argument(
+        "--workflow-ref",
+        metavar="REF",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_REF"),
+        help="The `git` ref that the workflow was invoked with",
+    )
+
     # `sigstore verify` defaults to `sigstore verify identity`, for backwards
     # compatibility.
     _set_default_verify_subparser(verify, "identity")
@@ -397,7 +440,12 @@ def main() -> None:
     if args.subcommand == "sign":
         _sign(args)
     elif args.subcommand == "verify":
-        _verify(args)
+        if args.verify_subcommand == "identity":
+            _verify_identity(args)
+        elif args.verify_subcommand == "github":
+            _verify_github(args)
+        else:
+            parser.error(f"Unknown verify subcommand: {args.verify_subcommand}")
     elif args.subcommand == "get-identity-token":
         token = _get_identity_token(args)
         if token:
@@ -538,7 +586,7 @@ def _sign(args: argparse.Namespace) -> None:
             print(f"Rekor bundle written to {outputs['bundle']}")
 
 
-def _verify(args: argparse.Namespace) -> None:
+def _verify_identity(args: argparse.Namespace) -> None:
     # `--cert-email` has been functionally removed, but we check for it
     # explicitly to provide a nicer error message than just a missing
     # option.
@@ -732,6 +780,10 @@ def _verify(args: argparse.Namespace) -> None:
                 )
 
             sys.exit(1)
+
+
+def _verify_github(args: argparse.Namespace) -> None:
+    pass
 
 
 def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
