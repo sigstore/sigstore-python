@@ -776,11 +776,11 @@ def _verify_identity(args: argparse.Namespace) -> None:
                 print(
                     dedent(
                         f"""
-                        This may be a result of an outdated `sigstore` installation.
+                        The given certificate could not be verified against the
+                        root of trust.
 
-                        Consider upgrading with:
-
-                            python -m pip install --upgrade sigstore
+                        This may be a result of connecting to the wrong Fulcio instance
+                        (for example, staging instead of production, or vice versa).
 
                         Additional context:
 
@@ -867,11 +867,11 @@ def _verify_github(args: argparse.Namespace) -> None:
                 print(
                     dedent(
                         f"""
-                        This may be a result of an outdated `sigstore` installation.
+                        The given certificate could not be verified against the
+                        root of trust.
 
-                        Consider upgrading with:
-
-                            python -m pip install --upgrade sigstore
+                        This may be a result of connecting to the wrong Fulcio instance
+                        (for example, staging instead of production, or vice versa).
 
                         Additional context:
 
