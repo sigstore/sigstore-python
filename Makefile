@@ -117,14 +117,14 @@ check-readme:
 	    $(MAKE) -s run ARGS="sign --help" \
 	  )
 
-	# sigstore verify --help
+	# sigstore verify identity --help
 	@diff \
 	  <( \
-	    awk '/@begin-sigstore-verify-help@/{f=1;next} /@end-sigstore-verify-help@/{f=0} f' \
+	    awk '/@begin-sigstore-verify-identity-help@/{f=1;next} /@end-sigstore-verify-identity-help@/{f=0} f' \
 	      < README.md | sed '1d;$$d' \
 	  ) \
 	  <( \
-	    $(MAKE) -s run ARGS="verify --help" \
+	    $(MAKE) -s run ARGS="verify identity --help" \
 	  )
 
 
