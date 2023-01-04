@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import argparse
 import base64
 import logging
@@ -617,15 +619,16 @@ def _sign(args: argparse.Namespace) -> None:
             print(f"Rekor bundle written to {outputs['bundle']}")
 
 
-def _verify_identity(args: argparse.Namespace) -> None:
-    # `--cert-email` has been functionally removed, but we check for it
-    # explicitly to provide a nicer error message than just a missing
-    # option.
-    if args.cert_email:
-        args._parser.error(
-            "--cert-email is a disabled alias for --cert-identity; "
-            "use --cert-identity instead"
-        )
+def _collect_verification_state(
+    args: argparse.Namespace,
+) -> tuple[Verifier, list[tuple[Path, VerificationMaterials]]]:
+    """
+    Performs CLI functionality common across all `sigstore verify` subcommands.
+
+    Returns a tuple of the active verifier instance and a list of `(file, materials)`
+    tuples, where `file` is the path to the file being verified (for display
+    purposes) and `materials` is the `VerificationMaterials` to verify with.
+    """
 
     # `--rekor-bundle` is a temporary option, pending stabilization of the
     # Sigstore bundle format.
@@ -715,6 +718,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
             fulcio_certificate_chain=certificate_chain,
         )
 
+    all_materials = []
     for file, inputs in input_map.items():
         # Load the signing certificate
         logger.debug(f"Using certificate from: {inputs['cert']}")
@@ -733,13 +737,34 @@ def _verify_identity(args: argparse.Namespace) -> None:
         logger.debug(f"Verifying contents from: {file}")
 
         with file.open(mode="rb", buffering=0) as io:
-            materials = VerificationMaterials(
-                input_=io,
-                cert_pem=cert_pem,
-                signature=base64.b64decode(b64_signature),
-                offline_rekor_entry=entry,
+            all_materials.append(
+                (
+                    file,
+                    VerificationMaterials(
+                        input_=io,
+                        cert_pem=cert_pem,
+                        signature=base64.b64decode(b64_signature),
+                        offline_rekor_entry=entry,
+                    ),
+                )
             )
 
+    return (verifier, all_materials)
+
+
+def _verify_identity(args: argparse.Namespace) -> None:
+    # `--cert-email` has been functionally removed, but we check for it
+    # explicitly to provide a nicer error message than just a missing
+    # option.
+    if args.cert_email:
+        args._parser.error(
+            "--cert-email is a disabled alias for --cert-identity; "
+            "use --cert-identity instead"
+        )
+
+    verifier, files_with_materials = _collect_verification_state(args)
+
+    for (file, materials) in files_with_materials:
         policy_ = policy.Identity(
             identity=args.cert_identity,
             issuer=args.cert_oidc_issuer,
@@ -814,7 +839,94 @@ def _verify_identity(args: argparse.Namespace) -> None:
 
 
 def _verify_github(args: argparse.Namespace) -> None:
-    pass
+    # Every GitHub verification begins with an identity policy,
+    # for which we know the issuer URL ahead of time.
+    # We then add more policies, as configured by the user's passed-in options.
+    inner_policies: list[policy.VerificationPolicy] = [
+        policy.Identity(
+            identity=args.cert_identity,
+            issuer="https://token.actions.githubusercontent.com",
+        )
+    ]
+
+    if args.workflow_trigger:
+        inner_policies.append(policy.GitHubWorkflowTrigger(args.workflow_trigger))
+    if args.workflow_sha:
+        inner_policies.append(policy.GitHubWorkflowSHA(args.workflow_sha))
+    if args.workflow_name:
+        inner_policies.append(policy.GitHubWorkflowName(args.workflow_name))
+    if args.workflow_repository:
+        inner_policies.append(policy.GitHubWorkflowRepository(args.workflow_repository))
+    if args.workflow_ref:
+        inner_policies.append(policy.GitHubWorkflowRef(args.workflow_ref))
+
+    policy_ = policy.AllOf(inner_policies)
+
+    verifier, files_with_materials = _collect_verification_state(args)
+    for (file, materials) in files_with_materials:
+        result = verifier.verify(materials=materials, policy=policy_)
+
+        if result:
+            print(f"OK: {file}")
+        else:
+            result = cast(VerificationFailure, result)
+            print(f"FAIL: {file}")
+            print(f"Failure reason: {result.reason}", file=sys.stderr)
+
+            if isinstance(result, CertificateVerificationFailure):
+                # If certificate verification failed, it's either because of
+                # a chain issue or some outdated state in sigstore itself.
+                # These might already be resolved in a newer version, so
+                # we suggest that users try to upgrade and retry before
+                # anything else.
+                print(
+                    dedent(
+                        f"""
+                        This may be a result of an outdated `sigstore` installation.
+
+                        Consider upgrading with:
+
+                            python -m pip install --upgrade sigstore
+
+                        Additional context:
+
+                        {result.exception}
+                        """
+                    ),
+                    file=sys.stderr,
+                )
+            elif isinstance(result, RekorEntryMissing):
+                # If Rekor lookup failed, it's because the certificate either
+                # wasn't logged after creation or because the user requested the
+                # wrong Rekor instance (e.g., staging instead of production).
+                # The latter is significantly more likely, so we add
+                # some additional context to the output indicating it.
+                #
+                # NOTE: Even though the latter is more likely, it's still extremely
+                # unlikely that we'd hit this -- we should always fail with
+                # `CertificateVerificationFailure` instead, as the cert store should
+                # fail to validate due to a mismatch between the leaf and the trusted
+                # root + intermediates.
+                print(
+                    dedent(
+                        f"""
+                        These signing artifacts could not be matched to a entry
+                        in the configured transparency log.
+
+                        This may be a result of connecting to the wrong Rekor instance
+                        (for example, staging instead of production, or vice versa).
+
+                        Additional context:
+
+                        Signature: {result.signature}
+
+                        Artifact hash: {result.artifact_hash}
+                        """
+                    ),
+                    file=sys.stderr,
+                )
+
+            sys.exit(1)
 
 
 def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
