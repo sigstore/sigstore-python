@@ -164,9 +164,9 @@ to by a particular OIDC provider (like `https://github.com/login/oauth`).
 ```
 usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
                                 [--rekor-bundle FILE] --cert-identity IDENTITY
-                                [--require-rekor-offline] [--cert-email EMAIL]
-                                --cert-oidc-issuer URL [--staging]
-                                [--rekor-url URL] [--rekor-root-pubkey FILE]
+                                [--require-rekor-offline] --cert-oidc-issuer
+                                URL [--staging] [--rekor-url URL]
+                                [--rekor-root-pubkey FILE]
                                 [--certificate-chain FILE]
                                 FILE [FILE ...]
 
@@ -190,8 +190,6 @@ Verification options:
   --require-rekor-offline
                         Require offline Rekor verification with a bundle;
                         implied by --rekor-bundle (default: False)
-  --cert-email EMAIL    Deprecated; causes an error. Use --cert-identity
-                        instead (default: None)
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
                         OIDC issuer extension (default: None)

@@ -357,12 +357,6 @@ def _parser() -> argparse.ArgumentParser:
     verification_options = verify_identity.add_argument_group("Verification options")
     _add_shared_verification_options(verification_options)
     verification_options.add_argument(
-        "--cert-email",
-        metavar="EMAIL",
-        type=str,
-        help="Deprecated; causes an error. Use --cert-identity instead",
-    )
-    verification_options.add_argument(
         "--cert-oidc-issuer",
         metavar="URL",
         type=str,
@@ -753,15 +747,6 @@ def _collect_verification_state(
 
 
 def _verify_identity(args: argparse.Namespace) -> None:
-    # `--cert-email` has been functionally removed, but we check for it
-    # explicitly to provide a nicer error message than just a missing
-    # option.
-    if args.cert_email:
-        args._parser.error(
-            "--cert-email is a disabled alias for --cert-identity; "
-            "use --cert-identity instead"
-        )
-
     verifier, files_with_materials = _collect_verification_state(args)
 
     for (file, materials) in files_with_materials:
