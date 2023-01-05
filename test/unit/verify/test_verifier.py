@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pretend
 import pytest
 
 from sigstore._verify import policy
@@ -94,3 +95,25 @@ def test_verifier_uri_identity(signing_materials):
         materials,
         policy_,
     )
+
+
+@pytest.mark.online
+def test_verifier_policy_check(signing_materials):
+    materials = signing_materials("a.txt")
+
+    # policy that fails to verify for any given cert.
+    policy_ = pretend.stub(verify=pretend.call_recorder(lambda cert: False))
+
+    verifier = Verifier.staging()
+    assert not verifier.verify(
+        materials,
+        policy_,
+    )
+
+
+@pytest.mark.online
+def test_verifier_bad_source(signing_materials, null_policy, monkeypatch):
+    materials = signing_materials("bad.txt")
+
+    verifier = Verifier.staging()
+    assert not verifier.verify(materials, null_policy)
