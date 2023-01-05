@@ -16,13 +16,13 @@
 API for verifying artifact signatures.
 """
 
-from sigstore._verify.models import (
+from sigstore.verify.models import (
     VerificationFailure,
     VerificationMaterials,
     VerificationResult,
     VerificationSuccess,
 )
-from sigstore._verify.verifier import (
+from sigstore.verify.verifier import (
     CertificateVerificationFailure,
     RekorEntryMissing,
     Verifier,

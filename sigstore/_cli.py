@@ -43,8 +43,8 @@ from sigstore._internal.rekor.client import (
     RekorEntry,
 )
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._sign import Signer
-from sigstore._verify import (
+from sigstore.sign import Signer
+from sigstore.verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,
     VerificationFailure,

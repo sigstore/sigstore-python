@@ -29,8 +29,8 @@ from sigstore._internal.oidc.ambient import (
     detect_credential,
 )
 from sigstore._internal.rekor.client import RekorBundle
-from sigstore._verify import VerificationMaterials
-from sigstore._verify.policy import VerificationSuccess
+from sigstore.verify import VerificationMaterials
+from sigstore.verify.policy import VerificationSuccess
 
 _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
