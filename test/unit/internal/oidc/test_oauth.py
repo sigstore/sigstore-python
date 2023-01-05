@@ -21,8 +21,27 @@ from sigstore._internal.oidc.issuer import Issuer
 
 
 @pytest.mark.online
-def test_get_identity_token_identity_error(monkeypatch):
+def test_get_identity_token_token_error(monkeypatch):
+    import requests
 
+    monkeypatch.setenv("SIGSTORE_OAUTH_FORCE_OOB", "")
+    monkeypatch.setattr("builtins.input", pretend.call_recorder(lambda _: "hunter2"))
+    monkeypatch.setattr(
+        requests.Response, "raise_for_status", pretend.call_recorder(lambda _: None)
+    )
+
+    with pytest.raises(
+        oauth.IdentityError, match="Error response from token endpoint: invalid_grant"
+    ):
+        oauth.get_identity_token(
+            client_id="sigstore",
+            client_secret="",
+            issuer=Issuer(oauth.DEFAULT_OAUTH_ISSUER),
+        )
+
+
+@pytest.mark.online
+def test_get_identity_token_http_error(monkeypatch):
     monkeypatch.setenv("SIGSTORE_OAUTH_FORCE_OOB", "")
     monkeypatch.setattr("builtins.input", pretend.call_recorder(lambda _: "hunter2"))
 
