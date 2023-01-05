@@ -224,12 +224,10 @@ claims more precisely than `sigstore verify identity` allows:
 ```
 usage: sigstore verify github [-h] [--certificate FILE] [--signature FILE]
                               [--rekor-bundle FILE] --cert-identity IDENTITY
-                              [--require-rekor-offline]
-                              [--workflow-trigger EVENT] [--workflow-sha SHA]
-                              [--workflow-name NAME]
-                              [--workflow-repository REPO]
-                              [--workflow-ref REF] [--staging]
-                              [--rekor-url URL] [--rekor-root-pubkey FILE]
+                              [--require-rekor-offline] [--trigger EVENT]
+                              [--sha SHA] [--name NAME] [--repository REPO]
+                              [--ref REF] [--staging] [--rekor-url URL]
+                              [--rekor-root-pubkey FILE]
                               [--certificate-chain FILE]
                               FILE [FILE ...]
 
@@ -253,17 +251,15 @@ Verification options:
   --require-rekor-offline
                         Require offline Rekor verification with a bundle;
                         implied by --rekor-bundle (default: False)
-  --workflow-trigger EVENT
-                        The GitHub Actions event name that triggered the
+  --trigger EVENT       The GitHub Actions event name that triggered the
                         workflow (default: None)
-  --workflow-sha SHA    The `git` commit SHA that the workflow run was invoked
+  --sha SHA             The `git` commit SHA that the workflow run was invoked
                         with (default: None)
-  --workflow-name NAME  The name of the workflow that was triggered (default:
+  --name NAME           The name of the workflow that was triggered (default:
                         None)
-  --workflow-repository REPO
-                        The repository slug that the workflow was triggered
+  --repository REPO     The repository slug that the workflow was triggered
                         under (default: None)
-  --workflow-ref REF    The `git` ref that the workflow was invoked with
+  --ref REF             The `git` ref that the workflow was invoked with
                         (default: None)
 
 Sigstore instance options:

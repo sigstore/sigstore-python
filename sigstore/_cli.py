@@ -390,35 +390,40 @@ def _parser() -> argparse.ArgumentParser:
     verification_options = verify_github.add_argument_group("Verification options")
     _add_shared_verification_options(verification_options)
     verification_options.add_argument(
-        "--workflow-trigger",
+        "--trigger",
+        dest="workflow_trigger",
         metavar="EVENT",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_TRIGGER"),
         help="The GitHub Actions event name that triggered the workflow",
     )
     verification_options.add_argument(
-        "--workflow-sha",
+        "--sha",
+        dest="workflow_sha",
         metavar="SHA",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_SHA"),
         help="The `git` commit SHA that the workflow run was invoked with",
     )
     verification_options.add_argument(
-        "--workflow-name",
+        "--name",
+        dest="workflow_name",
         metavar="NAME",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_NAME"),
         help="The name of the workflow that was triggered",
     )
     verification_options.add_argument(
-        "--workflow-repository",
+        "--repository",
+        dest="workflow_repository",
         metavar="REPO",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_REPOSITORY"),
         help="The repository slug that the workflow was triggered under",
     )
     verification_options.add_argument(
-        "--workflow-ref",
+        "--ref",
+        dest="workflow_ref",
         metavar="REF",
         type=str,
         default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_REF"),
