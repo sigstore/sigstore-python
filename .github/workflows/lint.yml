@@ -39,3 +39,16 @@ jobs:
 
       - name: check-readme
         run: make check-readme
+
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
+      # adapted from Warehouse's bin/licenses
+      - run: |
+          for fn in $(find . -type f -name "*.py"); do
+            if [[ ! "$(head -5 $fn | grep "^ *\(#\|\*\|\/\/\) .* License\(d*\)")" ]]; then
+              echo "${fn} is missing a license"
+              exit 1
+            fi
+          done
