@@ -71,6 +71,7 @@ lint = [
 ]
 dev = [
   "build",
+  "bump >= 1.3.2",
   "pdoc3",
   "sigstore[test,lint]",
 ]
