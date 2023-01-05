@@ -1,0 +1,37 @@
+name: docs-deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      # NOTE: Needed to push to the repository.
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ">= 3.7"
+
+      - name: docs
+        run: |
+          make doc
+          mv ./html/sigstore /tmp/sigstore
+      - name: deploy
+        run: |
+          # Configure git, checkout a new orphan branch for the docs.
+          git config --global user.name 'github.actions'
+          git config --global user.email 'github-actions@github.com'
+          git checkout --orphan gh-pages
+          # Clear out all repo state, copy in the docs built in the previous step.
+          git rm -rf . && git clean -fd
+          mv /tmp/sigstore ./docs
+          # Check in the docs, push.
+          git add --all .
+          git commit -m "[docs] deploy: ${GITHUB_SHA}"
+          git push --force origin gh-pages
