@@ -20,6 +20,7 @@ from sigstore._internal.oidc import oauth
 from sigstore._internal.oidc.issuer import Issuer
 
 
+@pytest.mark.online
 def test_get_identity_token_identity_error(monkeypatch):
 
     monkeypatch.setenv("SIGSTORE_OAUTH_FORCE_OOB", "")
