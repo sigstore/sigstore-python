@@ -111,6 +111,7 @@ def test_verifier_policy_check(signing_materials):
     )
 
 
+@pytest.mark.online
 def test_verifier_bad_source(signing_materials, null_policy, monkeypatch):
     materials = signing_materials("bad.txt")
 
