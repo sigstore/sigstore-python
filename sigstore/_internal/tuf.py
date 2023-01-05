@@ -127,8 +127,8 @@ class TrustUpdater:
         updater.refresh()
         return updater
 
-    def _get(self, usage: str) -> list[bytes]:
-        """Return all active targets with given usage"""
+    def _get(self, usage: str, statuses: list[str]) -> list[bytes]:
+        """Return all targets with given usage and any of the statuses"""
         if not self._updater:
             self._updater = self._setup()
 
@@ -138,7 +138,7 @@ class TrustUpdater:
         targets = self._updater._trusted_set.targets.signed.targets  # type: ignore[union-attr]
         for target_info in targets.values():
             custom = target_info.unrecognized_fields["custom"]["sigstore"]
-            if custom["status"] == "Active" and custom["usage"] == usage:
+            if custom["status"] in statuses and custom["usage"] == usage:
                 path = self._updater.find_cached_target(target_info)
                 if path is None:
                     path = self._updater.download_target(target_info)
@@ -152,7 +152,7 @@ class TrustUpdater:
 
         May download files from the remote repository.
         """
-        ctfes = self._get("CTFE")
+        ctfes = self._get("CTFE", ["Active"])
         if not ctfes:
             raise Exception("CTFE keys not found in TUF metadata")
         return ctfes
@@ -162,17 +162,19 @@ class TrustUpdater:
 
         May download files from the remote repository.
         """
-        keys = self._get("Rekor")
+        keys = self._get("Rekor", ["Active"])
         if len(keys) != 1:
             raise Exception("Did not find one active Rekor key in TUF metadata")
         return keys[0]
 
     def get_fulcio_certs(self) -> list[Certificate]:
-        """Return the active Fulcio certificate contents.
+        """Return the Fulcio certificates.
 
         May download files from the remote repository.
         """
-        certs = self._get("Fulcio")
+        # Return expired certificates too: they are expired now but may have
+        # been active when the certificate was used to sign.
+        certs = self._get("Fulcio", ["Active", "Expired"])
         if not certs:
             raise Exception("Fulcio certificates not found in TUF metadata")
         return [load_pem_x509_certificate(c) for c in certs]
