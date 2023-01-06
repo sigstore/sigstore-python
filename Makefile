@@ -58,7 +58,7 @@ lint: env/pyvenv.cfg
 		black --check $(ALL_PY_SRCS) && \
 		isort --check $(ALL_PY_SRCS) && \
 		ruff $(ALL_PY_SRCS) && \
-		mypy --sqlite-cache $(PY_MODULE) && \
+		mypy $(PY_MODULE) && \
 		bandit -c pyproject.toml -r $(PY_MODULE) && \
 		interrogate --fail-under 100 -c pyproject.toml $(PY_MODULE)
 
