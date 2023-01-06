@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
         with:
           python-version: "3.7"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
 
       - name: deps
         run: make dev SIGSTORE_EXTRA=lint
@@ -33,12 +35,11 @@ jobs:
       - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
         with:
           python-version: "3.7"
-
-      - name: deps
-        run: make dev
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
 
       - name: check-readme
-        run: make check-readme
+        run: make check-readme SIGSTORE_EXTRA=""
 
   licenses:
     runs-on: ubuntu-latest
