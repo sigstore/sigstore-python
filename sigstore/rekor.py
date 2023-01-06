@@ -16,6 +16,8 @@
 Data structures returned by Rekor.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -73,6 +75,31 @@ class RekorEntry:
     """
     The base64-encoded Signed Entry Timestamp (SET) for this log entry.
     """
+
+    @classmethod
+    def _from_response(cls, dict_: dict[str, Any]) -> RekorEntry:
+        """
+        Create a new `RekorEntry` from the given API response.
+        """
+
+        # Assumes we only get one entry back
+        entries = list(dict_.items())
+        if len(entries) != 1:
+            raise ValueError("Received multiple entries in response")
+
+        uuid, entry = entries[0]
+
+        return RekorEntry(
+            uuid=uuid,
+            body=entry["body"],
+            integrated_time=entry["integratedTime"],
+            log_id=entry["logID"],
+            log_index=entry["logIndex"],
+            inclusion_proof=RekorInclusionProof.parse_obj(
+                entry["verification"]["inclusionProof"]
+            ),
+            signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
+        )
 
     def encode_canonical(self) -> bytes:
         """
