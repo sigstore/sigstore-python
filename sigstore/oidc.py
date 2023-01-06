@@ -92,7 +92,7 @@ class Issuer:
         """
         return cls(STAGING_OAUTH_ISSUER_URL)
 
-    def identity_token(
+    def identity_token(  # nosec: B107
         self, client_id: str = "sigstore", client_secret: str = ""
     ) -> str:
         """

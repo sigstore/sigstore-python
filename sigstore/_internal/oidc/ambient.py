@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 _GCP_PRODUCT_NAME_FILE = "/sys/class/dmi/id/product_name"
 _GCP_TOKEN_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/token"  # noqa # nosec B105
-_GCP_IDENTITY_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"  # noqa # nosec B105
+_GCP_IDENTITY_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"  # noqa
 _GCP_GENERATEIDTOKEN_REQUEST_URL = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/{}:generateIdToken"  # noqa
 
 
