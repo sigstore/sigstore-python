@@ -119,6 +119,7 @@ def _set_default_verify_subparser(parser: argparse.ArgumentParser, name: str) ->
 def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
     group.add_argument(
         "--staging",
+        dest="__deprecated_staging",
         action="store_true",
         default=_boolify_env("SIGSTORE_STAGING"),
         help="Use sigstore's staging instances, instead of the default production instances",
@@ -392,6 +393,15 @@ def main() -> None:
         logging.getLogger().setLevel("DEBUG")
 
     logger.debug(f"parsed arguments {args}")
+
+    # `sigstore --staging some-cmd` is now the preferred form, rather than
+    # `sigstore some-cmd --staging`.
+    if getattr(args, "__deprecated_staging", False):
+        logger.warning(
+            "`--staging` should be used as a global option, rather than a subcommand option. "
+            "Passing `--staging` as a subcommand option will be deprecated in a future release."
+        )
+        args.staging = args.__deprecated_staging
 
     # Stuff the parser back into our namespace, so that we can use it for
     # error handling later.
