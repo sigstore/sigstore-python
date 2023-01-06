@@ -24,16 +24,11 @@ import http.server
 import logging
 import os
 import threading
-import time
 import urllib.parse
 import uuid
-import webbrowser
 from typing import Any, Dict, List, Optional, cast
 
-import requests
-
-from sigstore._internal.oidc import IdentityError
-from sigstore._internal.oidc.issuer import Issuer
+from sigstore.oidc import IdentityError, Issuer
 
 logger = logging.getLogger(__name__)
 
@@ -259,68 +254,3 @@ class _OAuthRedirectServer(http.server.HTTPServer):
 
     def is_oob(self) -> bool:
         return self._is_out_of_band
-
-
-def get_identity_token(client_id: str, client_secret: str, issuer: Issuer) -> str:
-    """
-    Retrieve an OpenID Connect token from the Sigstore provider
-
-    This function and the components that it relies on are based off of:
-    https://github.com/psteniusubi/python-sample
-    """
-
-    force_oob = os.getenv("SIGSTORE_OAUTH_FORCE_OOB") is not None
-
-    code: str
-    with _OAuthFlow(client_id, client_secret, issuer) as server:
-        # Launch web browser
-        if not force_oob and webbrowser.open(server.base_uri):
-            print("Waiting for browser interaction...")
-        else:
-            server.enable_oob()
-            print(f"Go to the following link in a browser:\n\n\t{server.auth_endpoint}")
-
-        if not server.is_oob():
-            # Wait until the redirect server populates the response
-            while server.auth_response is None:
-                time.sleep(0.1)
-
-            auth_error = server.auth_response.get("error")
-            if auth_error is not None:
-                raise IdentityError(
-                    f"Error response from auth endpoint: {auth_error[0]}"
-                )
-            code = server.auth_response["code"][0]
-        else:
-            # In the out-of-band case, we wait until the user provides the code
-            code = input("Enter verification code: ")
-
-    # Provide code to token endpoint
-    data = {
-        "grant_type": "authorization_code",
-        "redirect_uri": server.redirect_uri,
-        "code": code,
-        "code_verifier": server.oauth_session.code_verifier,
-    }
-    auth = (
-        client_id,
-        client_secret,
-    )
-    logging.debug(f"PAYLOAD: data={data}")
-    resp: requests.Response = requests.post(
-        issuer.token_endpoint,
-        data=data,
-        auth=auth,
-    )
-
-    try:
-        resp.raise_for_status()
-    except requests.HTTPError as http_error:
-        raise IdentityError from http_error
-
-    token_json = resp.json()
-    token_error = token_json.get("error")
-    if token_error is not None:
-        raise IdentityError(f"Error response from token endpoint: {token_error}")
-
-    return str(token_json["access_token"])

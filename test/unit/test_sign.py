@@ -17,7 +17,7 @@ import secrets
 
 import pytest
 
-from sigstore._internal.oidc.ambient import detect_credential
+from sigstore.oidc import detect_credential
 from sigstore.sign import Signer
 
 

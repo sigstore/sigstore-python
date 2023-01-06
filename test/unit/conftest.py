@@ -23,12 +23,12 @@ from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface
 
 from sigstore._internal import tuf
-from sigstore._internal.oidc.ambient import (
+from sigstore._internal.rekor.client import RekorBundle
+from sigstore.oidc import (
     AmbientCredentialError,
     GitHubOidcPermissionCredentialError,
     detect_credential,
 )
-from sigstore._internal.rekor.client import RekorBundle
 from sigstore.verify import VerificationMaterials
 from sigstore.verify.policy import VerificationSuccess
 

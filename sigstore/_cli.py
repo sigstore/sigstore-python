@@ -26,15 +26,9 @@ from cryptography.x509 import load_pem_x509_certificates
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
-from sigstore._internal.oidc.ambient import (
-    GitHubOidcPermissionCredentialError,
-    detect_credential,
-)
-from sigstore._internal.oidc.issuer import Issuer
 from sigstore._internal.oidc.oauth import (
     DEFAULT_OAUTH_ISSUER,
     STAGING_OAUTH_ISSUER,
-    get_identity_token,
 )
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
@@ -42,6 +36,12 @@ from sigstore._internal.rekor.client import (
     RekorClient,
 )
 from sigstore._internal.tuf import TrustUpdater
+from sigstore.oidc import (
+    GitHubOidcPermissionCredentialError,
+    Issuer,
+    detect_credential,
+    get_identity_token,
+)
 from sigstore.rekor import RekorEntry
 from sigstore.sign import Signer
 from sigstore.verify import (

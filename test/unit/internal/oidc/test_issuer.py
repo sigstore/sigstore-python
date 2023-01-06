@@ -14,15 +14,15 @@
 
 import pytest
 
-from sigstore._internal.oidc import issuer
+from sigstore.oidc import Issuer, IssuerError
 
 
 @pytest.mark.online
 def test_fail_init_url():
-    with pytest.raises(issuer.IssuerError):
-        issuer.Issuer("https://google.com")
+    with pytest.raises(IssuerError):
+        Issuer("https://google.com")
 
 
 @pytest.mark.online
 def test_init_url():
-    issuer.Issuer("https://accounts.google.com")
+    Issuer("https://accounts.google.com")
