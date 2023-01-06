@@ -120,3 +120,15 @@ def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
         Exception, match="Did not find one active Rekor key in TUF metadata"
     ):
         updater.get_rekor_key()
+
+
+def test_updater_fulcio_certs_error(tuf_asset, monkeypatch):
+    updater = TrustUpdater.staging()
+    # getter returns no fulcio certs.
+    monkeypatch.setattr(
+        updater, "_get", pretend.call_recorder(lambda usage, statuses: None)
+    )
+    with pytest.raises(
+        Exception, match="Fulcio certificates not found in TUF metadata"
+    ):
+        updater.get_fulcio_certs()
