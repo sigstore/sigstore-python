@@ -52,3 +52,27 @@ def test_sign_rekor_entry_consistent(signer):
     assert expected_entry.integrated_time == actual_entry.integrated_time
     assert expected_entry.log_id == actual_entry.log_id
     assert expected_entry.log_index == actual_entry.log_index
+
+
+@pytest.mark.online
+@pytest.mark.ambient_oidc
+@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
+def test_fail_sct_verify(signer, monkeypatch):
+    import pretend
+
+    signer = signer()
+
+    # TMP(jl): testing this assignment is valid.
+    signer._rekor._ct_keyring = pretend.stub(
+        verify=pretend.raiser(CTKeyringLookupError)
+    )
+
+    token = detect_credential()
+    assert token is not None
+
+    payload = io.BytesIO(secrets.token_bytes(32))
+
+    expected_entry = signer.sign(payload, token).log_entry
+    actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
+
+    assert expected_entry.uuid == actual_entry.uuid
