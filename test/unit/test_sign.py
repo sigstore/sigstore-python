@@ -16,6 +16,7 @@ import io
 import secrets
 
 import pytest
+from sigstore_sign import InvalidSctError
 
 from sigstore._internal.ctfe import CTKeyringLookupError
 from sigstore._internal.oidc.ambient import detect_credential
@@ -72,7 +73,7 @@ def test_sct_verify_keyring(signer, monkeypatch):
     payload = io.BytesIO(secrets.token_bytes(32))
 
     with pytest.raises(
-        CTKeyringLookupError,
+        InvalidSctError,
         match="Invalid key ID in SCT: not found in current keyring.",
     ):
         signer.sign(payload, token).log_entry
