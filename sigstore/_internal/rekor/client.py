@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field, StrictInt, StrictStr
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import base64_encode_pem_cert
-from sigstore.rekor import RekorEntry
+from sigstore.rekor import RekorEntry, RekorInclusionProof
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +133,31 @@ class RekorClientError(Exception):
     pass
 
 
+def entry_from_response(dict_: Dict[str, Any]) -> RekorEntry:
+    """
+    Create a new `RekorEntry` from the given API response.
+    """
+
+    # Assumes we only get one entry back
+    entries = list(dict_.items())
+    if len(entries) != 1:
+        raise RekorClientError("Received multiple entries in response")
+
+    uuid, entry = entries[0]
+
+    return RekorEntry(
+        uuid=uuid,
+        body=entry["body"],
+        integrated_time=entry["integratedTime"],
+        log_id=entry["logID"],
+        log_index=entry["logIndex"],
+        inclusion_proof=RekorInclusionProof.parse_obj(
+            entry["verification"]["inclusionProof"]
+        ),
+        signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
+    )
+
+
 class _Endpoint(ABC):
     def __init__(self, url: str, session: requests.Session) -> None:
         self.url = url
@@ -191,7 +216,7 @@ class RekorEntries(_Endpoint):
             resp.raise_for_status()
         except requests.HTTPError as http_error:
             raise RekorClientError from http_error
-        return RekorEntry.from_response(resp.json())
+        return entry_from_response(resp.json())
 
     def post(
         self,
@@ -223,7 +248,7 @@ class RekorEntries(_Endpoint):
         except requests.HTTPError as http_error:
             raise RekorClientError from http_error
 
-        return RekorEntry.from_response(resp.json())
+        return entry_from_response(resp.json())
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:
@@ -292,7 +317,7 @@ class RekorEntriesRetrieve(_Endpoint):
         # newer duplicate entries.
         oldest_entry: Optional[RekorEntry] = None
         for result in results:
-            entry = RekorEntry.from_response(result)
+            entry = entry_from_response(result)
             if (
                 oldest_entry is None
                 or entry.integrated_time < oldest_entry.integrated_time
