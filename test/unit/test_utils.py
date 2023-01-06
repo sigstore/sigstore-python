@@ -21,6 +21,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
 from sigstore import _utils as utils
+from sigstore._internal.ctfe import CTKeyring
 
 
 def test_key_id():
@@ -70,3 +71,11 @@ def test_sha256_streaming(size):
     actual_digest = utils.sha256_streaming(io.BytesIO(buf))
 
     assert expected_digest == actual_digest
+
+
+def test_load_pem_public_key(monkeypatch):
+    keybytes = b"-----BEGIN PUBLIC KEY-----\n" b"bleh\n" b"-----END PUBLIC KEY-----"
+    with pytest.raises(
+        utils.InvalidKey, match="could not load PEM-formatted public key"
+    ):
+        CTKeyring([keybytes])
