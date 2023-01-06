@@ -15,9 +15,11 @@
 import io
 import secrets
 
+import pretend
 import pytest
 
 from sigstore._internal.ctfe import CTKeyringError, CTKeyringLookupError
+from sigstore._internal.oidc import _KNOWN_OIDC_ISSUERS, IdentityError
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.sct import InvalidSctError
 from sigstore._sign import Signer
@@ -60,8 +62,6 @@ def test_sign_rekor_entry_consistent(signer):
 @pytest.mark.ambient_oidc
 @pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
 def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
-    import pretend
-
     # a signer whose keyring always fails to lookup a given key.
     signer = signer()
     signer._rekor._ct_keyring = pretend.stub(
@@ -77,15 +77,13 @@ def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
         InvalidSctError,
         match="Invalid key ID in SCT: not found in current keyring.",
     ):
-        signer.sign(payload, token).log_entry
+        signer.sign(payload, token)
 
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 @pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
 def test_sct_verify_keyring_error(signer, monkeypatch):
-    import pretend
-
     # a signer whose keyring throws an internal error.
     signer = signer()
     signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(CTKeyringError))
@@ -96,4 +94,23 @@ def test_sct_verify_keyring_error(signer, monkeypatch):
     payload = io.BytesIO(secrets.token_bytes(32))
 
     with pytest.raises(InvalidSctError):
-        signer.sign(payload, token).log_entry
+        signer.sign(payload, token)
+
+
+@pytest.mark.online
+@pytest.mark.ambient_oidc
+@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
+def test_identity_iss_error(signer, monkeypatch):
+    signer = signer()
+
+    token = detect_credential()
+    assert token is not None
+
+    monkeypatch.setattr(
+        _KNOWN_OIDC_ISSUERS, "get", pretend.call_recorder(lambda _: None)
+    )
+
+    payload = io.BytesIO(secrets.token_bytes(32))
+
+    with pytest.raises(IdentityError):
+        signer.sign(payload, token)
