@@ -16,6 +16,7 @@
 import hashlib
 import io
 
+import pretend
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
@@ -73,9 +74,29 @@ def test_sha256_streaming(size):
     assert expected_digest == actual_digest
 
 
-def test_load_pem_public_key(monkeypatch):
+def test_load_pem_public_key_format():
     keybytes = b"-----BEGIN PUBLIC KEY-----\n" b"bleh\n" b"-----END PUBLIC KEY-----"
     with pytest.raises(
         utils.InvalidKey, match="could not load PEM-formatted public key"
+    ):
+        CTKeyring([keybytes])
+
+
+def test_load_pem_public_key_serialization(monkeypatch):
+    from cryptography.hazmat.primitives import serialization
+
+    monkeypatch.setattr(
+        serialization, "load_pem_public_key", pretend.call_recorder(lambda a: a)
+    )
+
+    keybytes = (
+        b"-----BEGIN PUBLIC KEY-----\n"
+        b"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbfwR+RJudXscgRBRpKX1XFDy3Pyu\n"
+        b"dDxz/SfnRi1fT8ekpfBd2O1uoz7jr3Z8nKzxA69EUQ+eFCFI3zeubPWU7w==\n"
+        b"-----END PUBLIC KEY-----"
+    )
+
+    with pytest.raises(
+        utils.InvalidKey, match="invalid key format (not ECDSA or RSA)*"
     ):
         CTKeyring([keybytes])
