@@ -39,7 +39,7 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: check-readme
-        run: make check-readme SIGSTORE_EXTRA=""
+        run: make check-readme
 
   licenses:
     runs-on: ubuntu-latest
