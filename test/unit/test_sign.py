@@ -17,7 +17,7 @@ import secrets
 
 import pytest
 
-from sigstore._internal.ctfe import CTKeyringLookupError, CTKeyringError
+from sigstore._internal.ctfe import CTKeyringError, CTKeyringLookupError
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.sct import InvalidSctError
 from sigstore._sign import Signer
