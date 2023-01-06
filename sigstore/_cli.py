@@ -40,9 +40,9 @@ from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorBundle,
     RekorClient,
-    RekorEntry,
 )
 from sigstore._internal.tuf import TrustUpdater
+from sigstore.rekor import RekorEntry
 from sigstore.sign import Signer
 from sigstore.verify import (
     CertificateVerificationFailure,
@@ -533,7 +533,7 @@ def _sign(args: argparse.Namespace) -> None:
 
         if outputs["bundle"] is not None:
             with outputs["bundle"].open(mode="w") as io:
-                bundle = result.log_entry.to_bundle()
+                bundle = RekorBundle.from_entry(result.log_entry)
                 print(bundle.json(by_alias=True), file=io)
             print(f"Rekor bundle written to {outputs['bundle']}")
 

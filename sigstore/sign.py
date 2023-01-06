@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Top-level signing APIs for sigstore-python.
+API for signing artifacts.
 """
 
 from __future__ import annotations
@@ -31,10 +31,11 @@ from pydantic import BaseModel
 
 from sigstore._internal.fulcio import FulcioClient
 from sigstore._internal.oidc import Identity
-from sigstore._internal.rekor.client import RekorClient, RekorEntry
+from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import sha256_streaming
+from sigstore.rekor import RekorEntry
 
 logger = logging.getLogger(__name__)
 

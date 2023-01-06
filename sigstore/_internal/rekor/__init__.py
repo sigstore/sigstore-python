@@ -16,6 +16,6 @@
 APIs for interacting with Rekor.
 """
 
-from .client import RekorClient, RekorEntry, RekorInclusionProof
+from .client import RekorClient
 
-__all__ = ["RekorClient", "RekorEntry", "RekorInclusionProof"]
+__all__ = ["RekorClient"]
