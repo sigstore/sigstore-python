@@ -100,7 +100,7 @@ def test_sct_verify_keyring_error(signer, monkeypatch):
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 @pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_identity_iss_error(signer, monkeypatch):
+def test_identity_proof_claim_lookup(signer, monkeypatch):
     signer = signer()
 
     token = detect_credential()
