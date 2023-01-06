@@ -59,9 +59,10 @@ def test_sign_rekor_entry_consistent(signer):
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 @pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_sct_verify_keyring(signer, monkeypatch):
+def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
     import pretend
 
+    # a signer whose keyring always fails to lookup a given key.
     signer = signer()
     signer._rekor._ct_keyring = pretend.stub(
         verify=pretend.raiser(CTKeyringLookupError)
@@ -76,4 +77,23 @@ def test_sct_verify_keyring(signer, monkeypatch):
         InvalidSctError,
         match="Invalid key ID in SCT: not found in current keyring.",
     ):
+        signer.sign(payload, token).log_entry
+
+
+@pytest.mark.online
+@pytest.mark.ambient_oidc
+@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
+def test_sct_verify_keyring_error(signer, monkeypatch):
+    import pretend
+
+    # a signer whose keyring throws an internal error.
+    signer = signer()
+    signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(CTKeyringError))
+
+    token = detect_credential()
+    assert token is not None
+
+    payload = io.BytesIO(secrets.token_bytes(32))
+
+    with pytest.raises(InvalidSctError):
         signer.sign(payload, token).log_entry
