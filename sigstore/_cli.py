@@ -122,7 +122,11 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
         dest="__deprecated_staging",
         action="store_true",
         default=_boolify_env("SIGSTORE_STAGING"),
-        help="Use sigstore's staging instances, instead of the default production instances",
+        help=(
+            "Use sigstore's staging instances, instead of the default production instances. "
+            "This option will be deprecated in favor of the global `--staging` option "
+            "in a future release."
+        ),
     )
     group.add_argument(
         "--rekor-url",
@@ -188,12 +192,15 @@ def _parser() -> argparse.ArgumentParser:
         default=0,
         help="run with additional debug logging; supply multiple times to increase verbosity",
     )
-    parser.add_argument(
+
+    global_instance_options = parser.add_argument_group("Sigstore instance options")
+    global_instance_options.add_argument(
         "--staging",
         action="store_true",
         default=_boolify_env("SIGSTORE_STAGING"),
         help="Use sigstore's staging instances, instead of the default production instances",
     )
+
     subcommands = parser.add_subparsers(required=True, dest="subcommand")
 
     # `sigstore sign`
