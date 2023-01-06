@@ -107,9 +107,7 @@ def test_identity_iss_error(signer, monkeypatch):
     token = detect_credential()
     assert token is not None
 
-    monkeypatch.setattr(
-        sigstore._internal.oidc, "_KNOWN_OIDC_ISSUERS", {})
-    )
+    monkeypatch.setattr(sigstore._internal.oidc, "_KNOWN_OIDC_ISSUERS", {})
 
     payload = io.BytesIO(secrets.token_bytes(32))
 
