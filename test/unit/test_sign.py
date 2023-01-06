@@ -18,8 +18,9 @@ import secrets
 import pretend
 import pytest
 
+import sigstore._internal.oidc
 from sigstore._internal.ctfe import CTKeyringError, CTKeyringLookupError
-from sigstore._internal.oidc import _KNOWN_OIDC_ISSUERS, IdentityError
+from sigstore._internal.oidc import IdentityError
 from sigstore._internal.oidc.ambient import detect_credential
 from sigstore._internal.sct import InvalidSctError
 from sigstore._sign import Signer
@@ -107,7 +108,7 @@ def test_identity_iss_error(signer, monkeypatch):
     assert token is not None
 
     monkeypatch.setattr(
-        _KNOWN_OIDC_ISSUERS, "get", pretend.call_recorder(lambda _: None)
+        sigstore._internal.oidc, "_KNOWN_OIDC_ISSUERS", pretend.stub({})
     )
 
     payload = io.BytesIO(secrets.token_bytes(32))
