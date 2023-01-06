@@ -32,9 +32,6 @@ from sigstore.oidc import IdentityError, Issuer
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OAUTH_ISSUER = "https://oauth2.sigstore.dev/auth"
-STAGING_OAUTH_ISSUER = "https://oauth2.sigstage.dev/auth"
-
 
 # This HTML is copied from the Go Sigstore library and was originally authored by Julien Vermette:
 #   https://github.com/sigstore/sigstore/blob/main/pkg/oauth/interactive.go

@@ -26,10 +26,6 @@ from cryptography.x509 import load_pem_x509_certificates
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
-from sigstore._internal.oidc.oauth import (
-    DEFAULT_OAUTH_ISSUER,
-    STAGING_OAUTH_ISSUER,
-)
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorBundle,
@@ -37,10 +33,11 @@ from sigstore._internal.rekor.client import (
 )
 from sigstore._internal.tuf import TrustUpdater
 from sigstore.oidc import (
+    DEFAULT_OAUTH_ISSUER_URL,
+    STAGING_OAUTH_ISSUER_URL,
     GitHubOidcPermissionCredentialError,
     Issuer,
     detect_credential,
-    get_identity_token,
 )
 from sigstore.rekor import RekorEntry
 from sigstore.sign import Signer
@@ -169,7 +166,7 @@ def _add_shared_oidc_options(
         "--oidc-issuer",
         metavar="URL",
         type=str,
-        default=os.getenv("SIGSTORE_OIDC_ISSUER", DEFAULT_OAUTH_ISSUER),
+        default=os.getenv("SIGSTORE_OIDC_ISSUER", DEFAULT_OAUTH_ISSUER_URL),
         help="The OpenID Connect issuer to use (conflicts with --staging)",
     )
 
@@ -189,6 +186,12 @@ def _parser() -> argparse.ArgumentParser:
         action="count",
         default=0,
         help="run with additional debug logging; supply multiple times to increase verbosity",
+    )
+    parser.add_argument(
+        "--staging",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_STAGING"),
+        help="Use sigstore's staging instances, instead of the default production instances",
     )
     subcommands = parser.add_subparsers(required=True, dest="subcommand")
 
@@ -472,7 +475,7 @@ def _sign(args: argparse.Namespace) -> None:
     if args.staging:
         logger.debug("sign: staging instances requested")
         signer = Signer.staging()
-        args.oidc_issuer = STAGING_OAUTH_ISSUER
+        args.oidc_issuer = STAGING_OAUTH_ISSUER_URL
     elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
         signer = Signer.production()
     else:
@@ -776,14 +779,18 @@ def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
             sys.exit(1)
 
     if not token:
-        issuer = Issuer(args.oidc_issuer)
+        if args.staging:
+            issuer = Issuer.staging()
+        elif args.oidc_issuer == DEFAULT_OAUTH_ISSUER_URL:
+            issuer = Issuer.production()
+        else:
+            issuer = Issuer(args.oidc_issuer)
 
         if args.oidc_client_secret is None:
             args.oidc_client_secret = ""  # nosec: B105
 
-        token = get_identity_token(
-            args.oidc_client_id,
-            args.oidc_client_secret,
-            issuer,
+        token = issuer.identity_token(
+            client_id=args.oidc_client_id, client_secret=args.oidc_client_secret
         )
+
     return token
