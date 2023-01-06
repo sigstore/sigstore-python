@@ -24,13 +24,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
+
       - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
         with:
           python-version: ${{ matrix.python }}
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
       - name: deps
         run: make dev SIGSTORE_EXTRA=test
+
       - name: test
         run: make test TEST_ARGS="-vv --showlocals"
+
       - name: test (offline)
         run: |
           # We use `unshare` to "un-share" the default networking namespace,
