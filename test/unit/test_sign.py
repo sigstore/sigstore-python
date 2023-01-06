@@ -20,7 +20,6 @@ import pytest
 
 import sigstore._internal.oidc
 from sigstore._internal.ctfe import CTKeyringError, CTKeyringLookupError
-from sigstore._internal.oidc import IdentityError
 from sigstore._internal.sct import InvalidSctError
 from sigstore.oidc import detect_credential
 from sigstore.sign import Signer
@@ -101,15 +100,22 @@ def test_sct_verify_keyring_error(signer, monkeypatch):
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 @pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_identity_iss_error(signer, monkeypatch):
+def test_identity_proof_claim_lookup(signer, monkeypatch):
     signer = signer()
 
     token = detect_credential()
     assert token is not None
 
+    # clear out the known issuers, forcing the `Identity`'s  `proof_claim` to be looked up.
     monkeypatch.setattr(sigstore._internal.oidc, "_KNOWN_OIDC_ISSUERS", {})
 
     payload = io.BytesIO(secrets.token_bytes(32))
 
-    with pytest.raises(IdentityError):
-        signer.sign(payload, token)
+    expected_entry = signer.sign(payload, token).log_entry
+    actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
+
+    assert expected_entry.uuid == actual_entry.uuid
+    assert expected_entry.body == actual_entry.body
+    assert expected_entry.integrated_time == actual_entry.integrated_time
+    assert expected_entry.log_id == actual_entry.log_id
+    assert expected_entry.log_index == actual_entry.log_index
