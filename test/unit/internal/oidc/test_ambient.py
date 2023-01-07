@@ -17,20 +17,21 @@ import pytest
 from requests import HTTPError
 
 from sigstore._internal.oidc import ambient
+from sigstore.oidc import detect_credential
 
 
 def test_detect_credential_none(monkeypatch):
     detect_none = pretend.call_recorder(lambda: None)
     monkeypatch.setattr(ambient, "detect_github", detect_none)
     monkeypatch.setattr(ambient, "detect_gcp", detect_none)
-    assert ambient.detect_credential() is None
+    assert detect_credential() is None
 
 
 def test_detect_credential(monkeypatch):
     detect_github = pretend.call_recorder(lambda: "fakejwt")
     monkeypatch.setattr(ambient, "detect_github", detect_github)
 
-    assert ambient.detect_credential() == "fakejwt"
+    assert detect_credential() == "fakejwt"
 
 
 def test_detect_github_bad_env(monkeypatch):

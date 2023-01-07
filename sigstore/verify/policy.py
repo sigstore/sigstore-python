@@ -39,7 +39,7 @@ from cryptography.x509 import (
     UniformResourceIdentifier,
 )
 
-from sigstore._verify.models import (
+from sigstore.verify.models import (
     VerificationFailure,
     VerificationResult,
     VerificationSuccess,

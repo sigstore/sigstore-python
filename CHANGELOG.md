@@ -20,6 +20,16 @@ All versions prior to 0.9.0 are untracked.
   stable version of `sigstore-python`
   ([#379](https://github.com/sigstore/sigstore-python/pull/379))
 
+* `sigstore` now has a public, importable Python API! You can find its
+  documentation [here](https://sigstore.github.io/sigstore-python/)
+  ([#383](https://github.com/sigstore/sigstore-python/pull/383))
+
+* `sigstore --staging` is now the intended way to request Sigstore's staging
+   instance, rather than per-subcommand options like `sigstore sign --staging`.
+   The latter is unchanged, but will be marked deprecated in a future stable
+   version of `sigstore-python`
+   ([#383](https://github.com/sigstore/sigstore-python/pull/383))
+
 ### Changed
 
 * The default behavior of `SIGSTORE_LOGLEVEL` has changed; the logger

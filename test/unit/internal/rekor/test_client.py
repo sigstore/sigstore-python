@@ -18,6 +18,7 @@ import pytest
 from pydantic import ValidationError
 
 from sigstore._internal.rekor import client
+from sigstore.rekor import RekorInclusionProof
 
 
 class TestRekorBundle:
@@ -47,12 +48,12 @@ class TestRekorBundle:
         assert entry.signed_entry_timestamp == bundle.signed_entry_timestamp
 
         # Round-tripping from RekorBundle -> RekorEntry -> RekorBundle is lossless.
-        assert entry.to_bundle() == bundle
+        assert client.RekorBundle.from_entry(entry) == bundle
 
 
 class TestRekorInclusionProof:
     def test_valid(self):
-        proof = client.RekorInclusionProof(
+        proof = RekorInclusionProof(
             log_index=1, root_hash="abcd", tree_size=2, hashes=[]
         )
         assert proof is not None
@@ -61,23 +62,17 @@ class TestRekorInclusionProof:
         with pytest.raises(
             ValidationError, match="Inclusion proof has invalid log index"
         ):
-            client.RekorInclusionProof(
-                log_index=-1, root_hash="abcd", tree_size=2, hashes=[]
-            )
+            RekorInclusionProof(log_index=-1, root_hash="abcd", tree_size=2, hashes=[])
 
     def test_negative_tree_size(self):
         with pytest.raises(
             ValidationError, match="Inclusion proof has invalid tree size"
         ):
-            client.RekorInclusionProof(
-                log_index=1, root_hash="abcd", tree_size=-1, hashes=[]
-            )
+            RekorInclusionProof(log_index=1, root_hash="abcd", tree_size=-1, hashes=[])
 
     def test_log_index_outside_tree_size(self):
         with pytest.raises(
             ValidationError,
             match="Inclusion proof has log index greater than or equal to tree size",
         ):
-            client.RekorInclusionProof(
-                log_index=2, root_hash="abcd", tree_size=1, hashes=[]
-            )
+            RekorInclusionProof(log_index=2, root_hash="abcd", tree_size=1, hashes=[])

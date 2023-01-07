@@ -16,8 +16,8 @@ import pretend
 import pytest
 from cryptography.x509 import ExtensionNotFound
 
-from sigstore._verify import policy
-from sigstore._verify.models import VerificationFailure, VerificationSuccess
+from sigstore.verify import policy
+from sigstore.verify.models import VerificationFailure, VerificationSuccess
 
 
 class TestVerificationPolicy:

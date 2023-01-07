@@ -17,7 +17,7 @@ import pytest
 
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._verify.models import InvalidRekorEntry
+from sigstore.verify.models import InvalidRekorEntry
 
 
 class TestVerificationMaterials:

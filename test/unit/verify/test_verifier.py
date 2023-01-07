@@ -14,9 +14,9 @@
 
 import pytest
 
-from sigstore._verify import policy
-from sigstore._verify.models import VerificationFailure, VerificationSuccess
-from sigstore._verify.verifier import CertificateVerificationFailure, Verifier
+from sigstore.verify import policy
+from sigstore.verify.models import VerificationFailure, VerificationSuccess
+from sigstore.verify.verifier import CertificateVerificationFailure, Verifier
 
 
 @pytest.mark.online

@@ -27,8 +27,9 @@ from typing import IO
 from cryptography.x509 import Certificate, load_pem_x509_certificate
 from pydantic import BaseModel
 
-from sigstore._internal.rekor import RekorClient, RekorEntry
+from sigstore._internal.rekor import RekorClient
 from sigstore._utils import base64_encode_pem_cert, sha256_streaming
+from sigstore.rekor import RekorEntry
 
 logger = logging.getLogger(__name__)
 
