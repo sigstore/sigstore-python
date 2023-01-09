@@ -17,7 +17,7 @@ import pytest
 
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.tuf import TrustUpdater
-from sigstore.verify.models import InvalidRekorEntry
+from sigstore.verify.models import InvalidRekorEntry, RekorEntryMissing
 
 
 class TestVerificationMaterials:
@@ -41,3 +41,17 @@ class TestVerificationMaterials:
         client = RekorClient.staging(tuf)
         entry = materials.rekor_entry(client)
         assert entry is not None
+
+    def test_rekor_entry_missing(self, signing_materials):
+        a_materials = signing_materials("a.txt")
+
+        # stub retriever post returning None RekorEntry
+        a_materials._offline_rekor_entry = None
+        client = pretend.stub(
+            log=pretend.stub(
+                entries=pretend.stub(retrieve=pretend.stub(post=lambda a, b, c: None))
+            )
+        )
+
+        with pytest.raises(RekorEntryMissing):
+            a_materials.rekor_entry(client)
