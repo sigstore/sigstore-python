@@ -13,7 +13,16 @@
 # limitations under the License.
 
 """
-The `sigstore` APIs.
+The `sigstore` Python APIs.
+
+For command-line usage of `sigstore`, refer to the `sigstore`
+[README](https://github.com/sigstore/sigstore-python).
+
+Otherwise, here are some quick starting points:
+
+* `sigstore.verify`: verifying of Sigstore signatures,
+  including flexible policy control
+* `sigstore.sign`: creation of Sigstore signatures
 """
 
 __version__ = "0.10.0"
