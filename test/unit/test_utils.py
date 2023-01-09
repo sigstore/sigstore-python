@@ -16,7 +16,6 @@
 import hashlib
 import io
 
-import pretend
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
