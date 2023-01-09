@@ -52,7 +52,7 @@ jobs:
               --output-certificate smoketest-artifacts/"${dist_base}.crt"
 
             ./smoketest-env/bin/python -m \
-              sigstore verify "${dist}" \
+              sigstore verify identity "${dist}" \
               --cert "smoketest-artifacts/${dist_base}.crt" \
               --signature "smoketest-artifacts/${dist_base}.sig" \
               --cert-oidc-issuer https://token.actions.githubusercontent.com \
