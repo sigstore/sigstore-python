@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [0.10.0]
+
 ### Added
 
 * `sigstore` now supports the `-v`/`--verbose` flag as an alternative to
@@ -81,5 +83,6 @@ All versions prior to 0.9.0 are untracked.
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/sigstore/sigstore-python/compare/v0.8.3...v0.10.0
 [0.9.0]: https://github.com/sigstore/sigstore-python/compare/v0.8.3...v0.9.0
