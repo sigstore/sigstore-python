@@ -60,6 +60,8 @@ for more details and usage examples.
 
 ## Usage
 
+For Python API usage, see our [documentation](https://sigstore.github.io/sigstore-python/).
+
 You can run `sigstore` as a standalone program, or via `python -m`:
 
 ```console
