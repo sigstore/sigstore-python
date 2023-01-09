@@ -10,8 +10,6 @@ sigstore-python
 [![Documentation](https://github.com/sigstore/sigstore-python/actions/workflows/docs.yml/badge.svg)](https://sigstore.github.io/sigstore-python)
 <!--- @end-badges@ --->
 
-⚠️ This project is not ready for general-purpose use! ⚠️
-
 `sigstore` is a Python tool for generating and verifying Sigstore signatures.
 You can use it to sign and verify Python package distributions, or anything
 else!
