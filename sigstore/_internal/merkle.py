@@ -26,7 +26,7 @@ import hashlib
 import struct
 from typing import List, Tuple
 
-from sigstore._internal.rekor import RekorEntry
+from sigstore.rekor import RekorEntry
 
 
 class InvalidInclusionProofError(Exception):

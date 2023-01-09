@@ -71,7 +71,8 @@ Top-level:
 
 <!-- @begin-sigstore-help@ -->
 ```
-usage: sigstore [-h] [-V] [-v] {sign,verify,get-identity-token} ...
+usage: sigstore [-h] [-V] [-v] [--staging]
+                {sign,verify,get-identity-token} ...
 
 a tool for signing and verifying Python package distributions
 
@@ -83,6 +84,10 @@ optional arguments:
   -V, --version         show program's version number and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
+
+Sigstore instance options:
+  --staging             Use sigstore's staging instances, instead of the
+                        default production instances (default: False)
 ```
 <!-- @end-sigstore-help@ -->
 
@@ -138,7 +143,9 @@ Output options:
 
 Sigstore instance options:
   --staging             Use sigstore's staging instances, instead of the
-                        default production instances (default: False)
+                        default production instances. This option will be
+                        deprecated in favor of the global `--staging` option
+                        in a future release. (default: False)
   --rekor-url URL       The Rekor instance to use (conflicts with --staging)
                         (default: https://rekor.sigstore.dev)
   --rekor-root-pubkey FILE
@@ -196,7 +203,9 @@ Verification options:
 
 Sigstore instance options:
   --staging             Use sigstore's staging instances, instead of the
-                        default production instances (default: False)
+                        default production instances. This option will be
+                        deprecated in favor of the global `--staging` option
+                        in a future release. (default: False)
   --rekor-url URL       The Rekor instance to use (conflicts with --staging)
                         (default: https://rekor.sigstore.dev)
   --rekor-root-pubkey FILE

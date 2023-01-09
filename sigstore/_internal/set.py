@@ -22,7 +22,8 @@ import cryptography.hazmat.primitives.asymmetric.ec as ec
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 
-from sigstore._internal.rekor import RekorClient, RekorEntry
+from sigstore._internal.rekor import RekorClient
+from sigstore.rekor import RekorEntry
 
 
 class InvalidSetError(Exception):

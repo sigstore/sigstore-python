@@ -14,11 +14,36 @@ All versions prior to 0.9.0 are untracked.
   `SIGSTORE_LOGLEVEL` for debug logging
   ([#372](https://github.com/sigstore/sigstore-python/pull/372))
 
+* The `sigstore verify identity` has been added, and is functionally
+  equivalent to the existing `sigstore verify` subcommand.
+  `sigstore verify` is unchanged, but will be marked deprecated in a future
+  stable version of `sigstore-python`
+  ([#379](https://github.com/sigstore/sigstore-python/pull/379))
+
+* `sigstore` now has a public, importable Python API! You can find its
+  documentation [here](https://sigstore.github.io/sigstore-python/)
+  ([#383](https://github.com/sigstore/sigstore-python/pull/383))
+
+* `sigstore --staging` is now the intended way to request Sigstore's staging
+   instance, rather than per-subcommand options like `sigstore sign --staging`.
+   The latter is unchanged, but will be marked deprecated in a future stable
+   version of `sigstore-python`
+   ([#383](https://github.com/sigstore/sigstore-python/pull/383))
+
 ### Changed
 
 * The default behavior of `SIGSTORE_LOGLEVEL` has changed; the logger
   configured is now the `sigstore.*` hierarchy logger, rather than the "root"
   logger ([#372](https://github.com/sigstore/sigstore-python/pull/372))
+
+* The caching mechanism used for TUF has been changed slightly, to use
+  more future-proof paths ([#373](https://github.com/sigstore/sigstore-python/pull/373))
+
+### Fixed
+
+* Fulcio certificate handling now includes "inactive" but still valid certificates,
+  allowing users to verify older signatures without custom certificate chains
+  ([#386](https://github.com/sigstore/sigstore-python/pull/386))
 
 ## [0.9.0]
 

@@ -18,53 +18,23 @@ Ambient OIDC credential detection for sigstore.
 
 import logging
 import os
-from typing import Callable, List, Optional
+from typing import Optional
 
 import requests
 from pydantic import BaseModel, StrictStr
 
-from sigstore._internal.oidc import DEFAULT_AUDIENCE, IdentityError
+from sigstore._internal.oidc import DEFAULT_AUDIENCE
+from sigstore.oidc import (
+    AmbientCredentialError,
+    GitHubOidcPermissionCredentialError,
+)
 
 logger = logging.getLogger(__name__)
 
 _GCP_PRODUCT_NAME_FILE = "/sys/class/dmi/id/product_name"
 _GCP_TOKEN_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/token"  # noqa # nosec B105
-_GCP_IDENTITY_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"  # noqa # nosec B105
+_GCP_IDENTITY_REQUEST_URL = "http://metadata/computeMetadata/v1/instance/service-accounts/default/identity"  # noqa
 _GCP_GENERATEIDTOKEN_REQUEST_URL = "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/{}:generateIdToken"  # noqa
-
-
-class AmbientCredentialError(IdentityError):
-    """
-    Raised when an ambient credential should be present, but
-    can't be retrieved (e.g. network failure).
-    """
-
-    pass
-
-
-class GitHubOidcPermissionCredentialError(AmbientCredentialError):
-    """
-    Raised when the current GitHub Actions environment doesn't have permission
-    to retrieve an OIDC token.
-    """
-
-    pass
-
-
-def detect_credential() -> Optional[str]:
-    """
-    Try each ambient credential detector, returning the first one to succeed
-    or `None` if all fail.
-
-    Raises `AmbientCredentialError` if any detector fails internally (i.e.
-    detects a credential, but cannot retrieve it).
-    """
-    detectors: List[Callable[..., Optional[str]]] = [detect_github, detect_gcp]
-    for detector in detectors:
-        credential = detector()
-        if credential is not None:
-            return credential
-    return None
 
 
 class _GitHubTokenPayload(BaseModel):

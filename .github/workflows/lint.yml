@@ -1,0 +1,58 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
+
+      # NOTE: We intentionally lint against our minimum supported Python.
+      - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+        with:
+          python-version: "3.7"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - name: deps
+        run: make dev SIGSTORE_EXTRA=lint
+
+      - name: lint
+        run: make lint
+
+  check-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
+
+      # NOTE: We intentionally check `--help` rendering against our minimum Python,
+      # since it changes slightly between Python versions.
+      - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+        with:
+          python-version: "3.7"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - name: deps
+        run: make dev
+
+      - name: check-readme
+        run: make check-readme
+
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
+      # adapted from Warehouse's bin/licenses
+      - run: |
+          for fn in $(find . -type f -name "*.py"); do
+            if [[ ! "$(head -5 $fn | grep "^ *\(#\|\*\|\/\/\) .* License\(d*\)")" ]]; then
+              echo "${fn} is missing a license"
+              exit 1
+            fi
+          done

@@ -18,6 +18,8 @@ OIDC functionality for sigstore-python.
 
 import jwt
 
+from sigstore.oidc import IdentityError
+
 # See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
 _KNOWN_OIDC_ISSUERS = {
     "https://accounts.google.com": "email",
@@ -26,14 +28,6 @@ _KNOWN_OIDC_ISSUERS = {
     "https://token.actions.githubusercontent.com": "sub",
 }
 DEFAULT_AUDIENCE = "sigstore"
-
-
-class IdentityError(Exception):
-    """
-    Raised on any OIDC token format or claim error.
-    """
-
-    pass
 
 
 class Identity:

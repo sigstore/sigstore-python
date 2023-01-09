@@ -28,25 +28,22 @@ from cryptography.x509 import load_pem_x509_certificates
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
-from sigstore._internal.oidc.ambient import (
-    GitHubOidcPermissionCredentialError,
-    detect_credential,
-)
-from sigstore._internal.oidc.issuer import Issuer
-from sigstore._internal.oidc.oauth import (
-    DEFAULT_OAUTH_ISSUER,
-    STAGING_OAUTH_ISSUER,
-    get_identity_token,
-)
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorBundle,
     RekorClient,
-    RekorEntry,
 )
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._sign import Signer
-from sigstore._verify import (
+from sigstore.oidc import (
+    DEFAULT_OAUTH_ISSUER_URL,
+    STAGING_OAUTH_ISSUER_URL,
+    GitHubOidcPermissionCredentialError,
+    Issuer,
+    detect_credential,
+)
+from sigstore.rekor import RekorEntry
+from sigstore.sign import Signer
+from sigstore.verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,
     VerificationFailure,
@@ -127,9 +124,14 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
     """
     group.add_argument(
         "--staging",
+        dest="__deprecated_staging",
         action="store_true",
         default=_boolify_env("SIGSTORE_STAGING"),
-        help="Use sigstore's staging instances, instead of the default production instances",
+        help=(
+            "Use sigstore's staging instances, instead of the default production instances. "
+            "This option will be deprecated in favor of the global `--staging` option "
+            "in a future release."
+        ),
     )
     group.add_argument(
         "--rekor-url",
@@ -229,7 +231,7 @@ def _add_shared_oidc_options(
         "--oidc-issuer",
         metavar="URL",
         type=str,
-        default=os.getenv("SIGSTORE_OIDC_ISSUER", DEFAULT_OAUTH_ISSUER),
+        default=os.getenv("SIGSTORE_OIDC_ISSUER", DEFAULT_OAUTH_ISSUER_URL),
         help="The OpenID Connect issuer to use (conflicts with --staging)",
     )
 
@@ -250,6 +252,15 @@ def _parser() -> argparse.ArgumentParser:
         default=0,
         help="run with additional debug logging; supply multiple times to increase verbosity",
     )
+
+    global_instance_options = parser.add_argument_group("Sigstore instance options")
+    global_instance_options.add_argument(
+        "--staging",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_STAGING"),
+        help="Use sigstore's staging instances, instead of the default production instances",
+    )
+
     subcommands = parser.add_subparsers(required=True, dest="subcommand")
 
     # `sigstore sign`
@@ -465,6 +476,15 @@ def main() -> None:
 
     logger.debug(f"parsed arguments {args}")
 
+    # `sigstore --staging some-cmd` is now the preferred form, rather than
+    # `sigstore some-cmd --staging`.
+    if getattr(args, "__deprecated_staging", False):
+        logger.warning(
+            "`--staging` should be used as a global option, rather than a subcommand option. "
+            "Passing `--staging` as a subcommand option will be deprecated in a future release."
+        )
+        args.staging = args.__deprecated_staging
+
     # Stuff the parser back into our namespace, so that we can use it for
     # error handling later.
     args._parser = parser
@@ -552,7 +572,7 @@ def _sign(args: argparse.Namespace) -> None:
     if args.staging:
         logger.debug("sign: staging instances requested")
         signer = Signer.staging()
-        args.oidc_issuer = STAGING_OAUTH_ISSUER
+        args.oidc_issuer = STAGING_OAUTH_ISSUER_URL
     elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
         signer = Signer.production()
     else:
@@ -613,7 +633,7 @@ def _sign(args: argparse.Namespace) -> None:
 
         if outputs["bundle"] is not None:
             with outputs["bundle"].open(mode="w") as io:
-                bundle = result.log_entry.to_bundle()
+                bundle = RekorBundle.from_entry(result.log_entry)
                 print(bundle.json(by_alias=True), file=io)
             print(f"Rekor bundle written to {outputs['bundle']}")
 
@@ -961,14 +981,18 @@ def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
             sys.exit(1)
 
     if not token:
-        issuer = Issuer(args.oidc_issuer)
+        if args.staging:
+            issuer = Issuer.staging()
+        elif args.oidc_issuer == DEFAULT_OAUTH_ISSUER_URL:
+            issuer = Issuer.production()
+        else:
+            issuer = Issuer(args.oidc_issuer)
 
         if args.oidc_client_secret is None:
             args.oidc_client_secret = ""  # nosec: B105
 
-        token = get_identity_token(
-            args.oidc_client_id,
-            args.oidc_client_secret,
-            issuer,
+        token = issuer.identity_token(
+            client_id=args.oidc_client_id, client_secret=args.oidc_client_secret
         )
+
     return token
