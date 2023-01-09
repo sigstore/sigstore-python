@@ -1,4 +1,4 @@
-name: docs-deploy
+name: Documentation
 
 on:
   push:
@@ -16,14 +16,21 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: ">= 3.7"
+          # NOTE: We use 3.10+ typing syntax via future, which pdoc only
+          # understands if it's actually run with Python 3.10 or newer.
+          python-version: ">= 3.10"
           cache: "pip"
           cache-dependency-path: pyproject.toml
+
+      - name: setup
+        run: |
+          make dev SIGSTORE_EXTRA=doc
 
       - name: docs
         run: |
           make doc
-          mv ./html/sigstore /tmp/sigstore
+          mv ./html/ /tmp/sigstore
+
       - name: deploy
         run: |
           # Configure git, checkout a new orphan branch for the docs.

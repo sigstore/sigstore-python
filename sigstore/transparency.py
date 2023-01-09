@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Data structures returned by Rekor.
+Transparency log data structures.
 """
 
 from __future__ import annotations
@@ -26,31 +26,31 @@ from securesystemslib.formats import encode_canonical
 
 
 @dataclass(frozen=True)
-class RekorEntry:
+class LogEntry:
     """
-    Represents a Rekor log entry.
+    Represents a transparency log entry.
 
-    Log entries are retrieved from Rekor after signing or verification events,
-    or generated from "offline" Rekor bundles supplied by the user.
+    Log entries are retrieved from the transparency log after signing or verification events,
+    or generated from "offline" log entry bundles supplied by the user.
     """
 
     uuid: Optional[str]
     """
-    This entry's unique ID in the Rekor instance it was retrieved from.
+    This entry's unique ID in the log instance it was retrieved from.
 
-    For sharded Rekor deployments, IDs are unique per-shard.
+    For sharded log deployments, IDs are unique per-shard.
 
-    Not present for `RekorEntry` instances loaded from offline bundles.
+    Not present for `LogEntry` instances loaded from offline bundles.
     """
 
     body: str
     """
-    The base64-encoded body of the Rekor entry.
+    The base64-encoded body of the transparency log entry.
     """
 
     integrated_time: int
     """
-    The UNIX time at which this entry was integrated into the Rekor log.
+    The UNIX time at which this entry was integrated into the transparency log.
     """
 
     log_id: str
@@ -64,7 +64,7 @@ class RekorEntry:
     The index of this entry within the log.
     """
 
-    inclusion_proof: Optional["RekorInclusionProof"]
+    inclusion_proof: Optional["LogInclusionProof"]
     """
     An optional inclusion proof for this log entry.
 
@@ -77,9 +77,9 @@ class RekorEntry:
     """
 
     @classmethod
-    def _from_response(cls, dict_: dict[str, Any]) -> RekorEntry:
+    def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:
         """
-        Create a new `RekorEntry` from the given API response.
+        Create a new `LogEntry` from the given API response.
         """
 
         # Assumes we only get one entry back
@@ -89,13 +89,13 @@ class RekorEntry:
 
         uuid, entry = entries[0]
 
-        return RekorEntry(
+        return LogEntry(
             uuid=uuid,
             body=entry["body"],
             integrated_time=entry["integratedTime"],
             log_id=entry["logID"],
             log_index=entry["logIndex"],
-            inclusion_proof=RekorInclusionProof.parse_obj(
+            inclusion_proof=LogInclusionProof.parse_obj(
                 entry["verification"]["inclusionProof"]
             ),
             signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
@@ -103,7 +103,7 @@ class RekorEntry:
 
     def encode_canonical(self) -> bytes:
         """
-        Returns a canonicalized JSON (RFC 8785) representation of the Rekor log entry.
+        Returns a canonicalized JSON (RFC 8785) representation of the transparency log entry.
 
         This encoded representation is suitable for verification against
         the Signed Entry Timestamp.
@@ -118,9 +118,9 @@ class RekorEntry:
         return encode_canonical(payload).encode()  # type: ignore
 
 
-class RekorInclusionProof(BaseModel):
+class LogInclusionProof(BaseModel):
     """
-    Represents an inclusion proof for a Rekor log entry.
+    Represents an inclusion proof for a transparency log entry.
     """
 
     log_index: StrictInt = Field(..., alias="logIndex")

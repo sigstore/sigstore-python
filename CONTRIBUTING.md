@@ -88,8 +88,8 @@ If you're running Python 3.7 or newer, you can run the documentation build local
 make doc
 ```
 
-`sigstore` uses [`pdoc3`](https://github.com/pdoc3/pdoc) to generate HTML documentation for
-the public Python APIs.
+`sigstore` uses [`pdoc`](https://github.com/mitmproxy/pdoc) to generate HTML
+documentation for the public Python APIs.
 
 ### Releasing
 
@@ -141,5 +141,5 @@ in changes to `sigstore`'s CLI, please record them under the "Unreleased" sectio
 with an entry in an appropriate subsection ("Added", "Changed", "Removed", or "Fixed").
 
 * Ensure your commits are signed off, as sigstore uses the
-[DCO](https://en.wikipedia.org/wiki/Developer_Certificate_of_Origin). 
+[DCO](https://en.wikipedia.org/wiki/Developer_Certificate_of_Origin).
 You can do it using `git commit -s`, or `git commit -s --amend` if you want to amend already existing commits.

@@ -15,6 +15,8 @@
 
 import os
 
+import pytest
+
 from sigstore._internal.tuf import STAGING_TUF_URL, TrustUpdater, _get_dirs
 
 
@@ -85,3 +87,43 @@ def test_updater_staging_get(mock_staging_tuf, temp_home, tuf_asset):
     updater = TrustUpdater.staging()
     with open(tuf_asset("rekor.pub"), "rb") as f:
         assert updater.get_rekor_key() == f.read()
+
+
+def test_updater_instance_error():
+    with pytest.raises(Exception, match="TUF root not found in"):
+        TrustUpdater("foo.bar")
+
+
+def test_updater_ctfe_keys_error(monkeypatch):
+    updater = TrustUpdater.staging()
+    # getter returns no keys.
+    monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
+    with pytest.raises(Exception, match="CTFE keys not found in TUF metadata"):
+        updater.get_ctfe_keys()
+
+
+def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
+    updater = TrustUpdater.staging()
+    with open(tuf_asset("rekor.pub"), "rb") as f:
+        rekor_key = f.read()
+        # getter returns duplicate copy of `rekor_key`.
+        monkeypatch.setattr(
+            updater,
+            "_get",
+            lambda usage, statuses: [rekor_key, rekor_key],
+        )
+
+    with pytest.raises(
+        Exception, match="Did not find one active Rekor key in TUF metadata"
+    ):
+        updater.get_rekor_key()
+
+
+def test_updater_fulcio_certs_error(tuf_asset, monkeypatch):
+    updater = TrustUpdater.staging()
+    # getter returns no fulcio certs.
+    monkeypatch.setattr(updater, "_get", lambda usage, statuses: None)
+    with pytest.raises(
+        Exception, match="Fulcio certificates not found in TUF metadata"
+    ):
+        updater.get_fulcio_certs()

@@ -69,11 +69,13 @@ lint = [
   # See: https://github.com/python/typeshed/issues/8699
   # "types-pyOpenSSL",
 ]
+doc = [
+  "pdoc",
+]
 dev = [
   "build",
   "bump >= 1.3.2",
-  "pdoc3",
-  "sigstore[test,lint]",
+  "sigstore[doc,test,lint]",
 ]
 
 [tool.isort]
