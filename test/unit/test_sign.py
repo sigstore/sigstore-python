@@ -123,7 +123,7 @@ def test_identity_proof_claim_lookup(signer, monkeypatch):
     assert expected_entry.log_index == actual_entry.log_index
 
 
-def test_identity_token_iss_claim_error(monkeypatch):
+def test_identity_token_iss_claim_error(mock_staging_tuf, monkeypatch):
     signer = Signer.staging()
     # identity token is decoded into an empty dict.
     monkeypatch.setattr(
@@ -140,7 +140,7 @@ def test_identity_token_iss_claim_error(monkeypatch):
         signer.sign(payload, identity_token)
 
 
-def test_identity_token_aud_claim_error(monkeypatch):
+def test_identity_token_aud_claim_error(mock_staging_tuf, monkeypatch):
     signer = Signer.staging()
     # identity token is decoded into an dict with "iss", but not "aud".
     monkeypatch.setattr(
@@ -159,7 +159,7 @@ def test_identity_token_aud_claim_error(monkeypatch):
         signer.sign(payload, identity_token)
 
 
-def test_identity_token_audience_error(monkeypatch):
+def test_identity_token_audience_error(mock_staging_tuf, monkeypatch):
     signer = Signer.staging()
     # identity token is decoded into an dict with "iss", but unknown "aud"
     monkeypatch.setattr(
@@ -176,7 +176,7 @@ def test_identity_token_audience_error(monkeypatch):
         signer.sign(payload, identity_token)
 
 
-def test_identity_token_proof_claim_error(monkeypatch):
+def test_identity_token_proof_claim_error(mock_staging_tuf, monkeypatch):
     signer = Signer.staging()
     # identity token is decoded into an dict with "iss", and known "aud",
     # but none of the required claims
@@ -199,7 +199,7 @@ def test_identity_token_proof_claim_error(monkeypatch):
         signer.sign(payload, identity_token)
 
 
-def test_identity_token_sub_claim_error(monkeypatch):
+def test_identity_token_sub_claim_error(mock_staging_tuf, monkeypatch):
     signer = Signer.staging()
     # identity token is decoded into an dict with unkown "iss", and known "aud"
     monkeypatch.setattr(
