@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import argparse
 import base64
 import logging
@@ -117,11 +119,14 @@ def _set_default_verify_subparser(parser: argparse.ArgumentParser, name: str) ->
 
 
 def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
+    """
+    Common Sigstore instance options, shared between all `sigstore` subcommands.
+    """
     group.add_argument(
         "--staging",
         dest="__deprecated_staging",
         action="store_true",
-        default=_boolify_env("SIGSTORE_STAGING"),
+        default=False,
         help=(
             "Use sigstore's staging instances, instead of the default production instances. "
             "This option will be deprecated in favor of the global `--staging` option "
@@ -130,23 +135,88 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
     )
     group.add_argument(
         "--rekor-url",
+        dest="__deprecated_rekor_url",
         metavar="URL",
         type=str,
-        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
-        help="The Rekor instance to use (conflicts with --staging)",
+        default=None,
+        help=(
+            "The Rekor instance to use (conflicts with --staging). "
+            "This option will be deprecated in favor of the global `--rekor-url` option "
+            "in a future release."
+        ),
     )
     group.add_argument(
         "--rekor-root-pubkey",
+        dest="__deprecated_rekor_root_pubkey",
         metavar="FILE",
         type=argparse.FileType("rb"),
-        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY"),
+        default=None,
+        help=(
+            "A PEM-encoded root public key for Rekor itself (conflicts with --staging). "
+            "This option will be deprecated in favor of the global `--rekor-root-pubkey` option "
+            "in a future release."
+        ),
+    )
+
+
+def _add_shared_input_options(group: argparse._ArgumentGroup) -> None:
+    """
+    Common input options, shared between all `sigstore verify` subcommands.
+    """
+    group.add_argument(
+        "--certificate",
+        "--cert",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_CERTIFICATE"),
+        help="The PEM-encoded certificate to verify against; not used with multiple inputs",
+    )
+    group.add_argument(
+        "--signature",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_SIGNATURE"),
+        help="The signature to verify against; not used with multiple inputs",
+    )
+    group.add_argument(
+        "--rekor-bundle",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_REKOR_BUNDLE"),
+        help="The offline Rekor bundle to verify with; not used with multiple inputs",
+    )
+    group.add_argument(
+        "files",
+        metavar="FILE",
+        type=Path,
+        nargs="+",
+        help="The file to verify",
+    )
+
+
+def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
+    group.add_argument(
+        "--cert-identity",
+        metavar="IDENTITY",
+        type=str,
+        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
+        help="The identity to check for in the certificate's Subject Alternative Name",
+        required=True,
+    )
+    group.add_argument(
+        "--require-rekor-offline",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_REQUIRE_REKOR_OFFLINE"),
+        help="Require offline Rekor verification with a bundle; implied by --rekor-bundle",
     )
 
 
 def _add_shared_oidc_options(
     group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
 ) -> None:
+    """
+    Common OIDC options, shared between `sigstore sign` and `sigstore get-identity-token`.
+    """
     group.add_argument(
         "--oidc-client-id",
         metavar="ID",
@@ -199,6 +269,20 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         default=_boolify_env("SIGSTORE_STAGING"),
         help="Use sigstore's staging instances, instead of the default production instances",
+    )
+    global_instance_options.add_argument(
+        "--rekor-url",
+        metavar="URL",
+        type=str,
+        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
+        help="The Rekor instance to use (conflicts with --staging)",
+    )
+    global_instance_options.add_argument(
+        "--rekor-root-pubkey",
+        metavar="FILE",
+        type=argparse.FileType("rb"),
+        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
+        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY"),
     )
 
     subcommands = parser.add_subparsers(required=True, dest="subcommand")
@@ -303,55 +387,10 @@ def _parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     input_options = verify_identity.add_argument_group("Verification inputs")
-    input_options.add_argument(
-        "--certificate",
-        "--cert",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_CERTIFICATE"),
-        help="The PEM-encoded certificate to verify against; not used with multiple inputs",
-    )
-    input_options.add_argument(
-        "--signature",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_SIGNATURE"),
-        help="The signature to verify against; not used with multiple inputs",
-    )
-    input_options.add_argument(
-        "--rekor-bundle",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_REKOR_BUNDLE"),
-        help="The offline Rekor bundle to verify with; not used with multiple inputs",
-    )
+    _add_shared_input_options(input_options)
 
-    verification_options = verify_identity.add_argument_group(
-        "Extended verification options"
-    )
-    verification_options.add_argument(
-        "--certificate-chain",
-        metavar="FILE",
-        type=argparse.FileType("r"),
-        help=(
-            "Path to a list of CA certificates in PEM format which will be needed when building "
-            "the certificate chain for the signing certificate"
-        ),
-    )
-    verification_options.add_argument(
-        "--cert-email",
-        metavar="EMAIL",
-        type=str,
-        help="Deprecated; causes an error. Use --cert-identity instead",
-    )
-    verification_options.add_argument(
-        "--cert-identity",
-        metavar="IDENTITY",
-        type=str,
-        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
-        help="The identity to check for in the certificate's Subject Alternative Name",
-        required=True,
-    )
+    verification_options = verify_identity.add_argument_group("Verification options")
+    _add_shared_verification_options(verification_options)
     verification_options.add_argument(
         "--cert-oidc-issuer",
         metavar="URL",
@@ -360,22 +399,82 @@ def _parser() -> argparse.ArgumentParser:
         help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
         required=True,
     )
-    verification_options.add_argument(
-        "--require-rekor-offline",
-        action="store_true",
-        default=_boolify_env("SIGSTORE_REQUIRE_REKOR_OFFLINE"),
-        help="Require offline Rekor verification with a bundle; implied by --rekor-bundle",
-    )
 
     instance_options = verify_identity.add_argument_group("Sigstore instance options")
     _add_shared_instance_options(instance_options)
-
-    verify_identity.add_argument(
-        "files",
+    instance_options.add_argument(
+        "--certificate-chain",
         metavar="FILE",
-        type=Path,
-        nargs="+",
-        help="The file to verify",
+        type=argparse.FileType("r"),
+        help=(
+            "Path to a list of CA certificates in PEM format which will be needed when building "
+            "the certificate chain for the Fulcio signing certificate"
+        ),
+    )
+
+    # `sigstore verify github`
+    verify_github = verify_subcommand.add_parser(
+        "github",
+        help="verify against GitHub Actions-specific claims",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    input_options = verify_github.add_argument_group("Verification inputs")
+    _add_shared_input_options(input_options)
+
+    verification_options = verify_github.add_argument_group("Verification options")
+    _add_shared_verification_options(verification_options)
+    verification_options.add_argument(
+        "--trigger",
+        dest="workflow_trigger",
+        metavar="EVENT",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_TRIGGER"),
+        help="The GitHub Actions event name that triggered the workflow",
+    )
+    verification_options.add_argument(
+        "--sha",
+        dest="workflow_sha",
+        metavar="SHA",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_SHA"),
+        help="The `git` commit SHA that the workflow run was invoked with",
+    )
+    verification_options.add_argument(
+        "--name",
+        dest="workflow_name",
+        metavar="NAME",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_NAME"),
+        help="The name of the workflow that was triggered",
+    )
+    verification_options.add_argument(
+        "--repository",
+        dest="workflow_repository",
+        metavar="REPO",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_REPOSITORY"),
+        help="The repository slug that the workflow was triggered under",
+    )
+    verification_options.add_argument(
+        "--ref",
+        dest="workflow_ref",
+        metavar="REF",
+        type=str,
+        default=os.getenv("SIGSTORE_VERIFY_GITHUB_WORKFLOW_REF"),
+        help="The `git` ref that the workflow was invoked with",
+    )
+
+    instance_options = verify_github.add_argument_group("Sigstore instance options")
+    _add_shared_instance_options(instance_options)
+    instance_options.add_argument(
+        "--certificate-chain",
+        metavar="FILE",
+        type=argparse.FileType("r"),
+        help=(
+            "Path to a list of CA certificates in PEM format which will be needed when building "
+            "the certificate chain for the Fulcio signing certificate"
+        ),
     )
 
     # `sigstore verify` defaults to `sigstore verify identity`, for backwards
@@ -401,14 +500,28 @@ def main() -> None:
 
     logger.debug(f"parsed arguments {args}")
 
-    # `sigstore --staging some-cmd` is now the preferred form, rather than
-    # `sigstore some-cmd --staging`.
+    # A few instance flags (like `--staging` and `--rekor-url`) are supported at both the
+    # top-level `sigstore` level and the subcommand level (e.g. `sigstore verify --staging`),
+    # but the former is preferred.
     if getattr(args, "__deprecated_staging", False):
         logger.warning(
             "`--staging` should be used as a global option, rather than a subcommand option. "
             "Passing `--staging` as a subcommand option will be deprecated in a future release."
         )
         args.staging = args.__deprecated_staging
+    if getattr(args, "__deprecated_rekor_url", None):
+        logger.warning(
+            "`--rekor-url` should be used as a global option, rather than a subcommand option. "
+            "Passing `--rekor-url` as a subcommand option will be deprecated in a future release."
+        )
+        args.rekor_url = args.__deprecated_rekor_url
+    if getattr(args, "__deprecated_rekor_root_pubkey", None):
+        logger.warning(
+            "`--rekor-root-pubkey` should be used as a global option, rather than a "
+            "subcommand option. Passing `--rekor-root-pubkey` as a subcommand option will be "
+            "deprecated in a future release."
+        )
+        args.rekor_root_pubkey = args.__deprecated_rekor_root_pubkey
 
     # Stuff the parser back into our namespace, so that we can use it for
     # error handling later.
@@ -417,7 +530,12 @@ def main() -> None:
     if args.subcommand == "sign":
         _sign(args)
     elif args.subcommand == "verify":
-        _verify(args)
+        if args.verify_subcommand == "identity":
+            _verify_identity(args)
+        elif args.verify_subcommand == "github":
+            _verify_github(args)
+        else:
+            parser.error(f"Unknown verify subcommand: {args.verify_subcommand}")
     elif args.subcommand == "get-identity-token":
         token = _get_identity_token(args)
         if token:
@@ -558,15 +676,16 @@ def _sign(args: argparse.Namespace) -> None:
             print(f"Rekor bundle written to {outputs['bundle']}")
 
 
-def _verify(args: argparse.Namespace) -> None:
-    # `--cert-email` has been functionally removed, but we check for it
-    # explicitly to provide a nicer error message than just a missing
-    # option.
-    if args.cert_email:
-        args._parser.error(
-            "--cert-email is a disabled alias for --cert-identity; "
-            "use --cert-identity instead"
-        )
+def _collect_verification_state(
+    args: argparse.Namespace,
+) -> tuple[Verifier, list[tuple[Path, VerificationMaterials]]]:
+    """
+    Performs CLI functionality common across all `sigstore verify` subcommands.
+
+    Returns a tuple of the active verifier instance and a list of `(file, materials)`
+    tuples, where `file` is the path to the file being verified (for display
+    purposes) and `materials` is the `VerificationMaterials` to verify with.
+    """
 
     # `--rekor-bundle` is a temporary option, pending stabilization of the
     # Sigstore bundle format.
@@ -656,6 +775,7 @@ def _verify(args: argparse.Namespace) -> None:
             fulcio_certificate_chain=certificate_chain,
         )
 
+    all_materials = []
     for file, inputs in input_map.items():
         # Load the signing certificate
         logger.debug(f"Using certificate from: {inputs['cert']}")
@@ -674,13 +794,25 @@ def _verify(args: argparse.Namespace) -> None:
         logger.debug(f"Verifying contents from: {file}")
 
         with file.open(mode="rb", buffering=0) as io:
-            materials = VerificationMaterials(
-                input_=io,
-                cert_pem=cert_pem,
-                signature=base64.b64decode(b64_signature),
-                offline_rekor_entry=entry,
+            all_materials.append(
+                (
+                    file,
+                    VerificationMaterials(
+                        input_=io,
+                        cert_pem=cert_pem,
+                        signature=base64.b64decode(b64_signature),
+                        offline_rekor_entry=entry,
+                    ),
+                )
             )
 
+    return (verifier, all_materials)
+
+
+def _verify_identity(args: argparse.Namespace) -> None:
+    verifier, files_with_materials = _collect_verification_state(args)
+
+    for (file, materials) in files_with_materials:
         policy_ = policy.Identity(
             identity=args.cert_identity,
             issuer=args.cert_oidc_issuer,
@@ -707,11 +839,102 @@ def _verify(args: argparse.Namespace) -> None:
                 print(
                     dedent(
                         f"""
-                        This may be a result of an outdated `sigstore` installation.
+                        The given certificate could not be verified against the
+                        root of trust.
 
-                        Consider upgrading with:
+                        This may be a result of connecting to the wrong Fulcio instance
+                        (for example, staging instead of production, or vice versa).
 
-                            python -m pip install --upgrade sigstore
+                        Additional context:
+
+                        {result.exception}
+                        """
+                    ),
+                    file=sys.stderr,
+                )
+            elif isinstance(result, RekorEntryMissing):
+                # If Rekor lookup failed, it's because the certificate either
+                # wasn't logged after creation or because the user requested the
+                # wrong Rekor instance (e.g., staging instead of production).
+                # The latter is significantly more likely, so we add
+                # some additional context to the output indicating it.
+                #
+                # NOTE: Even though the latter is more likely, it's still extremely
+                # unlikely that we'd hit this -- we should always fail with
+                # `CertificateVerificationFailure` instead, as the cert store should
+                # fail to validate due to a mismatch between the leaf and the trusted
+                # root + intermediates.
+                print(
+                    dedent(
+                        f"""
+                        These signing artifacts could not be matched to a entry
+                        in the configured transparency log.
+
+                        This may be a result of connecting to the wrong Rekor instance
+                        (for example, staging instead of production, or vice versa).
+
+                        Additional context:
+
+                        Signature: {result.signature}
+
+                        Artifact hash: {result.artifact_hash}
+                        """
+                    ),
+                    file=sys.stderr,
+                )
+
+            sys.exit(1)
+
+
+def _verify_github(args: argparse.Namespace) -> None:
+    # Every GitHub verification begins with an identity policy,
+    # for which we know the issuer URL ahead of time.
+    # We then add more policies, as configured by the user's passed-in options.
+    inner_policies: list[policy.VerificationPolicy] = [
+        policy.Identity(
+            identity=args.cert_identity,
+            issuer="https://token.actions.githubusercontent.com",
+        )
+    ]
+
+    if args.workflow_trigger:
+        inner_policies.append(policy.GitHubWorkflowTrigger(args.workflow_trigger))
+    if args.workflow_sha:
+        inner_policies.append(policy.GitHubWorkflowSHA(args.workflow_sha))
+    if args.workflow_name:
+        inner_policies.append(policy.GitHubWorkflowName(args.workflow_name))
+    if args.workflow_repository:
+        inner_policies.append(policy.GitHubWorkflowRepository(args.workflow_repository))
+    if args.workflow_ref:
+        inner_policies.append(policy.GitHubWorkflowRef(args.workflow_ref))
+
+    policy_ = policy.AllOf(inner_policies)
+
+    verifier, files_with_materials = _collect_verification_state(args)
+    for (file, materials) in files_with_materials:
+        result = verifier.verify(materials=materials, policy=policy_)
+
+        if result:
+            print(f"OK: {file}")
+        else:
+            result = cast(VerificationFailure, result)
+            print(f"FAIL: {file}")
+            print(f"Failure reason: {result.reason}", file=sys.stderr)
+
+            if isinstance(result, CertificateVerificationFailure):
+                # If certificate verification failed, it's either because of
+                # a chain issue or some outdated state in sigstore itself.
+                # These might already be resolved in a newer version, so
+                # we suggest that users try to upgrade and retry before
+                # anything else.
+                print(
+                    dedent(
+                        f"""
+                        The given certificate could not be verified against the
+                        root of trust.
+
+                        This may be a result of connecting to the wrong Fulcio instance
+                        (for example, staging instead of production, or vice versa).
 
                         Additional context:
 

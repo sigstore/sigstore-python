@@ -127,6 +127,16 @@ check-readme:
 	    $(MAKE) -s run ARGS="verify identity --help" \
 	  )
 
+	# sigstore verify github --help
+	@diff \
+	  <( \
+	    awk '/@begin-sigstore-verify-github-help@/{f=1;next} /@end-sigstore-verify-github-help@/{f=0} f' \
+	      < README.md | sed '1d;$$d' \
+	  ) \
+	  <( \
+	    $(MAKE) -s run ARGS="verify github --help" \
+	  )
+
 
 .PHONY: edit
 edit:
