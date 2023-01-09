@@ -139,15 +139,23 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
         metavar="URL",
         type=str,
         default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
-        help="The Rekor instance to use (conflicts with --staging)",
+        help=(
+            "The Rekor instance to use (conflicts with --staging). "
+            "This option will be deprecated in favor of the global `--rekor-url` option "
+            "in a future release."
+        ),
     )
     group.add_argument(
         "--rekor-root-pubkey",
         dest="__deprecated_rekor_root_pubkey",
         metavar="FILE",
         type=argparse.FileType("rb"),
-        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
         default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY"),
+        help=(
+            "A PEM-encoded root public key for Rekor itself (conflicts with --staging). "
+            "This option will be deprecated in favor of the global `--rekor-root-pubkey` option "
+            "in a future release."
+        ),
     )
 
 
