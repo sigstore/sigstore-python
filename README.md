@@ -7,6 +7,7 @@ sigstore-python
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python/badge)](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python)
 [![SLSA](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/)
 ![Conformance Tests](https://github.com/sigstore/sigstore-python/workflows/Conformance%20Tests/badge.svg)
+[![Documentation](https://github.com/sigstore/sigstore-python/actions/workflows/docs.yml/badge.svg)](https://sigstore.github.io/sigstore-python)
 <!--- @end-badges@ --->
 
 ⚠️ This project is not ready for general-purpose use! ⚠️
@@ -59,6 +60,8 @@ See the
 for more details and usage examples.
 
 ## Usage
+
+For Python API usage, see our [documentation](https://sigstore.github.io/sigstore-python/).
 
 You can run `sigstore` as a standalone program, or via `python -m`:
 
