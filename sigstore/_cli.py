@@ -41,8 +41,8 @@ from sigstore.oidc import (
     Issuer,
     detect_credential,
 )
-from sigstore.transparency import LogEntry
 from sigstore.sign import Signer
+from sigstore.transparency import LogEntry
 from sigstore.verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,
