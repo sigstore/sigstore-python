@@ -43,7 +43,7 @@ class TestCTKeyring:
 
     def test_verify_fail_empty_keyring(self):
         ctkeyring = CTKeyring()
-        key_id = pretend.stub(hex=pretend.call_recorder(lambda: pretend.stub()))
+        key_id = pretend.stub(hex=lambda: pretend.stub())
         signature = pretend.stub()
         data = pretend.stub()
 

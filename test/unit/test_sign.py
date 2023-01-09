@@ -129,7 +129,7 @@ def test_identity_token_iss_claim_error(mock_staging_tuf, monkeypatch):
     monkeypatch.setattr(
         jwt,
         "decode",
-        pretend.call_recorder(lambda token, options: {}),
+        lambda token, options: {},
     )
 
     payload = io.BytesIO(b"foobar")
@@ -146,9 +146,7 @@ def test_identity_token_aud_claim_error(mock_staging_tuf, monkeypatch):
     monkeypatch.setattr(
         jwt,
         "decode",
-        pretend.call_recorder(
-            lambda token, options: {"iss": "https://accounts.google.com"}
-        ),
+        lambda token, options: {"iss": "https://accounts.google.com"},
     )
 
     payload = io.BytesIO(b"foobar")
@@ -165,9 +163,7 @@ def test_identity_token_audience_error(mock_staging_tuf, monkeypatch):
     monkeypatch.setattr(
         jwt,
         "decode",
-        pretend.call_recorder(
-            lambda token, options: {"iss": "https://accounts.google.com", "aud": "Jack"}
-        ),
+        lambda token, options: {"iss": "https://accounts.google.com", "aud": "Jack"},
     )
 
     payload = io.BytesIO(b"foobar")
@@ -183,12 +179,10 @@ def test_identity_token_proof_claim_error(mock_staging_tuf, monkeypatch):
     monkeypatch.setattr(
         jwt,
         "decode",
-        pretend.call_recorder(
-            lambda token, options: {
-                "iss": "https://accounts.google.com",
-                "aud": "sigstore",
-            }
-        ),
+        lambda token, options: {
+            "iss": "https://accounts.google.com",
+            "aud": "sigstore",
+        },
     )
 
     payload = io.BytesIO(b"foobar")
@@ -205,12 +199,10 @@ def test_identity_token_sub_claim_error(mock_staging_tuf, monkeypatch):
     monkeypatch.setattr(
         jwt,
         "decode",
-        pretend.call_recorder(
-            lambda token, options: {
-                "iss": "foo.bar",
-                "aud": "sigstore",
-            }
-        ),
+        lambda token, options: {
+            "iss": "foo.bar",
+            "aud": "sigstore",
+        },
     )
 
     payload = io.BytesIO(b"foobar")

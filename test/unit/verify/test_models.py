@@ -49,11 +49,7 @@ class TestVerificationMaterials:
         a_materials._offline_rekor_entry = None
         client = pretend.stub(
             log=pretend.stub(
-                entries=pretend.stub(
-                    retrieve=pretend.stub(
-                        post=pretend.call_recorder(lambda a, b, c: None)
-                    )
-                )
+                entries=pretend.stub(retrieve=pretend.stub(post=lambda a, b, c: None))
             )
         )
 

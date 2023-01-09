@@ -102,7 +102,7 @@ def test_verifier_policy_check(signing_materials):
     materials = signing_materials("a.txt")
 
     # policy that fails to verify for any given cert.
-    policy_ = pretend.stub(verify=pretend.call_recorder(lambda cert: False))
+    policy_ = pretend.stub(verify=lambda cert: False)
 
     verifier = Verifier.staging()
     assert not verifier.verify(
