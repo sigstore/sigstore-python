@@ -135,6 +135,7 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
     )
     group.add_argument(
         "--rekor-url",
+        dest="__deprecated_rekor_url",
         metavar="URL",
         type=str,
         default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
@@ -142,6 +143,7 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
     )
     group.add_argument(
         "--rekor-root-pubkey",
+        dest="__deprecated_rekor_root_pubkey",
         metavar="FILE",
         type=argparse.FileType("rb"),
         help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
@@ -259,6 +261,20 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         default=_boolify_env("SIGSTORE_STAGING"),
         help="Use sigstore's staging instances, instead of the default production instances",
+    )
+    global_instance_options.add_argument(
+        "--rekor-url",
+        metavar="URL",
+        type=str,
+        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
+        help="The Rekor instance to use (conflicts with --staging)",
+    )
+    global_instance_options.add_argument(
+        "--rekor-root-pubkey",
+        metavar="FILE",
+        type=argparse.FileType("rb"),
+        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
+        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY"),
     )
 
     subcommands = parser.add_subparsers(required=True, dest="subcommand")
@@ -476,14 +492,27 @@ def main() -> None:
 
     logger.debug(f"parsed arguments {args}")
 
-    # `sigstore --staging some-cmd` is now the preferred form, rather than
-    # `sigstore some-cmd --staging`.
+    # A few instance flags (like `--staging` and `--rekor-url`) are supported at both the
+    # top-level `sigstore` level and the subcommand level (e.g. `sigstore verify --staging`),
+    # but the former is preferred.
     if getattr(args, "__deprecated_staging", False):
         logger.warning(
             "`--staging` should be used as a global option, rather than a subcommand option. "
             "Passing `--staging` as a subcommand option will be deprecated in a future release."
         )
         args.staging = args.__deprecated_staging
+    if hasattr(args, "__deprecated_rekor_url"):
+        logger.warning(
+            "`--rekor-url` should be used as a global option, rather than a subcommand option. "
+            "Passing `--rekor-url` as a subcommand option will be deprecated in a future release."
+        )
+        args.rekor_url = args.__deprecated_rekor_url
+    if hasattr(args, "__deprecated_rekor_root_pubkey"):
+        logger.warning(
+            "`--rekor-root-pubkey` should be used as a global option, rather than a subcommand option. "
+            "Passing `--rekor-root-pubkey` as a subcommand option will be deprecated in a future release."
+        )
+        args.rekor_root_pubkey = args.__deprecated_rekor_root_pubkey
 
     # Stuff the parser back into our namespace, so that we can use it for
     # error handling later.
