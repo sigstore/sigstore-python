@@ -35,7 +35,7 @@ from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import sha256_streaming
-from sigstore.rekor import RekorEntry
+from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +165,7 @@ class SigningResult(BaseModel):
     The base64-encoded signature.
     """
 
-    log_entry: RekorEntry
+    log_entry: LogEntry
     """
     A record of the Rekor log entry for the signing operation.
     """

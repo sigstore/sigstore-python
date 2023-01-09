@@ -26,7 +26,7 @@ import hashlib
 import struct
 from typing import List, Tuple
 
-from sigstore.rekor import RekorEntry
+from sigstore.transparency import LogEntry
 
 
 class InvalidInclusionProofError(Exception):
@@ -95,7 +95,7 @@ def _hash_leaf(leaf: bytes) -> bytes:
     return hashlib.sha256(data).digest()
 
 
-def verify_merkle_inclusion(entry: RekorEntry) -> None:
+def verify_merkle_inclusion(entry: LogEntry) -> None:
     """Verify the Merkle Inclusion Proof for a given Rekor entry."""
     inclusion_proof = entry.inclusion_proof
     if inclusion_proof is None:

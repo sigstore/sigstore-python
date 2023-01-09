@@ -40,7 +40,6 @@ all:
 
 env/pyvenv.cfg: pyproject.toml
 	# Create our Python 3 virtual environment
-	rm -rf env
 	python3 -m venv env
 	./env/bin/python -m pip install --upgrade pip
 	./env/bin/python -m pip install -e .[$(SIGSTORE_EXTRA)]
@@ -78,8 +77,7 @@ test: env/pyvenv.cfg
 .PHONY: doc
 doc: env/pyvenv.cfg
 	. env/bin/activate && \
-		command -v pdoc3 && \
-		PYTHONWARNINGS='error::UserWarning' pdoc --force --html $(PY_MODULE)
+		pdoc --output-directory html $(PY_MODULE)
 
 .PHONY: package
 package: env/pyvenv.cfg
