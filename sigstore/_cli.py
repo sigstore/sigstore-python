@@ -126,7 +126,7 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
         "--staging",
         dest="__deprecated_staging",
         action="store_true",
-        default=_boolify_env("SIGSTORE_STAGING"),
+        default=False,
         help=(
             "Use sigstore's staging instances, instead of the default production instances. "
             "This option will be deprecated in favor of the global `--staging` option "
@@ -138,7 +138,7 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
         dest="__deprecated_rekor_url",
         metavar="URL",
         type=str,
-        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
+        default=None,
         help=(
             "The Rekor instance to use (conflicts with --staging). "
             "This option will be deprecated in favor of the global `--rekor-url` option "
@@ -150,7 +150,7 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
         dest="__deprecated_rekor_root_pubkey",
         metavar="FILE",
         type=argparse.FileType("rb"),
-        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY"),
+        default=None,
         help=(
             "A PEM-encoded root public key for Rekor itself (conflicts with --staging). "
             "This option will be deprecated in favor of the global `--rekor-root-pubkey` option "
@@ -509,13 +509,13 @@ def main() -> None:
             "Passing `--staging` as a subcommand option will be deprecated in a future release."
         )
         args.staging = args.__deprecated_staging
-    if hasattr(args, "__deprecated_rekor_url"):
+    if getattr(args, "__deprecated_rekor_url", None):
         logger.warning(
             "`--rekor-url` should be used as a global option, rather than a subcommand option. "
             "Passing `--rekor-url` as a subcommand option will be deprecated in a future release."
         )
         args.rekor_url = args.__deprecated_rekor_url
-    if hasattr(args, "__deprecated_rekor_root_pubkey"):
+    if getattr(args, "__deprecated_rekor_root_pubkey", None):
         logger.warning(
             "`--rekor-root-pubkey` should be used as a global option, rather than a subcommand option. "
             "Passing `--rekor-root-pubkey` as a subcommand option will be deprecated in a future release."

@@ -155,7 +155,7 @@ Sigstore instance options:
   --rekor-url URL       The Rekor instance to use (conflicts with --staging).
                         This option will be deprecated in favor of the global
                         `--rekor-url` option in a future release. (default:
-                        https://rekor.sigstore.dev)
+                        None)
   --rekor-root-pubkey FILE
                         A PEM-encoded root public key for Rekor itself
                         (conflicts with --staging). This option will be
@@ -219,7 +219,7 @@ Sigstore instance options:
   --rekor-url URL       The Rekor instance to use (conflicts with --staging).
                         This option will be deprecated in favor of the global
                         `--rekor-url` option in a future release. (default:
-                        https://rekor.sigstore.dev)
+                        None)
   --rekor-root-pubkey FILE
                         A PEM-encoded root public key for Rekor itself
                         (conflicts with --staging). This option will be
@@ -293,7 +293,7 @@ Sigstore instance options:
   --rekor-url URL       The Rekor instance to use (conflicts with --staging).
                         This option will be deprecated in favor of the global
                         `--rekor-url` option in a future release. (default:
-                        https://rekor.sigstore.dev)
+                        None)
   --rekor-root-pubkey FILE
                         A PEM-encoded root public key for Rekor itself
                         (conflicts with --staging). This option will be
