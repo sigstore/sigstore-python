@@ -30,6 +30,10 @@ All versions prior to 0.9.0 are untracked.
    version of `sigstore-python`
    ([#383](https://github.com/sigstore/sigstore-python/pull/383))
 
+* `sigstore verify github` has been added, allowing for verification of
+  GitHub-specific claims within given certificate(s)
+  ([#381](https://github.com/sigstore/sigstore-python/pull/381))
+
 ### Changed
 
 * The default behavior of `SIGSTORE_LOGLEVEL` has changed; the logger
