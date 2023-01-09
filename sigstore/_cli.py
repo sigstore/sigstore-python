@@ -517,8 +517,9 @@ def main() -> None:
         args.rekor_url = args.__deprecated_rekor_url
     if getattr(args, "__deprecated_rekor_root_pubkey", None):
         logger.warning(
-            "`--rekor-root-pubkey` should be used as a global option, rather than a subcommand option. "
-            "Passing `--rekor-root-pubkey` as a subcommand option will be deprecated in a future release."
+            "`--rekor-root-pubkey` should be used as a global option, rather than a "
+            "subcommand option. Passing `--rekor-root-pubkey` as a subcommand option will be "
+            "deprecated in a future release."
         )
         args.rekor_root_pubkey = args.__deprecated_rekor_root_pubkey
 
