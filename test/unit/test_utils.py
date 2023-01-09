@@ -22,7 +22,6 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
 from sigstore import _utils as utils
-from sigstore._internal.ctfe import CTKeyring
 
 
 def test_key_id():
@@ -79,15 +78,13 @@ def test_load_pem_public_key_format():
     with pytest.raises(
         utils.InvalidKey, match="could not load PEM-formatted public key"
     ):
-        CTKeyring([keybytes])
+        utils.load_pem_public_key([keybytes])
 
 
 def test_load_pem_public_key_serialization(monkeypatch):
     from cryptography.hazmat.primitives import serialization
 
-    monkeypatch.setattr(
-        serialization, "load_pem_public_key", pretend.call_recorder(lambda a: a)
-    )
+    monkeypatch.setattr(serialization, "load_pem_public_key", lambda a: a)
 
     keybytes = (
         b"-----BEGIN PUBLIC KEY-----\n"
@@ -99,4 +96,4 @@ def test_load_pem_public_key_serialization(monkeypatch):
     with pytest.raises(
         utils.InvalidKey, match="invalid key format (not ECDSA or RSA)*"
     ):
-        CTKeyring([keybytes])
+        utils.load_pem_public_key([keybytes])
