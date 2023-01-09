@@ -31,7 +31,7 @@ from sigstore._internal import sct
         16777215,
     ],
 )
-def test_pack_digitally_signed(precert_bytes_len):
+def test_pack_digitally_signed_precertificate(precert_bytes_len):
     precert_bytes = b"x" * precert_bytes_len
 
     mock_sct = pretend.stub(

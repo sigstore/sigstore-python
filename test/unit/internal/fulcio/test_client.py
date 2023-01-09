@@ -33,6 +33,20 @@ def enc(v: bytes) -> str:
     return b64encode(v).decode()
 
 
+class TestSCTHashAlgorithm:
+    def test_sct_hash_sha256(self):
+        hash_algorithm_sha256 = client.SCTHashAlgorithm(4)
+        assert isinstance(hash_algorithm_sha256.to_cryptography(), hashes.SHA256)
+
+    def test_sct_hash_none(self):
+        hash_algorithm_none = client.SCTHashAlgorithm(0)
+        with pytest.raises(
+            client.FulcioSCTError,
+            match="unexpected hash algorithm: <SCTHashAlgorithm.NONE: 0>",
+        ):
+            hash_algorithm_none.to_cryptography()
+
+
 class TestDetachedFulcioSCT:
     def test_fulcio_sct_virtual_subclass(self):
         assert issubclass(client.DetachedFulcioSCT, SignedCertificateTimestamp)
