@@ -20,10 +20,15 @@ jobs:
           cache: "pip"
           cache-dependency-path: pyproject.toml
 
+      - name: setup
+        run: |
+          make dev SIGSTORE_EXTRA=doc
+
       - name: docs
         run: |
           make doc
-          mv ./html/sigstore /tmp/sigstore
+          mv ./html/ /tmp/sigstore
+
       - name: deploy
         run: |
           # Configure git, checkout a new orphan branch for the docs.
