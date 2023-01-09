@@ -15,7 +15,6 @@
 
 import os
 
-import pretend
 import pytest
 
 from sigstore._internal.tuf import STAGING_TUF_URL, TrustUpdater, _get_dirs
@@ -98,9 +97,7 @@ def test_updater_instance_error():
 def test_updater_ctfe_keys_error(monkeypatch):
     updater = TrustUpdater.staging()
     # getter returns no keys.
-    monkeypatch.setattr(
-        updater, "_get", lambda usage, statuses: []
-    )
+    monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
     with pytest.raises(Exception, match="CTFE keys not found in TUF metadata"):
         updater.get_ctfe_keys()
 
@@ -125,9 +122,7 @@ def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
 def test_updater_fulcio_certs_error(tuf_asset, monkeypatch):
     updater = TrustUpdater.staging()
     # getter returns no fulcio certs.
-    monkeypatch.setattr(
-        updater, "_get", lambda usage, statuses: None
-    )
+    monkeypatch.setattr(updater, "_get", lambda usage, statuses: None)
     with pytest.raises(
         Exception, match="Fulcio certificates not found in TUF metadata"
     ):
