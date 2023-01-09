@@ -29,7 +29,7 @@ from pydantic import BaseModel
 
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import base64_encode_pem_cert, sha256_streaming
-from sigstore.rekor import RekorEntry
+from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ class VerificationMaterials:
     The raw signature.
     """
 
-    _offline_rekor_entry: RekorEntry | None
+    _offline_rekor_entry: LogEntry | None
     """
     An optional offline Rekor entry.
 
@@ -157,7 +157,7 @@ class VerificationMaterials:
         input_: IO[bytes],
         cert_pem: str,
         signature: bytes,
-        offline_rekor_entry: RekorEntry | None,
+        offline_rekor_entry: LogEntry | None,
     ):
         """
         Create a new `VerificationMaterials` from the given materials.
@@ -180,11 +180,11 @@ class VerificationMaterials:
         """
         return self._offline_rekor_entry is not None
 
-    def rekor_entry(self, client: RekorClient) -> RekorEntry:
+    def rekor_entry(self, client: RekorClient) -> LogEntry:
         """
         Returns a `RekorEntry` for the current signing materials.
         """
-        entry: RekorEntry | None
+        entry: LogEntry | None
         if self._offline_rekor_entry is not None:
             logger.debug("using offline rekor entry")
             entry = self._offline_rekor_entry
