@@ -9,7 +9,7 @@ ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
 BUMP_ARGS :=
 
 # Optionally overridden by the user in the `test` target.
-TESTS :=
+TESTS ?=
 
 # Optionally overridden by the user/CI, to limit the installation to a specific
 # subset of development dependencies.
