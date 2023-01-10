@@ -18,7 +18,7 @@ import pytest
 from pydantic import ValidationError
 
 from sigstore._internal.rekor import client
-from sigstore.rekor import RekorInclusionProof
+from sigstore.transparency import LogInclusionProof
 
 
 class TestRekorBundle:
@@ -38,7 +38,7 @@ class TestRekorBundle:
         assert raw["Payload"]["body"] == bundle.payload.body
 
         entry = bundle.to_entry()
-        assert isinstance(entry, client.RekorEntry)
+        assert isinstance(entry, client.LogEntry)
         assert entry.uuid is None
         assert entry.body == bundle.payload.body
         assert entry.integrated_time == bundle.payload.integrated_time
@@ -53,26 +53,24 @@ class TestRekorBundle:
 
 class TestRekorInclusionProof:
     def test_valid(self):
-        proof = RekorInclusionProof(
-            log_index=1, root_hash="abcd", tree_size=2, hashes=[]
-        )
+        proof = LogInclusionProof(log_index=1, root_hash="abcd", tree_size=2, hashes=[])
         assert proof is not None
 
     def test_negative_log_index(self):
         with pytest.raises(
             ValidationError, match="Inclusion proof has invalid log index"
         ):
-            RekorInclusionProof(log_index=-1, root_hash="abcd", tree_size=2, hashes=[])
+            LogInclusionProof(log_index=-1, root_hash="abcd", tree_size=2, hashes=[])
 
     def test_negative_tree_size(self):
         with pytest.raises(
             ValidationError, match="Inclusion proof has invalid tree size"
         ):
-            RekorInclusionProof(log_index=1, root_hash="abcd", tree_size=-1, hashes=[])
+            LogInclusionProof(log_index=1, root_hash="abcd", tree_size=-1, hashes=[])
 
     def test_log_index_outside_tree_size(self):
         with pytest.raises(
             ValidationError,
             match="Inclusion proof has log index greater than or equal to tree size",
         ):
-            RekorInclusionProof(log_index=2, root_hash="abcd", tree_size=1, hashes=[])
+            LogInclusionProof(log_index=2, root_hash="abcd", tree_size=1, hashes=[])

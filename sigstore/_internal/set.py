@@ -23,7 +23,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 
 from sigstore._internal.rekor import RekorClient
-from sigstore.rekor import RekorEntry
+from sigstore.transparency import LogEntry
 
 
 class InvalidSetError(Exception):
@@ -34,7 +34,7 @@ class InvalidSetError(Exception):
     pass
 
 
-def verify_set(client: RekorClient, entry: RekorEntry) -> None:
+def verify_set(client: RekorClient, entry: LogEntry) -> None:
     """
     Verify the Signed Entry Timestamp for a given Rekor `entry` using the given `client`.
     """

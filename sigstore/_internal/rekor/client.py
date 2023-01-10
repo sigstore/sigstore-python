@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field, StrictInt, StrictStr
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import base64_encode_pem_cert
-from sigstore.rekor import RekorEntry
+from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +67,12 @@ class RekorBundle(BaseModel):
     signed_entry_timestamp: StrictStr = Field(alias="SignedEntryTimestamp")
     payload: RekorBundle._Payload = Field(alias="Payload")
 
-    def to_entry(self) -> RekorEntry:
+    def to_entry(self) -> LogEntry:
         """
         Creates a `RekorEntry` from this offline Rekor bundle.
         """
 
-        return RekorEntry(
+        return LogEntry(
             uuid=None,
             body=self.payload.body,
             integrated_time=self.payload.integrated_time,
@@ -83,7 +83,7 @@ class RekorBundle(BaseModel):
         )
 
     @classmethod
-    def from_entry(cls, entry: RekorEntry) -> RekorBundle:
+    def from_entry(cls, entry: LogEntry) -> RekorBundle:
         """
         Returns a `RekorBundle` for this `RekorEntry`.
         """
@@ -171,7 +171,7 @@ class RekorEntries(_Endpoint):
 
     def get(
         self, *, uuid: Optional[str] = None, log_index: Optional[int] = None
-    ) -> RekorEntry:
+    ) -> LogEntry:
         """
         Retrieve a specific log entry, either by UUID or by log index.
 
@@ -191,14 +191,14 @@ class RekorEntries(_Endpoint):
             resp.raise_for_status()
         except requests.HTTPError as http_error:
             raise RekorClientError from http_error
-        return RekorEntry._from_response(resp.json())
+        return LogEntry._from_response(resp.json())
 
     def post(
         self,
         b64_artifact_signature: str,
         sha256_artifact_hash: str,
         b64_cert: str,
-    ) -> RekorEntry:
+    ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
@@ -223,7 +223,7 @@ class RekorEntries(_Endpoint):
         except requests.HTTPError as http_error:
             raise RekorClientError from http_error
 
-        return RekorEntry._from_response(resp.json())
+        return LogEntry._from_response(resp.json())
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:
@@ -245,7 +245,7 @@ class RekorEntriesRetrieve(_Endpoint):
         signature: bytes,
         artifact_hash: str,
         certificate: Certificate,
-    ) -> Optional[RekorEntry]:
+    ) -> Optional[LogEntry]:
         """
         Retrieves an extant Rekor entry, identified by its artifact signature,
         artifact hash, and signing certificate.
@@ -290,9 +290,9 @@ class RekorEntriesRetrieve(_Endpoint):
         # We select the oldest entry for our actual return value,
         # since a malicious actor could conceivably spam the log with
         # newer duplicate entries.
-        oldest_entry: Optional[RekorEntry] = None
+        oldest_entry: Optional[LogEntry] = None
         for result in results:
-            entry = RekorEntry._from_response(result)
+            entry = LogEntry._from_response(result)
             if (
                 oldest_entry is None
                 or entry.integrated_time < oldest_entry.integrated_time

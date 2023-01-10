@@ -42,11 +42,11 @@ jobs:
 
           # Our signing target is not important here, so we just sign
           # the README in the repository.
-          ./staging-env/bin/python -m sigstore sign --staging README.md
+          ./staging-env/bin/python -m sigstore --staging sign README.md
 
           # Verification also requires a different Rekor instance, so we
           # also test it.
-          ./staging-env/bin/python -m sigstore verify --staging \
+          ./staging-env/bin/python -m sigstore --staging verify identity \
             --cert-oidc-issuer https://token.actions.githubusercontent.com \
             --cert-identity ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/staging-tests.yml@${GITHUB_REF} \
             README.md

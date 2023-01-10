@@ -41,8 +41,8 @@ from sigstore.oidc import (
     Issuer,
     detect_credential,
 )
-from sigstore.rekor import RekorEntry
 from sigstore.sign import Signer
+from sigstore.transparency import LogEntry
 from sigstore.verify import (
     CertificateVerificationFailure,
     RekorEntryMissing,
@@ -785,7 +785,7 @@ def _collect_verification_state(
         logger.debug(f"Using signature from: {inputs['sig']}")
         b64_signature = inputs["sig"].read_text()
 
-        entry: Optional[RekorEntry] = None
+        entry: Optional[LogEntry] = None
         if inputs["bundle"].is_file():
             logger.debug(f"Using offline Rekor bundle from: {inputs['bundle']}")
             bundle = RekorBundle.parse_file(inputs["bundle"])

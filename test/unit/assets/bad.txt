@@ -1,0 +1,5 @@
+DO NOT MODIFY ME!
+
+this is "bad.txt", a fiddled with input for sigstore-python's unit tests.
+
+DO NOT MODIFY ME!
