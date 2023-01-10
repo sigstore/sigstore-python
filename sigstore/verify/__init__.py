@@ -37,4 +37,6 @@ __all__ = [
     "VerificationFailure",
     "VerificationMaterials",
     "policy",
+    "models",
+    "verifier",
 ]
