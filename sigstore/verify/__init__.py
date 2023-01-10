@@ -59,13 +59,13 @@ from sigstore.verify.models import (
 )
 from sigstore.verify.verifier import (
     CertificateVerificationFailure,
-    RekorEntryMissing,
+    LogEntryMissing,
     Verifier,
 )
 
 __all__ = [
     "CertificateVerificationFailure",
-    "RekorEntryMissing",
+    "LogEntryMissing",
     "Verifier",
     "VerificationResult",
     "VerificationSuccess",
