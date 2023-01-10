@@ -14,6 +14,29 @@ sigstore-python
 You can use it to sign and verify Python package distributions, or anything
 else!
 
+## Index
+
+* [Features](#features)
+* [Installation](#installation)
+  * [GitHub Actions](#github-actions)
+* [Usage](#usage)
+  * [Signing](#signing)
+  * [Verifying](#verifying)
+    * [Generic identities](#generic-identities)
+    * [Signatures from GitHub Actions](#signatures-from-github-actions)
+* [Example uses](#example-uses)
+  * [Signing with ambient credentials](#signing-with-ambient-credentials)
+  * [Signing with an email identity](#signing-with-an-email-identity)
+  * [Signing with an explicit identity token](#signing-with-an-explicit-identity-token)
+  * [Verifying against a signature and certificate](#verifying-against-a-signature-and-certificate)
+  * [Verifying signatures from GitHub Actions](#verifying-signatures-from-github-actions)
+* [Licensing](#licensing)
+* [Community](#community)
+* [Contributing](#contributing)
+* [Code of Conduct](#code-of-conduct)
+* [Security](#security)
+* [SLSA Provenance](#slsa-provenance)
+
 ## Features
 
 * Support for signing Python package distributions using an OpenID Connect identity
@@ -433,11 +456,19 @@ $ python -m sigstore verify github sigstore-0.10.0-py3-none-any.whl \
 
 `sigstore` is licensed under the Apache 2.0 License.
 
+## Community
+
+`sigstore-python` is developed as part of the [Sigstore](https://sigstore.dev) project.
+
+We also use a [Slack channel](https://sigstore.slack.com)!
+Click [here](https://join.slack.com/t/sigstore/shared_invite/zt-mhs55zh0-XmY3bcfWn4XEyMqUUutbUQ) for the invite link.
+
 ## Contributing
 
 See [the contributing docs](https://github.com/sigstore/.github/blob/main/CONTRIBUTING.md) for details.
 
 ## Code of Conduct
+
 Everyone interacting with this project is expected to follow the
 [sigstore Code of Conduct](https://github.com/sigstore/.github/blob/main/CODE_OF_CONDUCT.md).
 
@@ -451,11 +482,3 @@ This project emits a SLSA provenance on its release! This enables you to verify 
 of the downloaded artifacts and ensured that the binary's code really comes from this source code.
 
 To do so, please follow the instructions [here](https://github.com/slsa-framework/slsa-github-generator#verification-of-provenance).
-
-
-## Info
-
-`sigstore-python` is developed as part of the [`sigstore`](https://sigstore.dev) project.
-
-We also use a [slack channel](https://sigstore.slack.com)!
-Click [here](https://join.slack.com/t/sigstore/shared_invite/zt-mhs55zh0-XmY3bcfWn4XEyMqUUutbUQ) for the invite link.
