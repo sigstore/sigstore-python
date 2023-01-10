@@ -45,7 +45,7 @@ from sigstore.sign import Signer
 from sigstore.transparency import LogEntry
 from sigstore.verify import (
     CertificateVerificationFailure,
-    RekorEntryMissing,
+    LogEntryMissing,
     VerificationFailure,
     VerificationMaterials,
     Verifier,
@@ -852,7 +852,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
                     ),
                     file=sys.stderr,
                 )
-            elif isinstance(result, RekorEntryMissing):
+            elif isinstance(result, LogEntryMissing):
                 # If Rekor lookup failed, it's because the certificate either
                 # wasn't logged after creation or because the user requested the
                 # wrong Rekor instance (e.g., staging instead of production).
@@ -943,7 +943,7 @@ def _verify_github(args: argparse.Namespace) -> None:
                     ),
                     file=sys.stderr,
                 )
-            elif isinstance(result, RekorEntryMissing):
+            elif isinstance(result, LogEntryMissing):
                 # If Rekor lookup failed, it's because the certificate either
                 # wasn't logged after creation or because the user requested the
                 # wrong Rekor instance (e.g., staging instead of production).

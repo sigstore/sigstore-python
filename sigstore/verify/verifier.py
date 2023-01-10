@@ -56,13 +56,15 @@ from sigstore.verify.policy import VerificationPolicy
 logger = logging.getLogger(__name__)
 
 
-class RekorEntryMissing(VerificationFailure):
+class LogEntryMissing(VerificationFailure):
     """
-    A specialization of `VerificationFailure` for Rekor lookup failures,
+    A specialization of `VerificationFailure` for transparency log lookup failures,
     with additional lookup context.
     """
 
-    reason: str = "Rekor has no entry for the given verification materials"
+    reason: str = (
+        "The transparency log has no entry for the given verification materials"
+    )
 
     signature: str
     """
@@ -232,7 +234,7 @@ class Verifier:
         try:
             entry = materials.rekor_entry(self._rekor)
         except RekorEntryMissingError:
-            return RekorEntryMissing(
+            return LogEntryMissing(
                 signature=base64.b64encode(materials.signature).decode(),
                 artifact_hash=materials.input_digest.hex(),
             )
