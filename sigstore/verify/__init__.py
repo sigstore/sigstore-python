@@ -14,6 +14,41 @@
 
 """
 API for verifying artifact signatures.
+
+Example:
+```python
+import base64
+from pathlib import Path
+
+from sigstore.verify import Verifier, VerificationMaterials
+from sigstore.verify.policy import Identity
+
+# The artifact to verify
+artifact = Path("foo.txt")
+
+# The signing certificate
+cert = Path("foo.txt.crt")
+
+# The signature to verify
+signature = Path("foo.txt.sig")
+
+with artifact.open("rb") as a, cert.open("r") as c, signature.open("rb") as s:
+    materials = VerificationMaterials(
+        input_=a,
+        cert_pem=c.read(),
+        signature=base64.b64decode(s.read()),
+        offline_rekor_entry=None,
+    )
+    verifier = Verifier.production()
+    result = verifier.verify(
+        materials,
+        Identity(
+            identity="foo@bar.com",
+            issuer="https://accounts.google.com",
+        ),
+    )
+    print(result)
+```
 """
 
 from sigstore.verify.models import (

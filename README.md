@@ -397,6 +397,38 @@ $ python -m sigstore verify identity foo.txt \
     --cert-oidc-issuer 'https://github.com/login/oauth'
 ```
 
+
+### Verifying signatures from GitHub Actions
+
+`sigstore verify github` can be used to verify claims specific to signatures coming from GitHub
+Actions. `sigstore-python` signs releases via GitHub Actions, so the examples below are working
+examples of how you can verify a given `sigstore-python` release.
+
+As with `sigstore verify identity`, the `--cert-identity` flag is required. However, since we know
+that the signature was generated with an GitHub Actions ambient credential, the OIDC issuer is
+inferred.
+
+```console
+$ python -m sigstore verify github sigstore-0.10.0-py3-none-any.whl \
+    --certificate sigstore-0.10.0-py3-none-any.whl.crt \
+    --signature sigstore-0.10.0-py3-none-any.whl.sig \
+    --cert-identity https://github.com/sigstore/sigstore-python/.github/workflows/release.yml@refs/tags/v0.10.0
+```
+
+Additionally, GitHub Actions specific claims can be verified like so:
+
+```console
+$ python -m sigstore verify github sigstore-0.10.0-py3-none-any.whl \
+    --certificate sigstore-0.10.0-py3-none-any.whl.crt \
+    --signature sigstore-0.10.0-py3-none-any.whl.sig \
+    --cert-identity https://github.com/sigstore/sigstore-python/.github/workflows/release.yml@refs/tags/v0.10.0 \
+    --trigger release \
+    --sha 66581529803929c3ccc45334632ccd90f06e0de4 \
+    --name Release \
+    --repository sigstore/sigstore-python \
+    --ref refs/tags/v0.10.0
+```
+
 ## Licensing
 
 `sigstore` is licensed under the Apache 2.0 License.
