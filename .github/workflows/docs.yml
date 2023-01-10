@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      - alex/doc-workflow-cleanup
+
 
 jobs:
   build:
