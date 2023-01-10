@@ -14,6 +14,9 @@ All versions prior to 0.9.0 are untracked.
   have been renamed to removed implementation detail references
   ([#402](https://github.com/sigstore/sigstore-python/pull/402))
 
+* `sigstore.transparency.RekorEntryMissing` is now `LogEntryMissing`
+  ([#414](https://github.com/sigstore/sigstore-python/pull/414))
+
 ## [0.10.0]
 
 ### Added
