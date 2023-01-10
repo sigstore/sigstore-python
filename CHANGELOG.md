@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Changed
+
+* `sigstore.rekor` is now `sigstore.transparency`, and its constituent APIs
+  have been renamed to removed implementation detail references
+  ([#402](https://github.com/sigstore/sigstore-python/pull/402))
+
 ## [0.10.0]
 
 ### Added
