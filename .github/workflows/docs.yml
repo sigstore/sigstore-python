@@ -6,11 +6,8 @@ on:
       - main
 
 jobs:
-  docs:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      # NOTE: Needed to push to the repository.
-      contents: write
     steps:
       - uses: actions/checkout@v3
 
@@ -26,21 +23,30 @@ jobs:
         run: |
           make dev SIGSTORE_EXTRA=doc
 
-      - name: docs
+      - name: build docs
         run: |
           make doc
-          mv ./html/ /tmp/sigstore
 
-      - name: deploy
-        run: |
-          # Configure git, checkout a new orphan branch for the docs.
-          git config --global user.name 'github.actions'
-          git config --global user.email 'github-actions@github.com'
-          git checkout --orphan gh-pages
-          # Clear out all repo state, copy in the docs built in the previous step.
-          git rm -rf . && git clean -fd
-          mv /tmp/sigstore ./docs
-          # Check in the docs, push.
-          git add --all .
-          git commit -m "[docs] deploy: ${GITHUB_SHA}"
-          git push --force origin gh-pages
+      - name: upload docs artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./html/
+
+  # This is copied from the official `pdoc` example:
+  #   https://github.com/mitmproxy/pdoc/blob/main/.github/workflows/docs.yml
+  #
+  # Deploy the artifact to GitHub pages.
+  # This is a separate job so that only actions/deploy-pages has the necessary permissions.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      # NOTE: Needed to push to the repository.
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v1
