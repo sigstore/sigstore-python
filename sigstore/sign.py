@@ -14,6 +14,25 @@
 
 """
 API for signing artifacts.
+
+Example:
+```python
+from pathlib import Path
+
+from sigstore.sign import Signer
+from sigstore.oidc import Issuer
+
+issuer = Issuer.production()
+token = issuer.identity_token()
+
+# The artifact to sign
+artifact = Path("foo.txt")
+
+with artifact.open("rb") as a:
+    signer = Signer.production()
+    result = signer.sign(input_=a, identity_token=token)
+    print(result)
+```
 """
 
 from __future__ import annotations
