@@ -21,9 +21,8 @@ import pytest
 
 import sigstore._internal.oidc
 from sigstore._internal.ctfe import CTKeyringError, CTKeyringLookupError
-from sigstore._internal.oidc import IdentityError
 from sigstore._internal.sct import InvalidSctError
-from sigstore.oidc import detect_credential
+from sigstore.oidc import IdentityError, detect_credential
 from sigstore.sign import Signer
 
 
