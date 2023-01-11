@@ -45,7 +45,7 @@ sigstore = "sigstore._cli:main"
 Homepage = "https://pypi.org/project/sigstore/"
 Issues = "https://github.com/sigstore/sigstore-python/issues"
 Source = "https://github.com/sigstore/sigstore-python"
-Documentation = "https://sigstore.github.io/sigstore-python/sigstore.html"
+Documentation = "https://sigstore.github.io/sigstore-python/"
 
 [project.optional-dependencies]
 test = [
