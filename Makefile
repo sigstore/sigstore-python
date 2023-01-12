@@ -5,6 +5,15 @@ PY_MODULE := sigstore
 ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
 	$(shell find test -name '*.py')
 
+# Optionally overriden by the user, if they're using a virtual environment manager.
+VENV ?= env
+
+# On Windows, venv scripts/shims are under `Scripts` instead of `bin`.
+VENV_BIN := $(VENV)/bin
+ifeq ($(OS),Windows_NT)
+	VENV_BIN := $(VENV)/Scripts
+endif
+
 # Optionally overridden by the user in the `release` target.
 BUMP_ARGS :=
 
@@ -38,22 +47,22 @@ endif
 all:
 	@echo "Run my targets individually!"
 
-env/pyvenv.cfg: pyproject.toml
+$(VENV)/pyvenv.cfg: pyproject.toml
 	# Create our Python 3 virtual environment
-	python3 -m venv env
-	./env/bin/python -m pip install --upgrade pip
-	./env/bin/python -m pip install -e .[$(SIGSTORE_EXTRA)]
+	python3 -m venv $(VENV)
+	$(VENV_BIN)/python -m pip install --upgrade pip
+	$(VENV_BIN)/python -m pip install -e .[$(SIGSTORE_EXTRA)]
 
 .PHONY: dev
-dev: env/pyvenv.cfg
+dev: $(VENV)/pyvenv.cfg
 
 .PHONY: run
-run: env/pyvenv.cfg
-	@. env/bin/activate && sigstore $(ARGS)
+run: $(VENV)/pyvenv.cfg
+	@. $(VENV_BIN)/activate && sigstore $(ARGS)
 
 .PHONY: lint
-lint: env/pyvenv.cfg
-	. env/bin/activate && \
+lint: $(VENV)/pyvenv.cfg
+	. $(VENV_BIN)/activate && \
 		black --check $(ALL_PY_SRCS) && \
 		isort --check $(ALL_PY_SRCS) && \
 		ruff $(ALL_PY_SRCS) && \
@@ -62,31 +71,31 @@ lint: env/pyvenv.cfg
 		interrogate --fail-under 100 -c pyproject.toml $(PY_MODULE)
 
 .PHONY: reformat
-reformat: env/pyvenv.cfg
-	. env/bin/activate && \
+reformat: $(VENV)/pyvenv.cfg
+	. $(VENV_BIN)/activate && \
 		ruff --fix $(ALL_PY_SRCS) && \
 		black $(ALL_PY_SRCS) && \
 		isort $(ALL_PY_SRCS)
 
 .PHONY: test
-test: env/pyvenv.cfg
-	. env/bin/activate && \
+test: $(VENV)/pyvenv.cfg
+	. $(VENV_BIN)/activate && \
 		pytest --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
 		python -m coverage report -m $(COV_ARGS)
 
 .PHONY: doc
-doc: env/pyvenv.cfg
-	. env/bin/activate && \
+doc: $(VENV)/pyvenv.cfg
+	. $(VENV_BIN)/activate && \
 		pdoc --output-directory html $(PY_MODULE)
 
 .PHONY: package
-package: env/pyvenv.cfg
-	. env/bin/activate && \
+package: $(VENV)/pyvenv.cfg
+	. $(VENV_BIN)/activate && \
 		python3 -m build
 
 .PHONY: release
-release: env/pyvenv.cfg
-	@. env/bin/activate && \
+release: $(VENV)/pyvenv.cfg
+	@. $(VENV_BIN)/activate && \
 		NEXT_VERSION=$$(bump $(BUMP_ARGS)) && \
 		git add $(PY_MODULE)/_version.py && git diff --quiet --exit-code && \
 		git commit -m "version: v$${NEXT_VERSION}" && \
