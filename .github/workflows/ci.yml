@@ -43,6 +43,7 @@ jobs:
         run: make test TEST_ARGS="-vv --showlocals"
 
       - name: test (offline)
+        if: matrix.conf.os == 'ubuntu-latest'
         run: |
           # We use `unshare` to "un-share" the default networking namespace,
           # in effect running the tests as if the host is offline.
