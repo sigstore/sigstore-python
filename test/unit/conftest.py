@@ -157,8 +157,9 @@ def mock_staging_tuf(monkeypatch):
             if filepath.is_file():
                 success[filename] += 1
                 content = filepath.read_bytes()
-                raise ValueError(len(content))
-                # return BytesIO(filepath.read_bytes())
+                if filename == "snapshot.json":
+                    raise ValueError(len(content))
+                return BytesIO(filepath.read_bytes())
 
             failure[filename] += 1
             raise DownloadHTTPError("File not found", 404)
