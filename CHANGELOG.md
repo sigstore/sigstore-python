@@ -17,6 +17,12 @@ All versions prior to 0.9.0 are untracked.
 * `sigstore.transparency.RekorEntryMissing` is now `LogEntryMissing`
   ([#414](https://github.com/sigstore/sigstore-python/pull/414))
 
+### Fixed
+
+* The TUF network timeout has been relaxed from 4 seconds to 30 seconds,
+  which should reduce the likelihood of spurious timeout errors in environments
+  like GitHub Actions ([#432](https://github.com/sigstore/sigstore-python/pull/432))
+
 ## [0.10.0]
 
 ### Added

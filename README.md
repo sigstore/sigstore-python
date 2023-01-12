@@ -39,9 +39,10 @@ else!
 
 ## Features
 
-* Support for signing Python package distributions using an OpenID Connect identity
-* Support for publishing signatures to a [Rekor](https://github.com/sigstore/rekor) instance
-* Support for verifying signatures on Python package distributions
+* Support for keyless signature generation and verification with [Sigstore](https://www.sigstore.dev/)
+* Support for signing with ["ambient" OpenID Connect identities](https://github.com/sigstore/sigstore-python#signing-with-ambient-credentials)
+* A comprehensive [CLI](https://github.com/sigstore/sigstore-python#usage) and corresponding
+  [importable Python API](https://sigstore.github.io/sigstore-python)
 
 ## Installation
 

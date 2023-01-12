@@ -175,9 +175,9 @@ securesystemslib==0.25.0 \
     # via
     #   sigstore
     #   tuf
-sigstore==0.9.0 \
-    --hash=sha256:7855b5661b9784b2c5f264dc05a536bea1726ed192340f0145c51a632605c61a \
-    --hash=sha256:84108401847fb484c2561d86efa009b816062aef7b26875f660581d363008f6d
+sigstore==0.10.0 \
+    --hash=sha256:22f84a7ae37d2e3bbc575968716e17f4fe2985b5b553d56b334fd3e5320ff734 \
+    --hash=sha256:42388e06a5e18e01320a0aaa869cd56ba91c2548ea87f710d761ce90f1769703
     # via -r requirements.in
 tuf==2.0.0 \
     --hash=sha256:1524b0fbd8504245f600f121daf86b8fdcb30df74410acc9655944c4868e461c \
