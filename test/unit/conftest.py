@@ -160,7 +160,7 @@ def mock_staging_tuf(monkeypatch):
             failure[filename] += 1
             raise DownloadHTTPError("File not found", 404)
 
-    monkeypatch.setattr(tuf, "_fetcher", MockFetcher())
+    monkeypatch.setattr(tuf, "_get_fetcher", lambda: MockFetcher())
 
     return success, failure
 
