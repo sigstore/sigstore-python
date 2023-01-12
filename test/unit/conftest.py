@@ -14,6 +14,7 @@
 
 import base64
 from io import BytesIO
+from multiprocessing.sharedctypes import Value
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -155,7 +156,9 @@ def mock_staging_tuf(monkeypatch):
             filepath = _TUF_ASSETS / filename
             if filepath.is_file():
                 success[filename] += 1
-                return BytesIO(filepath.read_bytes())
+                content = filepath.read_bytes()
+                raise ValueError(len(content))
+                # return BytesIO(filepath.read_bytes())
 
             failure[filename] += 1
             raise DownloadHTTPError("File not found", 404)
