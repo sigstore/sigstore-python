@@ -156,9 +156,6 @@ def mock_staging_tuf(monkeypatch):
             filepath = _TUF_ASSETS / filename
             if filepath.is_file():
                 success[filename] += 1
-                content = filepath.read_bytes()
-                if filename == "snapshot.json":
-                    raise ValueError(len(content))
                 return BytesIO(filepath.read_bytes())
 
             failure[filename] += 1
