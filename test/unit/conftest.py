@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import base64
+from io import BytesIO
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -154,8 +155,7 @@ def mock_staging_tuf(monkeypatch):
             filepath = _TUF_ASSETS / filename
             if filepath.is_file():
                 success[filename] += 1
-                # NOTE: leaves file open: could return a function yielding contents
-                return open(filepath, "rb")
+                return BytesIO(filepath.read_bytes())
 
             failure[filename] += 1
             raise DownloadHTTPError("File not found", 404)
