@@ -51,3 +51,17 @@ jobs:
           # "online-only" test markers, since any test that's online
           # but not marked as such will fail.
           unshare --map-root-user --net make test TEST_ARGS="--skip-online -vv --showlocals"
+
+  check:
+    if: always()
+
+    needs:
+    - test
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: check test jobs
+        uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
+        with:
+          jobs: ${{ toJSON(needs) }}
