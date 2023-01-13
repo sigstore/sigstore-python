@@ -52,7 +52,7 @@ jobs:
           # but not marked as such will fail.
           unshare --map-root-user --net make test TEST_ARGS="--skip-online -vv --showlocals"
 
-  check:
+  all-tests-pass:
     if: always()
 
     needs:

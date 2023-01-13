@@ -57,7 +57,7 @@ jobs:
             fi
           done
 
-  check:
+  all-lints-pass:
     if: always()
 
     needs:
