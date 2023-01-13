@@ -56,3 +56,18 @@ jobs:
               exit 1
             fi
           done
+
+  check:
+    if: always()
+
+    needs:
+    - lint
+    - licenses
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: check lint jobs
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
