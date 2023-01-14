@@ -5,6 +5,9 @@ on:
     types:
       - published
 
+permissions:  # added using https://github.com/step-security/secure-workflows
+  contents: read
+
 jobs:
   build:
     name: Build and sign artifacts
@@ -71,14 +74,14 @@ jobs:
           echo "hashes=$(sha256sum ./dist/* | base64 -w0)" >> $GITHUB_OUTPUT
 
       - name: Upload built packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: built-packages
           path: ./dist/
           if-no-files-found: warn
 
       - name: Upload smoketest-artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: smoketest-artifacts
           path: smoketest-artifacts/
@@ -106,7 +109,7 @@ jobs:
     permissions: {}
     steps:
       - name: Download artifacts diretories # goes to current working directory
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
 
       - name: publish
         uses: pypa/gh-action-pypi-publish@c7f29f7adef1a245bd91520e94867e5c6eedddcc
@@ -123,13 +126,13 @@ jobs:
       contents: write
     steps:
       - name: Download artifacts diretories # goes to current working directory
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
 
       - name: Upload artifacts to github
         # Confusingly, this action also supports updating releases, not
         # just creating them. This is what we want here, since we've manually
         # created the release that triggered the action.
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
           # smoketest-artifacts/ contains the signatures and certificates.
           files: |
