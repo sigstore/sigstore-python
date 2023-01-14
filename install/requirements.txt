@@ -163,22 +163,22 @@ pyopenssl==23.0.0 \
     --hash=sha256:c1cc5f86bcacefc84dada7d31175cae1b1518d5f60d3d0bb595a67822a868a6f \
     --hash=sha256:df5fc28af899e74e19fccb5510df423581047e10ab6f1f4ba1763ff5fde844c0
     # via sigstore
-requests==2.28.1 \
-    --hash=sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983 \
-    --hash=sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349
+requests==2.28.2 \
+    --hash=sha256:64299f4909223da747622c030b781c0d7811e359c37124b4bd368fb8c6518baa \
+    --hash=sha256:98b1b2782e3c6c4904938b84c0eb932721069dfdb9134313beff7c83c2df24bf
     # via
     #   sigstore
     #   tuf
-securesystemslib==0.25.0 \
-    --hash=sha256:04bc11593edd68405939d3dfc318080bfb31f1ebb5d81c7911914b42dfd4bf2f \
-    --hash=sha256:10d5a066e70cb87704c9bf2cef1ef6d8a06fab5ef7602dd59c26d06251317a11
+securesystemslib==0.26.0 \
+    --hash=sha256:41c7b25c52dc0bafe774413b5738bbf4431f094e72a091e83d9921901972ae4c \
+    --hash=sha256:a8fa49831d6a7e48f81050984ddfac3713af0c326f558727113533edb5ca8eac
     # via
     #   sigstore
     #   tuf
-sigstore==0.10.0 \
-    --hash=sha256:22f84a7ae37d2e3bbc575968716e17f4fe2985b5b553d56b334fd3e5320ff734 \
-    --hash=sha256:42388e06a5e18e01320a0aaa869cd56ba91c2548ea87f710d761ce90f1769703
-    # via -r requirements.in
+sigstore==1.0.0 \
+    --hash=sha256:0803f44914d6d12dcd53a112ae7f63714c61f31fd91b07197b3703c28366eea8 \
+    --hash=sha256:19e96ca2049fd25233f289d3651bc2be41bb8b0a61bb053fc486be6b851875a7
+    # via -r install/requirements.in
 tuf==2.0.0 \
     --hash=sha256:1524b0fbd8504245f600f121daf86b8fdcb30df74410acc9655944c4868e461c \
     --hash=sha256:76e7f2a7aced84466865fac2a7127b6085afae51d4328af896fb46f952dd3a53
