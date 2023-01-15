@@ -15,19 +15,24 @@ jobs:
       id-token: write
     strategy:
       matrix:
-        python:
-          - "3.7"
-          - "3.8"
-          - "3.9"
-          - "3.10"
-          - "3.11"
-    runs-on: ubuntu-latest
+        conf:
+          - { py: "3.7", os: "ubuntu-latest" }
+          - { py: "3.8", os: "ubuntu-latest" }
+          - { py: "3.9", os: "ubuntu-latest" }
+          - { py: "3.10", os: "ubuntu-latest" }
+          - { py: "3.11", os: "ubuntu-latest" }
+          # NOTE: We only test Windows and macOS on the latest Python;
+          # these primarily exist to ensure that we don't accidentally
+          # introduce Linux-isms into the development tooling.
+          - { py: "3.11", os: "windows-latest" }
+          - { py: "3.11", os: "macos-latest" }
+    runs-on: ${{ matrix.conf.os }}
     steps:
       - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
 
       - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
         with:
-          python-version: ${{ matrix.python }}
+          python-version: ${{ matrix.conf.py }}
           cache: "pip"
           cache-dependency-path: pyproject.toml
 
@@ -38,6 +43,7 @@ jobs:
         run: make test TEST_ARGS="-vv --showlocals"
 
       - name: test (offline)
+        if: matrix.conf.os == 'ubuntu-latest'
         run: |
           # We use `unshare` to "un-share" the default networking namespace,
           # in effect running the tests as if the host is offline.
@@ -46,7 +52,7 @@ jobs:
           # but not marked as such will fail.
           unshare --map-root-user --net make test TEST_ARGS="--skip-online -vv --showlocals"
 
-  check:
+  all-tests-pass:
     if: always()
 
     needs:
