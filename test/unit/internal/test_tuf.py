@@ -17,12 +17,12 @@ import os
 
 import pytest
 
-from sigstore._internal.tuf import STAGING_TUF_URL, TrustUpdater, _get_dirs
+from sigstore._internal.tuf import TrustUpdater
 
 
-def test_updater_staging_caches_and_requests(mock_staging_tuf, temp_home):
+def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # start with empty target cache, empty local metadata dir
-    data_dir, cache_dir = _get_dirs(STAGING_TUF_URL)
+    data_dir, cache_dir = tuf_dirs
 
     # keep track of successful and failed requests TrustUpdater makes
     reqs, fail_reqs = mock_staging_tuf
@@ -82,7 +82,7 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, temp_home):
     assert fail_reqs == expected_fail_reqs
 
 
-def test_updater_staging_get(mock_staging_tuf, temp_home, tuf_asset):
+def test_updater_staging_get(mock_staging_tuf, tuf_asset):
     """Test that one of the get-methods returns the expected content"""
     updater = TrustUpdater.staging()
     with open(tuf_asset("rekor.pub"), "rb") as f:
