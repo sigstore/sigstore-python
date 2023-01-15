@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Constrained our dependency on `pyOpenSSL` to `>= 23.0.0` to prevent
+  a runtime error caused by incompatible earlier versions
+  ([#448](https://github.com/sigstore/sigstore-python/pull/448))
+
 ## [1.0.0]
 
 ### Changed
