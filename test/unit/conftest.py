@@ -15,6 +15,7 @@
 import base64
 import os
 from collections import defaultdict
+from io import BytesIO
 from pathlib import Path
 from typing import Iterator, Tuple
 
@@ -139,7 +140,7 @@ def null_policy():
 
 
 @pytest.fixture
-def mock_staging_tuf(monkeypatch):
+def mock_staging_tuf(monkeypatch, tuf_dirs):
     """Mock that prevents tuf module from making requests: it returns staging
     assets from a local directory instead
 
@@ -154,8 +155,7 @@ def mock_staging_tuf(monkeypatch):
             filepath = _TUF_ASSETS / filename
             if filepath.is_file():
                 success[filename] += 1
-                # NOTE: leaves file open: could return a function yielding contents
-                return open(filepath, "rb")
+                return BytesIO(filepath.read_bytes())
 
             failure[filename] += 1
             raise DownloadHTTPError("File not found", 404)
@@ -166,6 +166,11 @@ def mock_staging_tuf(monkeypatch):
 
 
 @pytest.fixture
-def temp_home(monkeypatch, tmp_path: Path):
-    """Set HOME to point to a test-specific tmp directory"""
-    monkeypatch.setenv("HOME", str(tmp_path))
+def tuf_dirs(monkeypatch, tmp_path):
+    # Patch _get_dirs as well, to avoid polluting the user's actual cache
+    # with test assets.
+    data_dir = tmp_path / "data" / "tuf"
+    cache_dir = tmp_path / "cache" / "tuf"
+    monkeypatch.setattr(tuf, "_get_dirs", lambda u: (data_dir, cache_dir))
+
+    return (data_dir, cache_dir)
