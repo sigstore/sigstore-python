@@ -31,7 +31,7 @@ dependencies = [
   "importlib_resources ~= 5.7; python_version < '3.11'",
   "pydantic",
   "pyjwt >= 2.1",
-  "pyOpenSSL >= 22.0.0",
+  "pyOpenSSL >= 23.0.0",
   "requests",
   "securesystemslib",
   "tuf >= 2.0.0",
