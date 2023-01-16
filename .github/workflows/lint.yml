@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
 
       # NOTE: We intentionally lint against our minimum supported Python.
-      - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
         with:
           python-version: "3.7"
           cache: "pip"
@@ -32,7 +32,7 @@ jobs:
 
       # NOTE: We intentionally check `--help` rendering against our minimum Python,
       # since it changes slightly between Python versions.
-      - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
+      - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
         with:
           python-version: "3.7"
           cache: "pip"
