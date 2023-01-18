@@ -13,6 +13,7 @@ permissions:  # added using https://github.com/step-security/secure-workflows
 
 jobs:
   conformance:
+    if: ${{ github.event.label.name == 'safe-to-test' }}
     permissions:
       # Needed to access the workflow's OIDC identity.
       id-token: write
