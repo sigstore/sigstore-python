@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {}
     steps:
-      - name: Download artifacts diretories # goes to current working directory
+      - name: Download artifacts directories # goes to current working directory
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
 
       - name: publish
@@ -125,7 +125,7 @@ jobs:
       # Needed to upload release assets.
       contents: write
     steps:
-      - name: Download artifacts diretories # goes to current working directory
+      - name: Download artifacts directories # goes to current working directory
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
 
       - name: Upload artifacts to github
