@@ -26,6 +26,7 @@ import webbrowser
 from typing import Callable, List, Optional
 
 import requests
+from pydantic import BaseModel, StrictStr
 
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
 STAGING_OAUTH_ISSUER_URL = "https://oauth2.sigstage.dev/auth"
@@ -37,6 +38,18 @@ class IssuerError(Exception):
     """
 
     pass
+
+
+class _OpenIDConfiguration(BaseModel):
+    """
+    Represents a (subset) of the fields provided by an OpenID Connect provider's
+    `.well-known/openid-configuration` response, as defined by OpenID Connect Discovery.
+
+    See: <https://openid.net/specs/openid-connect-discovery-1_0.html>
+    """
+
+    authorization_endpoint: StrictStr
+    token_endpoint: StrictStr
 
 
 class Issuer:
@@ -62,21 +75,13 @@ class Issuer:
         except requests.HTTPError as http_error:
             raise IssuerError from http_error
 
-        struct = resp.json()
-
         try:
-            self.auth_endpoint: str = struct["authorization_endpoint"]
-        except KeyError as key_error:
-            raise IssuerError(
-                f"OIDC configuration does not contain authorization endpoint: {struct}"
-            ) from key_error
-
-        try:
-            self.token_endpoint: str = struct["token_endpoint"]
-        except KeyError as key_error:
-            raise IssuerError(
-                f"OIDC configuration does not contain token endpoint: {struct}"
-            ) from key_error
+            # We don't generally expect this to fail (since the provider should
+            # return a non-success HTTP code which we catch above), but we
+            # check just in case we have a misbehaving OIDC issuer.
+            self.oidc_config = _OpenIDConfiguration.parse_obj(resp.json())
+        except ValueError as exc:
+            raise IssuerError(f"OIDC issuer returned invalid configuration: {exc}")
 
     @classmethod
     def production(cls) -> Issuer:
@@ -148,7 +153,7 @@ class Issuer:
         )
         logging.debug(f"PAYLOAD: data={data}")
         resp: requests.Response = requests.post(
-            self.token_endpoint,
+            self.oidc_config.token_endpoint,
             data=data,
             auth=auth,
         )

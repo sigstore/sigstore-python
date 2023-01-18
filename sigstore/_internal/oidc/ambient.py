@@ -92,10 +92,9 @@ def detect_github() -> Optional[str]:
         ) from http_error
 
     try:
-        body = resp.json()
-        payload = _GitHubTokenPayload(**body)
-    except Exception as e:
-        raise AmbientCredentialError("GitHub: malformed or incomplete JSON") from e
+        payload = _GitHubTokenPayload.parse_obj(resp.json())
+    except ValueError as e:
+        raise AmbientCredentialError(f"GitHub: malformed or incomplete JSON: {e}")
 
     logger.debug("GCP: successfully requested OIDC token")
     return payload.value
