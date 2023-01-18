@@ -195,7 +195,7 @@ class _OAuthSession:
             self.__poison = True
 
         params = self._auth_params(redirect_uri)
-        return f"{self._issuer.auth_endpoint}?{urllib.parse.urlencode(params)}"
+        return f"{self._issuer.oidc_config.authorization_endpoint}?{urllib.parse.urlencode(params)}"
 
     def _auth_params(self, redirect_uri: str) -> Dict[str, Any]:
         return {
