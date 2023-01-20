@@ -131,9 +131,10 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
-                     [--certificate FILE] [--rekor-bundle FILE] [--overwrite]
-                     [--staging] [--rekor-url URL] [--rekor-root-pubkey FILE]
-                     [--fulcio-url URL] [--ctfe FILE]
+                     [--certificate FILE] [--rekor-bundle FILE] [--bundle]
+                     [--overwrite] [--staging] [--rekor-url URL]
+                     [--rekor-root-pubkey FILE] [--fulcio-url URL]
+                     [--ctfe FILE]
                      FILE [FILE ...]
 
 positional arguments:
@@ -169,6 +170,9 @@ Output options:
                         Write a single offline Rekor bundle to the given file;
                         does not work with multiple input files (default:
                         None)
+  --bundle              Emit a single {input}.sigstore file for each input;
+                        this option is experimental and may change between
+                        releases until stabilized (default: False)
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
 
@@ -205,7 +209,8 @@ to by a particular OIDC provider (like `https://github.com/login/oauth`).
 <!-- @begin-sigstore-verify-identity-help@ -->
 ```
 usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
-                                [--rekor-bundle FILE] --cert-identity IDENTITY
+                                [--rekor-bundle FILE] [--bundle]
+                                --cert-identity IDENTITY
                                 [--require-rekor-offline] --cert-oidc-issuer
                                 URL [--staging] [--rekor-url URL]
                                 [--rekor-root-pubkey FILE]
@@ -223,6 +228,9 @@ Verification inputs:
                         multiple inputs (default: None)
   --rekor-bundle FILE   The offline Rekor bundle to verify with; not used with
                         multiple inputs (default: None)
+  --bundle              Verify from {input}.sigstore for each input; this
+                        option is experimental and may change between releases
+                        until stabilized (default: False)
   FILE                  The file to verify
 
 Verification options:
@@ -271,11 +279,11 @@ claims more precisely than `sigstore verify identity` allows:
 <!-- @begin-sigstore-verify-github-help@ -->
 ```
 usage: sigstore verify github [-h] [--certificate FILE] [--signature FILE]
-                              [--rekor-bundle FILE] --cert-identity IDENTITY
-                              [--require-rekor-offline] [--trigger EVENT]
-                              [--sha SHA] [--name NAME] [--repository REPO]
-                              [--ref REF] [--staging] [--rekor-url URL]
-                              [--rekor-root-pubkey FILE]
+                              [--rekor-bundle FILE] [--bundle] --cert-identity
+                              IDENTITY [--require-rekor-offline]
+                              [--trigger EVENT] [--sha SHA] [--name NAME]
+                              [--repository REPO] [--ref REF] [--staging]
+                              [--rekor-url URL] [--rekor-root-pubkey FILE]
                               [--certificate-chain FILE]
                               FILE [FILE ...]
 
@@ -290,6 +298,9 @@ Verification inputs:
                         multiple inputs (default: None)
   --rekor-bundle FILE   The offline Rekor bundle to verify with; not used with
                         multiple inputs (default: None)
+  --bundle              Verify from {input}.sigstore for each input; this
+                        option is experimental and may change between releases
+                        until stabilized (default: False)
   FILE                  The file to verify
 
 Verification options:
