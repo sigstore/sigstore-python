@@ -47,6 +47,24 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509.oid import NameOID
 from pydantic import BaseModel
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
+    Bundle,
+    VerificationMaterial,
+)
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
+    HashAlgorithm,
+    HashOutput,
+    LogId,
+    MessageSignature,
+    X509Certificate,
+    X509CertificateChain,
+)
+from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
+    InclusionPromise,
+    InclusionProof,
+    KindVersion,
+    TransparencyLogEntry,
+)
 
 from sigstore._internal.fulcio import FulcioClient
 from sigstore._internal.oidc import Identity
@@ -163,6 +181,7 @@ class Signer:
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         return SigningResult(
+            input_digest=input_digest.hex(),
             cert_pem=cert.public_bytes(encoding=serialization.Encoding.PEM).decode(),
             b64_signature=b64_artifact_signature,
             log_entry=entry,
@@ -172,6 +191,11 @@ class Signer:
 class SigningResult(BaseModel):
     """
     Represents the artifacts of a signing operation.
+    """
+
+    input_digest: str
+    """
+    The hex-encoded SHA256 digest of the input that was signed for.
     """
 
     cert_pem: str
@@ -188,3 +212,62 @@ class SigningResult(BaseModel):
     """
     A record of the Rekor log entry for the signing operation.
     """
+
+    def _to_bundle(self) -> Bundle:
+        """
+        Creates a Sigstore bundle (as defined by Sigstore's protobuf specs)
+        from this `SigningResult`.
+        """
+
+        # TODO: Should we include our Fulcio intermediate in the chain?
+        chain = X509CertificateChain(
+            certificates=[X509Certificate(raw_bytes=self.cert_pem.encode())]
+        )
+
+        inclusion_proof: InclusionProof | None = None
+        if self.log_entry.inclusion_proof is not None:
+            inclusion_proof = InclusionProof(
+                log_index=self.log_entry.inclusion_proof.log_index,
+                root_hash=bytes.fromhex(self.log_entry.inclusion_proof.root_hash),
+                tree_size=self.log_entry.inclusion_proof.tree_size,
+                hashes=[
+                    bytes.fromhex(h) for h in self.log_entry.inclusion_proof.hashes
+                ],
+            )
+
+        tlog_entry = TransparencyLogEntry(
+            log_index=self.log_entry.log_index,
+            log_id=LogId(key_id=bytes.fromhex(self.log_entry.log_id)),
+            # TODO: Maybe leave this field out? It appears to be optional
+            # and it's just hardcoded for us, since it's the only kind of Rekor
+            # entry we support.
+            kind_version=KindVersion(kind="hashedrekord", version="0.0.1"),
+            integrated_time=self.log_entry.integrated_time,
+            inclusion_promise=InclusionPromise(
+                signed_entry_timestamp=base64.b64decode(
+                    self.log_entry.signed_entry_timestamp
+                )
+            ),
+            inclusion_proof=inclusion_proof,
+            # TODO: Is this correct?
+            canonicalized_body=self.log_entry.encode_canonical(),
+        )
+
+        material = VerificationMaterial(
+            x509_certificate_chain=chain,
+            tlog_entries=[tlog_entry],
+        )
+
+        bundle = Bundle(
+            media_type="application/vnd.dev.sigstore.bundle+json;version=0.1",
+            verification_material=material,
+            message_signature=MessageSignature(
+                message_digest=HashOutput(
+                    algorithm=HashAlgorithm.SHA2_256,
+                    digest=bytes.fromhex(self.input_digest),
+                ),
+                signature=base64.b64decode(self.b64_signature),
+            ),
+        )
+
+        return bundle
