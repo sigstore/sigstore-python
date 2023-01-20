@@ -220,9 +220,9 @@ class SigningResult(BaseModel):
         """
 
         # TODO: Should we include our Fulcio intermediate in the chain?
-        chain = X509CertificateChain(
-            certificates=[X509Certificate(raw_bytes=self.cert_pem.encode())]
-        )
+        cert = x509.load_pem_x509_certificate(self.cert_pem.encode())
+        cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
+        chain = X509CertificateChain(certificates=[X509Certificate(raw_bytes=cert_der)])
 
         inclusion_proof: InclusionProof | None = None
         if self.log_entry.inclusion_proof is not None:
@@ -249,8 +249,7 @@ class SigningResult(BaseModel):
                 )
             ),
             inclusion_proof=inclusion_proof,
-            # TODO: Is this correct?
-            canonicalized_body=self.log_entry.encode_canonical(),
+            canonicalized_body=base64.b64decode(self.log_entry.body),
         )
 
         material = VerificationMaterial(
