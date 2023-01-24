@@ -219,7 +219,8 @@ class SigningResult(BaseModel):
         from this `SigningResult`.
         """
 
-        # TODO: Should we include our Fulcio intermediate in the chain?
+        # TODO: Include the current Fulcio intermediate and root in the
+        # chain as well.
         cert = x509.load_pem_x509_certificate(self.cert_pem.encode())
         cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
         chain = X509CertificateChain(certificates=[X509Certificate(raw_bytes=cert_der)])
