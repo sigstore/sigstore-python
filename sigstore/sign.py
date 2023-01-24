@@ -238,9 +238,6 @@ class SigningResult(BaseModel):
         tlog_entry = TransparencyLogEntry(
             log_index=self.log_entry.log_index,
             log_id=LogId(key_id=bytes.fromhex(self.log_entry.log_id)),
-            # TODO: Maybe leave this field out? It appears to be optional
-            # and it's just hardcoded for us, since it's the only kind of Rekor
-            # entry we support.
             kind_version=KindVersion(kind="hashedrekord", version="0.0.1"),
             integrated_time=self.log_entry.integrated_time,
             inclusion_promise=InclusionPromise(
