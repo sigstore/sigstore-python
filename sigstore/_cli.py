@@ -725,7 +725,7 @@ def _sign(args: argparse.Namespace) -> None:
         print(f"Transparency log entry created at index: {result.log_entry.log_index}")
 
         sig_output: TextIO
-        if "sig" in outputs:
+        if outputs["sig"] is not None:
             sig_output = outputs["sig"].open("w")
         else:
             sig_output = sys.stdout
