@@ -187,11 +187,12 @@ def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
     )
     group.add_argument(
         "--bundle",
-        action="store_true",
-        default=_boolify_env("SIGSTORE_BUNDLE"),
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_BUNDLE"),
         help=(
-            "Verify from {input}.sigstore for each input; this option is experimental "
-            "and may change between releases until stabilized"
+            "The Sigstore bundle to verify with; not used with multiple inputs; this option is "
+            "experimental and may change between releases until stabilized"
         ),
     )
     group.add_argument(
@@ -351,10 +352,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     output_options.add_argument(
         "--bundle",
-        action="store_true",
-        default=_boolify_env("SIGSTORE_BUNDLE"),
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_BUNDLE"),
         help=(
-            "Emit a single {input}.sigstore file for each input; this option is experimental "
+            "Write a single Sigstore bundle to the given file; does not work with multiple input "
+            "files; this option is experimental and may change between releases until stabilized"
+        ),
+    )
+    output_options.add_argument(
+        "--no-bundle",
+        action="store_true",
+        default=False,
+        help=(
+            "Don't emit {input}.sigstore files for each input; this option is experimental "
             "and may change between releases until stabilized"
         ),
     )
@@ -574,6 +585,18 @@ def _sign(args: argparse.Namespace) -> None:
             "upcoming release of sigstore-python in favor of Sigstore-style bundles"
         )
 
+    if args.bundle:
+        logger.warning(
+            "--bundle support is experimental; this flag may change behaviour "
+            "between releases until stabilized or may be removed."
+        )
+
+    if args.no_bundle:
+        logger.warning(
+            "--no-bundle support is experimental; this flag may change behaviour "
+            "between releases until stabilized or may be removed."
+        )
+
     # `--no-default-files` has no effect on `--{signature,certificate,rekor-bundle,bundle}`,
     # but we forbid it because it indicates user confusion.
     if args.no_default_files and (
@@ -589,6 +612,10 @@ def _sign(args: argparse.Namespace) -> None:
     if args.rekor_bundle and args.bundle:
         args._parser.error("--rekor-bundle may not be combined with --bundle")
 
+    # Fail if `--bundle` and `--no-bundle` are both specified.
+    if args.bundle and args.no_bundle:
+        args._parser.error("--bundle may not be combined with --no-bundle")
+
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
     if (args.signature or args.certificate or args.rekor_bundle) and len(
@@ -602,50 +629,52 @@ def _sign(args: argparse.Namespace) -> None:
     # Build up the map of inputs -> outputs ahead of any signing operations,
     # so that we can fail early if overwriting without `--overwrite`.
     output_map = {}
-    extants = []
     for file in args.files:
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        if args.bundle:
-            logger.warning(
-                "--bundle support is experimental; the behavior of this flag may change "
-                "between releases until stabilized."
-            )
+        sig, cert, rekor_bundle, bundle = (
+            args.signature,
+            args.certificate,
+            args.rekor_bundle,
+            args.bundle,
+        )
+        if (
+            not sig
+            and not cert
+            and not rekor_bundle
+            and not bundle
+            and not args.no_default_files
+        ):
+            sig = file.parent / f"{file.name}.sig"
+            cert = file.parent / f"{file.name}.crt"
+            rekor_bundle = file.parent / f"{file.name}.rekor"
+            if not args.no_bundle:
+                bundle = file.parent / f"{file.name}.sigstore"
 
-            bundle = file.parent / f"{file.name}.sigstore"
-
-            if bundle.exists():
+        extants = []
+        if not args.overwrite:
+            if sig and sig.exists():
+                extants.append(str(sig))
+            if cert and cert.exists():
+                extants.append(str(cert))
+            if rekor_bundle and rekor_bundle.exists():
+                extants.append(str(rekor_bundle))
+            if bundle and bundle.exists():
                 extants.append(str(bundle))
 
-            output_map[file] = {"bundle": bundle}
-        else:
-            sig, cert, rekor_bundle = (
-                args.signature,
-                args.certificate,
-                args.rekor_bundle,
-            )
-
-            if not sig and not cert and not rekor_bundle and not args.no_default_files:
-                sig = file.parent / f"{file.name}.sig"
-                cert = file.parent / f"{file.name}.crt"
-                rekor_bundle = file.parent / f"{file.name}.rekor"
-
-                if sig and sig.exists():
-                    extants.append(str(sig))
-                if cert and cert.exists():
-                    extants.append(str(cert))
-                if rekor_bundle and rekor_bundle.exists():
-                    extants.append(str(rekor_bundle))
-
-            output_map[file] = {"cert": cert, "sig": sig, "rekor_bundle": rekor_bundle}
-
-        if not args.overwrite and len(extants) > 0:
             if extants:
                 args._parser.error(
                     "Refusing to overwrite outputs without --overwrite: "
                     f"{', '.join(extants)}"
                 )
+
+        output_map[file] = {
+            "cert": cert,
+            "sig": sig,
+            "rekor_bundle": rekor_bundle,
+            "bundle": bundle,
+        }
 
     # Select the signer to use.
     if args.staging:
@@ -696,27 +725,27 @@ def _sign(args: argparse.Namespace) -> None:
         print(f"Transparency log entry created at index: {result.log_entry.log_index}")
 
         sig_output: TextIO
-        if "sig" in outputs:
+        if outputs["sig"] in outputs:
             sig_output = outputs["sig"].open("w")
         else:
             sig_output = sys.stdout
 
         print(result.b64_signature, file=sig_output)
-        if "sig" in outputs:
+        if outputs["sig"] is not None:
             print(f"Signature written to {outputs['sig']}")
 
-        if "cert" in outputs:
+        if outputs["cert"] is not None:
             with outputs["cert"].open(mode="w") as io:
                 print(result.cert_pem, file=io)
             print(f"Certificate written to {outputs['cert']}")
 
-        if "rekor_bundle" in outputs:
+        if outputs["rekor_bundle"] is not None:
             with outputs["rekor_bundle"].open(mode="w") as io:
                 rekor_bundle = RekorBundle.from_entry(result.log_entry)
                 print(rekor_bundle.json(by_alias=True), file=io)
             print(f"Rekor bundle written to {outputs['rekor_bundle']}")
 
-        if "bundle" in outputs:
+        if outputs["bundle"] is not None:
             with outputs["bundle"].open(mode="w") as io:
                 print(result._to_bundle().to_json(), file=io)
             print(f"Sigstore bundle written to {outputs['bundle']}")
