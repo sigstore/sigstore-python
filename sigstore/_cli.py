@@ -652,8 +652,8 @@ def _sign(args: argparse.Namespace) -> None:
             if not args.no_bundle:
                 bundle = file.parent / f"{file.name}.sigstore"
 
-        extants = []
         if not args.overwrite:
+            extants = []
             if sig and sig.exists():
                 extants.append(str(sig))
             if cert and cert.exists():
