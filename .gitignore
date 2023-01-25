@@ -16,6 +16,7 @@ build
 *.sh
 *.pub
 *.rekor
+*.sigstore
 
 # Don't ignore these files when we intend to include them
 !sigstore/_store/*.crt
