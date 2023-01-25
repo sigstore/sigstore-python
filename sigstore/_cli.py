@@ -159,7 +159,7 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
     )
 
 
-def _add_shared_input_options(group: argparse._ArgumentGroup) -> None:
+def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
     """
     Common input options, shared between all `sigstore verify` subcommands.
     """
@@ -184,6 +184,16 @@ def _add_shared_input_options(group: argparse._ArgumentGroup) -> None:
         type=Path,
         default=os.getenv("SIGSTORE_REKOR_BUNDLE"),
         help="The offline Rekor bundle to verify with; not used with multiple inputs",
+    )
+    group.add_argument(
+        "--bundle",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_BUNDLE"),
+        help=(
+            "The Sigstore bundle to verify with; not used with multiple inputs; this option is "
+            "experimental and may change between releases until stabilized"
+        ),
     )
     group.add_argument(
         "files",
@@ -341,6 +351,25 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     output_options.add_argument(
+        "--bundle",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_BUNDLE"),
+        help=(
+            "Write a single Sigstore bundle to the given file; does not work with multiple input "
+            "files; this option is experimental and may change between releases until stabilized"
+        ),
+    )
+    output_options.add_argument(
+        "--no-bundle",
+        action="store_true",
+        default=False,
+        help=(
+            "Don't emit {input}.sigstore files for each input; this option is experimental "
+            "and may change between releases until stabilized"
+        ),
+    )
+    output_options.add_argument(
         "--overwrite",
         action="store_true",
         default=_boolify_env("SIGSTORE_OVERWRITE"),
@@ -387,7 +416,7 @@ def _parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     input_options = verify_identity.add_argument_group("Verification inputs")
-    _add_shared_input_options(input_options)
+    _add_shared_verify_input_options(input_options)
 
     verification_options = verify_identity.add_argument_group("Verification options")
     _add_shared_verification_options(verification_options)
@@ -420,7 +449,7 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     input_options = verify_github.add_argument_group("Verification inputs")
-    _add_shared_input_options(input_options)
+    _add_shared_verify_input_options(input_options)
 
     verification_options = verify_github.add_argument_group("Verification options")
     _add_shared_verification_options(verification_options)
@@ -556,15 +585,36 @@ def _sign(args: argparse.Namespace) -> None:
             "upcoming release of sigstore-python in favor of Sigstore-style bundles"
         )
 
-    # `--no-default-files` has no effect on `--{signature,certificate,rekor-bundle}`, but we
-    # forbid it because it indicates user confusion.
+    if args.bundle:
+        logger.warning(
+            "--bundle support is experimental; the behaviour of this flag may change "
+            "between releases until stabilized."
+        )
+
+    if args.no_bundle:
+        logger.warning(
+            "--no-bundle support is experimental; the behaviour of this flag may change "
+            "between releases until stabilized."
+        )
+
+    # `--no-default-files` has no effect on `--{signature,certificate,rekor-bundle,bundle}`,
+    # but we forbid it because it indicates user confusion.
     if args.no_default_files and (
-        args.signature or args.certificate or args.rekor_bundle
+        args.signature or args.certificate or args.rekor_bundle or args.bundle
     ):
         args._parser.error(
             "--no-default-files may not be combined with --signature, "
-            "--certificate, or --rekor-bundle",
+            "--certificate, --rekor-bundle, or --bundle",
         )
+
+    # Similarly forbid `--rekor-bundle` with `--bundle`, since it again indicates
+    # user confusion around outputs.
+    if args.rekor_bundle and args.bundle:
+        args._parser.error("--rekor-bundle may not be combined with --bundle")
+
+    # Fail if `--bundle` and `--no-bundle` are both specified.
+    if args.bundle and args.no_bundle:
+        args._parser.error("--bundle may not be combined with --no-bundle")
 
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
@@ -583,11 +633,24 @@ def _sign(args: argparse.Namespace) -> None:
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert, bundle = args.signature, args.certificate, args.rekor_bundle
-        if not sig and not cert and not bundle and not args.no_default_files:
+        sig, cert, rekor_bundle, bundle = (
+            args.signature,
+            args.certificate,
+            args.rekor_bundle,
+            args.bundle,
+        )
+        if (
+            not sig
+            and not cert
+            and not rekor_bundle
+            and not bundle
+            and not args.no_default_files
+        ):
             sig = file.parent / f"{file.name}.sig"
             cert = file.parent / f"{file.name}.crt"
-            bundle = file.parent / f"{file.name}.rekor"
+            rekor_bundle = file.parent / f"{file.name}.rekor"
+            if not args.no_bundle:
+                bundle = file.parent / f"{file.name}.sigstore"
 
         if not args.overwrite:
             extants = []
@@ -595,6 +658,8 @@ def _sign(args: argparse.Namespace) -> None:
                 extants.append(str(sig))
             if cert and cert.exists():
                 extants.append(str(cert))
+            if rekor_bundle and rekor_bundle.exists():
+                extants.append(str(rekor_bundle))
             if bundle and bundle.exists():
                 extants.append(str(bundle))
 
@@ -604,7 +669,12 @@ def _sign(args: argparse.Namespace) -> None:
                     f"{', '.join(extants)}"
                 )
 
-        output_map[file] = {"cert": cert, "sig": sig, "bundle": bundle}
+        output_map[file] = {
+            "cert": cert,
+            "sig": sig,
+            "rekor_bundle": rekor_bundle,
+            "bundle": bundle,
+        }
 
     # Select the signer to use.
     if args.staging:
@@ -655,7 +725,7 @@ def _sign(args: argparse.Namespace) -> None:
         print(f"Transparency log entry created at index: {result.log_entry.log_index}")
 
         sig_output: TextIO
-        if outputs["sig"]:
+        if outputs["sig"] is not None:
             sig_output = outputs["sig"].open("w")
         else:
             sig_output = sys.stdout
@@ -669,11 +739,16 @@ def _sign(args: argparse.Namespace) -> None:
                 print(result.cert_pem, file=io)
             print(f"Certificate written to {outputs['cert']}")
 
+        if outputs["rekor_bundle"] is not None:
+            with outputs["rekor_bundle"].open(mode="w") as io:
+                rekor_bundle = RekorBundle.from_entry(result.log_entry)
+                print(rekor_bundle.json(by_alias=True), file=io)
+            print(f"Rekor bundle written to {outputs['rekor_bundle']}")
+
         if outputs["bundle"] is not None:
             with outputs["bundle"].open(mode="w") as io:
-                bundle = RekorBundle.from_entry(result.log_entry)
-                print(bundle.json(by_alias=True), file=io)
-            print(f"Rekor bundle written to {outputs['bundle']}")
+                print(result._to_bundle().to_json(), file=io)
+            print(f"Sigstore bundle written to {outputs['bundle']}")
 
 
 def _collect_verification_state(
@@ -686,6 +761,10 @@ def _collect_verification_state(
     tuples, where `file` is the path to the file being verified (for display
     purposes) and `materials` is the `VerificationMaterials` to verify with.
     """
+
+    # TODO: Allow --bundle during verification. Until then, error.
+    if args.bundle:
+        args._parser.error("--bundle is not supported during verification yet")
 
     # `--rekor-bundle` is a temporary option, pending stabilization of the
     # Sigstore bundle format.
