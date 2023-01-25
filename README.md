@@ -213,7 +213,7 @@ to by a particular OIDC provider (like `https://github.com/login/oauth`).
 <!-- @begin-sigstore-verify-identity-help@ -->
 ```
 usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
-                                [--rekor-bundle FILE] [--bundle]
+                                [--rekor-bundle FILE] [--bundle FILE]
                                 --cert-identity IDENTITY
                                 [--require-rekor-offline] --cert-oidc-issuer
                                 URL [--staging] [--rekor-url URL]
@@ -232,9 +232,10 @@ Verification inputs:
                         multiple inputs (default: None)
   --rekor-bundle FILE   The offline Rekor bundle to verify with; not used with
                         multiple inputs (default: None)
-  --bundle              Verify from {input}.sigstore for each input; this
-                        option is experimental and may change between releases
-                        until stabilized (default: False)
+  --bundle FILE         The Sigstore bundle to verify with; not used with
+                        multiple inputs; this option is experimental and may
+                        change between releases until stabilized (default:
+                        None)
   FILE                  The file to verify
 
 Verification options:
@@ -283,8 +284,8 @@ claims more precisely than `sigstore verify identity` allows:
 <!-- @begin-sigstore-verify-github-help@ -->
 ```
 usage: sigstore verify github [-h] [--certificate FILE] [--signature FILE]
-                              [--rekor-bundle FILE] [--bundle] --cert-identity
-                              IDENTITY [--require-rekor-offline]
+                              [--rekor-bundle FILE] [--bundle FILE]
+                              --cert-identity IDENTITY [--require-rekor-offline]
                               [--trigger EVENT] [--sha SHA] [--name NAME]
                               [--repository REPO] [--ref REF] [--staging]
                               [--rekor-url URL] [--rekor-root-pubkey FILE]
@@ -302,9 +303,10 @@ Verification inputs:
                         multiple inputs (default: None)
   --rekor-bundle FILE   The offline Rekor bundle to verify with; not used with
                         multiple inputs (default: None)
-  --bundle              Verify from {input}.sigstore for each input; this
-                        option is experimental and may change between releases
-                        until stabilized (default: False)
+  --bundle FILE         The Sigstore bundle to verify with; not used with
+                        multiple inputs; this option is experimental and may
+                        change between releases until stabilized (default:
+                        None)
   FILE                  The file to verify
 
 Verification options:
