@@ -285,10 +285,11 @@ claims more precisely than `sigstore verify identity` allows:
 ```
 usage: sigstore verify github [-h] [--certificate FILE] [--signature FILE]
                               [--rekor-bundle FILE] [--bundle FILE]
-                              --cert-identity IDENTITY [--require-rekor-offline]
-                              [--trigger EVENT] [--sha SHA] [--name NAME]
-                              [--repository REPO] [--ref REF] [--staging]
-                              [--rekor-url URL] [--rekor-root-pubkey FILE]
+                              --cert-identity IDENTITY
+                              [--require-rekor-offline] [--trigger EVENT]
+                              [--sha SHA] [--name NAME] [--repository REPO]
+                              [--ref REF] [--staging] [--rekor-url URL]
+                              [--rekor-root-pubkey FILE]
                               [--certificate-chain FILE]
                               FILE [FILE ...]
 
