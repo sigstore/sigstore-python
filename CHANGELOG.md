@@ -8,6 +8,15 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* `sigstore sign` now supports Sigstore bundles, which encapsulate the same
+  state as the default `{input}.crt`, `{input}.sig`, and `{input}.rekor`
+  files combined. The default output for the Sigstore bundle is
+  `{input}.sigstore`; this can be disabled with `--no-bundle` or changed with
+  `--bundle <FILE>`
+  ([#465](https://github.com/sigstore/sigstore-python/pull/465))
+
 ### Fixed
 
 * Constrained our dependency on `pyOpenSSL` to `>= 23.0.0` to prevent
