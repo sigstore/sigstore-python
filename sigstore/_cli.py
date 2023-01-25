@@ -587,14 +587,14 @@ def _sign(args: argparse.Namespace) -> None:
 
     if args.bundle:
         logger.warning(
-            "--bundle support is experimental; this flag may change behaviour "
-            "between releases until stabilized or may be removed."
+            "--bundle support is experimental; the behaviour of this flag may change "
+            "between releases until stabilized."
         )
 
     if args.no_bundle:
         logger.warning(
-            "--no-bundle support is experimental; this flag may change behaviour "
-            "between releases until stabilized or may be removed."
+            "--no-bundle support is experimental; the behaviour of this flag may change "
+            "between releases until stabilized."
         )
 
     # `--no-default-files` has no effect on `--{signature,certificate,rekor-bundle,bundle}`,
