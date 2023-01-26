@@ -182,9 +182,9 @@ class Signer:
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         return SigningResult(
-            input_digest=newtypes.hexstr(input_digest.hex()),
-            cert_pem=newtypes.pemcert(cert.public_bytes(encoding=serialization.Encoding.PEM).decode()),
-            b64_signature=newtypes.b64str(b64_artifact_signature),
+            input_digest=newtypes.Hexstr(input_digest.hex()),
+            cert_pem=newtypes.Pemcert(cert.public_bytes(encoding=serialization.Encoding.PEM).decode()),
+            b64_signature=newtypes.B64str(b64_artifact_signature),
             log_entry=entry,
         )
 
@@ -194,17 +194,17 @@ class SigningResult(BaseModel):
     Represents the artifacts of a signing operation.
     """
 
-    input_digest: newtypes.hexstr
+    input_digest: newtypes.Hexstr
     """
     The hex-encoded SHA256 digest of the input that was signed for.
     """
 
-    cert_pem: newtypes.pemcert
+    cert_pem: newtypes.Pemcert
     """
     The PEM-encoded public half of the certificate used for signing.
     """
 
-    b64_signature: newtypes.b64str
+    b64_signature: newtypes.B64str
     """
     The base64-encoded signature.
     """
