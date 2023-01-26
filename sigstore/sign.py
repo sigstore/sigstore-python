@@ -73,6 +73,7 @@ from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import sha256_streaming
 from sigstore.transparency import LogEntry
+import newtypes 
 
 logger = logging.getLogger(__name__)
 
@@ -181,9 +182,9 @@ class Signer:
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         return SigningResult(
-            input_digest=input_digest.hex(),
-            cert_pem=cert.public_bytes(encoding=serialization.Encoding.PEM).decode(),
-            b64_signature=b64_artifact_signature,
+            input_digest=newtypes.hexstr(input_digest.hex()),
+            cert_pem=newtypes.pemcert(cert.public_bytes(encoding=serialization.Encoding.PEM).decode()),
+            b64_signature=newtypes.b64str(b64_artifact_signature),
             log_entry=entry,
         )
 
@@ -193,17 +194,17 @@ class SigningResult(BaseModel):
     Represents the artifacts of a signing operation.
     """
 
-    input_digest: str
+    input_digest: newtypes.hexstr
     """
     The hex-encoded SHA256 digest of the input that was signed for.
     """
 
-    cert_pem: str
+    cert_pem: newtypes.pemcert
     """
     The PEM-encoded public half of the certificate used for signing.
     """
 
-    b64_signature: str
+    b64_signature: newtypes.b64str
     """
     The base64-encoded signature.
     """
