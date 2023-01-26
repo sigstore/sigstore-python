@@ -32,6 +32,8 @@ if sys.version_info < (3, 11):
 else:
     from importlib import resources
 
+import newtype
+
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
 
@@ -66,10 +68,11 @@ def base64_encode_pem_cert(cert: Certificate) -> str:
     Returns a string containing a base64-encoded PEM-encoded X.509 certificate.
     """
 
-    return base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
+    return b64str(base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode())
 
 
-def key_id(key: PublicKey) -> bytes:
+
+def key_id(key: PublicKey) -> KeyID:
     """
     Returns an RFC 6962-style "key ID" for the given public key.
 
@@ -80,7 +83,7 @@ def key_id(key: PublicKey) -> bytes:
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
 
-    return hashlib.sha256(public_bytes).digest()
+    return KeyID(hashlib.sha256(public_bytes).digest())
 
 
 def sha256_streaming(io: IO[bytes]) -> bytes:
