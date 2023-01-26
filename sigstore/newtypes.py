@@ -1,6 +1,6 @@
 from typing import NewType
 
-hexstr = NewType('hexstr', str)
-b64str = NewType('b64str', str)
-pemcert = NewType("pemcert", str)
-keyID = NewType('keyID', bytes)
+Hexstr = NewType('hexstr', str)
+B64str = NewType('b64str', str)
+Pemcert = NewType("pemcert", str)
+KeyID = NewType('keyID', bytes)
