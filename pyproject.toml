@@ -122,7 +122,8 @@ plugins = ["pydantic.mypy"]
 exclude_dirs = ["./test"]
 
 [tool.ruff]
-line-length = 100
+# Never enforce `E501` (line length violations).
+ignore = ["E501"]
 # TODO: Enable "UP" here once Pydantic allows us to:
 # See: https://github.com/pydantic/pydantic/issues/4146
 select = ["E", "F", "W"]
