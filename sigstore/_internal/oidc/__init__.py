@@ -41,8 +41,8 @@ class Identity:
         """
         identity_jwt = jwt.decode(identity_token, options={"verify_signature": False})
 
-        iss = identity_jwt.get("iss")
-        if iss is None:
+        self.issuer = identity_jwt.get("iss")
+        if self.issuer is None:
             raise IdentityError("Identity token missing the required `iss` claim")
 
         if "aud" not in identity_jwt:
@@ -57,7 +57,7 @@ class Identity:
         # different claims depending on the token's issuer.
         # We currently special-case a handful of these, and fall back
         # on signing the "sub" claim otherwise.
-        proof_claim = _KNOWN_OIDC_ISSUERS.get(iss)
+        proof_claim = _KNOWN_OIDC_ISSUERS.get(self.issuer)
         if proof_claim is not None:
             if proof_claim not in identity_jwt:
                 raise IdentityError(
