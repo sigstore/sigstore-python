@@ -127,6 +127,8 @@ class Signer:
         logger.debug("Retrieving signed certificate...")
 
         oidc_identity = Identity(identity_token)
+        logger.debug(f"cert-identity: {oidc_identity.proof}")
+        logger.debug(f"cert-oidc-issuer: {oidc_identity.issuer}")
 
         # Build an X.509 Certificiate Signing Request
         builder = (
