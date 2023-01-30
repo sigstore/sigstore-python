@@ -29,7 +29,6 @@ import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import Certificate
-from pydantic import BaseModel, Field, StrictInt, StrictStr
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.tuf import TrustUpdater
@@ -40,64 +39,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
-
-
-class RekorBundle(BaseModel):
-    """
-    Represents an offline Rekor bundle.
-
-    This model contains most of the same information as `RekorEntry`, but
-    with a slightly different layout.
-
-    See: <https://github.com/sigstore/cosign/blob/main/specs/SIGNATURE_SPEC.md#properties>
-    """
-
-    class Config:
-        allow_population_by_field_name = True
-
-    class _Payload(BaseModel):
-        body: StrictStr = Field(alias="body")
-        integrated_time: StrictInt = Field(alias="integratedTime")
-        log_index: StrictInt = Field(alias="logIndex")
-        log_id: StrictStr = Field(alias="logID")
-
-        class Config:
-            allow_population_by_field_name = True
-
-    signed_entry_timestamp: StrictStr = Field(alias="SignedEntryTimestamp")
-    payload: RekorBundle._Payload = Field(alias="Payload")
-
-    def to_entry(self) -> LogEntry:
-        """
-        Creates a `RekorEntry` from this offline Rekor bundle.
-        """
-
-        return LogEntry(
-            uuid=None,
-            body=self.payload.body,
-            integrated_time=self.payload.integrated_time,
-            log_id=self.payload.log_id,
-            log_index=self.payload.log_index,
-            inclusion_proof=None,
-            signed_entry_timestamp=self.signed_entry_timestamp,
-            _from_rekor_bundle=True,
-        )
-
-    @classmethod
-    def from_entry(cls, entry: LogEntry) -> RekorBundle:
-        """
-        Returns a `RekorBundle` for this `RekorEntry`.
-        """
-
-        return RekorBundle(
-            signed_entry_timestamp=entry.signed_entry_timestamp,
-            payload=RekorBundle._Payload(
-                body=entry.body,
-                integrated_time=entry.integrated_time,
-                log_index=entry.log_index,
-                log_id=entry.log_id,
-            ),
-        )
 
 
 @dataclass(frozen=True)

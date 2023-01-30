@@ -247,15 +247,10 @@ class Verifier:
         #
         # We skip the inclusion proof for offline entries from Rekor bundles. For offline entries
         # from Sigstore bundles, we expect an inclusion proof and still run this check.
-        if not entry._from_rekor_bundle:
-            try:
-                verify_merkle_inclusion(entry)
-            except InvalidInclusionProofError as inval_inclusion_proof:
-                return VerificationFailure(
-                    reason=f"invalid Rekor inclusion proof: {inval_inclusion_proof}"
-                )
-        else:
-            logger.debug("offline Rekor entry: skipping Merkle inclusion proof")
+        try:
+            verify_merkle_inclusion(entry)
+        except InvalidInclusionProofError as exc:
+            return VerificationFailure(reason=f"invalid Rekor inclusion proof: {exc}")
 
         # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         try:

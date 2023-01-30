@@ -33,11 +33,7 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
-from sigstore._internal.rekor.client import (
-    DEFAULT_REKOR_URL,
-    RekorBundle,
-    RekorClient,
-)
+from sigstore._internal.rekor.client import DEFAULT_REKOR_URL, RekorClient
 from sigstore._internal.tuf import TrustUpdater
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
@@ -184,21 +180,11 @@ def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
         help="The signature to verify against; not used with multiple inputs",
     )
     group.add_argument(
-        "--rekor-bundle",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_REKOR_BUNDLE"),
-        help="The offline Rekor bundle to verify with; not used with multiple inputs",
-    )
-    group.add_argument(
         "--bundle",
         metavar="FILE",
         type=Path,
         default=os.getenv("SIGSTORE_BUNDLE"),
-        help=(
-            "The Sigstore bundle to verify with; not used with multiple inputs; this option is "
-            "experimental and may change between releases until stabilized"
-        ),
+        help=("The Sigstore bundle to verify with; not used with multiple inputs"),
     )
     group.add_argument(
         "files",
@@ -222,7 +208,7 @@ def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
         "--require-rekor-offline",
         action="store_true",
         default=_boolify_env("SIGSTORE_REQUIRE_REKOR_OFFLINE"),
-        help="Require offline Rekor verification with a bundle; implied by --rekor-bundle",
+        help="Require offline Rekor verification; requires a Sigstore bundle",
     )
 
 
@@ -345,24 +331,13 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     output_options.add_argument(
-        "--rekor-bundle",
-        "--output-rekor-bundle",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_OUTPUT_BUNDLE"),
-        help=(
-            "Write a single offline Rekor bundle to the given file; does not work with "
-            "multiple input files"
-        ),
-    )
-    output_options.add_argument(
         "--bundle",
         metavar="FILE",
         type=Path,
         default=os.getenv("SIGSTORE_BUNDLE"),
         help=(
             "Write a single Sigstore bundle to the given file; does not work with multiple input "
-            "files; this option is experimental and may change between releases until stabilized"
+            "files"
         ),
     )
     output_options.add_argument(
@@ -582,14 +557,6 @@ def main() -> None:
 
 
 def _sign(args: argparse.Namespace) -> None:
-    # `--rekor-bundle` is a temporary option, pending stabilization of the
-    # Sigstore bundle format.
-    if args.rekor_bundle:
-        logger.warning(
-            "--rekor-bundle is a temporary format, and will be removed in an "
-            "upcoming release of sigstore-python in favor of Sigstore-style bundles"
-        )
-
     if args.bundle:
         logger.warning(
             "--bundle support is experimental; the behaviour of this flag may change "
@@ -602,20 +569,13 @@ def _sign(args: argparse.Namespace) -> None:
             "between releases until stabilized."
         )
 
-    # `--no-default-files` has no effect on `--{signature,certificate,rekor-bundle,bundle}`,
+    # `--no-default-files` has no effect on `--{signature,certificate,bundle}`,
     # but we forbid it because it indicates user confusion.
-    if args.no_default_files and (
-        args.signature or args.certificate or args.rekor_bundle or args.bundle
-    ):
+    if args.no_default_files and (args.signature or args.certificate or args.bundle):
         args._parser.error(
             "--no-default-files may not be combined with --signature, "
-            "--certificate, --rekor-bundle, or --bundle",
+            "--certificate, or --bundle",
         )
-
-    # Similarly forbid `--rekor-bundle` with `--bundle`, since it again indicates
-    # user confusion around outputs.
-    if args.rekor_bundle and args.bundle:
-        args._parser.error("--rekor-bundle may not be combined with --bundle")
 
     # Fail if `--bundle` and `--no-bundle` are both specified.
     if args.bundle and args.no_bundle:
@@ -623,11 +583,9 @@ def _sign(args: argparse.Namespace) -> None:
 
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
-    if (args.signature or args.certificate or args.rekor_bundle) and len(
-        args.files
-    ) > 1:
+    if (args.signature or args.certificate) and len(args.files) > 1:
         args._parser.error(
-            "Error: --signature, --certificate, and --rekor-bundle can't be used "
+            "Error: --signature and --certificate can't be used "
             "with explicit outputs for multiple inputs",
         )
 
@@ -638,22 +596,14 @@ def _sign(args: argparse.Namespace) -> None:
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert, rekor_bundle, bundle = (
+        sig, cert, bundle = (
             args.signature,
             args.certificate,
-            args.rekor_bundle,
             args.bundle,
         )
-        if (
-            not sig
-            and not cert
-            and not rekor_bundle
-            and not bundle
-            and not args.no_default_files
-        ):
+        if not sig and not cert and not bundle and not args.no_default_files:
             sig = file.parent / f"{file.name}.sig"
             cert = file.parent / f"{file.name}.crt"
-            rekor_bundle = file.parent / f"{file.name}.rekor"
             if not args.no_bundle:
                 bundle = file.parent / f"{file.name}.sigstore"
 
@@ -663,8 +613,6 @@ def _sign(args: argparse.Namespace) -> None:
                 extants.append(str(sig))
             if cert and cert.exists():
                 extants.append(str(cert))
-            if rekor_bundle and rekor_bundle.exists():
-                extants.append(str(rekor_bundle))
             if bundle and bundle.exists():
                 extants.append(str(bundle))
 
@@ -677,7 +625,6 @@ def _sign(args: argparse.Namespace) -> None:
         output_map[file] = {
             "cert": cert,
             "sig": sig,
-            "rekor_bundle": rekor_bundle,
             "bundle": bundle,
         }
 
@@ -744,12 +691,6 @@ def _sign(args: argparse.Namespace) -> None:
                 print(result.cert_pem, file=io)
             print(f"Certificate written to {outputs['cert']}")
 
-        if outputs["rekor_bundle"] is not None:
-            with outputs["rekor_bundle"].open(mode="w") as io:
-                rekor_bundle = RekorBundle.from_entry(result.log_entry)
-                print(rekor_bundle.json(by_alias=True), file=io)
-            print(f"Rekor bundle written to {outputs['rekor_bundle']}")
-
         if outputs["bundle"] is not None:
             with outputs["bundle"].open(mode="w") as io:
                 print(result._to_bundle().to_json(), file=io)
@@ -767,32 +708,17 @@ def _collect_verification_state(
     purposes) and `materials` is the `VerificationMaterials` to verify with.
     """
 
-    # `--rekor-bundle` is a temporary option, pending stabilization of the
-    # Sigstore bundle format.
-    if args.rekor_bundle:
-        logger.warning(
-            "--rekor-bundle is a temporary format, and will be removed in an "
-            "upcoming release of sigstore-python in favor of Sigstore-style bundles"
-        )
-
-    # The presence of --rekor-bundle implies --require-rekor-offline.
-    args.require_rekor_offline = args.require_rekor_offline or args.rekor_bundle
-
-    # Fail if --certificate, --signature, --rekor-bundle, or --bundle is specified and we
+    # Fail if --certificate, --signature, or --bundle is specified and we
     # have more than one input.
-    if (args.certificate or args.signature or args.rekor_bundle or args.bundle) and len(
-        args.files
-    ) > 1:
+    if (args.certificate or args.signature or args.bundle) and len(args.files) > 1:
         args._parser.error(
-            "--certificate, --signature, --rekor-bundle, and --bundle can only be used "
+            "--certificate, --signature, or --bundle can only be used "
             "with a single input file"
         )
 
     # Fail if `--certificate` or `--signature` is used with `--bundle`.
-    if args.bundle and (args.certificate or args.signature or args.rekor_bundle):
-        args._parser.error(
-            "--bundle cannot be used with --certificate, --signature, or --rekor-bundle"
-        )
+    if args.bundle and (args.certificate or args.signature):
+        args._parser.error("--bundle cannot be used with --certificate or --signature")
 
     # The converse of `sign`: we build up an expected input map and check
     # that we have everything so that we can fail early.
@@ -801,33 +727,25 @@ def _collect_verification_state(
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert, rekor_bundle, bundle = (
+        sig, cert, bundle = (
             args.signature,
             args.certificate,
-            args.rekor_bundle,
             args.bundle,
         )
         if sig is None:
             sig = file.parent / f"{file.name}.sig"
         if cert is None:
             cert = file.parent / f"{file.name}.crt"
-        if rekor_bundle is None:
-            rekor_bundle = file.parent / f"{file.name}.rekor"
         if bundle is None:
             bundle = file.parent / f"{file.name}.sigstore"
 
         missing = []
-        if args.signature or args.certificate or args.rekor_bundle:
+        if args.signature or args.certificate:
             if not sig.is_file():
                 missing.append(str(sig))
             if not cert.is_file():
                 missing.append(str(cert))
-            if not rekor_bundle.is_file() and args.require_rekor_offline:
-                # NOTE: We only produce errors on missing bundle files
-                # if the user has explicitly requested offline-only verification.
-                # Otherwise, we fall back on online verification.
-                missing.append(str(rekor_bundle))
-            input_map[file] = {"cert": cert, "sig": sig, "rekor_bundle": rekor_bundle}
+            input_map[file] = {"cert": cert, "sig": sig}
         else:
             # If a user hasn't explicitly supplied `--signature`, `--certificate` or
             # `--rekor-bundle`, we expect a bundle either supplied via `--bundle` or with the
@@ -926,7 +844,6 @@ def _collect_verification_state(
                 signed_entry_timestamp=base64.b64encode(
                     tlog_entry.inclusion_promise.signed_entry_timestamp
                 ).decode(),
-                _from_rekor_bundle=False,
             )
         else:
             # Load the signing certificate
@@ -937,13 +854,6 @@ def _collect_verification_state(
             logger.debug(f"Using signature from: {inputs['sig']}")
             b64_signature = inputs["sig"].read_text()
             signature = base64.b64decode(b64_signature)
-
-            if inputs["rekor_bundle"].is_file():
-                logger.debug(
-                    f"Using offline Rekor bundle from: {inputs['rekor_bundle']}"
-                )
-                bundle = RekorBundle.parse_file(inputs["rekor_bundle"])
-                entry = bundle.to_entry()
 
         logger.debug(f"Verifying contents from: {file}")
 

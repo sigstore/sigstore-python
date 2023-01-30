@@ -76,13 +76,6 @@ class LogEntry:
     The base64-encoded Signed Entry Timestamp (SET) for this log entry.
     """
 
-    # NOTE: After Rekor bundles (provided by `--rekor-bundle`) are removed, this will no longer be
-    # necessary.
-    _from_rekor_bundle: bool
-    """
-    Indicates whether or not the `LogEntry` was constructed from an offline Rekor bundle.
-    """
-
     @classmethod
     def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:
         """
@@ -106,7 +99,6 @@ class LogEntry:
                 entry["verification"]["inclusionProof"]
             ),
             signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
-            _from_rekor_bundle=False,
         )
 
     def encode_canonical(self) -> bytes:
