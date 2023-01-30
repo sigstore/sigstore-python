@@ -926,7 +926,7 @@ def _collect_verification_state(
                 signed_entry_timestamp=base64.b64encode(
                     tlog_entry.inclusion_promise.signed_entry_timestamp
                 ).decode(),
-                from_rekor_bundle=False,
+                _from_rekor_bundle=False,
             )
         else:
             # Load the signing certificate

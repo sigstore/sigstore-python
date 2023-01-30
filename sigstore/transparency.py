@@ -78,7 +78,7 @@ class LogEntry:
 
     # NOTE: After Rekor bundles (provided by `--rekor-bundle`) are removed, this will no longer be
     # necessary.
-    from_rekor_bundle: bool
+    _from_rekor_bundle: bool
     """
     Indicates whether or not the `LogEntry` was constructed from an offline Rekor bundle.
     """
@@ -106,7 +106,7 @@ class LogEntry:
                 entry["verification"]["inclusionProof"]
             ),
             signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
-            from_rekor_bundle=False,
+            _from_rekor_bundle=False,
         )
 
     def encode_canonical(self) -> bytes:
