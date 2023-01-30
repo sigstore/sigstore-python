@@ -21,13 +21,16 @@ from sigstore.verify.models import InvalidRekorEntry, RekorEntryMissing
 
 
 class TestVerificationMaterials:
-    def test_rekor_entry_inconsistent_cve_2022_36056(self, signing_materials):
+    def test_rekor_entry_inconsistent_cve_2022_36056(
+        self, signing_materials, signing_bundle
+    ):
         a_materials = signing_materials("a.txt")
-        offline_rekor_materials = signing_materials("offline-rekor.txt")
+        offline_rekor_materials = signing_bundle("bundle.txt")
 
         # Stuff a valid but incompatible Rekor entry into the verification
         # materials for "a.txt".
-        a_materials._offline_rekor_entry = offline_rekor_materials._offline_rekor_entry
+        a_materials._rekor_entry = offline_rekor_materials._rekor_entry
+        a_materials.offline = True
 
         with pytest.raises(InvalidRekorEntry):
             a_materials.rekor_entry(pretend.stub())
@@ -35,7 +38,7 @@ class TestVerificationMaterials:
     @pytest.mark.online
     def test_verification_materials_retrieves_rekor_entry(self, signing_materials):
         materials = signing_materials("a.txt")
-        assert materials._offline_rekor_entry is None
+        assert materials._rekor_entry is None
 
         tuf = TrustUpdater.staging()
         client = RekorClient.staging(tuf)

@@ -805,46 +805,10 @@ def _collect_verification_state(
             bundle_bytes = inputs["bundle"].read_bytes()
             bundle = Bundle().from_json(bundle_bytes)
 
-            # Retrieve certificate PEM
-            certs = bundle.verification_material.x509_certificate_chain.certificates
-            if len(certs) != 1:
-                args._parser.error(
-                    f"Unexpected number of certificates in bundle, expected=1, got {len(certs)}"
+            with file.open(mode="rb", buffering=0) as io:
+                materials = VerificationMaterials.from_bundle(
+                    input_=io, bundle=bundle, offline=args.offline
                 )
-            cert_pem = (
-                load_der_x509_certificate(certs[0].raw_bytes)
-                .public_bytes(Encoding.PEM)
-                .decode()
-            )
-
-            # Retrieve signature
-            signature = bundle.message_signature.signature
-
-            tlog_entries = bundle.verification_material.tlog_entries
-            if len(tlog_entries) != 1:
-                args._parser.error(
-                    f"Unexpected number of tlog entries in bundle, expected=1, got {len(tlog_entries)}"
-                )
-            tlog_entry = tlog_entries[0]
-
-            # Retrieve offline Rekor entry
-            inclusion_proof = LogInclusionProof(
-                log_index=tlog_entry.inclusion_proof.log_index,
-                root_hash=tlog_entry.inclusion_proof.root_hash.hex(),
-                tree_size=tlog_entry.inclusion_proof.tree_size,
-                hashes=[h.hex() for h in tlog_entry.inclusion_proof.hashes],
-            )
-            entry = LogEntry(
-                uuid=None,
-                body=base64.b64encode(tlog_entry.canonicalized_body).decode(),
-                integrated_time=tlog_entry.integrated_time,
-                log_id=tlog_entry.log_id.key_id.hex(),
-                log_index=tlog_entry.log_index,
-                inclusion_proof=inclusion_proof,
-                signed_entry_timestamp=base64.b64encode(
-                    tlog_entry.inclusion_promise.signed_entry_timestamp
-                ).decode(),
-            )
         else:
             # Load the signing certificate
             logger.debug(f"Using certificate from: {inputs['cert']}")
@@ -855,21 +819,18 @@ def _collect_verification_state(
             b64_signature = inputs["sig"].read_text()
             signature = base64.b64decode(b64_signature)
 
+            materials = VerificationMaterials(
+                input_=io,
+                cert_pem=cert_pem,
+                signature=signature,
+                rekor_entry=entry,
+                offline=args.offline,
+            )
+
         logger.debug(f"Verifying contents from: {file}")
 
         with file.open(mode="rb", buffering=0) as io:
-            all_materials.append(
-                (
-                    file,
-                    VerificationMaterials(
-                        input_=io,
-                        cert_pem=cert_pem,
-                        signature=signature,
-                        rekor_entry=entry,
-                        offline=args.offline,
-                    ),
-                )
-            )
+            all_materials.append((file, materials))
 
     return (verifier, all_materials)
 

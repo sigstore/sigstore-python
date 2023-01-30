@@ -24,12 +24,18 @@ import logging
 from dataclasses import dataclass
 from typing import IO
 
-from cryptography.x509 import Certificate, load_pem_x509_certificate
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.x509 import (
+    Certificate,
+    load_pem_x509_certificate,
+    load_der_x509_certificate,
+)
 from pydantic import BaseModel
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import base64_encode_pem_cert, sha256_streaming
-from sigstore.transparency import LogEntry
+from sigstore.transparency import LogEntry, LogInclusionProof
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +135,8 @@ class VerificationMaterials:
     certificate: Certificate
     """
     The certificate that attests to and contains the public signing key.
+
+    # TODO: Support a certificate chain here, with optional intermediates.
     """
 
     signature: bytes
@@ -160,6 +168,9 @@ class VerificationMaterials:
     signing materials. Without this check an adversary could present a
     **valid but unrelated** Rekor entry during verification, similar
     to CVE-2022-36056 in cosign.
+
+    TODO: Support multiple entries here, with verification contingent on
+    all being valid.
     """
 
     def __init__(
@@ -188,6 +199,54 @@ class VerificationMaterials:
 
         self.offline = offline
         self._rekor_entry = rekor_entry
+
+    @classmethod
+    def from_bundle(
+        cls, *, input_: IO[bytes], bundle: Bundle, offline: bool = False
+    ) -> VerificationMaterials:
+        certs = bundle.verification_material.x509_certificate_chain.certificates
+        if len(certs) == 0:
+            raise InvalidMaterials("expected non-empty certificate chain in bundle")
+        cert_pem = (
+            load_der_x509_certificate(certs[0].raw_bytes)
+            .public_bytes(Encoding.PEM)
+            .decode()
+        )
+
+        signature = bundle.message_signature.signature
+
+        tlog_entries = bundle.verification_material.tlog_entries
+        if len(tlog_entries) != 1:
+            raise InvalidMaterials(
+                f"expected exactly one log entry, got {len(tlog_entries)}"
+            )
+        tlog_entry = tlog_entries[0]
+
+        inclusion_proof = LogInclusionProof(
+            log_index=tlog_entry.inclusion_proof.log_index,
+            root_hash=tlog_entry.inclusion_proof.root_hash.hex(),
+            tree_size=tlog_entry.inclusion_proof.tree_size,
+            hashes=[h.hex() for h in tlog_entry.inclusion_proof.hashes],
+        )
+        entry = LogEntry(
+            uuid=None,
+            body=base64.b64encode(tlog_entry.canonicalized_body).decode(),
+            integrated_time=tlog_entry.integrated_time,
+            log_id=tlog_entry.log_id.key_id.hex(),
+            log_index=tlog_entry.log_index,
+            inclusion_proof=inclusion_proof,
+            signed_entry_timestamp=base64.b64encode(
+                tlog_entry.inclusion_promise.signed_entry_timestamp
+            ).decode(),
+        )
+
+        return cls(
+            input_=input_,
+            cert_pem=cert_pem,
+            signature=signature,
+            offline=offline,
+            rekor_entry=entry,
+        )
 
     @property
     def has_rekor_entry(self) -> bool:
