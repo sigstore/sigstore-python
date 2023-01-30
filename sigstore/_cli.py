@@ -830,8 +830,8 @@ def _collect_verification_state(
             input_map[file] = {"cert": cert, "sig": sig, "rekor_bundle": rekor_bundle}
         else:
             # If a user hasn't explicitly supplied `--signature`, `--certificate` or
-            # `--rekor-bundle`, we expect a bundle either supplied via --bundle or with the default
-            # `{input}.sigstore` name.
+            # `--rekor-bundle`, we expect a bundle either supplied via `--bundle` or with the
+            # default `{input}.sigstore` name.
             if not bundle.is_file():
                 missing.append(str(bundle))
             input_map[file] = {"bundle": bundle}
