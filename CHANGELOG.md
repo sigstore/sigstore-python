@@ -21,6 +21,7 @@ All versions prior to 0.9.0 are untracked.
   for an `{input}.sigstore`; this can be changed with `--bundle <FILE>` or the
   legacy method of verification can be used instead via the `--signature` and
   `--certificate` flags
+  ([#478](https://github.com/sigstore/sigstore-python/pull/478))
 
 ### Fixed
 
