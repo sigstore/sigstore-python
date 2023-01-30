@@ -25,8 +25,7 @@ from urllib import parse
 
 import appdirs
 from cryptography.x509 import Certificate, load_pem_x509_certificate
-from tuf.ngclient import Updater
-from tuf.ngclient._internal.requests_fetcher import RequestsFetcher
+from tuf.ngclient import RequestsFetcher, Updater
 
 from sigstore._utils import read_embedded
 
