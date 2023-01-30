@@ -47,7 +47,7 @@ from sigstore.oidc import (
     detect_credential,
 )
 from sigstore.sign import Signer
-from sigstore.transparency import LogEntry
+from sigstore.transparency import LogEntry, LogInclusionProof
 from sigstore.verify import (
     CertificateVerificationFailure,
     LogEntryMissing,
@@ -876,35 +876,56 @@ def _collect_verification_state(
 
     all_materials = []
     for file, inputs in input_map.items():
-        offline_rekor_entry: LogEntry | None = None
+        cert_pem: str
+        signature: bytes
+        entry: LogEntry | None = None
         if "bundle" in inputs:
+            # Load the bundle
             logger.debug(f"Using bundle from: {inputs['bundle']}")
+
             bundle_bytes = inputs["bundle"].read_bytes()
             bundle = Bundle().from_json(bundle_bytes)
 
-            cert_pem = (
-                load_der_x509_certificate(
-                    bundle.verification_material.x509_certificate_chain.certificates[
-                        0
-                    ].raw_bytes
+            # Retrieve certificate PEM
+            certs = bundle.verification_material.x509_certificate_chain.certificates
+            if len(certs) != 1:
+                args._parser.error(
+                    f"Unexpected number of certificates in bundle, expected=1, got {len(certs)}"
                 )
+            cert_pem = (
+                load_der_x509_certificate(certs[0].raw_bytes)
                 .public_bytes(Encoding.PEM)
                 .decode()
             )
+
+            # Retrieve signature
             signature = bundle.message_signature.signature
 
-            tlog_entry = bundle.verification_material.tlog_entries[0]
+            tlog_entries = bundle.verification_material.tlog_entries
+            if len(tlog_entries) != 1:
+                args._parser.error(
+                    f"Unexpected number of tlog entries in bundle, expected=1, got {len(tlog_entries)}"
+                )
+            tlog_entry = tlog_entries[0]
 
-            offline_rekor_entry = LogEntry(
+            # Retrieve offline Rekor entry
+            inclusion_proof = LogInclusionProof(
+                log_index=tlog_entry.inclusion_proof.log_index,
+                root_hash=tlog_entry.inclusion_proof.root_hash.hex(),
+                tree_size=tlog_entry.inclusion_proof.tree_size,
+                hashes=[h.hex() for h in tlog_entry.inclusion_proof.hashes],
+            )
+            entry = LogEntry(
                 uuid=None,
                 body=base64.b64encode(tlog_entry.canonicalized_body).decode(),
                 integrated_time=tlog_entry.integrated_time,
                 log_id=tlog_entry.log_id.key_id.hex(),
                 log_index=tlog_entry.log_index,
-                inclusion_proof=None,
+                inclusion_proof=inclusion_proof,
                 signed_entry_timestamp=base64.b64encode(
                     tlog_entry.inclusion_promise.signed_entry_timestamp
                 ).decode(),
+                from_rekor_bundle=False,
             )
         else:
             # Load the signing certificate
@@ -921,7 +942,7 @@ def _collect_verification_state(
                     f"Using offline Rekor bundle from: {inputs['rekor_bundle']}"
                 )
                 bundle = RekorBundle.parse_file(inputs["rekor_bundle"])
-                offline_rekor_entry = bundle.to_entry()
+                entry = bundle.to_entry()
 
         logger.debug(f"Verifying contents from: {file}")
 
@@ -933,7 +954,7 @@ def _collect_verification_state(
                         input_=io,
                         cert_pem=cert_pem,
                         signature=signature,
-                        offline_rekor_entry=offline_rekor_entry,
+                        offline_rekor_entry=entry,
                     ),
                 )
             )

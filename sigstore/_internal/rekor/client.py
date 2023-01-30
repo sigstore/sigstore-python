@@ -80,6 +80,7 @@ class RekorBundle(BaseModel):
             log_index=self.payload.log_index,
             inclusion_proof=None,
             signed_entry_timestamp=self.signed_entry_timestamp,
+            from_rekor_bundle=True,
         )
 
     @classmethod
