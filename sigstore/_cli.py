@@ -23,7 +23,12 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Optional, TextIO, Union, cast
 
-from cryptography.x509 import load_pem_x509_certificates
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.x509 import (
+    load_der_x509_certificate,
+    load_pem_x509_certificates,
+)
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
@@ -762,10 +767,6 @@ def _collect_verification_state(
     purposes) and `materials` is the `VerificationMaterials` to verify with.
     """
 
-    # TODO: Allow --bundle during verification. Until then, error.
-    if args.bundle:
-        args._parser.error("--bundle is not supported during verification yet")
-
     # `--rekor-bundle` is a temporary option, pending stabilization of the
     # Sigstore bundle format.
     if args.rekor_bundle:
@@ -777,14 +778,20 @@ def _collect_verification_state(
     # The presence of --rekor-bundle implies --require-rekor-offline.
     args.require_rekor_offline = args.require_rekor_offline or args.rekor_bundle
 
-    # Fail if --certificate, --signature, or --rekor-bundle is specified and we
+    # Fail if --certificate, --signature, --rekor-bundle, or --bundle is specified and we
     # have more than one input.
-    if (args.certificate or args.signature or args.rekor_bundle) and len(
+    if (args.certificate or args.signature or args.rekor_bundle or args.bundle) and len(
         args.files
     ) > 1:
         args._parser.error(
-            "--certificate, --signature, and --rekor-bundle can only be used "
+            "--certificate, --signature, --rekor-bundle, and --bundle can only be used "
             "with a single input file"
+        )
+
+    # Fail if `--certificate` or `--signature` is used with `--bundle`.
+    if args.bundle and (args.certificate or args.signature or args.rekor_bundle):
+        args._parser.error(
+            "--bundle cannot be used with --certificate, --signature, or --rekor-bundle"
         )
 
     # The converse of `sign`: we build up an expected input map and check
@@ -794,31 +801,44 @@ def _collect_verification_state(
         if not file.is_file():
             args._parser.error(f"Input must be a file: {file}")
 
-        sig, cert, bundle = args.signature, args.certificate, args.rekor_bundle
+        sig, cert, rekor_bundle, bundle = (
+            args.signature,
+            args.certificate,
+            args.rekor_bundle,
+            args.bundle,
+        )
         if sig is None:
             sig = file.parent / f"{file.name}.sig"
         if cert is None:
             cert = file.parent / f"{file.name}.crt"
+        if rekor_bundle is None:
+            rekor_bundle = file.parent / f"{file.name}.rekor"
         if bundle is None:
-            bundle = file.parent / f"{file.name}.rekor"
+            bundle = file.parent / f"{file.name}.sigstore"
 
         missing = []
-        if not sig.is_file():
-            missing.append(str(sig))
-        if not cert.is_file():
-            missing.append(str(cert))
-        if not bundle.is_file() and args.require_rekor_offline:
-            # NOTE: We only produce errors on missing bundle files
-            # if the user has explicitly requested offline-only verification.
-            # Otherwise, we fall back on online verification.
-            missing.append(str(bundle))
+        if args.signature or args.certificate or args.rekor_bundle:
+            if not sig.is_file():
+                missing.append(str(sig))
+            if not cert.is_file():
+                missing.append(str(cert))
+            if not rekor_bundle.is_file() and args.require_rekor_offline:
+                # NOTE: We only produce errors on missing bundle files
+                # if the user has explicitly requested offline-only verification.
+                # Otherwise, we fall back on online verification.
+                missing.append(str(rekor_bundle))
+            input_map[file] = {"cert": cert, "sig": sig, "rekor_bundle": rekor_bundle}
+        else:
+            # If a user hasn't explicitly supplied --signature, --certificate or --rekor-bundle, we
+            # expect a bundle either supplied via --bundle or with the default <file>.sigstore name.
+            if not bundle.is_file():
+                missing.append(str(bundle))
+            input_map[file] = {"bundle": bundle}
 
         if missing:
             args._parser.error(
                 f"Missing verification materials for {(file)}: {', '.join(missing)}"
             )
-
-        input_map[file] = {"cert": cert, "sig": sig, "bundle": bundle}
 
     if args.staging:
         logger.debug("verify: staging instances requested")
@@ -856,19 +876,52 @@ def _collect_verification_state(
 
     all_materials = []
     for file, inputs in input_map.items():
-        # Load the signing certificate
-        logger.debug(f"Using certificate from: {inputs['cert']}")
-        cert_pem = inputs["cert"].read_text()
+        offline_rekor_entry: LogEntry | None = None
+        if "bundle" in inputs:
+            logger.debug(f"Using bundle from: {inputs['bundle']}")
+            bundle_bytes = inputs["bundle"].read_bytes()
+            bundle = Bundle().from_json(bundle_bytes)
 
-        # Load the signature
-        logger.debug(f"Using signature from: {inputs['sig']}")
-        b64_signature = inputs["sig"].read_text()
+            cert_pem = (
+                load_der_x509_certificate(
+                    bundle.verification_material.x509_certificate_chain.certificates[
+                        0
+                    ].raw_bytes
+                )
+                .public_bytes(Encoding.PEM)
+                .decode()
+            )
+            signature = bundle.message_signature.signature
 
-        entry: Optional[LogEntry] = None
-        if inputs["bundle"].is_file():
-            logger.debug(f"Using offline Rekor bundle from: {inputs['bundle']}")
-            bundle = RekorBundle.parse_file(inputs["bundle"])
-            entry = bundle.to_entry()
+            tlog_entry = bundle.verification_material.tlog_entries[0]
+
+            offline_rekor_entry = LogEntry(
+                uuid=None,
+                body=base64.b64encode(tlog_entry.canonicalized_body).decode(),
+                integrated_time=tlog_entry.integrated_time,
+                log_id=tlog_entry.log_id.key_id.hex(),
+                log_index=tlog_entry.log_index,
+                inclusion_proof=None,
+                signed_entry_timestamp=base64.b64encode(
+                    tlog_entry.inclusion_promise.signed_entry_timestamp
+                ).decode(),
+            )
+        else:
+            # Load the signing certificate
+            logger.debug(f"Using certificate from: {inputs['cert']}")
+            cert_pem = inputs["cert"].read_text()
+
+            # Load the signature
+            logger.debug(f"Using signature from: {inputs['sig']}")
+            b64_signature = inputs["sig"].read_text()
+            signature = base64.b64decode(b64_signature)
+
+            if inputs["rekor_bundle"].is_file():
+                logger.debug(
+                    f"Using offline Rekor bundle from: {inputs['rekor_bundle']}"
+                )
+                bundle = RekorBundle.parse_file(inputs["rekor_bundle"])
+                offline_rekor_entry = bundle.to_entry()
 
         logger.debug(f"Verifying contents from: {file}")
 
@@ -879,8 +932,8 @@ def _collect_verification_state(
                     VerificationMaterials(
                         input_=io,
                         cert_pem=cert_pem,
-                        signature=base64.b64decode(b64_signature),
-                        offline_rekor_entry=entry,
+                        signature=signature,
+                        offline_rekor_entry=offline_rekor_entry,
                     ),
                 )
             )
