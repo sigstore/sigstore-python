@@ -126,13 +126,15 @@ def signing_materials():
 
 @pytest.fixture
 def signing_bundle():
-    def _signing_bundle(name: str) -> VerificationMaterials:
+    def _signing_bundle(name: str, *, offline: bool = False) -> VerificationMaterials:
         file = _ASSETS / name
         bundle = _ASSETS / f"{name}.sigstore"
         bundle = Bundle().from_json(bundle.read_bytes())
 
         with file.open(mode="rb", buffering=0) as io:
-            materials = VerificationMaterials.from_bundle(input_=io, bundle=bundle)
+            materials = VerificationMaterials.from_bundle(
+                input_=io, bundle=bundle, offline=offline
+            )
 
         return materials
 
