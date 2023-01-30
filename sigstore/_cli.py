@@ -23,11 +23,7 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Optional, TextIO, Union, cast
 
-from cryptography.hazmat.primitives.serialization import Encoding
-from cryptography.x509 import (
-    load_der_x509_certificate,
-    load_pem_x509_certificates,
-)
+from cryptography.x509 import load_pem_x509_certificates
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
@@ -43,7 +39,7 @@ from sigstore.oidc import (
     detect_credential,
 )
 from sigstore.sign import Signer
-from sigstore.transparency import LogEntry, LogInclusionProof
+from sigstore.transparency import LogEntry
 from sigstore.verify import (
     CertificateVerificationFailure,
     LogEntryMissing,

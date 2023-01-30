@@ -17,13 +17,12 @@ import os
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
-from typing import Iterator, Tuple
+from typing import Iterator
 
 import pytest
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
-
 
 from sigstore._internal import tuf
 from sigstore.oidc import (

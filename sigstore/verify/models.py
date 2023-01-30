@@ -27,8 +27,8 @@ from typing import IO
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import (
     Certificate,
-    load_pem_x509_certificate,
     load_der_x509_certificate,
+    load_pem_x509_certificate,
 )
 from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
