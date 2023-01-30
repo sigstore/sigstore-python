@@ -204,6 +204,9 @@ class VerificationMaterials:
     def from_bundle(
         cls, *, input_: IO[bytes], bundle: Bundle, offline: bool = False
     ) -> VerificationMaterials:
+        """
+        Create a new `VerificationMaterials` from the given Sigstore bundle.
+        """
         certs = bundle.verification_material.x509_certificate_chain.certificates
         if len(certs) == 0:
             raise InvalidMaterials("expected non-empty certificate chain in bundle")
