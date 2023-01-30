@@ -199,10 +199,6 @@ idna==3.4 \
     --hash=sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4 \
     --hash=sha256:90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2
     # via requests
-importlib-resources==5.10.2 \
-    --hash=sha256:7d543798b0beca10b6a01ac7cafda9f822c54db9e8376a6bf57e0cbd74d486b6 \
-    --hash=sha256:e4a96c8cc0339647ff9a5e0550d9f276fc5a01ffa276012b58ec108cfd7b8484
-    # via sigstore
 pycparser==2.21 \
     --hash=sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9 \
     --hash=sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206
@@ -269,9 +265,9 @@ sigstore==1.0.0 \
     --hash=sha256:0803f44914d6d12dcd53a112ae7f63714c61f31fd91b07197b3703c28366eea8 \
     --hash=sha256:19e96ca2049fd25233f289d3651bc2be41bb8b0a61bb053fc486be6b851875a7
     # via -r requirements.in
-tuf==2.0.0 \
-    --hash=sha256:1524b0fbd8504245f600f121daf86b8fdcb30df74410acc9655944c4868e461c \
-    --hash=sha256:76e7f2a7aced84466865fac2a7127b6085afae51d4328af896fb46f952dd3a53
+tuf==2.1.0 \
+    --hash=sha256:ab22d1143d4d8aa20c94d243de27eedc8cd517e251ddaf4a88c10952358a13ea \
+    --hash=sha256:dbfe18fbdeba6d76144931db88b76e473fa40c431b60d25b455a9adbb07c2397
     # via sigstore
 typing-extensions==4.4.0 \
     --hash=sha256:1511434bb92bf8dd198c12b1cc812e800d4181cfcb867674e0f8279cc93087aa \
