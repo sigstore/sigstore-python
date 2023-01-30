@@ -17,6 +17,11 @@ All versions prior to 0.9.0 are untracked.
   `--bundle <FILE>`
   ([#465](https://github.com/sigstore/sigstore-python/pull/465))
 
+* `sigstore verify` now supports Sigstore bundles. By default, `sigstore` looks
+  for an `{input}.sigstore`; this can be changed with `--bundle <FILE>` or the
+  legacy method of verification can be used instead via the `--signature` and
+  `--certificate` flags
+
 ### Fixed
 
 * Constrained our dependency on `pyOpenSSL` to `>= 23.0.0` to prevent
