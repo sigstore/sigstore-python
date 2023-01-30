@@ -84,6 +84,12 @@ class VerificationFailure(VerificationResult):
     """
 
 
+class InvalidMaterials(Exception):
+    """
+    The associated `VerificationMaterials` are invalid in some way.
+    """
+
+
 class RekorEntryMissing(Exception):
     """
     Raised if `VerificationMaterials.rekor_entry()` fails to find an entry
@@ -95,7 +101,7 @@ class RekorEntryMissing(Exception):
     pass
 
 
-class InvalidRekorEntry(Exception):
+class InvalidRekorEntry(InvalidMaterials):
     """
     Raised if the effective Rekor entry in `VerificationMaterials.rekor_entry()`
     does not match the other materials in `VerificationMaterials`.
@@ -130,17 +136,22 @@ class VerificationMaterials:
     The raw signature.
     """
 
-    _offline_rekor_entry: LogEntry | None
+    offline: bool
     """
-    An optional offline Rekor entry.
+    Whether to do offline Rekor entry verification.
 
-    If supplied an offline Rekor entry is supplied, verification will be done
-    against this entry rather than the against the online transparency log.
+    This is a slightly weaker verification verification mode, as it demonstrates
+    that an entry has been signed by the log but not necessarily included in it.
+    """
 
-    Offline Rekor entries do not carry their Merkle inclusion
-    proofs, and as such are verified only against their Signed Entry Timestamps.
-    This is a slightly weaker verification verification mode, as it does not
-    demonstrate inclusion in the log.
+    _rekor_entry: LogEntry | None
+    """
+    An optional Rekor entry.
+
+    If a Rekor entry is supplied **and** `offline` is set to `True`,
+    verification will be done against this entry rather than the against the
+    online transparency log. If not provided **or** `offline` is `False` (the
+    default), then the online transparency log will be used.
 
     NOTE: This is **intentionally not a public field**. The `rekor_entry()`
     method should be used to access a Rekor log entry for these materials,
@@ -157,7 +168,8 @@ class VerificationMaterials:
         input_: IO[bytes],
         cert_pem: str,
         signature: bytes,
-        offline_rekor_entry: LogEntry | None,
+        offline: bool = False,
+        rekor_entry: LogEntry | None,
     ):
         """
         Create a new `VerificationMaterials` from the given materials.
@@ -168,26 +180,33 @@ class VerificationMaterials:
         self.input_digest = sha256_streaming(input_)
         self.certificate = load_pem_x509_certificate(cert_pem.encode())
         self.signature = signature
-        self._offline_rekor_entry = offline_rekor_entry
+
+        # Invariant: requesting offline verification means that a Rekor entry
+        # *must* be provided.
+        if offline and not rekor_entry:
+            raise InvalidMaterials("offline verification requires a Rekor entry")
+
+        self.offline = offline
+        self._rekor_entry = rekor_entry
 
     @property
-    def has_offline_rekor_entry(self) -> bool:
+    def has_rekor_entry(self) -> bool:
         """
-        Returns whether or not these `VerificationMaterials` contain an offline Rekor
+        Returns whether or not these `VerificationMaterials` contain a Rekor
         entry.
 
         If false, `VerificationMaterials.rekor_entry()` performs an online lookup.
         """
-        return self._offline_rekor_entry is not None
+        return self._rekor_entry is not None
 
     def rekor_entry(self, client: RekorClient) -> LogEntry:
         """
         Returns a `RekorEntry` for the current signing materials.
         """
         entry: LogEntry | None
-        if self._offline_rekor_entry is not None:
+        if self.offline and self.has_rekor_entry:
             logger.debug("using offline rekor entry")
-            entry = self._offline_rekor_entry
+            entry = self._rekor_entry
         else:
             logger.debug("retrieving rekor entry")
             entry = client.log.entries.retrieve.post(

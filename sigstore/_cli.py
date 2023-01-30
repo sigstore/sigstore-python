@@ -205,10 +205,10 @@ def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
         required=True,
     )
     group.add_argument(
-        "--require-rekor-offline",
+        "--offline",
         action="store_true",
-        default=_boolify_env("SIGSTORE_REQUIRE_REKOR_OFFLINE"),
-        help="Require offline Rekor verification; requires a Sigstore bundle",
+        default=_boolify_env("SIGSTORE_OFFLINE"),
+        help="Perform offline verification; requires a Sigstore bundle",
     )
 
 
@@ -865,7 +865,8 @@ def _collect_verification_state(
                         input_=io,
                         cert_pem=cert_pem,
                         signature=signature,
-                        offline_rekor_entry=entry,
+                        rekor_entry=entry,
+                        offline=args.offline,
                     ),
                 )
             )

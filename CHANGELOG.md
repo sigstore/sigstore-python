@@ -23,11 +23,24 @@ All versions prior to 0.9.0 are untracked.
   `--certificate` flags
   ([#478](https://github.com/sigstore/sigstore-python/pull/478))
 
+* `sigstore verify identity` and `sigstore verify github` now support the
+  `--offline` flag, which tells `sigstore` to do offline transparency log
+  entry verification. This option replaces the unstable
+  `--require-rekor-offline` option, which has been removed
+  ([#478](https://github.com/sigstore/sigstore-python/pull/478))
+
 ### Fixed
 
 * Constrained our dependency on `pyOpenSSL` to `>= 23.0.0` to prevent
   a runtime error caused by incompatible earlier versions
   ([#448](https://github.com/sigstore/sigstore-python/pull/448))
+
+### Removed
+
+* `--rekor-bundle` and `--require-rekor-offline` have been removed entirely,
+  as their functionality have been wholly supplanted by Sigstore bundle support
+  and the new `sigstore verify --offline` flag
+  ([#478](https://github.com/sigstore/sigstore-python/pull/478))
 
 ## [1.0.0]
 
