@@ -144,8 +144,7 @@ class TrustUpdater:
 
         data = []
 
-        # NOTE: _updater has been fully initialized at this point, but mypy can't see that.
-        targets = self._updater._trusted_set.targets.signed.targets  # type: ignore[union-attr]
+        targets = self._updater._trusted_set.targets.signed.targets
         for target_info in targets.values():
             custom = target_info.unrecognized_fields["custom"]["sigstore"]
             if custom["status"] in statuses and custom["usage"] == usage:
