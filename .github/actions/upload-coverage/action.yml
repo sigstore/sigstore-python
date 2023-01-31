@@ -1,3 +1,8 @@
+# Derived from <https://github.com/pyca/cryptography/blob/SOME_REF/.github/actions/upload-coverage/action.yml>
+# Originally authored by the PyCA Cryptography maintainers, and licensed under
+# the terms of the BSD license:
+# <https://github.com/pyca/cryptography/blob/main/LICENSE.BSD>
+
 name: Upload Coverage
 description: Upload coverage files
 
