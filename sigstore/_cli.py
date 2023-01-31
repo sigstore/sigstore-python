@@ -17,7 +17,6 @@ from __future__ import annotations
 import argparse
 import base64
 import logging
-from operator import mod
 import os
 import sys
 from pathlib import Path
