@@ -86,8 +86,23 @@ known_first_party = "sigstore"
 include_trailing_comma = true
 
 [tool.coverage.run]
+# branch coverage in addition to statement coverage.
+branch = true
+# FIXME(jl): currently overridden. see: https://pytest-cov.readthedocs.io/en/latest/config.html
+# include machine name, process id, and a random number in `.coverage-*` so each file is distinct.
+parallel = true
+# store relative path info for aggregation across runs with potentially differing filesystem layouts.
+# see: https://coverage.readthedocs.io/en/7.1.0/config.html#config-run-relative-files
+relative_files = true
 # don't attempt code coverage for the CLI entrypoints
 omit = ["sigstore/_cli.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "@abc.abstractmethod",
+    "@typing.overload",
+    "if typing.TYPE_CHECKING",
+]
 
 [tool.interrogate]
 # don't enforce documentation coverage for packaging, testing, the virtual
