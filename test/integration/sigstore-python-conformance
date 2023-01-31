@@ -26,4 +26,21 @@ fixed_args = [
 # Prepend the `sigstore-python` executable name.
 fixed_args = ["sigstore"] + fixed_args
 
-subprocess.run(fixed_args, text=True, check=True)
+status = subprocess.run(fixed_args, text=True, capture_output=True)
+if status.returncode != 0:
+    # Render a more comprehensible exception.
+    raise ValueError(
+        f"""
+Failed to run {fixed_args}
+
+Exit code: {status.returncode}
+
+stdout:
+
+{status.stdout}
+
+stderr:
+
+{status.stderr}
+        """
+    )
