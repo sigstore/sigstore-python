@@ -53,6 +53,8 @@ jobs:
           unshare --map-root-user --net make test TEST_ARGS="--skip-online -vv --showlocals"
 
       - uses: ./.github/actions/upload-coverage
+        # only aggregate test coverage over linux-based tests to avoid any OS-specific filesystem information stored in
+        # coverage metadata.
         if: ${{ matrix.conf.os == 'ubuntu-latest' }}
 
   all-tests-pass:
