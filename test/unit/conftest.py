@@ -106,7 +106,7 @@ def tuf_asset():
 
 @pytest.fixture
 def signing_materials():
-    def _signing_materials(name: str) -> VerificationMaterials:
+    def _signing_materials(name: str, offline: bool = False) -> VerificationMaterials:
         file = _ASSETS / name
         cert = _ASSETS / f"{name}.crt"
         sig = _ASSETS / f"{name}.sig"
@@ -116,6 +116,7 @@ def signing_materials():
                 input_=io,
                 cert_pem=cert.read_text(),
                 signature=base64.b64decode(sig.read_text()),
+                offline=offline,
                 rekor_entry=None,
             )
 

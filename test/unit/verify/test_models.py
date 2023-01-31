@@ -17,7 +17,11 @@ import pytest
 
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.tuf import TrustUpdater
-from sigstore.verify.models import InvalidRekorEntry, RekorEntryMissing
+from sigstore.verify.models import (
+    InvalidMaterials,
+    InvalidRekorEntry,
+    RekorEntryMissing,
+)
 
 
 class TestVerificationMaterials:
@@ -58,3 +62,21 @@ class TestVerificationMaterials:
 
         with pytest.raises(RekorEntryMissing):
             a_materials.rekor_entry(client)
+
+    def test_verification_materials_offline_no_log_entry(self, signing_materials):
+        with pytest.raises(
+            InvalidMaterials, match="offline verification requires a Rekor entry"
+        ):
+            signing_materials("a.txt", offline=True)
+
+    def test_verification_materials_bundle_no_cert(self, signing_bundle):
+        with pytest.raises(
+            InvalidMaterials, match="expected non-empty certificate chain in bundle"
+        ):
+            signing_bundle("bundle_no_cert.txt")
+
+    def test_verification_materials_bundle_no_log_entry(self, signing_bundle):
+        with pytest.raises(
+            InvalidMaterials, match="expected exactly one log entry, got 0"
+        ):
+            signing_bundle("bundle_no_log_entry.txt")

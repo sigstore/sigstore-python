@@ -1,0 +1,5 @@
+DO NOT MODIFY ME!
+
+this is "bundle_no_log_entry.txt", a sample input for sigstore-python's unit tests.
+
+DO NOT MODIFY ME!
