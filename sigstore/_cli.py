@@ -815,13 +815,14 @@ def _collect_verification_state(
             b64_signature = inputs["sig"].read_text()
             signature = base64.b64decode(b64_signature)
 
-            materials = VerificationMaterials(
-                input_=io,
-                cert_pem=cert_pem,
-                signature=signature,
-                rekor_entry=entry,
-                offline=args.offline,
-            )
+            with file.open(mode="rb", buffering=0) as io:
+                materials = VerificationMaterials(
+                    input_=io,
+                    cert_pem=cert_pem,
+                    signature=signature,
+                    rekor_entry=entry,
+                    offline=args.offline,
+                )
 
         logger.debug(f"Verifying contents from: {file}")
 
