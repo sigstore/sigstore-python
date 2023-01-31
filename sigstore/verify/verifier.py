@@ -246,7 +246,7 @@ class Verifier:
         # 5) Verify the inclusion proof supplied by Rekor for this artifact.
         #
         # We skip the inclusion proof only if explicitly requested.
-        if not materials.offline:
+        if not materials._offline:
             try:
                 verify_merkle_inclusion(entry)
             except InvalidInclusionProofError as exc:

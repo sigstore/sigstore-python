@@ -31,7 +31,7 @@ class LogEntry:
     Represents a transparency log entry.
 
     Log entries are retrieved from the transparency log after signing or verification events,
-    or generated from "offline" log entry bundles supplied by the user.
+    or loaded from "Sigstore" bundles provided by the user.
     """
 
     uuid: Optional[str]
@@ -40,7 +40,7 @@ class LogEntry:
 
     For sharded log deployments, IDs are unique per-shard.
 
-    Not present for `LogEntry` instances loaded from offline bundles.
+    Not present for `LogEntry` instances loaded from Sigstore bundles.
     """
 
     body: str

@@ -144,12 +144,13 @@ class VerificationMaterials:
     The raw signature.
     """
 
-    offline: bool
+    _offline: bool
     """
     Whether to do offline Rekor entry verification.
 
-    This is a slightly weaker verification verification mode, as it demonstrates
-    that an entry has been signed by the log but not necessarily included in it.
+    NOTE: This is intentionally not a public field, since it's slightly
+    mismatched against the other members of `VerificationMaterials` -- it's
+    more of an option than a piece of verification material.
     """
 
     _rekor_entry: LogEntry | None
@@ -185,6 +186,13 @@ class VerificationMaterials:
         """
         Create a new `VerificationMaterials` from the given materials.
 
+        `offline` controls the behavior of any subsequent verification over
+        these materials: if `True`, the supplied Rekor entry (which must
+        be supplied) will be verified via its Signed Entry Timestamp, but
+        its proof of inclusion will not be checked. This is a slightly weaker
+        verification mode, as it demonstrates that an entry has been signed by
+        the log but not necessarily included in it.
+
         Effect: `input_` is consumed as part of construction.
         """
 
@@ -197,7 +205,7 @@ class VerificationMaterials:
         if offline and not rekor_entry:
             raise InvalidMaterials("offline verification requires a Rekor entry")
 
-        self.offline = offline
+        self._offline = offline
         self._rekor_entry = rekor_entry
 
     @classmethod
@@ -206,6 +214,8 @@ class VerificationMaterials:
     ) -> VerificationMaterials:
         """
         Create a new `VerificationMaterials` from the given Sigstore bundle.
+
+        Effect: `input_` is consumed as part of construction.
         """
         certs = bundle.verification_material.x509_certificate_chain.certificates
         if len(certs) == 0:
@@ -266,7 +276,7 @@ class VerificationMaterials:
         Returns a `RekorEntry` for the current signing materials.
         """
         entry: LogEntry | None
-        if self.offline and self.has_rekor_entry:
+        if self._offline and self.has_rekor_entry:
             logger.debug("using offline rekor entry")
             entry = self._rekor_entry
         else:

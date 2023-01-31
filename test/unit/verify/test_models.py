@@ -34,7 +34,7 @@ class TestVerificationMaterials:
         # Stuff a valid but incompatible Rekor entry into the verification
         # materials for "a.txt".
         a_materials._rekor_entry = offline_rekor_materials._rekor_entry
-        a_materials.offline = True
+        a_materials._offline = True
 
         with pytest.raises(InvalidRekorEntry):
             a_materials.rekor_entry(pretend.stub())
@@ -53,7 +53,7 @@ class TestVerificationMaterials:
         a_materials = signing_materials("a.txt")
 
         # stub retriever post returning None RekorEntry
-        a_materials._offline_rekor_entry = None
+        a_materials._rekor_entry = None
         client = pretend.stub(
             log=pretend.stub(
                 entries=pretend.stub(retrieve=pretend.stub(post=lambda a, b, c: None))
