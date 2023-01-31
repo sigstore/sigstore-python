@@ -37,7 +37,7 @@ with artifact.open("rb") as a, cert.open("r") as c, signature.open("rb") as s:
         input_=a,
         cert_pem=c.read(),
         signature=base64.b64decode(s.read()),
-        offline_rekor_entry=None,
+        rekor_entry=None,
     )
     verifier = Verifier.production()
     result = verifier.verify(

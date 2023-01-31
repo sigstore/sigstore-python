@@ -49,10 +49,8 @@ def test_verifier_multiple_verifications(signing_materials, null_policy):
         assert verifier.verify(materials, null_policy)
 
 
-def test_verifier_offline_rekor_bundle(
-    signing_materials, null_policy, mock_staging_tuf
-):
-    materials = signing_materials("offline-rekor.txt")
+def test_verifier_offline(signing_bundle, null_policy, mock_staging_tuf):
+    materials = signing_bundle("bundle.txt", offline=True)
 
     verifier = Verifier.staging()
     assert verifier.verify(materials, null_policy)

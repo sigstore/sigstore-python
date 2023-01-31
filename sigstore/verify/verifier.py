@@ -245,16 +245,18 @@ class Verifier:
 
         # 5) Verify the inclusion proof supplied by Rekor for this artifact.
         #
-        # We skip the inclusion proof for offline Rekor bundles.
-        if not materials.has_offline_rekor_entry:
+        # We skip the inclusion proof only if explicitly requested.
+        if not materials._offline:
             try:
                 verify_merkle_inclusion(entry)
-            except InvalidInclusionProofError as inval_inclusion_proof:
+            except InvalidInclusionProofError as exc:
                 return VerificationFailure(
-                    reason=f"invalid Rekor inclusion proof: {inval_inclusion_proof}"
+                    reason=f"invalid Rekor inclusion proof: {exc}"
                 )
         else:
-            logger.debug("offline Rekor entry: skipping Merkle inclusion proof")
+            logger.debug(
+                "offline verification requested: skipping Merkle inclusion proof"
+            )
 
         # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         try:

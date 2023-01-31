@@ -17,14 +17,14 @@ import os
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
-from typing import Iterator, Tuple
+from typing import Iterator
 
 import pytest
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface
 
 from sigstore._internal import tuf
-from sigstore._internal.rekor.client import RekorBundle
 from sigstore.oidc import (
     AmbientCredentialError,
     GitHubOidcPermissionCredentialError,
@@ -106,28 +106,40 @@ def tuf_asset():
 
 @pytest.fixture
 def signing_materials():
-    def _signing_materials(name: str) -> Tuple[bytes, bytes, bytes]:
+    def _signing_materials(name: str, offline: bool = False) -> VerificationMaterials:
         file = _ASSETS / name
         cert = _ASSETS / f"{name}.crt"
         sig = _ASSETS / f"{name}.sig"
-        bundle = _ASSETS / f"{name}.rekor"
-
-        entry = None
-        if bundle.is_file():
-            bundle = RekorBundle.parse_file(bundle)
-            entry = bundle.to_entry()
 
         with file.open(mode="rb", buffering=0) as io:
             materials = VerificationMaterials(
                 input_=io,
                 cert_pem=cert.read_text(),
                 signature=base64.b64decode(sig.read_text()),
-                offline_rekor_entry=entry,
+                offline=offline,
+                rekor_entry=None,
             )
 
         return materials
 
     return _signing_materials
+
+
+@pytest.fixture
+def signing_bundle():
+    def _signing_bundle(name: str, *, offline: bool = False) -> VerificationMaterials:
+        file = _ASSETS / name
+        bundle = _ASSETS / f"{name}.sigstore"
+        bundle = Bundle().from_json(bundle.read_bytes())
+
+        with file.open(mode="rb", buffering=0) as io:
+            materials = VerificationMaterials.from_bundle(
+                input_=io, bundle=bundle, offline=offline
+            )
+
+        return materials
+
+    return _signing_bundle
 
 
 @pytest.fixture
