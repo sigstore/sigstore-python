@@ -14,7 +14,7 @@
 
 import pytest
 
-from sigstore.oidc import Issuer, IssuerError
+from sigstore.oidc import IdentityError, Issuer, IssuerError
 
 
 @pytest.mark.online
@@ -26,3 +26,12 @@ def test_fail_init_url():
 @pytest.mark.online
 def test_init_url():
     Issuer("https://accounts.google.com")
+
+
+@pytest.mark.online
+def test_get_identity_token_identity_error(monkeypatch):
+    monkeypatch.setenv("SIGSTORE_OAUTH_FORCE_OOB", "")
+    monkeypatch.setattr("builtins.input", lambda _: "hunter2")
+
+    with pytest.raises(IdentityError):
+        Issuer.staging().identity_token()
