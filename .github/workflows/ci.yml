@@ -98,5 +98,5 @@ jobs:
           python -m coverage combine
           echo "## python coverage" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          python -m coverage report -m
+          python -m coverage report -m >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
