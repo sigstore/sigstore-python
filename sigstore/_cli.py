@@ -835,7 +835,7 @@ def _collect_verification_state(
 def _verify_identity(args: argparse.Namespace) -> None:
     verifier, files_with_materials = _collect_verification_state(args)
 
-    for (file, materials) in files_with_materials:
+    for file, materials in files_with_materials:
         policy_ = policy.Identity(
             identity=args.cert_identity,
             issuer=args.cert_oidc_issuer,
@@ -934,7 +934,7 @@ def _verify_github(args: argparse.Namespace) -> None:
     policy_ = policy.AllOf(inner_policies)
 
     verifier, files_with_materials = _collect_verification_state(args)
-    for (file, materials) in files_with_materials:
+    for file, materials in files_with_materials:
         result = verifier.verify(materials=materials, policy=policy_)
 
         if result:
