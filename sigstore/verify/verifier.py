@@ -53,6 +53,11 @@ from sigstore.verify.models import (
 )
 from sigstore.verify.policy import VerificationPolicy
 
+from sigstore._utils import hexstr
+from sigstore._utils import b64str
+from sigstore._utils import pemcert
+from sigstore._utils import keyid
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,12 +71,12 @@ class LogEntryMissing(VerificationFailure):
         "The transparency log has no entry for the given verification materials"
     )
 
-    signature: str
+    signature: b64str
     """
     The signature present during lookup failure, encoded with base64.
     """
 
-    artifact_hash: str
+    artifact_hash: hexstr
     """
     The artifact hash present during lookup failure, encoded as a hex string.
     """
