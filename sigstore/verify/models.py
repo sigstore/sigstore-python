@@ -28,7 +28,7 @@ from cryptography.x509 import Certificate, load_pem_x509_certificate
 from pydantic import BaseModel
 
 from sigstore._internal.rekor import RekorClient
-from sigstore._utils import base64_encode_pem_cert, sha256_streaming
+from sigstore._utils import base64_encode_pem_cert, sha256_streaming, hexstr, b64str, pemcert, keyid
 from sigstore.transparency import LogEntry
 
 from sigstore import newtypes
@@ -157,7 +157,7 @@ class VerificationMaterials:
         self,
         *,
         input_: IO[bytes],
-        cert_pem: newtypes.pemcert,
+        cert_pem: pemcert,
         signature: bytes,
         offline_rekor_entry: LogEntry | None,
     ):
@@ -168,7 +168,7 @@ class VerificationMaterials:
         """
 
         self.input_digest = sha256_streaming(input_)
-        self.certificate = newtypes.pemcert(load_pem_x509_certificate(cert_pem.encode()))
+        self.certificate = pemcert(load_pem_x509_certificate(cert_pem.encode()))
         self.signature = signature
         self._offline_rekor_entry = offline_rekor_entry
 
@@ -222,8 +222,8 @@ class VerificationMaterials:
             "apiVersion": "0.0.1",
             "spec": {
                 "signature": {
-                    "content": newtypes.b64str(base64.b64encode(self.signature).decode()),
-                    "publicKey": {"content": newtypes.b64str(base64_encode_pem_cert(self.certificate))},
+                    "content": b64str(base64.b64encode(self.signature).decode()),
+                    "publicKey": {"content": b64str(base64_encode_pem_cert(self.certificate))},
                 },
                 "data": {
                     "hash": {"algorithm": "sha256", "value": self.input_digest.hex()}
@@ -231,7 +231,7 @@ class VerificationMaterials:
             },
         }
 
-        actual_body = json.loads(newtypes.b64str(base64.b64decode(entry.body)))
+        actual_body = json.loads(b64str(base64.b64decode(entry.body)))
 
         if expected_body != actual_body:
             raise InvalidRekorEntry
