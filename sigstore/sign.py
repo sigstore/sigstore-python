@@ -42,6 +42,7 @@ import logging
 from typing import IO
 
 import cryptography.x509 as x509
+import newtypes
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
@@ -73,10 +74,7 @@ from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import sha256_streaming
 from sigstore.transparency import LogEntry
-from sigstore._utils import hexstr
-from sigstore._utils import b64str
-from sigstore._utils import pemcert
-from sigstore._utils import keyid
+from sigstore._utils import (hexstr, b64str, pemcert, keyid)
 
 logger = logging.getLogger(__name__)
 
