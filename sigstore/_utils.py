@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import sys
-from typing import IO, Union, NewType
+from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -35,10 +35,11 @@ else:
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
-hexstr = NewType('hexstr', str)
-b64str = NewType('b64str', str)
+hexstr = NewType("hexstr", str)
+b64str = NewType("b64str", str)
 pemcert = NewType("pemcert", str)
-keyid = NewType('keyid', bytes)
+dercert = NewType("dercert", bytes)
+keyid = NewType("keyid", bytes)
 
 
 class InvalidKey(Exception):
@@ -72,7 +73,9 @@ def base64_encode_pem_cert(cert: Certificate) -> b64str:
     Returns a string containing a base64-encoded PEM-encoded X.509 certificate.
     """
 
-    return b64str(base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode())
+    return b64str(
+        base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
+    )
 
 
 def key_id(key: PublicKey) -> keyid:

@@ -36,7 +36,7 @@ from sigstore._internal.ctfe import (
     CTKeyringError,
     CTKeyringLookupError,
 )
-from sigstore._utils import key_id
+from sigstore._utils import dercert, key_id, keyid
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def _pack_signed_entry(
         #
         # [0]: opaque ASN.1Cert<1..2^24-1>
         pack_format = "!BBB{cert_der_len}s"
-        cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
+        cert_der = dercert(cert.public_bytes(encoding=serialization.Encoding.DER))
     elif sct.entry_type == LogEntryType.PRE_CERTIFICATE:
         if not issuer_key_id or len(issuer_key_id) != 32:
             raise InvalidSctError("API misuse: issuer key ID missing")
@@ -62,7 +62,7 @@ def _pack_signed_entry(
         pack_format = "!32sBBB{cert_der_len}s"
 
         # Precertificates must have their SCT list extension filtered out.
-        cert_der = cert.tbs_precertificate_bytes
+        cert_der = dercert(cert.tbs_precertificate_bytes)
         fields.append(issuer_key_id)
     else:
         raise InvalidSctError(f"unknown SCT log entry type: {sct.entry_type!r}")
@@ -85,14 +85,14 @@ def _pack_signed_entry(
 def _pack_digitally_signed(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
-    issuer_key_id: Optional[bytes],
+    issuer_key_id: Optional[keyid],
 ) -> bytes:
     """
     Packs the contents of `cert` (and some pieces of `sct`) into a structured
     blob, one that forms the signature body of the "digitally-signed" struct
     for an SCT.
 
-    The format of the digitally signed data is described in IETF's RFC 6962.
+    The format of the digitaly signed data is described in IETF's RFC 6962.
     """
 
     # No extensions are currently specified, so we treat the presence
@@ -190,7 +190,7 @@ def verify_sct(
         # to expose this trivial single member, so we use the `log_id`
         # attribute directly.
         ct_keyring.verify(
-            key_id=sct.log_id, signature=sct.signature, data=digitally_signed
+            key_id=keyid(sct.log_id), signature=sct.signature, data=digitally_signed
         )
     except CTKeyringLookupError as exc:
         # We specialize this error case, since it usually indicates one of

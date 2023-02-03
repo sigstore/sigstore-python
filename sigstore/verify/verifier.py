@@ -43,6 +43,7 @@ from sigstore._internal.merkle import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSetError, verify_set
 from sigstore._internal.tuf import TrustUpdater
+from sigstore._utils import b64str, hexstr
 from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore.verify.models import RekorEntryMissing as RekorEntryMissingError
 from sigstore.verify.models import (
@@ -52,11 +53,6 @@ from sigstore.verify.models import (
     VerificationSuccess,
 )
 from sigstore.verify.policy import VerificationPolicy
-
-from sigstore._utils import hexstr
-from sigstore._utils import b64str
-from sigstore._utils import pemcert
-from sigstore._utils import keyid
 
 logger = logging.getLogger(__name__)
 

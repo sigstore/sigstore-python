@@ -25,7 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
-from sigstore._utils import key_id, load_pem_public_key
+from sigstore._utils import key_id, keyid, load_pem_public_key
 
 
 class CTKeyringError(Exception):
@@ -70,7 +70,7 @@ class CTKeyring:
         key = load_pem_public_key(key_pem)
         self._keyring[key_id(key)] = key
 
-    def verify(self, *, key_id: bytes, signature: bytes, data: bytes) -> None:
+    def verify(self, *, key_id: keyid, signature: bytes, data: bytes) -> None:
         """
         Verify that `signature` is a valid signature for `data`, using the
         key identified by `key_id`.

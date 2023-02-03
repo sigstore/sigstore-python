@@ -33,7 +33,7 @@ from pydantic import BaseModel, Field, StrictInt, StrictStr
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import base64_encode_pem_cert
+from sigstore._utils import b64str, base64_encode_pem_cert
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -74,12 +74,12 @@ class RekorBundle(BaseModel):
 
         return LogEntry(
             uuid=None,
-            body=self.payload.body,
+            body=b64str(self.payload.body),
             integrated_time=self.payload.integrated_time,
             log_id=self.payload.log_id,
             log_index=self.payload.log_index,
             inclusion_proof=None,
-            signed_entry_timestamp=self.signed_entry_timestamp,
+            signed_entry_timestamp=b64str(self.signed_entry_timestamp),
         )
 
     @classmethod
