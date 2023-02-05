@@ -164,7 +164,7 @@ class Signer:
         artifact_signature = private_key.sign(
             input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
         )
-        b64_artifact_signature = base64.b64encode(artifact_signature).decode()
+        b64_artifact_signature = b64str(base64.b64encode(artifact_signature).decode())
 
         # Prepare inputs
         b64_cert = base64.b64encode(
@@ -173,9 +173,9 @@ class Signer:
 
         # Create the transparency log entry
         entry = self._rekor.log.entries.post(
-            b64_artifact_signature=b64_artifact_signature,
+            b64_artifact_signature=b64str(b64_artifact_signature),
             sha256_artifact_hash=input_digest.hex(),
-            b64_cert=b64_cert.decode(),
+            b64_cert=b64str(b64_cert.decode()),
         )
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
