@@ -195,9 +195,9 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        b64_artifact_signature: str,
+        b64_artifact_signature: b64str,
         sha256_artifact_hash: str,
-        b64_cert: str,
+        b64_cert: b64str,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
@@ -262,7 +262,7 @@ class RekorEntriesRetrieve(_Endpoint):
                         "signature": {
                             "content": base64.b64encode(signature).decode(),
                             "publicKey": {
-                                "content": base64_encode_pem_cert(certificate),
+                                "content": b64str(base64_encode_pem_cert(certificate)),
                             },
                         },
                         "data": {
