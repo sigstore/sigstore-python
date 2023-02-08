@@ -225,7 +225,7 @@ class VerificationMaterials:
             "apiVersion": "0.0.1",
             "spec": {
                 "signature": {
-                    "content": base64.b64encode(self.signature).decode(),
+                    "content": b64str(base64.b64encode(self.signature).decode()),
                     "publicKey": {
                         "content": b64str(base64_encode_pem_cert(self.certificate))
                     },
