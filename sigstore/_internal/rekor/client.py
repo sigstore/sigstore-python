@@ -260,7 +260,7 @@ class RekorEntriesRetrieve(_Endpoint):
                     "apiVersion": "0.0.1",
                     "spec": {
                         "signature": {
-                            "content": base64.b64encode(signature).decode(),
+                            "content": b64str(base64.b64encode(signature).decode()),
                             "publicKey": {
                                 "content": b64str(base64_encode_pem_cert(certificate)),
                             },
