@@ -236,7 +236,7 @@ class Verifier:
             entry = materials.rekor_entry(self._rekor)
         except RekorEntryMissingError:
             return LogEntryMissing(
-                signature=base64.b64encode(materials.signature).decode(),
+                signature=b64str(base64.b64encode(materials.signature).decode()),
                 artifact_hash=materials.input_digest.hex(),
             )
         except InvalidRekorEntryError:
