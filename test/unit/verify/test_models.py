@@ -17,17 +17,24 @@ import pytest
 
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.tuf import TrustUpdater
-from sigstore.verify.models import InvalidRekorEntry, RekorEntryMissing
+from sigstore.verify.models import (
+    InvalidMaterials,
+    InvalidRekorEntry,
+    RekorEntryMissing,
+)
 
 
 class TestVerificationMaterials:
-    def test_rekor_entry_inconsistent_cve_2022_36056(self, signing_materials):
+    def test_rekor_entry_inconsistent_cve_2022_36056(
+        self, signing_materials, signing_bundle
+    ):
         a_materials = signing_materials("a.txt")
-        offline_rekor_materials = signing_materials("offline-rekor.txt")
+        offline_rekor_materials = signing_bundle("bundle.txt")
 
         # Stuff a valid but incompatible Rekor entry into the verification
         # materials for "a.txt".
-        a_materials._offline_rekor_entry = offline_rekor_materials._offline_rekor_entry
+        a_materials._rekor_entry = offline_rekor_materials._rekor_entry
+        a_materials._offline = True
 
         with pytest.raises(InvalidRekorEntry):
             a_materials.rekor_entry(pretend.stub())
@@ -35,7 +42,7 @@ class TestVerificationMaterials:
     @pytest.mark.online
     def test_verification_materials_retrieves_rekor_entry(self, signing_materials):
         materials = signing_materials("a.txt")
-        assert materials._offline_rekor_entry is None
+        assert materials._rekor_entry is None
 
         tuf = TrustUpdater.staging()
         client = RekorClient.staging(tuf)
@@ -46,7 +53,7 @@ class TestVerificationMaterials:
         a_materials = signing_materials("a.txt")
 
         # stub retriever post returning None RekorEntry
-        a_materials._offline_rekor_entry = None
+        a_materials._rekor_entry = None
         client = pretend.stub(
             log=pretend.stub(
                 entries=pretend.stub(retrieve=pretend.stub(post=lambda a, b, c: None))
@@ -55,3 +62,21 @@ class TestVerificationMaterials:
 
         with pytest.raises(RekorEntryMissing):
             a_materials.rekor_entry(client)
+
+    def test_verification_materials_offline_no_log_entry(self, signing_materials):
+        with pytest.raises(
+            InvalidMaterials, match="offline verification requires a Rekor entry"
+        ):
+            signing_materials("a.txt", offline=True)
+
+    def test_verification_materials_bundle_no_cert(self, signing_bundle):
+        with pytest.raises(
+            InvalidMaterials, match="expected non-empty certificate chain in bundle"
+        ):
+            signing_bundle("bundle_no_cert.txt")
+
+    def test_verification_materials_bundle_no_log_entry(self, signing_bundle):
+        with pytest.raises(
+            InvalidMaterials, match="expected exactly one log entry, got 0"
+        ):
+            signing_bundle("bundle_no_log_entry.txt")

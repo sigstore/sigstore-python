@@ -25,8 +25,7 @@ from urllib import parse
 
 import appdirs
 from cryptography.x509 import Certificate, load_pem_x509_certificate
-from tuf.ngclient import Updater
-from tuf.ngclient._internal.requests_fetcher import RequestsFetcher
+from tuf.ngclient import RequestsFetcher, Updater
 
 from sigstore._utils import read_embedded
 
@@ -145,8 +144,7 @@ class TrustUpdater:
 
         data = []
 
-        # NOTE: _updater has been fully initialized at this point, but mypy can't see that.
-        targets = self._updater._trusted_set.targets.signed.targets  # type: ignore[union-attr]
+        targets = self._updater._trusted_set.targets.signed.targets
         for target_info in targets.values():
             custom = target_info.unrecognized_fields["custom"]["sigstore"]
             if custom["status"] in statuses and custom["usage"] == usage:

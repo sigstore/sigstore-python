@@ -24,17 +24,24 @@ import logging
 from dataclasses import dataclass
 from typing import IO
 
-from cryptography.x509 import Certificate, load_pem_x509_certificate
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.x509 import (
+    Certificate,
+    load_der_x509_certificate,
+    load_pem_x509_certificate,
+)
 from pydantic import BaseModel
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore._internal.rekor import RekorClient
+
 from sigstore._utils import (
     b64str,
     base64_encode_pem_cert,
     pemcert,
     sha256_streaming,
 )
-from sigstore.transparency import LogEntry
+from sigstore.transparency import LogEntry, LogInclusionProof
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +96,12 @@ class VerificationFailure(VerificationResult):
     """
 
 
+class InvalidMaterials(Exception):
+    """
+    The associated `VerificationMaterials` are invalid in some way.
+    """
+
+
 class RekorEntryMissing(Exception):
     """
     Raised if `VerificationMaterials.rekor_entry()` fails to find an entry
@@ -100,7 +113,7 @@ class RekorEntryMissing(Exception):
     pass
 
 
-class InvalidRekorEntry(Exception):
+class InvalidRekorEntry(InvalidMaterials):
     """
     Raised if the effective Rekor entry in `VerificationMaterials.rekor_entry()`
     does not match the other materials in `VerificationMaterials`.
@@ -128,6 +141,8 @@ class VerificationMaterials:
     certificate: Certificate
     """
     The certificate that attests to and contains the public signing key.
+
+    # TODO: Support a certificate chain here, with optional intermediates.
     """
 
     signature: bytes
@@ -135,17 +150,23 @@ class VerificationMaterials:
     The raw signature.
     """
 
-    _offline_rekor_entry: LogEntry | None
+    _offline: bool
     """
-    An optional offline Rekor entry.
+    Whether to do offline Rekor entry verification.
 
-    If supplied an offline Rekor entry is supplied, verification will be done
-    against this entry rather than the against the online transparency log.
+    NOTE: This is intentionally not a public field, since it's slightly
+    mismatched against the other members of `VerificationMaterials` -- it's
+    more of an option than a piece of verification material.
+    """
 
-    Offline Rekor entries do not carry their Merkle inclusion
-    proofs, and as such are verified only against their Signed Entry Timestamps.
-    This is a slightly weaker verification verification mode, as it does not
-    demonstrate inclusion in the log.
+    _rekor_entry: LogEntry | None
+    """
+    An optional Rekor entry.
+
+    If a Rekor entry is supplied **and** `offline` is set to `True`,
+    verification will be done against this entry rather than the against the
+    online transparency log. If not provided **or** `offline` is `False` (the
+    default), then the online transparency log will be used.
 
     NOTE: This is **intentionally not a public field**. The `rekor_entry()`
     method should be used to access a Rekor log entry for these materials,
@@ -154,6 +175,9 @@ class VerificationMaterials:
     signing materials. Without this check an adversary could present a
     **valid but unrelated** Rekor entry during verification, similar
     to CVE-2022-36056 in cosign.
+
+    TODO: Support multiple entries here, with verification contingent on
+    all being valid.
     """
 
     def __init__(
@@ -162,10 +186,18 @@ class VerificationMaterials:
         input_: IO[bytes],
         cert_pem: pemcert,
         signature: bytes,
-        offline_rekor_entry: LogEntry | None,
+        offline: bool = False,
+        rekor_entry: LogEntry | None,
     ):
         """
         Create a new `VerificationMaterials` from the given materials.
+
+        `offline` controls the behavior of any subsequent verification over
+        these materials: if `True`, the supplied Rekor entry (which must
+        be supplied) will be verified via its Signed Entry Timestamp, but
+        its proof of inclusion will not be checked. This is a slightly weaker
+        verification mode, as it demonstrates that an entry has been signed by
+        the log but not necessarily included in it.
 
         Effect: `input_` is consumed as part of construction.
         """
@@ -173,26 +205,86 @@ class VerificationMaterials:
         self.input_digest = sha256_streaming(input_)
         self.certificate = load_pem_x509_certificate(cert_pem.encode())
         self.signature = signature
-        self._offline_rekor_entry = offline_rekor_entry
+
+        # Invariant: requesting offline verification means that a Rekor entry
+        # *must* be provided.
+        if offline and not rekor_entry:
+            raise InvalidMaterials("offline verification requires a Rekor entry")
+
+        self._offline = offline
+        self._rekor_entry = rekor_entry
+
+    @classmethod
+    def from_bundle(
+        cls, *, input_: IO[bytes], bundle: Bundle, offline: bool = False
+    ) -> VerificationMaterials:
+        """
+        Create a new `VerificationMaterials` from the given Sigstore bundle.
+
+        Effect: `input_` is consumed as part of construction.
+        """
+        certs = bundle.verification_material.x509_certificate_chain.certificates
+        if len(certs) == 0:
+            raise InvalidMaterials("expected non-empty certificate chain in bundle")
+        cert_pem = (
+            load_der_x509_certificate(certs[0].raw_bytes)
+            .public_bytes(Encoding.PEM)
+            .decode()
+        )
+
+        signature = bundle.message_signature.signature
+
+        tlog_entries = bundle.verification_material.tlog_entries
+        if len(tlog_entries) != 1:
+            raise InvalidMaterials(
+                f"expected exactly one log entry, got {len(tlog_entries)}"
+            )
+        tlog_entry = tlog_entries[0]
+
+        inclusion_proof = LogInclusionProof(
+            log_index=tlog_entry.inclusion_proof.log_index,
+            root_hash=tlog_entry.inclusion_proof.root_hash.hex(),
+            tree_size=tlog_entry.inclusion_proof.tree_size,
+            hashes=[h.hex() for h in tlog_entry.inclusion_proof.hashes],
+        )
+        entry = LogEntry(
+            uuid=None,
+            body=base64.b64encode(tlog_entry.canonicalized_body).decode(),
+            integrated_time=tlog_entry.integrated_time,
+            log_id=tlog_entry.log_id.key_id.hex(),
+            log_index=tlog_entry.log_index,
+            inclusion_proof=inclusion_proof,
+            signed_entry_timestamp=base64.b64encode(
+                tlog_entry.inclusion_promise.signed_entry_timestamp
+            ).decode(),
+        )
+
+        return cls(
+            input_=input_,
+            cert_pem=cert_pem,
+            signature=signature,
+            offline=offline,
+            rekor_entry=entry,
+        )
 
     @property
-    def has_offline_rekor_entry(self) -> bool:
+    def has_rekor_entry(self) -> bool:
         """
-        Returns whether or not these `VerificationMaterials` contain an offline Rekor
+        Returns whether or not these `VerificationMaterials` contain a Rekor
         entry.
 
         If false, `VerificationMaterials.rekor_entry()` performs an online lookup.
         """
-        return self._offline_rekor_entry is not None
+        return self._rekor_entry is not None
 
     def rekor_entry(self, client: RekorClient) -> LogEntry:
         """
         Returns a `RekorEntry` for the current signing materials.
         """
         entry: LogEntry | None
-        if self._offline_rekor_entry is not None:
+        if self._offline and self.has_rekor_entry:
             logger.debug("using offline rekor entry")
-            entry = self._offline_rekor_entry
+            entry = self._rekor_entry
         else:
             logger.debug("retrieving rekor entry")
             entry = client.log.entries.retrieve.post(

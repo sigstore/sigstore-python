@@ -131,10 +131,10 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
-                     [--certificate FILE] [--rekor-bundle FILE]
-                     [--bundle FILE] [--no-bundle] [--overwrite] [--staging]
-                     [--rekor-url URL] [--rekor-root-pubkey FILE]
-                     [--fulcio-url URL] [--ctfe FILE]
+                     [--certificate FILE] [--bundle FILE] [--no-bundle]
+                     [--overwrite] [--staging] [--rekor-url URL]
+                     [--rekor-root-pubkey FILE] [--fulcio-url URL]
+                     [--ctfe FILE]
                      FILE [FILE ...]
 
 positional arguments:
@@ -166,14 +166,8 @@ Output options:
   --certificate FILE, --output-certificate FILE
                         Write a single certificate to the given file; does not
                         work with multiple input files (default: None)
-  --rekor-bundle FILE, --output-rekor-bundle FILE
-                        Write a single offline Rekor bundle to the given file;
-                        does not work with multiple input files (default:
-                        None)
   --bundle FILE         Write a single Sigstore bundle to the given file; does
-                        not work with multiple input files; this option is
-                        experimental and may change between releases until
-                        stabilized (default: None)
+                        not work with multiple input files (default: None)
   --no-bundle           Don't emit {input}.sigstore files for each input; this
                         option is experimental and may change between releases
                         until stabilized (default: False)
@@ -213,11 +207,9 @@ to by a particular OIDC provider (like `https://github.com/login/oauth`).
 <!-- @begin-sigstore-verify-identity-help@ -->
 ```
 usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
-                                [--rekor-bundle FILE] [--bundle FILE]
-                                --cert-identity IDENTITY
-                                [--require-rekor-offline] --cert-oidc-issuer
-                                URL [--staging] [--rekor-url URL]
-                                [--rekor-root-pubkey FILE]
+                                [--bundle FILE] --cert-identity IDENTITY
+                                [--offline] --cert-oidc-issuer URL [--staging]
+                                [--rekor-url URL] [--rekor-root-pubkey FILE]
                                 [--certificate-chain FILE]
                                 FILE [FILE ...]
 
@@ -230,21 +222,16 @@ Verification inputs:
                         used with multiple inputs (default: None)
   --signature FILE      The signature to verify against; not used with
                         multiple inputs (default: None)
-  --rekor-bundle FILE   The offline Rekor bundle to verify with; not used with
-                        multiple inputs (default: None)
   --bundle FILE         The Sigstore bundle to verify with; not used with
-                        multiple inputs; this option is experimental and may
-                        change between releases until stabilized (default:
-                        None)
+                        multiple inputs (default: None)
   FILE                  The file to verify
 
 Verification options:
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
                         Alternative Name (default: None)
-  --require-rekor-offline
-                        Require offline Rekor verification with a bundle;
-                        implied by --rekor-bundle (default: False)
+  --offline             Perform offline verification; requires a Sigstore
+                        bundle (default: False)
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
                         OIDC issuer extension (default: None)
@@ -284,11 +271,10 @@ claims more precisely than `sigstore verify identity` allows:
 <!-- @begin-sigstore-verify-github-help@ -->
 ```
 usage: sigstore verify github [-h] [--certificate FILE] [--signature FILE]
-                              [--rekor-bundle FILE] [--bundle FILE]
-                              --cert-identity IDENTITY
-                              [--require-rekor-offline] [--trigger EVENT]
-                              [--sha SHA] [--name NAME] [--repository REPO]
-                              [--ref REF] [--staging] [--rekor-url URL]
+                              [--bundle FILE] --cert-identity IDENTITY
+                              [--offline] [--trigger EVENT] [--sha SHA]
+                              [--name NAME] [--repository REPO] [--ref REF]
+                              [--staging] [--rekor-url URL]
                               [--rekor-root-pubkey FILE]
                               [--certificate-chain FILE]
                               FILE [FILE ...]
@@ -302,21 +288,16 @@ Verification inputs:
                         used with multiple inputs (default: None)
   --signature FILE      The signature to verify against; not used with
                         multiple inputs (default: None)
-  --rekor-bundle FILE   The offline Rekor bundle to verify with; not used with
-                        multiple inputs (default: None)
   --bundle FILE         The Sigstore bundle to verify with; not used with
-                        multiple inputs; this option is experimental and may
-                        change between releases until stabilized (default:
-                        None)
+                        multiple inputs (default: None)
   FILE                  The file to verify
 
 Verification options:
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
                         Alternative Name (default: None)
-  --require-rekor-offline
-                        Require offline Rekor verification with a bundle;
-                        implied by --rekor-bundle (default: False)
+  --offline             Perform offline verification; requires a Sigstore
+                        bundle (default: False)
   --trigger EVENT       The GitHub Actions event name that triggered the
                         workflow (default: None)
   --sha SHA             The `git` commit SHA that the workflow run was invoked
