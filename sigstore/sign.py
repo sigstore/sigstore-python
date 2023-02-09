@@ -71,7 +71,7 @@ from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import B64Str, HexStr, pemcert, sha256_streaming
+from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -184,7 +184,7 @@ class Signer:
 
         return SigningResult(
             input_digest=HexStr(input_digest.hex()),
-            cert_pem=pemcert(
+            cert_pem=PEMCert(
                 cert.public_bytes(encoding=serialization.Encoding.PEM).decode()
             ),
             b64_signature=B64Str(b64_artifact_signature),
@@ -202,7 +202,7 @@ class SigningResult(BaseModel):
     The hex-encoded SHA256 digest of the input that was signed for.
     """
 
-    cert_pem: pemcert
+    cert_pem: PEMCert
     """
     The PEM-encoded public half of the certificate used for signing.
     """

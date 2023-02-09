@@ -31,7 +31,7 @@ from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.rekor.client import DEFAULT_REKOR_URL, RekorClient
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import pemcert
+from sigstore._utils import PEMCert
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,
@@ -819,7 +819,7 @@ def _collect_verification_state(
             with file.open(mode="rb", buffering=0) as io:
                 materials = VerificationMaterials(
                     input_=io,
-                    cert_pem=pemcert(cert_pem),
+                    cert_pem=PEMCert(cert_pem),
                     signature=signature,
                     rekor_entry=entry,
                     offline=args.offline,
