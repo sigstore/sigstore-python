@@ -36,7 +36,7 @@ from sigstore._internal.ctfe import (
     CTKeyringError,
     CTKeyringLookupError,
 )
-from sigstore._utils import KeyID, dercert, key_id
+from sigstore._utils import DERCert, KeyID, key_id
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def _pack_signed_entry(
         #
         # [0]: opaque ASN.1Cert<1..2^24-1>
         pack_format = "!BBB{cert_der_len}s"
-        cert_der = dercert(cert.public_bytes(encoding=serialization.Encoding.DER))
+        cert_der = DERCert(cert.public_bytes(encoding=serialization.Encoding.DER))
     elif sct.entry_type == LogEntryType.PRE_CERTIFICATE:
         if not issuer_key_id or len(issuer_key_id) != 32:
             raise InvalidSctError("API misuse: issuer key ID missing")
@@ -62,7 +62,7 @@ def _pack_signed_entry(
         pack_format = "!32sBBB{cert_der_len}s"
 
         # Precertificates must have their SCT list extension filtered out.
-        cert_der = dercert(cert.tbs_precertificate_bytes)
+        cert_der = DERCert(cert.tbs_precertificate_bytes)
         fields.append(issuer_key_id)
     else:
         raise InvalidSctError(f"unknown SCT log entry type: {sct.entry_type!r}")

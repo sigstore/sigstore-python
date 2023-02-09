@@ -38,7 +38,7 @@ PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 HexStr = NewType("HexStr", str)
 B64Str = NewType("B64Str", str)
 PEMCert = NewType("PEMCert", str)
-dercert = NewType("dercert", bytes)
+DERCert = NewType("DERCert", bytes)
 KeyID = NewType("KeyID", bytes)
 
 
