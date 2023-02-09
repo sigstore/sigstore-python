@@ -36,7 +36,7 @@ from sigstore._internal.ctfe import (
     CTKeyringError,
     CTKeyringLookupError,
 )
-from sigstore._utils import dercert, key_id, keyid
+from sigstore._utils import KeyID, dercert, key_id
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def _pack_signed_entry(
 def _pack_digitally_signed(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
-    issuer_key_id: Optional[keyid],
+    issuer_key_id: Optional[KeyID],
 ) -> bytes:
     """
     Packs the contents of `cert` (and some pieces of `sct`) into a structured
@@ -190,7 +190,7 @@ def verify_sct(
         # to expose this trivial single member, so we use the `log_id`
         # attribute directly.
         ct_keyring.verify(
-            key_id=keyid(sct.log_id), signature=sct.signature, data=digitally_signed
+            key_id=KeyID(sct.log_id), signature=sct.signature, data=digitally_signed
         )
     except CTKeyringLookupError as exc:
         # We specialize this error case, since it usually indicates one of

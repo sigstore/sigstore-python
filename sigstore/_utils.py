@@ -39,7 +39,7 @@ hexstr = NewType("hexstr", str)
 b64str = NewType("b64str", str)
 pemcert = NewType("pemcert", str)
 dercert = NewType("dercert", bytes)
-keyid = NewType("keyid", bytes)
+KeyID = NewType("KeyID", bytes)
 
 
 class InvalidKey(Exception):
@@ -78,7 +78,7 @@ def base64_encode_pem_cert(cert: Certificate) -> b64str:
     )
 
 
-def key_id(key: PublicKey) -> keyid:
+def key_id(key: PublicKey) -> KeyID:
     """
     Returns an RFC 6962-style "key ID" for the given public key.
 
@@ -89,7 +89,7 @@ def key_id(key: PublicKey) -> keyid:
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
 
-    return keyid(hashlib.sha256(public_bytes).digest())
+    return KeyID(hashlib.sha256(public_bytes).digest())
 
 
 def sha256_streaming(io: IO[bytes]) -> bytes:
