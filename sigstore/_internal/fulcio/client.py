@@ -45,7 +45,7 @@ from cryptography.x509.certificate_transparency import (
 )
 from pydantic import BaseModel, Field, validator
 
-from sigstore._utils import b64str
+from sigstore._utils import B64Str
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +195,7 @@ class _Endpoint(ABC):
 
 def _serialize_cert_request(req: CertificateSigningRequest) -> str:
     data = {
-        "certificateSigningRequest": b64str(
+        "certificateSigningRequest": B64Str(
             base64.b64encode(req.public_bytes(serialization.Encoding.PEM)).decode()
         )
     }

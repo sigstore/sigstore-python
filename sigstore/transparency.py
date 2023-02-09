@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
 from securesystemslib.formats import encode_canonical
 
-from sigstore._utils import b64str
+from sigstore._utils import B64Str
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,7 @@ class LogEntry:
     Not present for `LogEntry` instances loaded from Sigstore bundles.
     """
 
-    body: b64str
+    body: B64Str
     """
     The base64-encoded body of the transparency log entry.
     """
@@ -73,7 +73,7 @@ class LogEntry:
     Only present for entries retrieved from online logs.
     """
 
-    signed_entry_timestamp: b64str
+    signed_entry_timestamp: B64Str
     """
     The base64-encoded Signed Entry Timestamp (SET) for this log entry.
     """

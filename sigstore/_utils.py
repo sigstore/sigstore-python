@@ -36,7 +36,7 @@ else:
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
 HexStr = NewType("HexStr", str)
-b64str = NewType("b64str", str)
+B64Str = NewType("B64Str", str)
 pemcert = NewType("pemcert", str)
 dercert = NewType("dercert", bytes)
 KeyID = NewType("KeyID", bytes)
@@ -68,12 +68,12 @@ def load_pem_public_key(key_pem: bytes) -> PublicKey:
     return key
 
 
-def base64_encode_pem_cert(cert: Certificate) -> b64str:
+def base64_encode_pem_cert(cert: Certificate) -> B64Str:
     """
     Returns a string containing a base64-encoded PEM-encoded X.509 certificate.
     """
 
-    return b64str(
+    return B64Str(
         base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
     )
 

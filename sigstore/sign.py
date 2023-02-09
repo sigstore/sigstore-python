@@ -71,7 +71,7 @@ from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import HexStr, b64str, pemcert, sha256_streaming
+from sigstore._utils import B64Str, HexStr, pemcert, sha256_streaming
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -166,7 +166,7 @@ class Signer:
         artifact_signature = private_key.sign(
             input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
         )
-        b64_artifact_signature = b64str(base64.b64encode(artifact_signature).decode())
+        b64_artifact_signature = B64Str(base64.b64encode(artifact_signature).decode())
 
         # Prepare inputs
         b64_cert = base64.b64encode(
@@ -175,9 +175,9 @@ class Signer:
 
         # Create the transparency log entry
         entry = self._rekor.log.entries.post(
-            b64_artifact_signature=b64str(b64_artifact_signature),
+            b64_artifact_signature=B64Str(b64_artifact_signature),
             sha256_artifact_hash=input_digest.hex(),
-            b64_cert=b64str(b64_cert.decode()),
+            b64_cert=B64Str(b64_cert.decode()),
         )
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
@@ -187,7 +187,7 @@ class Signer:
             cert_pem=pemcert(
                 cert.public_bytes(encoding=serialization.Encoding.PEM).decode()
             ),
-            b64_signature=b64str(b64_artifact_signature),
+            b64_signature=B64Str(b64_artifact_signature),
             log_entry=entry,
         )
 
@@ -207,7 +207,7 @@ class SigningResult(BaseModel):
     The PEM-encoded public half of the certificate used for signing.
     """
 
-    b64_signature: b64str
+    b64_signature: B64Str
     """
     The base64-encoded signature.
     """

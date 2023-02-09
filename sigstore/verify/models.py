@@ -35,7 +35,7 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import (
-    b64str,
+    B64Str,
     base64_encode_pem_cert,
     pemcert,
     sha256_streaming,
@@ -248,12 +248,12 @@ class VerificationMaterials:
         )
         entry = LogEntry(
             uuid=None,
-            body=b64str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
+            body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
             integrated_time=tlog_entry.integrated_time,
             log_id=tlog_entry.log_id.key_id.hex(),
             log_index=tlog_entry.log_index,
             inclusion_proof=inclusion_proof,
-            signed_entry_timestamp=b64str(
+            signed_entry_timestamp=B64Str(
                 base64.b64encode(
                     tlog_entry.inclusion_promise.signed_entry_timestamp
                 ).decode()
@@ -318,9 +318,9 @@ class VerificationMaterials:
             "apiVersion": "0.0.1",
             "spec": {
                 "signature": {
-                    "content": b64str(base64.b64encode(self.signature).decode()),
+                    "content": B64Str(base64.b64encode(self.signature).decode()),
                     "publicKey": {
-                        "content": b64str(base64_encode_pem_cert(self.certificate))
+                        "content": B64Str(base64_encode_pem_cert(self.certificate))
                     },
                 },
                 "data": {

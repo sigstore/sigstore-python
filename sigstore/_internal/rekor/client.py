@@ -32,7 +32,7 @@ from cryptography.x509 import Certificate
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import b64str, base64_encode_pem_cert
+from sigstore._utils import B64Str, base64_encode_pem_cert
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -137,9 +137,9 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        b64_artifact_signature: b64str,
+        b64_artifact_signature: B64Str,
         sha256_artifact_hash: str,
-        b64_cert: b64str,
+        b64_cert: B64Str,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
@@ -202,9 +202,9 @@ class RekorEntriesRetrieve(_Endpoint):
                     "apiVersion": "0.0.1",
                     "spec": {
                         "signature": {
-                            "content": b64str(base64.b64encode(signature).decode()),
+                            "content": B64Str(base64.b64encode(signature).decode()),
                             "publicKey": {
-                                "content": b64str(base64_encode_pem_cert(certificate)),
+                                "content": B64Str(base64_encode_pem_cert(certificate)),
                             },
                         },
                         "data": {
