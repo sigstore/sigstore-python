@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
 
+
 @dataclass(frozen=True)
 class RekorLogInfo:
     """
