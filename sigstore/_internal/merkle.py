@@ -26,7 +26,7 @@ import hashlib
 import struct
 from typing import List, Tuple
 
-from sigstore._utils import hexstr
+from sigstore._utils import HexStr
 from sigstore.transparency import LogEntry
 
 
@@ -124,7 +124,7 @@ def verify_merkle_inclusion(entry: LogEntry) -> None:
         leaf_hash, inclusion_proof.hashes[:inner], inclusion_proof.log_index
     )
 
-    calc_hash: hexstr = hexstr(
+    calc_hash: HexStr = HexStr(
         _chain_border_right(intermediate_result, inclusion_proof.hashes[inner:]).hex()
     )
 

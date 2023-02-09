@@ -71,7 +71,7 @@ from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import b64str, hexstr, pemcert, sha256_streaming
+from sigstore._utils import HexStr, b64str, pemcert, sha256_streaming
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -183,7 +183,7 @@ class Signer:
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         return SigningResult(
-            input_digest=hexstr(input_digest.hex()),
+            input_digest=HexStr(input_digest.hex()),
             cert_pem=pemcert(
                 cert.public_bytes(encoding=serialization.Encoding.PEM).decode()
             ),
@@ -197,7 +197,7 @@ class SigningResult(BaseModel):
     Represents the artifacts of a signing operation.
     """
 
-    input_digest: hexstr
+    input_digest: HexStr
     """
     The hex-encoded SHA256 digest of the input that was signed for.
     """

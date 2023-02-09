@@ -35,7 +35,7 @@ else:
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
-hexstr = NewType("hexstr", str)
+HexStr = NewType("HexStr", str)
 b64str = NewType("b64str", str)
 pemcert = NewType("pemcert", str)
 dercert = NewType("dercert", bytes)

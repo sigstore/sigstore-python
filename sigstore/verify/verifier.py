@@ -43,7 +43,7 @@ from sigstore._internal.merkle import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSetError, verify_set
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import b64str, hexstr
+from sigstore._utils import HexStr, b64str
 from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore.verify.models import RekorEntryMissing as RekorEntryMissingError
 from sigstore.verify.models import (
@@ -72,7 +72,7 @@ class LogEntryMissing(VerificationFailure):
     The signature present during lookup failure, encoded with base64.
     """
 
-    artifact_hash: hexstr
+    artifact_hash: HexStr
     """
     The artifact hash present during lookup failure, encoded as a hex string.
     """
