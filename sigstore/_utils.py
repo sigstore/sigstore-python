@@ -53,7 +53,7 @@ A newtype for `bytes` objects that contain DER-encoded certificates.
 """
 KeyID = NewType("KeyID", bytes)
 """
-A newtype for `str` objects that contain a key id.
+A newtype for `bytes` objects that contain a key id.
 """
 
 
