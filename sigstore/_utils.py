@@ -49,7 +49,7 @@ A newtype for `str` objects that contain PEM-encoded certificates.
 """
 DERCert = NewType("DERCert", bytes)
 """
-A newtype for `str` objects that contain DER-encoded certificates.
+A newtype for `bytes` objects that contain DER-encoded certificates.
 """
 KeyID = NewType("KeyID", bytes)
 """
