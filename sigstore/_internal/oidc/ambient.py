@@ -220,4 +220,4 @@ def detect_buildkite() -> Optional[str]:
             f"BuildKite: the BuildKite agent encountered an error: {process.stdout}"
         )
 
-    return process.stdout
+    return process.stdout.strip()
