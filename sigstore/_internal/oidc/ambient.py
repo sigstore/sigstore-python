@@ -209,7 +209,7 @@ def detect_buildkite() -> Optional[str]:
 
     # Now query the agent for a token.
     process = subprocess.run(
-        ["buildkite-agent", "oidc", "request-token" "--audience", "sigstore"],
+        ["buildkite-agent", "oidc", "request-token", "--audience", "sigstore"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
