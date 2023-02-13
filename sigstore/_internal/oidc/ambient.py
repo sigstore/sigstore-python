@@ -217,7 +217,7 @@ def detect_buildkite() -> Optional[str]:
 
     if process.returncode != 0:
         raise AmbientCredentialError(
-            f"BuildKite: the BuildKite agent encountered an error: {process.stderr}"
+            f"BuildKite: the BuildKite agent encountered an error: {process.stdout}"
         )
 
     return process.stdout
