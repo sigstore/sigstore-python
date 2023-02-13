@@ -205,9 +205,17 @@ def detect_credential() -> Optional[str]:
     Raises `AmbientCredentialError` if any detector fails internally (i.e.
     detects a credential, but cannot retrieve it).
     """
-    from sigstore._internal.oidc.ambient import detect_gcp, detect_github
+    from sigstore._internal.oidc.ambient import (
+        detect_buildkite,
+        detect_gcp,
+        detect_github,
+    )
 
-    detectors: List[Callable[..., Optional[str]]] = [detect_github, detect_gcp]
+    detectors: List[Callable[..., Optional[str]]] = [
+        detect_github,
+        detect_gcp,
+        detect_buildkite,
+    ]
     for detector in detectors:
         credential = detector()
         if credential is not None:

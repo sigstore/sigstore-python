@@ -18,6 +18,8 @@ Ambient OIDC credential detection for sigstore.
 
 import logging
 import os
+import shutil
+import subprocess
 from typing import Optional
 
 import requests
@@ -191,3 +193,31 @@ def detect_gcp() -> Optional[str]:
 
         logger.debug("GCP: successfully requested OIDC token")
         return resp.text
+
+
+def detect_buildkite() -> Optional[str]:
+    logger.debug("BuildKite: looking for OIDC credentials")
+    if not os.getenv("BUILDKITE"):
+        logger.debug("BuildKite: environment doesn't look like BuildKite; giving up")
+        return None
+
+    # Check that the BuildKite agent executable exists in the `PATH`.
+    if shutil.which("buildkite-agent") is None:
+        raise AmbientCredentialError(
+            "BuildKite: could not find BuildKite agent in BuildKite environment"
+        )
+
+    # Now query the agent for a token.
+    process = subprocess.run(
+        ["buildkite-agent", "oidc", "request-token" "--audience", "sigstore"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    if process.returncode != 0:
+        raise AmbientCredentialError(
+            f"BuildKite: the BuildKite agent encountered an error: {process.stderr}"
+        )
+
+    return process.stdout
