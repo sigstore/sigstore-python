@@ -43,6 +43,7 @@ from sigstore._internal.merkle import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSetError, verify_set
 from sigstore._internal.tuf import TrustUpdater
+from sigstore._utils import B64Str, HexStr
 from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore.verify.models import RekorEntryMissing as RekorEntryMissingError
 from sigstore.verify.models import (
@@ -66,12 +67,12 @@ class LogEntryMissing(VerificationFailure):
         "The transparency log has no entry for the given verification materials"
     )
 
-    signature: str
+    signature: B64Str
     """
     The signature present during lookup failure, encoded with base64.
     """
 
-    artifact_hash: str
+    artifact_hash: HexStr
     """
     The artifact hash present during lookup failure, encoded as a hex string.
     """
@@ -235,7 +236,7 @@ class Verifier:
             entry = materials.rekor_entry(self._rekor)
         except RekorEntryMissingError:
             return LogEntryMissing(
-                signature=base64.b64encode(materials.signature).decode(),
+                signature=B64Str(base64.b64encode(materials.signature).decode()),
                 artifact_hash=materials.input_digest.hex(),
             )
         except InvalidRekorEntryError:

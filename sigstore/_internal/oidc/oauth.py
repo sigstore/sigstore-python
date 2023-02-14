@@ -28,6 +28,7 @@ import urllib.parse
 import uuid
 from typing import Any, Dict, List, Optional, cast
 
+from sigstore._utils import B64Str
 from sigstore.oidc import IdentityError, Issuer
 
 logger = logging.getLogger(__name__)
@@ -170,13 +171,13 @@ class _OAuthSession:
         self._state = str(uuid.uuid4())
         self._nonce = str(uuid.uuid4())
 
-        self.code_verifier = (
+        self.code_verifier = B64Str(
             base64.urlsafe_b64encode(os.urandom(32)).rstrip(b"=").decode()
         )
 
     @property
     def code_challenge(self) -> str:
-        return (
+        return B64Str(
             base64.urlsafe_b64encode(
                 hashlib.sha256(self.code_verifier.encode()).digest()
             )

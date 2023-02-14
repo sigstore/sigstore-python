@@ -34,7 +34,12 @@ from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore._internal.rekor import RekorClient
-from sigstore._utils import base64_encode_pem_cert, sha256_streaming
+from sigstore._utils import (
+    B64Str,
+    PEMCert,
+    base64_encode_pem_cert,
+    sha256_streaming,
+)
 from sigstore.transparency import LogEntry, LogInclusionProof
 
 logger = logging.getLogger(__name__)
@@ -178,7 +183,7 @@ class VerificationMaterials:
         self,
         *,
         input_: IO[bytes],
-        cert_pem: str,
+        cert_pem: PEMCert,
         signature: bytes,
         offline: bool = False,
         rekor_entry: LogEntry | None,
@@ -220,7 +225,7 @@ class VerificationMaterials:
         certs = bundle.verification_material.x509_certificate_chain.certificates
         if len(certs) == 0:
             raise InvalidMaterials("expected non-empty certificate chain in bundle")
-        cert_pem = (
+        cert_pem = PEMCert(
             load_der_x509_certificate(certs[0].raw_bytes)
             .public_bytes(Encoding.PEM)
             .decode()
@@ -243,19 +248,21 @@ class VerificationMaterials:
         )
         entry = LogEntry(
             uuid=None,
-            body=base64.b64encode(tlog_entry.canonicalized_body).decode(),
+            body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
             integrated_time=tlog_entry.integrated_time,
             log_id=tlog_entry.log_id.key_id.hex(),
             log_index=tlog_entry.log_index,
             inclusion_proof=inclusion_proof,
-            signed_entry_timestamp=base64.b64encode(
-                tlog_entry.inclusion_promise.signed_entry_timestamp
-            ).decode(),
+            signed_entry_timestamp=B64Str(
+                base64.b64encode(
+                    tlog_entry.inclusion_promise.signed_entry_timestamp
+                ).decode()
+            ),
         )
 
         return cls(
             input_=input_,
-            cert_pem=cert_pem,
+            cert_pem=PEMCert(cert_pem),
             signature=signature,
             offline=offline,
             rekor_entry=entry,
@@ -311,8 +318,10 @@ class VerificationMaterials:
             "apiVersion": "0.0.1",
             "spec": {
                 "signature": {
-                    "content": base64.b64encode(self.signature).decode(),
-                    "publicKey": {"content": base64_encode_pem_cert(self.certificate)},
+                    "content": B64Str(base64.b64encode(self.signature).decode()),
+                    "publicKey": {
+                        "content": B64Str(base64_encode_pem_cert(self.certificate))
+                    },
                 },
                 "data": {
                     "hash": {"algorithm": "sha256", "value": self.input_digest.hex()}

@@ -45,6 +45,8 @@ from cryptography.x509.certificate_transparency import (
 )
 from pydantic import BaseModel, Field, validator
 
+from sigstore._utils import B64Str
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
@@ -193,9 +195,9 @@ class _Endpoint(ABC):
 
 def _serialize_cert_request(req: CertificateSigningRequest) -> str:
     data = {
-        "certificateSigningRequest": base64.b64encode(
-            req.public_bytes(serialization.Encoding.PEM)
-        ).decode()
+        "certificateSigningRequest": B64Str(
+            base64.b64encode(req.public_bytes(serialization.Encoding.PEM)).decode()
+        )
     }
     return json.dumps(data)
 

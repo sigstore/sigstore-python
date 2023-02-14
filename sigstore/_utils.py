@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import sys
-from typing import IO, Union
+from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -32,7 +32,29 @@ if sys.version_info < (3, 11):
 else:
     from importlib import resources
 
+
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
+
+HexStr = NewType("HexStr", str)
+"""
+A newtype for `str` objects that contain hexadecimal strings (e.g. `ffabcd00ff`).
+"""
+B64Str = NewType("B64Str", str)
+"""
+A newtype for `str` objects that contain base64 encoded strings.
+"""
+PEMCert = NewType("PEMCert", str)
+"""
+A newtype for `str` objects that contain PEM-encoded certificates.
+"""
+DERCert = NewType("DERCert", bytes)
+"""
+A newtype for `bytes` objects that contain DER-encoded certificates.
+"""
+KeyID = NewType("KeyID", bytes)
+"""
+A newtype for `bytes` objects that contain a key id.
+"""
 
 
 class InvalidKey(Exception):
@@ -61,15 +83,17 @@ def load_pem_public_key(key_pem: bytes) -> PublicKey:
     return key
 
 
-def base64_encode_pem_cert(cert: Certificate) -> str:
+def base64_encode_pem_cert(cert: Certificate) -> B64Str:
     """
     Returns a string containing a base64-encoded PEM-encoded X.509 certificate.
     """
 
-    return base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
+    return B64Str(
+        base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
+    )
 
 
-def key_id(key: PublicKey) -> bytes:
+def key_id(key: PublicKey) -> KeyID:
     """
     Returns an RFC 6962-style "key ID" for the given public key.
 
@@ -80,7 +104,7 @@ def key_id(key: PublicKey) -> bytes:
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
 
-    return hashlib.sha256(public_bytes).digest()
+    return KeyID(hashlib.sha256(public_bytes).digest())
 
 
 def sha256_streaming(io: IO[bytes]) -> bytes:
