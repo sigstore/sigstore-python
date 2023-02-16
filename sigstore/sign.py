@@ -71,7 +71,7 @@ from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import sha256_streaming
+from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -166,7 +166,7 @@ class Signer:
         artifact_signature = private_key.sign(
             input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
         )
-        b64_artifact_signature = base64.b64encode(artifact_signature).decode()
+        b64_artifact_signature = B64Str(base64.b64encode(artifact_signature).decode())
 
         # Prepare inputs
         b64_cert = base64.b64encode(
@@ -175,17 +175,19 @@ class Signer:
 
         # Create the transparency log entry
         entry = self._rekor.log.entries.post(
-            b64_artifact_signature=b64_artifact_signature,
+            b64_artifact_signature=B64Str(b64_artifact_signature),
             sha256_artifact_hash=input_digest.hex(),
-            b64_cert=b64_cert.decode(),
+            b64_cert=B64Str(b64_cert.decode()),
         )
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         return SigningResult(
-            input_digest=input_digest.hex(),
-            cert_pem=cert.public_bytes(encoding=serialization.Encoding.PEM).decode(),
-            b64_signature=b64_artifact_signature,
+            input_digest=HexStr(input_digest.hex()),
+            cert_pem=PEMCert(
+                cert.public_bytes(encoding=serialization.Encoding.PEM).decode()
+            ),
+            b64_signature=B64Str(b64_artifact_signature),
             log_entry=entry,
         )
 
@@ -195,17 +197,17 @@ class SigningResult(BaseModel):
     Represents the artifacts of a signing operation.
     """
 
-    input_digest: str
+    input_digest: HexStr
     """
     The hex-encoded SHA256 digest of the input that was signed for.
     """
 
-    cert_pem: str
+    cert_pem: PEMCert
     """
     The PEM-encoded public half of the certificate used for signing.
     """
 
-    b64_signature: str
+    b64_signature: B64Str
     """
     The base64-encoded signature.
     """
