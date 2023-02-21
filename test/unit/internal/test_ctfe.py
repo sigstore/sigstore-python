@@ -15,7 +15,8 @@
 import pretend
 import pytest
 
-from sigstore._internal.ctfe import CTKeyring, CTKeyringLookupError
+from sigstore._internal.ctfe import CTKeyring
+from sigstore._internal.keyring import KeyringLookupError
 
 
 class TestCTKeyring:
@@ -47,5 +48,5 @@ class TestCTKeyring:
         signature = pretend.stub()
         data = pretend.stub()
 
-        with pytest.raises(CTKeyringLookupError, match="no known key for key ID?"):
+        with pytest.raises(KeyringLookupError, match="no known key for key ID?"):
             ctkeyring.verify(key_id=key_id, signature=signature, data=data)

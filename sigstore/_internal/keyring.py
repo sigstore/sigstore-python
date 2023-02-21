@@ -24,7 +24,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
-from sigstore._utils import key_id, load_pem_public_key
+from sigstore._utils import KeyID, key_id, load_pem_public_key
 
 
 class KeyringError(Exception):
@@ -46,9 +46,10 @@ class KeyringLookupError(KeyringError):
 
 class Keyring:
     """
-    Represents a set of generic signing keys.
+    Represents a set of CT signing keys, each of which is a potentially
+    valid signer for a Signed Certificate Timestamp (SCT).
 
-    This structure exists to facilitate key rotation in a generic log.
+    This structure exists to facilitate key rotation in a CT log.
     """
 
     def __init__(self, keys: List[bytes] = []):
@@ -68,7 +69,7 @@ class Keyring:
         key = load_pem_public_key(key_pem)
         self._keyring[key_id(key)] = key
 
-    def verify(self, *, key_id: bytes, signature: bytes, data: bytes) -> None:
+    def verify(self, *, key_id: KeyID, signature: bytes, data: bytes) -> None:
         """
         Verify that `signature` is a valid signature for `data`, using the
         key identified by `key_id`.
