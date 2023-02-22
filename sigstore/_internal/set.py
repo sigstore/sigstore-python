@@ -25,7 +25,7 @@ from sigstore._utils import KeyID
 from sigstore.transparency import LogEntry
 
 
-class InvalidSetError(Exception):
+class InvalidSETError(Exception):
     """
     Raised during SET verification if an SET is invalid in some way.
     """
@@ -47,4 +47,4 @@ def verify_set(client: RekorClient, entry: LogEntry) -> None:
             data=entry.encode_canonical(),
         )
     except InvalidSignature as inval_sig:
-        raise InvalidSetError("invalid signature") from inval_sig
+        raise InvalidSETError("invalid signature") from inval_sig

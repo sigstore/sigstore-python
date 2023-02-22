@@ -21,7 +21,7 @@ import pytest
 
 import sigstore._internal.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
-from sigstore._internal.sct import InvalidSctError
+from sigstore._internal.sct import InvalidSCTError
 from sigstore.oidc import IdentityError, detect_credential
 from sigstore.sign import Signer
 
@@ -73,7 +73,7 @@ def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
     payload = io.BytesIO(secrets.token_bytes(32))
 
     with pytest.raises(
-        InvalidSctError,
+        InvalidSCTError,
         match="Invalid key ID in SCT: not found in current keyring.",
     ):
         signer.sign(payload, token)
@@ -92,7 +92,7 @@ def test_sct_verify_keyring_error(signer, monkeypatch):
 
     payload = io.BytesIO(secrets.token_bytes(32))
 
-    with pytest.raises(InvalidSctError):
+    with pytest.raises(InvalidSCTError):
         signer.sign(payload, token)
 
 
