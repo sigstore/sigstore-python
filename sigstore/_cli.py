@@ -650,7 +650,7 @@ def _sign(args: argparse.Namespace) -> None:
             rekor_keys = updater.get_rekor_keys()
 
         ct_keyring = CTKeyring(Keyring(ctfe_keys))
-        rekor_keyring = RekorKeyring(rekor_keys)
+        rekor_keyring = RekorKeyring(Keyring(rekor_keys))
 
         signer = Signer(
             fulcio=FulcioClient(args.fulcio_url),
@@ -790,7 +790,7 @@ def _collect_verification_state(
         verifier = Verifier(
             rekor=RekorClient(
                 url=args.rekor_url,
-                rekor_keyring=RekorKeyring(rekor_keys),
+                rekor_keyring=RekorKeyring(Keyring(rekor_keys)),
                 # We don't use the CT keyring in verification so we can supply an empty keyring
                 ct_keyring=CTKeyring(Keyring()),
             ),

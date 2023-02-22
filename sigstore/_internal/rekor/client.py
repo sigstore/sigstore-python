@@ -22,7 +22,7 @@ import base64
 import logging
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, NewType, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -40,8 +40,7 @@ DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
 
 
-class RekorKeyring(Keyring):
-    pass
+RekorKeyring = NewType("RekorKeyring", Keyring)
 
 
 @dataclass(frozen=True)
@@ -282,7 +281,9 @@ class RekorClient:
         ctfe_keys = updater.get_ctfe_keys()
 
         return cls(
-            DEFAULT_REKOR_URL, RekorKeyring(rekor_keys), CTKeyring(Keyring(ctfe_keys))
+            DEFAULT_REKOR_URL,
+            RekorKeyring(Keyring(rekor_keys)),
+            CTKeyring(Keyring(ctfe_keys)),
         )
 
     @classmethod
@@ -296,7 +297,9 @@ class RekorClient:
         ctfe_keys = updater.get_ctfe_keys()
 
         return cls(
-            STAGING_REKOR_URL, RekorKeyring(rekor_keys), CTKeyring(Keyring(ctfe_keys))
+            STAGING_REKOR_URL,
+            RekorKeyring(Keyring(rekor_keys)),
+            CTKeyring(Keyring(ctfe_keys)),
         )
 
     @property
