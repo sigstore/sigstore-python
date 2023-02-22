@@ -50,7 +50,7 @@ def _pack_signed_entry(
         cert_der = DERCert(cert.public_bytes(encoding=serialization.Encoding.DER))
     elif sct.entry_type == LogEntryType.PRE_CERTIFICATE:
         if not issuer_key_id or len(issuer_key_id) != 32:
-            raise InvalidSctError("API misuse: issuer key ID missing")
+            raise InvalidSCTError("API misuse: issuer key ID missing")
 
         # When dealing with a precertificate, our signed entry looks like this:
         #
@@ -62,7 +62,7 @@ def _pack_signed_entry(
         cert_der = DERCert(cert.tbs_precertificate_bytes)
         fields.append(issuer_key_id)
     else:
-        raise InvalidSctError(f"unknown SCT log entry type: {sct.entry_type!r}")
+        raise InvalidSCTError(f"unknown SCT log entry type: {sct.entry_type!r}")
 
     # The `opaque` length is a u24, which isn't directly supported by `struct`.
     # So we have to decompose it into 3 bytes.
@@ -71,7 +71,7 @@ def _pack_signed_entry(
         struct.pack("!I", len(cert_der)),
     )
     if unused:
-        raise InvalidSctError(f"Unexpectedly large certificate length: {len(cert_der)}")
+        raise InvalidSCTError(f"Unexpectedly large certificate length: {len(cert_der)}")
 
     pack_format = pack_format.format(cert_der_len=len(cert_der))
     fields.extend((len1, len2, len3, cert_der))
@@ -95,7 +95,7 @@ def _pack_digitally_signed(
     # No extensions are currently specified, so we treat the presence
     # of any extension bytes as suspicious.
     if len(sct.extension_bytes) != 0:
-        raise InvalidSctError("Unexpected trailing extension bytes")
+        raise InvalidSCTError("Unexpected trailing extension bytes")
 
     # This constructs the "core" `signed_entry` field, which is either
     # the public bytes of the cert *or* the TBSPrecertificate (with some
@@ -134,7 +134,7 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
     return issuer
 
 
-class InvalidSctError(Exception):
+class InvalidSCTError(Exception):
     """
     Raised during SCT verification if an SCT is invalid in some way.
     """
@@ -166,7 +166,7 @@ def verify_sct(
         issuer_pubkey = _get_issuer_cert(chain).public_key()
 
         if not isinstance(issuer_pubkey, (rsa.RSAPublicKey, ec.EllipticCurvePublicKey)):
-            raise InvalidSctError(
+            raise InvalidSCTError(
                 f"invalid issuer pubkey format (not ECDSA or RSA): {issuer_pubkey}"
             )
 
@@ -175,7 +175,7 @@ def verify_sct(
     digitally_signed = _pack_digitally_signed(sct, cert, issuer_key_id)
 
     if not isinstance(sct.signature_hash_algorithm, hashes.SHA256):
-        raise InvalidSctError(
+        raise InvalidSCTError(
             "Found unexpected hash algorithm in SCT: only SHA256 is supported "
             f"(expected {hashes.SHA256}, got {sct.signature_hash_algorithm})"
         )
@@ -196,7 +196,7 @@ def verify_sct(
         # (indicating that the user has asked for the wrong instance).
         #
         # TODO(ww): Longer term, this should be specialized elsewhere.
-        raise InvalidSctError(
+        raise InvalidSCTError(
             dedent(
                 f"""
                 Invalid key ID in SCT: not found in current keyring.
@@ -214,4 +214,4 @@ def verify_sct(
             ),
         )
     except KeyringError as exc:
-        raise InvalidSctError from exc
+        raise InvalidSCTError from exc
