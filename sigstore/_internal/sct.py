@@ -31,11 +31,8 @@ from cryptography.x509.certificate_transparency import (
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
 
-from sigstore._internal.ctfe import (
-    CTKeyring,
-    CTKeyringError,
-    CTKeyringLookupError,
-)
+from sigstore._internal.ctfe import CTKeyring
+from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._utils import DERCert, KeyID, key_id
 
 logger = logging.getLogger(__name__)
@@ -192,7 +189,7 @@ def verify_sct(
         ct_keyring.verify(
             key_id=KeyID(sct.log_id), signature=sct.signature, data=digitally_signed
         )
-    except CTKeyringLookupError as exc:
+    except KeyringLookupError as exc:
         # We specialize this error case, since it usually indicates one of
         # two conditions: either the current sigstore client is out-of-date,
         # or that the SCT is well-formed but invalid for the current configuration
@@ -216,5 +213,5 @@ def verify_sct(
                 """
             ),
         )
-    except CTKeyringError as exc:
+    except KeyringError as exc:
         raise InvalidSctError from exc
