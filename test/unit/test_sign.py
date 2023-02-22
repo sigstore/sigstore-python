@@ -65,9 +65,7 @@ def test_sign_rekor_entry_consistent(signer):
 def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
     # a signer whose keyring always fails to lookup a given key.
     signer = signer()
-    signer._rekor._ct_keyring = pretend.stub(
-        verify=pretend.raiser(KeyringLookupError)
-    )
+    signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringLookupError))
 
     token = detect_credential()
     assert token is not None

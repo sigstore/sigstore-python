@@ -26,11 +26,10 @@ from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
 import requests
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import Certificate
 
 from sigstore._internal.ctfe import CTKeyring
+from sigstore._internal.keyring import Keyring
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import B64Str, base64_encode_pem_cert
 from sigstore.transparency import LogEntry
@@ -39,6 +38,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
+
+
+class RekorKeyring(Keyring):
+    pass
 
 
 @dataclass(frozen=True)
@@ -247,7 +250,9 @@ class RekorEntriesRetrieve(_Endpoint):
 class RekorClient:
     """The internal Rekor client"""
 
-    def __init__(self, url: str, pubkey: bytes, ct_keyring: CTKeyring) -> None:
+    def __init__(
+        self, url: str, rekor_keyring: RekorKeyring, ct_keyring: CTKeyring
+    ) -> None:
         """
         Create a new `RekorClient` from the given URL.
         """
@@ -257,15 +262,8 @@ class RekorClient:
             {"Content-Type": "application/json", "Accept": "application/json"}
         )
 
-        pubkey = serialization.load_pem_public_key(pubkey)
-        if not isinstance(
-            pubkey,
-            ec.EllipticCurvePublicKey,
-        ):
-            raise RekorClientError(f"Invalid public key type: {pubkey}")
-        self._pubkey = pubkey
-
         self._ct_keyring = ct_keyring
+        self._rekor_keyring = rekor_keyring
 
     def __del__(self) -> None:
         """
@@ -280,10 +278,10 @@ class RekorClient:
 
         updater must be a `TrustUpdater` for the production TUF repository.
         """
-        rekor_key = updater.get_rekor_key()
+        rekor_keys = updater.get_rekor_keys()
         ctfe_keys = updater.get_ctfe_keys()
 
-        return cls(DEFAULT_REKOR_URL, rekor_key, CTKeyring(ctfe_keys))
+        return cls(DEFAULT_REKOR_URL, RekorKeyring(rekor_keys), CTKeyring(ctfe_keys))
 
     @classmethod
     def staging(cls, updater: TrustUpdater) -> RekorClient:
@@ -292,10 +290,10 @@ class RekorClient:
 
         updater must be a `TrustUpdater` for the staging TUF repository.
         """
-        rekor_key = updater.get_rekor_key()
+        rekor_keys = updater.get_rekor_keys()
         ctfe_keys = updater.get_ctfe_keys()
 
-        return cls(STAGING_REKOR_URL, rekor_key, CTKeyring(ctfe_keys))
+        return cls(STAGING_REKOR_URL, RekorKeyring(rekor_keys), CTKeyring(ctfe_keys))
 
     @property
     def log(self) -> RekorLog:

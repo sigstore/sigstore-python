@@ -42,10 +42,11 @@ def verify_set(client: RekorClient, entry: LogEntry) -> None:
     signed_entry_ts = base64.b64decode(entry.signed_entry_timestamp)
 
     try:
-        client._pubkey.verify(
-            signature=signed_entry_ts,
-            data=entry.encode_canonical(),
-            signature_algorithm=ec.ECDSA(hashes.SHA256()),
-        )
+        for rekor_key in client._rekor_keyring._keyring.values():
+            rekor_key.verify(
+                signature=signed_entry_ts,
+                data=entry.encode_canonical(),
+                signature_algorithm=ec.ECDSA(hashes.SHA256()),
+            )
     except InvalidSignature as inval_sig:
         raise InvalidSetError("invalid signature") from inval_sig

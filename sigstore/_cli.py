@@ -29,7 +29,11 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
-from sigstore._internal.rekor.client import DEFAULT_REKOR_URL, RekorClient
+from sigstore._internal.rekor.client import (
+    DEFAULT_REKOR_URL,
+    RekorClient,
+    RekorKeyring,
+)
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import PEMCert
 from sigstore.oidc import (
@@ -640,14 +644,16 @@ def _sign(args: argparse.Namespace) -> None:
         else:
             ctfe_keys = updater.get_ctfe_keys()
         if args.rekor_root_pubkey is not None:
-            rekor_key = args.rekor_root_pubkey.read()
+            rekor_keys = [args.rekor_root_pubkey.read()]
         else:
-            rekor_key = updater.get_rekor_key()
+            rekor_keys = updater.get_rekor_keys()
 
         ct_keyring = CTKeyring(ctfe_keys)
+        rekor_keyring = RekorKeyring(rekor_keys)
+
         signer = Signer(
             fulcio=FulcioClient(args.fulcio_url),
-            rekor=RekorClient(args.rekor_url, rekor_key, ct_keyring),
+            rekor=RekorClient(args.rekor_url, rekor_keyring, ct_keyring),
         )
 
     # The order of precedence is as follows:
@@ -775,15 +781,15 @@ def _collect_verification_state(
             args._parser.error(f"Invalid certificate chain: {error}")
 
         if args.rekor_root_pubkey is not None:
-            rekor_key = args.rekor_root_pubkey.read()
+            rekor_keys = [args.rekor_root_pubkey.read()]
         else:
             updater = TrustUpdater.production()
-            rekor_key = updater.get_rekor_key()
+            rekor_keys = updater.get_rekor_keys()
 
         verifier = Verifier(
             rekor=RekorClient(
                 url=args.rekor_url,
-                pubkey=rekor_key,
+                rekor_keyring=RekorKeyring(rekor_keys),
                 # We don't use the CT keyring in verification so we can supply an empty keyring
                 ct_keyring=CTKeyring(),
             ),
