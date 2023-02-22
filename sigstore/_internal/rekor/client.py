@@ -281,7 +281,9 @@ class RekorClient:
         rekor_keys = updater.get_rekor_keys()
         ctfe_keys = updater.get_ctfe_keys()
 
-        return cls(DEFAULT_REKOR_URL, RekorKeyring(rekor_keys), CTKeyring(ctfe_keys))
+        return cls(
+            DEFAULT_REKOR_URL, RekorKeyring(rekor_keys), CTKeyring(Keyring(ctfe_keys))
+        )
 
     @classmethod
     def staging(cls, updater: TrustUpdater) -> RekorClient:
@@ -293,7 +295,9 @@ class RekorClient:
         rekor_keys = updater.get_rekor_keys()
         ctfe_keys = updater.get_ctfe_keys()
 
-        return cls(STAGING_REKOR_URL, RekorKeyring(rekor_keys), CTKeyring(ctfe_keys))
+        return cls(
+            STAGING_REKOR_URL, RekorKeyring(rekor_keys), CTKeyring(Keyring(ctfe_keys))
+        )
 
     @property
     def log(self) -> RekorLog:

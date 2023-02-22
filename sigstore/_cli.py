@@ -29,6 +29,7 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
+from sigstore._internal.keyring import Keyring
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
@@ -648,7 +649,7 @@ def _sign(args: argparse.Namespace) -> None:
         else:
             rekor_keys = updater.get_rekor_keys()
 
-        ct_keyring = CTKeyring(ctfe_keys)
+        ct_keyring = CTKeyring(Keyring(ctfe_keys))
         rekor_keyring = RekorKeyring(rekor_keys)
 
         signer = Signer(
@@ -791,7 +792,7 @@ def _collect_verification_state(
                 url=args.rekor_url,
                 rekor_keyring=RekorKeyring(rekor_keys),
                 # We don't use the CT keyring in verification so we can supply an empty keyring
-                ct_keyring=CTKeyring(),
+                ct_keyring=CTKeyring(Keyring()),
             ),
             fulcio_certificate_chain=certificate_chain,
         )

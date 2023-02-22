@@ -16,7 +16,7 @@ import pretend
 import pytest
 
 from sigstore._internal.ctfe import CTKeyring
-from sigstore._internal.keyring import KeyringLookupError
+from sigstore._internal.keyring import Keyring, KeyringLookupError
 
 
 class TestCTKeyring:
@@ -27,7 +27,7 @@ class TestCTKeyring:
             b"dDxz/SfnRi1fT8ekpfBd2O1uoz7jr3Z8nKzxA69EUQ+eFCFI3zeubPWU7w==\n"
             b"-----END PUBLIC KEY-----"
         )
-        ctkeyring = CTKeyring([keybytes])
+        ctkeyring = CTKeyring(Keyring([keybytes]))
         assert len(ctkeyring._keyring) == 1
 
     def test_keyring_add(self):
@@ -38,12 +38,12 @@ class TestCTKeyring:
             b"dDxz/SfnRi1fT8ekpfBd2O1uoz7jr3Z8nKzxA69EUQ+eFCFI3zeubPWU7w==\n"
             b"-----END PUBLIC KEY-----"
         )
-        ctkeyring = CTKeyring()
+        ctkeyring = CTKeyring(Keyring())
         ctkeyring.add(keybytes)
         assert len(ctkeyring._keyring) == 1
 
     def test_verify_fail_empty_keyring(self):
-        ctkeyring = CTKeyring()
+        ctkeyring = CTKeyring(Keyring())
         key_id = pretend.stub(hex=lambda: pretend.stub())
         signature = pretend.stub()
         data = pretend.stub()

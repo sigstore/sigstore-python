@@ -16,8 +16,8 @@
 Functionality for interacting with CT ("CTFE") signing keys.
 """
 
+from typing import NewType
+
 from sigstore._internal.keyring import Keyring
 
-
-class CTKeyring(Keyring):
-    pass
+CTKeyring = NewType("CTKeyring", Keyring)
