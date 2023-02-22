@@ -84,7 +84,6 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
 
 def test_updater_staging_get(mock_staging_tuf, tuf_asset):
     """Test that one of the get-methods returns the expected content"""
-    from sigstore._internal.rekor.client import RekorKeyring
     updater = TrustUpdater.staging()
     with open(tuf_asset("rekor.pub"), "rb") as f:
         assert updater.get_rekor_keys() == [f.read()]

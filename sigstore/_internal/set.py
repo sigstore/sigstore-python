@@ -18,11 +18,10 @@ Utilities for verifying Signed Entry Timestamps.
 
 import base64
 
-import cryptography.hazmat.primitives.asymmetric.ec as ec
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes
 
 from sigstore._internal.rekor import RekorClient
+from sigstore._utils import KeyID
 from sigstore.transparency import LogEntry
 
 
@@ -42,11 +41,10 @@ def verify_set(client: RekorClient, entry: LogEntry) -> None:
     signed_entry_ts = base64.b64decode(entry.signed_entry_timestamp)
 
     try:
-        for rekor_key in client._rekor_keyring._keyring.values():
-            rekor_key.verify(
-                signature=signed_entry_ts,
-                data=entry.encode_canonical(),
-                signature_algorithm=ec.ECDSA(hashes.SHA256()),
-            )
+        client._rekor_keyring.verify(
+            key_id=KeyID(bytes.fromhex(entry.log_id)),
+            signature=signed_entry_ts,
+            data=entry.encode_canonical(),
+        )
     except InvalidSignature as inval_sig:
         raise InvalidSetError("invalid signature") from inval_sig
