@@ -27,6 +27,7 @@ from cryptography.x509 import load_pem_x509_certificates
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
+from sigstore._errors import Error
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.keyring import Keyring
@@ -538,24 +539,27 @@ def main() -> None:
     # error handling later.
     args._parser = parser
 
-    if args.subcommand == "sign":
-        _sign(args)
-    elif args.subcommand == "verify":
-        if args.verify_subcommand == "identity":
-            _verify_identity(args)
-        elif args.verify_subcommand == "github":
-            _verify_github(args)
-        else:
-            parser.error(f"Unknown verify subcommand: {args.verify_subcommand}")
-    elif args.subcommand == "get-identity-token":
-        token = _get_identity_token(args)
-        if token:
-            print(token)
-        else:
-            args._parser.error("No identity token supplied or detected!")
+    try:
+        if args.subcommand == "sign":
+            _sign(args)
+        elif args.subcommand == "verify":
+            if args.verify_subcommand == "identity":
+                _verify_identity(args)
+            elif args.verify_subcommand == "github":
+                _verify_github(args)
+            else:
+                parser.error(f"Unknown verify subcommand: {args.verify_subcommand}")
+        elif args.subcommand == "get-identity-token":
+            token = _get_identity_token(args)
+            if token:
+                print(token)
+            else:
+                args._parser.error("No identity token supplied or detected!")
 
-    else:
-        parser.error(f"Unknown subcommand: {args.subcommand}")
+        else:
+            parser.error(f"Unknown subcommand: {args.subcommand}")
+    except Error as e:
+        e.print_and_exit(args.verbose >= 1)
 
 
 def _sign(args: argparse.Namespace) -> None:

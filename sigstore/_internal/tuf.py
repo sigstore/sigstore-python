@@ -25,8 +25,10 @@ from urllib import parse
 
 import appdirs
 from cryptography.x509 import Certificate, load_pem_x509_certificate
+from tuf.api import exceptions as TUFExceptions
 from tuf.ngclient import RequestsFetcher, Updater
 
+from sigstore._errors import MetadataError, TUFError
 from sigstore._utils import read_embedded
 
 logger = logging.getLogger(__name__)
@@ -134,7 +136,11 @@ class TrustUpdater:
 
         # NOTE: we would like to avoid refresh if the toplevel metadata is valid.
         # https://github.com/theupdateframework/python-tuf/issues/2225
-        updater.refresh()
+        try:
+            updater.refresh()
+        except Exception as e:
+            raise TUFError("Failed to refresh TUF metadata") from e
+
         return updater
 
     def _get(self, usage: str, statuses: list[str]) -> list[bytes]:
@@ -154,7 +160,13 @@ class TrustUpdater:
             ):
                 path = self._updater.find_cached_target(target_info)
                 if path is None:
-                    path = self._updater.download_target(target_info)
+                    try:
+                        path = self._updater.download_target(target_info)
+                    except (
+                        TUFExceptions.DownloadError,
+                        TUFExceptions.RepositoryError,
+                    ) as e:
+                        raise TUFError(f"Failed to download keys for {usage}") from e
                 with open(path, "rb") as f:
                     data.append(f.read())
 
@@ -167,7 +179,7 @@ class TrustUpdater:
         """
         ctfes = self._get("CTFE", ["Active"])
         if not ctfes:
-            raise Exception("CTFE keys not found in TUF metadata")
+            raise MetadataError("CTFE keys not found in TUF metadata")
         return ctfes
 
     def get_rekor_keys(self) -> list[bytes]:
@@ -177,7 +189,7 @@ class TrustUpdater:
         """
         keys = self._get("Rekor", ["Active"])
         if len(keys) != 1:
-            raise Exception("Did not find one active Rekor key in TUF metadata")
+            raise MetadataError("Did not find one active Rekor key in TUF metadata")
         return keys
 
     def get_fulcio_certs(self) -> list[Certificate]:
@@ -189,5 +201,5 @@ class TrustUpdater:
         # been active when the certificate was used to sign.
         certs = self._get("Fulcio", ["Active", "Expired"])
         if not certs:
-            raise Exception("Fulcio certificates not found in TUF metadata")
+            raise MetadataError("Fulcio certificates not found in TUF metadata")
         return [load_pem_x509_certificate(c) for c in certs]
