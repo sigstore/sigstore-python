@@ -19,6 +19,7 @@ TUF functionality for `sigstore-python`.
 from __future__ import annotations
 
 import logging
+import os
 from functools import lru_cache
 from pathlib import Path
 from urllib import parse
@@ -152,7 +153,12 @@ class TrustUpdater:
                 if path is None:
                     path = self._updater.download_target(target_info)
                 with open(path, "rb") as f:
-                    data.append(f.read())
+                    target_hash = f.read()
+                    logger.debug(
+                        f"TUF cache target {usage} {statuses}: {os.path.basename(path)} with hash\n"
+                        f"{target_hash.decode('utf-8')}"
+                    )
+                    data.append(target_hash)
 
         return data
 
