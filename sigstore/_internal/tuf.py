@@ -146,8 +146,12 @@ class TrustUpdater:
 
         targets = self._updater._trusted_set.targets.signed.targets
         for target_info in targets.values():
-            custom = target_info.unrecognized_fields["custom"]["sigstore"]
-            if custom["status"] in statuses and custom["usage"] == usage:
+            custom = target_info.unrecognized_fields.get("custom", {}).get("sigstore")
+            if (
+                custom
+                and custom.get("status") in statuses
+                and custom.get("usage") == usage
+            ):
                 path = self._updater.find_cached_target(target_info)
                 if path is None:
                     path = self._updater.download_target(target_info)
