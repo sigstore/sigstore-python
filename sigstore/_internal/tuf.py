@@ -153,12 +153,12 @@ class TrustUpdater:
                 if path is None:
                     path = self._updater.download_target(target_info)
                 with open(path, "rb") as f:
-                    target_hash = f.read()
+                    target_cert = f.read()
                     logger.debug(
                         f"TUF cache target {usage} {statuses}: {os.path.basename(path)} with hash\n"
-                        f"{target_hash.decode('utf-8')}"
+                        f"{target_cert.decode('utf-8')}"
                     )
-                    data.append(target_hash)
+                    data.append(target_cert)
 
         return data
 
@@ -179,7 +179,8 @@ class TrustUpdater:
         """
         keys = self._get("Rekor", ["Active"])
         if len(keys) != 1:
-            raise Exception("Did not find one active Rekor key in TUF metadata")
+            raise Exception(
+                "Did not find one active Rekor key in TUF metadata")
         return keys
 
     def get_fulcio_certs(self) -> list[Certificate]:
