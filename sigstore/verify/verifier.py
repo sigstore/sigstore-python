@@ -248,12 +248,16 @@ class Verifier:
         #
         # We skip the inclusion proof only if explicitly requested.
         if not materials._offline:
+            # Verify root hash.
+            # NOTE(jl): assuming this is an online test, since this should be verified against the fetched Rekor public key
+
             try:
                 verify_merkle_inclusion(entry)
             except InvalidInclusionProofError as exc:
                 return VerificationFailure(
                     reason=f"invalid Rekor inclusion proof: {exc}"
                 )
+
         else:
             logger.debug(
                 "offline verification requested: skipping Merkle inclusion proof"

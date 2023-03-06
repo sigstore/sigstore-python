@@ -245,6 +245,7 @@ class VerificationMaterials:
             root_hash=tlog_entry.inclusion_proof.root_hash.hex(),
             tree_size=tlog_entry.inclusion_proof.tree_size,
             hashes=[h.hex() for h in tlog_entry.inclusion_proof.hashes],
+            checkpoint=tlog_entry.inclusion_proof.checkpoint,
         )
         entry = LogEntry(
             uuid=None,

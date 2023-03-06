@@ -238,6 +238,7 @@ class SigningResult(BaseModel):
                 hashes=[
                     bytes.fromhex(h) for h in self.log_entry.inclusion_proof.hashes
                 ],
+                checkpoint="foo",
             )
 
         tlog_entry = TransparencyLogEntry(
