@@ -8,6 +8,14 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [1.1.1]
+
+### Fixed
+
+* Fixed a bug in TUF target handling revealed by changes to the production
+  and staging TUF repos
+  ([#522](https://github.com/sigstore/sigstore-python/pull/522))
+
 ## [1.1.0]
 
 ### Added
@@ -136,7 +144,8 @@ All versions prior to 0.9.0 are untracked.
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/sigstore/sigstore-python/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/sigstore/sigstore-python/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/sigstore/sigstore-python/compare/v0.10.0...v1.0.0
 [0.10.0]: https://github.com/sigstore/sigstore-python/compare/v0.9.0...v0.10.0
