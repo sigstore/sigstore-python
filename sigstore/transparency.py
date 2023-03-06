@@ -129,6 +129,7 @@ class LogInclusionProof(BaseModel):
     root_hash: StrictStr = Field(..., alias="rootHash")
     tree_size: StrictInt = Field(..., alias="treeSize")
     hashes: List[StrictStr] = Field(..., alias="hashes")
+    checkpoint: StrictStr = Field(..., alias="checkpoint")
 
     class Config:
         allow_population_by_field_name = True
