@@ -179,8 +179,7 @@ class TrustUpdater:
         """
         keys = self._get("Rekor", ["Active"])
         if len(keys) != 1:
-            raise Exception(
-                "Did not find one active Rekor key in TUF metadata")
+            raise Exception("Did not find one active Rekor key in TUF metadata")
         return keys
 
     def get_fulcio_certs(self) -> list[Certificate]:
