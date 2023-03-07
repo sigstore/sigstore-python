@@ -20,14 +20,13 @@ import logging
 import os
 import sys
 from pathlib import Path
-from textwrap import dedent
-from typing import Optional, TextIO, Union, cast
+from typing import Optional, TextIO, Union
 
 from cryptography.x509 import load_pem_x509_certificates
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
-from sigstore._errors import Error
+from sigstore._errors import Error, VerificationError
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.keyring import Keyring
@@ -47,14 +46,7 @@ from sigstore.oidc import (
 )
 from sigstore.sign import Signer
 from sigstore.transparency import LogEntry
-from sigstore.verify import (
-    CertificateVerificationFailure,
-    LogEntryMissing,
-    VerificationFailure,
-    VerificationMaterials,
-    Verifier,
-    policy,
-)
+from sigstore.verify import VerificationMaterials, Verifier, policy
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -861,64 +853,8 @@ def _verify_identity(args: argparse.Namespace) -> None:
         if result:
             print(f"OK: {file}")
         else:
-            result = cast(VerificationFailure, result)
             print(f"FAIL: {file}")
-            print(f"Failure reason: {result.reason}", file=sys.stderr)
-
-            if isinstance(result, CertificateVerificationFailure):
-                # If certificate verification failed, it's either because of
-                # a chain issue or some outdated state in sigstore itself.
-                # These might already be resolved in a newer version, so
-                # we suggest that users try to upgrade and retry before
-                # anything else.
-                print(
-                    dedent(
-                        f"""
-                        The given certificate could not be verified against the
-                        root of trust.
-
-                        This may be a result of connecting to the wrong Fulcio instance
-                        (for example, staging instead of production, or vice versa).
-
-                        Additional context:
-
-                        {result.exception}
-                        """
-                    ),
-                    file=sys.stderr,
-                )
-            elif isinstance(result, LogEntryMissing):
-                # If Rekor lookup failed, it's because the certificate either
-                # wasn't logged after creation or because the user requested the
-                # wrong Rekor instance (e.g., staging instead of production).
-                # The latter is significantly more likely, so we add
-                # some additional context to the output indicating it.
-                #
-                # NOTE: Even though the latter is more likely, it's still extremely
-                # unlikely that we'd hit this -- we should always fail with
-                # `CertificateVerificationFailure` instead, as the cert store should
-                # fail to validate due to a mismatch between the leaf and the trusted
-                # root + intermediates.
-                print(
-                    dedent(
-                        f"""
-                        These signing artifacts could not be matched to a entry
-                        in the configured transparency log.
-
-                        This may be a result of connecting to the wrong Rekor instance
-                        (for example, staging instead of production, or vice versa).
-
-                        Additional context:
-
-                        Signature: {result.signature}
-
-                        Artifact hash: {result.artifact_hash}
-                        """
-                    ),
-                    file=sys.stderr,
-                )
-
-            sys.exit(1)
+            VerificationError(result).print_and_exit()
 
 
 def _verify_github(args: argparse.Namespace) -> None:
@@ -952,64 +888,8 @@ def _verify_github(args: argparse.Namespace) -> None:
         if result:
             print(f"OK: {file}")
         else:
-            result = cast(VerificationFailure, result)
             print(f"FAIL: {file}")
-            print(f"Failure reason: {result.reason}", file=sys.stderr)
-
-            if isinstance(result, CertificateVerificationFailure):
-                # If certificate verification failed, it's either because of
-                # a chain issue or some outdated state in sigstore itself.
-                # These might already be resolved in a newer version, so
-                # we suggest that users try to upgrade and retry before
-                # anything else.
-                print(
-                    dedent(
-                        f"""
-                        The given certificate could not be verified against the
-                        root of trust.
-
-                        This may be a result of connecting to the wrong Fulcio instance
-                        (for example, staging instead of production, or vice versa).
-
-                        Additional context:
-
-                        {result.exception}
-                        """
-                    ),
-                    file=sys.stderr,
-                )
-            elif isinstance(result, LogEntryMissing):
-                # If Rekor lookup failed, it's because the certificate either
-                # wasn't logged after creation or because the user requested the
-                # wrong Rekor instance (e.g., staging instead of production).
-                # The latter is significantly more likely, so we add
-                # some additional context to the output indicating it.
-                #
-                # NOTE: Even though the latter is more likely, it's still extremely
-                # unlikely that we'd hit this -- we should always fail with
-                # `CertificateVerificationFailure` instead, as the cert store should
-                # fail to validate due to a mismatch between the leaf and the trusted
-                # root + intermediates.
-                print(
-                    dedent(
-                        f"""
-                        These signing artifacts could not be matched to a entry
-                        in the configured transparency log.
-
-                        This may be a result of connecting to the wrong Rekor instance
-                        (for example, staging instead of production, or vice versa).
-
-                        Additional context:
-
-                        Signature: {result.signature}
-
-                        Artifact hash: {result.artifact_hash}
-                        """
-                    ),
-                    file=sys.stderr,
-                )
-
-            sys.exit(1)
+            VerificationError(result).print_and_exit()
 
 
 def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
