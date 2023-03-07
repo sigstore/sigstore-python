@@ -20,7 +20,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, TextIO, Union
+from typing import Optional, TextIO, Union, cast
 
 from cryptography.x509 import load_pem_x509_certificates
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
@@ -47,6 +47,7 @@ from sigstore.oidc import (
 from sigstore.sign import Signer
 from sigstore.transparency import LogEntry
 from sigstore.verify import VerificationMaterials, Verifier, policy
+from sigstore.verify.models import VerificationFailure
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -854,7 +855,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
             print(f"OK: {file}")
         else:
             print(f"FAIL: {file}")
-            VerificationError(result).print_and_exit()
+            VerificationError(cast(VerificationFailure, result)).print_and_exit()
 
 
 def _verify_github(args: argparse.Namespace) -> None:
@@ -889,7 +890,7 @@ def _verify_github(args: argparse.Namespace) -> None:
             print(f"OK: {file}")
         else:
             print(f"FAIL: {file}")
-            VerificationError(result).print_and_exit()
+            VerificationError(cast(VerificationFailure, result)).print_and_exit()
 
 
 def _get_identity_token(args: argparse.Namespace) -> Optional[str]:

@@ -19,12 +19,6 @@ Exceptions.
 import sys
 from typing import Any, Mapping
 
-from sigstore.verify.models import VerificationFailure
-from sigstore.verify.verifier import (
-    CertificateVerificationFailure,
-    LogEntryMissing,
-)
-
 
 class Error(Exception):
     """Base sigstore exception type. Defines helpers for diagnostics."""
@@ -101,6 +95,13 @@ class MetadataError(Error):
 class VerificationError(Error):
     """Raised when the verifier returns a `VerificationFailure` result."""
 
+    # HACK(tnytown): Importing this at the top of the module causes circular import issues.
+    from sigstore.verify.models import VerificationFailure
+    from sigstore.verify.verifier import (
+        CertificateVerificationFailure,
+        LogEntryMissing,
+    )
+
     def __init__(self, result: VerificationFailure):
         self.message = f"Verification failed: {result.reason}"
         self.result = result
@@ -108,7 +109,7 @@ class VerificationError(Error):
     def diagnostics(self) -> str:
         message = f"Failure reason: {self.result.reason}\n"
 
-        if isinstance(self.result, CertificateVerificationFailure):
+        if isinstance(self.result, self.CertificateVerificationFailure):
             message += dedent(
                 f"""
                 The given certificate could not be verified against the
@@ -122,7 +123,7 @@ class VerificationError(Error):
                 {self.result.exception}
                 """
             )
-        elif isinstance(self.result, LogEntryMissing):
+        elif isinstance(self.result, self.LogEntryMissing):
             message += dedent(
                 f"""
                 These signing artifacts could not be matched to a entry
