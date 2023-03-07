@@ -40,7 +40,6 @@ from sigstore._utils import PEMCert
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,
-    GitHubOidcPermissionCredentialError,
     Issuer,
     detect_credential,
 )
