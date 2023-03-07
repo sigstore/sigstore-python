@@ -158,8 +158,12 @@ class TrustUpdater:
                     path = self._updater.download_target(target_info)
                 with open(path, "rb") as f:
                     target_contents = f.read()
+                    base_name = os.path.basename(path)
+                    logger.info(
+                        f"TUF cache target {usage} {statuses}: {base_name} sha256 {target_info.hashes.get('sha256')}"
+                    )
                     logger.debug(
-                        f"TUF cache target {usage} {statuses}: {os.path.basename(path)} with hash\n"
+                        f"TUF cache target {base_name}:\n"
                         f"{target_contents.decode('utf-8')}"
                     )
                     data.append(target_contents)
