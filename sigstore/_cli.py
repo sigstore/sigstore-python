@@ -855,7 +855,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
             print(f"OK: {file}")
         else:
             print(f"FAIL: {file}")
-            VerificationError(cast(VerificationFailure, result)).print_and_exit()
+            raise VerificationError(cast(VerificationFailure, result))
 
 
 def _verify_github(args: argparse.Namespace) -> None:
@@ -890,16 +890,13 @@ def _verify_github(args: argparse.Namespace) -> None:
             print(f"OK: {file}")
         else:
             print(f"FAIL: {file}")
-            VerificationError(cast(VerificationFailure, result)).print_and_exit()
+            raise VerificationError(cast(VerificationFailure, result))
 
 
 def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
     token = None
     if not args.oidc_disable_ambient_providers:
-        try:
-            token = detect_credential()
-        except GitHubOidcPermissionCredentialError as exception:
-            exception.print_and_exit()
+        token = detect_credential()
 
     if not token:
         if args.staging:
