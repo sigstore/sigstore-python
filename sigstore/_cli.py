@@ -24,6 +24,7 @@ from textwrap import dedent
 from typing import Optional, TextIO, Union, cast
 
 from cryptography.x509 import load_pem_x509_certificates
+from id import GitHubOidcPermissionCredentialError, detect_credential
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
@@ -31,6 +32,7 @@ from sigstore._errors import Error
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.keyring import Keyring
+from sigstore._internal.oidc import DEFAULT_AUDIENCE
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
@@ -41,9 +43,7 @@ from sigstore._utils import PEMCert
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,
-    GitHubOidcPermissionCredentialError,
     Issuer,
-    detect_credential,
 )
 from sigstore.sign import Signer
 from sigstore.transparency import LogEntry
@@ -1016,7 +1016,7 @@ def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
     token = None
     if not args.oidc_disable_ambient_providers:
         try:
-            token = detect_credential()
+            token = detect_credential(DEFAULT_AUDIENCE)
         except GitHubOidcPermissionCredentialError as exception:
             # Provide some common reasons for why we hit permission errors in
             # GitHub Actions.

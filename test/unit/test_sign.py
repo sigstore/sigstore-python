@@ -18,11 +18,12 @@ import secrets
 import jwt
 import pretend
 import pytest
+from id import IdentityError, detect_credential
 
 import sigstore._internal.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
+from sigstore._internal.oidc import DEFAULT_AUDIENCE
 from sigstore._internal.sct import InvalidSCTError
-from sigstore.oidc import IdentityError, detect_credential
 from sigstore.sign import Signer
 
 
@@ -45,7 +46,7 @@ def test_sign_rekor_entry_consistent(signer):
     # expansion doesn't fail in offline tests.
     signer = signer()
 
-    token = detect_credential()
+    token = detect_credential(DEFAULT_AUDIENCE)
     assert token is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
@@ -67,7 +68,7 @@ def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
     signer = signer()
     signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringLookupError))
 
-    token = detect_credential()
+    token = detect_credential(DEFAULT_AUDIENCE)
     assert token is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
@@ -87,7 +88,7 @@ def test_sct_verify_keyring_error(signer, monkeypatch):
     signer = signer()
     signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringError))
 
-    token = detect_credential()
+    token = detect_credential(DEFAULT_AUDIENCE)
     assert token is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
@@ -102,7 +103,7 @@ def test_sct_verify_keyring_error(signer, monkeypatch):
 def test_identity_proof_claim_lookup(signer, monkeypatch):
     signer = signer()
 
-    token = detect_credential()
+    token = detect_credential(DEFAULT_AUDIENCE)
     assert token is not None
 
     # clear out the known issuers, forcing the `Identity`'s  `proof_claim` to be looked up.

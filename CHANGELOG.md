@@ -10,6 +10,11 @@ All versions prior to 0.9.0 are untracked.
 
 ## [1.1.1]
 
+### Changed
+
+* Replaced ambient credential detection logic with the `id` package
+  ([#535](https://github.com/sigstore/sigstore-python/pull/535))
+
 ### Fixed
 
 * Fixed a bug in TUF target handling revealed by changes to the production
