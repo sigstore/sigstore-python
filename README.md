@@ -339,7 +339,7 @@ provided below.
 
 For environments that support OpenID Connect, natively `sigstore` supports ambient credential
 detection. This includes many popular CI platforms and cloud providers. See the full list of
-environments [here](https://github.com/di/id#supported-environments).
+supported environments [here](https://github.com/di/id#supported-environments).
 
 Sign a single file (`foo.txt`) using an ambient OpenID Connect credential,
 saving the signature and certificate to `foo.txt.sig` and `foo.txt.crt`:
