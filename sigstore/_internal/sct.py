@@ -141,6 +141,7 @@ class InvalidSCTError(Error):
     """
 
     def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
         # We specialize this error case, since it usually indicates one of
         # two conditions: either the current sigstore client is out-of-date,
         # or that the SCT is well-formed but invalid for the current configuration

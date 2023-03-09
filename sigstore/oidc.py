@@ -197,6 +197,7 @@ class GitHubOidcPermissionCredentialError(AmbientCredentialError):
     """
 
     def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
         return f"""
             Insufficient permissions for GitHub Actions workflow.
 
