@@ -17,8 +17,7 @@ OIDC functionality for sigstore-python.
 """
 
 import jwt
-
-from sigstore.oidc import IdentityError
+from id import IdentityError
 
 # See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
 _KNOWN_OIDC_ISSUERS = {

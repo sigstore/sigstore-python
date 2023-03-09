@@ -23,9 +23,9 @@ import os
 import time
 import urllib.parse
 import webbrowser
-from typing import Callable, List, Optional
 
 import requests
+from id import IdentityError
 from pydantic import BaseModel, StrictStr
 
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
@@ -169,47 +169,3 @@ class Issuer:
             raise IdentityError(f"Error response from token endpoint: {token_error}")
 
         return str(token_json["access_token"])
-
-
-class IdentityError(Exception):
-    """
-    Raised on any OIDC token format or claim error.
-    """
-
-    pass
-
-
-class AmbientCredentialError(IdentityError):
-    """
-    Raised when an ambient credential should be present, but
-    can't be retrieved (e.g. network failure).
-    """
-
-    pass
-
-
-class GitHubOidcPermissionCredentialError(AmbientCredentialError):
-    """
-    Raised when the current GitHub Actions environment doesn't have permission
-    to retrieve an OIDC token.
-    """
-
-    pass
-
-
-def detect_credential() -> Optional[str]:
-    """
-    Try each ambient credential detector, returning the first one to succeed
-    or `None` if all fail.
-
-    Raises `AmbientCredentialError` if any detector fails internally (i.e.
-    detects a credential, but cannot retrieve it).
-    """
-    from sigstore._internal.oidc.ambient import detect_gcp, detect_github
-
-    detectors: List[Callable[..., Optional[str]]] = [detect_github, detect_gcp]
-    for detector in detectors:
-        credential = detector()
-        if credential is not None:
-            return credential
-    return None

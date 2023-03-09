@@ -28,8 +28,10 @@ import urllib.parse
 import uuid
 from typing import Any, Dict, List, Optional, cast
 
+from id import IdentityError
+
 from sigstore._utils import B64Str
-from sigstore.oidc import IdentityError, Issuer
+from sigstore.oidc import Issuer
 
 logger = logging.getLogger(__name__)
 

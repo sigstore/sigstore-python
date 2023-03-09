@@ -20,16 +20,17 @@ from pathlib import Path
 from typing import Iterator
 
 import pytest
+from id import (
+    AmbientCredentialError,
+    GitHubOidcPermissionCredentialError,
+    detect_credential,
+)
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface
 
 from sigstore._internal import tuf
-from sigstore.oidc import (
-    AmbientCredentialError,
-    GitHubOidcPermissionCredentialError,
-    detect_credential,
-)
+from sigstore._internal.oidc import DEFAULT_AUDIENCE
 from sigstore.verify import VerificationMaterials
 from sigstore.verify.policy import VerificationSuccess
 
@@ -42,7 +43,7 @@ assert _TUF_ASSETS.is_dir()
 
 def _is_ambient_env():
     try:
-        token = detect_credential()
+        token = detect_credential(DEFAULT_AUDIENCE)
         if token is None:
             return False
     except GitHubOidcPermissionCredentialError:
