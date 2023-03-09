@@ -51,6 +51,7 @@ class NetworkError(Error):
     """Raised when a connectivity-related issue occurs."""
 
     def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
         return """A network issue occurred.
 
         Check your internet connection and try again.
@@ -61,6 +62,7 @@ class TUFError(Error):
     """Raised when a TUF error occurs."""
 
     def __init__(self, message: str):
+        """Constructs a `TUFError`."""
         self.message = message
 
     from tuf.api import exceptions
@@ -70,6 +72,7 @@ class TUFError(Error):
     }
 
     def diagnostics(self) -> str:
+        """Returns diagnostics specialized to the wrapped TUF error."""
         details = TUFError._details.get(
             type(self.__context__),
             "Please report this issue at <https://github.com/sigstore/sigstore-python/issues/new>.",
@@ -85,4 +88,5 @@ class MetadataError(Error):
     """Raised when TUF metadata does not conform to the expected structure."""
 
     def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
         return f"""{str(self)}."""
