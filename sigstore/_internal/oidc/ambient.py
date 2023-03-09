@@ -137,7 +137,7 @@ def detect_gcp() -> Optional[str]:
 
         resp = requests.post(
             _GCP_GENERATEIDTOKEN_REQUEST_URL.format(service_account_name),
-            json={"audience": "sigstore", "includeEmail": True},
+            json={"audience": DEFAULT_AUDIENCE, "includeEmail": True},
             headers={
                 "Authorization": f"Bearer {access_token}",
             },

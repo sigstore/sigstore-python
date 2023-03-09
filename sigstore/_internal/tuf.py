@@ -19,6 +19,7 @@ TUF functionality for `sigstore-python`.
 from __future__ import annotations
 
 import logging
+import os
 from functools import lru_cache
 from pathlib import Path
 from urllib import parse
@@ -146,13 +147,26 @@ class TrustUpdater:
 
         targets = self._updater._trusted_set.targets.signed.targets
         for target_info in targets.values():
-            custom = target_info.unrecognized_fields["custom"]["sigstore"]
-            if custom["status"] in statuses and custom["usage"] == usage:
+            custom = target_info.unrecognized_fields.get("custom", {}).get("sigstore")
+            if (
+                custom
+                and custom.get("status") in statuses
+                and custom.get("usage") == usage
+            ):
                 path = self._updater.find_cached_target(target_info)
                 if path is None:
                     path = self._updater.download_target(target_info)
                 with open(path, "rb") as f:
-                    data.append(f.read())
+                    target_contents = f.read()
+                    base_name = os.path.basename(path)
+                    logger.info(
+                        f"TUF cache target {usage} {statuses}: {base_name} sha256 {target_info.hashes.get('sha256')}"
+                    )
+                    logger.debug(
+                        f"TUF cache target {base_name}:\n"
+                        f"{target_contents.decode('utf-8')}"
+                    )
+                    data.append(target_contents)
 
         return data
 
@@ -166,7 +180,7 @@ class TrustUpdater:
             raise Exception("CTFE keys not found in TUF metadata")
         return ctfes
 
-    def get_rekor_key(self) -> bytes:
+    def get_rekor_keys(self) -> list[bytes]:
         """Return the rekor public key content.
 
         May download files from the remote repository.
@@ -174,7 +188,7 @@ class TrustUpdater:
         keys = self._get("Rekor", ["Active"])
         if len(keys) != 1:
             raise Exception("Did not find one active Rekor key in TUF metadata")
-        return keys[0]
+        return keys
 
     def get_fulcio_certs(self) -> list[Certificate]:
         """Return the Fulcio certificates.

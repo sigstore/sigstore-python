@@ -52,13 +52,13 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # Expect 404 from the next root version
     assert fail_reqs == expected_fail_reqs
 
-    updater.get_rekor_key()
+    updater.get_rekor_keys()
     # Expect request of the rekor key but nothing else
     expected_requests["rekor.pub"] = 1
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
-    updater.get_rekor_key()
+    updater.get_rekor_keys()
     # Expect no requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
@@ -76,7 +76,7 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
-    updater.get_rekor_key()
+    updater.get_rekor_keys()
     # Expect no requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
@@ -86,7 +86,7 @@ def test_updater_staging_get(mock_staging_tuf, tuf_asset):
     """Test that one of the get-methods returns the expected content"""
     updater = TrustUpdater.staging()
     with open(tuf_asset("rekor.pub"), "rb") as f:
-        assert updater.get_rekor_key() == f.read()
+        assert updater.get_rekor_keys() == [f.read()]
 
 
 def test_updater_instance_error():
@@ -116,7 +116,7 @@ def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
     with pytest.raises(
         Exception, match="Did not find one active Rekor key in TUF metadata"
     ):
-        updater.get_rekor_key()
+        updater.get_rekor_keys()
 
 
 def test_updater_fulcio_certs_error(tuf_asset, monkeypatch):

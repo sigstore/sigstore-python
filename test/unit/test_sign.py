@@ -20,8 +20,8 @@ import pretend
 import pytest
 
 import sigstore._internal.oidc
-from sigstore._internal.ctfe import CTKeyringError, CTKeyringLookupError
-from sigstore._internal.sct import InvalidSctError
+from sigstore._internal.keyring import KeyringError, KeyringLookupError
+from sigstore._internal.sct import InvalidSCTError
 from sigstore.oidc import IdentityError, detect_credential
 from sigstore.sign import Signer
 
@@ -65,9 +65,7 @@ def test_sign_rekor_entry_consistent(signer):
 def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
     # a signer whose keyring always fails to lookup a given key.
     signer = signer()
-    signer._rekor._ct_keyring = pretend.stub(
-        verify=pretend.raiser(CTKeyringLookupError)
-    )
+    signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringLookupError))
 
     token = detect_credential()
     assert token is not None
@@ -75,7 +73,7 @@ def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
     payload = io.BytesIO(secrets.token_bytes(32))
 
     with pytest.raises(
-        InvalidSctError,
+        InvalidSCTError,
         match="Invalid key ID in SCT: not found in current keyring.",
     ):
         signer.sign(payload, token)
@@ -87,14 +85,14 @@ def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
 def test_sct_verify_keyring_error(signer, monkeypatch):
     # a signer whose keyring throws an internal error.
     signer = signer()
-    signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(CTKeyringError))
+    signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringError))
 
     token = detect_credential()
     assert token is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
 
-    with pytest.raises(InvalidSctError):
+    with pytest.raises(InvalidSCTError):
         signer.sign(payload, token)
 
 

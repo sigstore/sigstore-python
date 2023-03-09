@@ -18,15 +18,14 @@ Utilities for verifying Signed Entry Timestamps.
 
 import base64
 
-import cryptography.hazmat.primitives.asymmetric.ec as ec
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes
 
 from sigstore._internal.rekor import RekorClient
+from sigstore._utils import KeyID
 from sigstore.transparency import LogEntry
 
 
-class InvalidSetError(Exception):
+class InvalidSETError(Exception):
     """
     Raised during SET verification if an SET is invalid in some way.
     """
@@ -42,10 +41,10 @@ def verify_set(client: RekorClient, entry: LogEntry) -> None:
     signed_entry_ts = base64.b64decode(entry.signed_entry_timestamp)
 
     try:
-        client._pubkey.verify(
+        client._rekor_keyring.verify(
+            key_id=KeyID(bytes.fromhex(entry.log_id)),
             signature=signed_entry_ts,
             data=entry.encode_canonical(),
-            signature_algorithm=ec.ECDSA(hashes.SHA256()),
         )
     except InvalidSignature as inval_sig:
-        raise InvalidSetError("invalid signature") from inval_sig
+        raise InvalidSETError("invalid signature") from inval_sig

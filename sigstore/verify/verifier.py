@@ -41,7 +41,7 @@ from sigstore._internal.merkle import (
     verify_merkle_inclusion,
 )
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.set import InvalidSetError, verify_set
+from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import B64Str, HexStr
 from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
@@ -237,7 +237,7 @@ class Verifier:
         except RekorEntryMissingError:
             return LogEntryMissing(
                 signature=B64Str(base64.b64encode(materials.signature).decode()),
-                artifact_hash=materials.input_digest.hex(),
+                artifact_hash=HexStr(materials.input_digest.hex()),
             )
         except InvalidRekorEntryError:
             return VerificationFailure(
@@ -262,7 +262,7 @@ class Verifier:
         # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         try:
             verify_set(self._rekor, entry)
-        except InvalidSetError as inval_set:
+        except InvalidSETError as inval_set:
             return VerificationFailure(reason=f"invalid Rekor entry SET: {inval_set}")
 
         # 7) Verify that the signing certificate was valid at the time of signing
