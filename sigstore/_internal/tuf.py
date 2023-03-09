@@ -19,6 +19,7 @@ TUF functionality for `sigstore-python`.
 from __future__ import annotations
 
 import logging
+import os
 from functools import lru_cache
 from pathlib import Path
 from urllib import parse
@@ -168,7 +169,16 @@ class TrustUpdater:
                     ) as e:
                         raise TUFError(f"Failed to download keys for {usage}") from e
                 with open(path, "rb") as f:
-                    data.append(f.read())
+                    target_contents = f.read()
+                    base_name = os.path.basename(path)
+                    logger.info(
+                        f"TUF cache target {usage} {statuses}: {base_name} sha256 {target_info.hashes.get('sha256')}"
+                    )
+                    logger.debug(
+                        f"TUF cache target {base_name}:\n"
+                        f"{target_contents.decode('utf-8')}"
+                    )
+                    data.append(target_contents)
 
         return data
 
