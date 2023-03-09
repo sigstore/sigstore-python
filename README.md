@@ -338,15 +338,8 @@ provided below.
 ### Signing with ambient credentials
 
 For environments that support OpenID Connect, natively `sigstore` supports ambient credential
-detection. This includes many popular CI platforms and cloud providers.
-
-| Service                     | Status    | Notes                                                                                                                                                                                                                                                                                                                  |
-|-----------------------------|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| GitHub Actions              | Supported | Requires the `id-token` permission; see [the docs](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect) and [this example](https://github.com/sigstore/sigstore-python/blob/main/.github/workflows/release.yml)                             |
-| Google Compute Engine (GCE) | Supported | Automatic                                                                                                                                                                                                                                                                                                              |
-| Google Cloud Build (GCB)    | Supported | Requires setting `GOOGLE_SERVICE_ACCOUNT_NAME` to an appropriately configured service account name; see [the docs](https://cloud.google.com/iam/docs/creating-short-lived-service-account-credentials#sa-credentials-direct) and [this example](https://github.com/sigstore/sigstore-python/blob/main/cloudbuild.yaml) |
-| GitLab CI                   | Planned   | See [#31](https://github.com/sigstore/sigstore-python/issues/31)                                                                                                                                                                                                                                                       |
-| CircleCI                    | Planned   | See [#31](https://github.com/sigstore/sigstore-python/issues/31)                                                                                                                                                                                                                                                       |
+detection. This includes many popular CI platforms and cloud providers. See the full list of
+environments [here](https://github.com/di/id#supported-environments).
 
 Sign a single file (`foo.txt`) using an ambient OpenID Connect credential,
 saving the signature and certificate to `foo.txt.sig` and `foo.txt.crt`:
