@@ -28,6 +28,8 @@ import requests
 from id import IdentityError
 from pydantic import BaseModel, StrictStr
 
+from sigstore._errors import NetworkError
+
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
 STAGING_OAUTH_ISSUER_URL = "https://oauth2.sigstage.dev/auth"
 
@@ -69,7 +71,11 @@ class Issuer:
             f"{base_url}/", ".well-known/openid-configuration"
         )
 
-        resp: requests.Response = requests.get(oidc_config_url)
+        try:
+            resp: requests.Response = requests.get(oidc_config_url, timeout=30)
+        except (requests.ConnectionError, requests.Timeout) as exc:
+            raise NetworkError from exc
+
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
@@ -152,11 +158,15 @@ class Issuer:
             client_secret,
         )
         logging.debug(f"PAYLOAD: data={data}")
-        resp: requests.Response = requests.post(
-            self.oidc_config.token_endpoint,
-            data=data,
-            auth=auth,
-        )
+        try:
+            resp: requests.Response = requests.post(
+                self.oidc_config.token_endpoint,
+                data=data,
+                auth=auth,
+                timeout=30,
+            )
+        except (requests.ConnectionError, requests.Timeout) as exc:
+            raise NetworkError from exc
 
         try:
             resp.raise_for_status()

@@ -52,10 +52,24 @@ class NetworkError(Error):
 
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""
-        return """A network issue occurred.
+
+        cause_ctx = (
+            f"""
+        Additional context:
+
+        {self.__cause__}
+        """
+            if self.__cause__
+            else ""
+        )
+
+        return (
+            """A network issue occurred.
 
         Check your internet connection and try again.
         """
+            + cause_ctx
+        )
 
 
 class TUFError(Error):
