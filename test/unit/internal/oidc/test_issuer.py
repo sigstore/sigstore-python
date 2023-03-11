@@ -14,7 +14,7 @@
 
 import pytest
 
-from sigstore.oidc import Issuer, IssuerError, IdentityError
+from sigstore.oidc import IdentityError, Issuer, IssuerError
 
 
 @pytest.mark.online
