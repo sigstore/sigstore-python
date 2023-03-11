@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import pytest
-from id import IdentityError
 
-from sigstore.oidc import Issuer, IssuerError
+from sigstore.oidc import Issuer, IssuerError, IdentityError
 
 
 @pytest.mark.online
