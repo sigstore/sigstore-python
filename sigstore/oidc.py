@@ -69,7 +69,7 @@ class Issuer:
             f"{base_url}/", ".well-known/openid-configuration"
         )
 
-        resp: requests.Response = requests.get(oidc_config_url)
+        resp: requests.Response = requests.get(oidc_config_url, timeout=30)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
@@ -156,6 +156,7 @@ class Issuer:
             self.oidc_config.token_endpoint,
             data=data,
             auth=auth,
+            timeout=30,
         )
 
         try:
