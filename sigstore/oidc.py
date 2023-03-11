@@ -23,8 +23,9 @@ import os
 import time
 import urllib.parse
 import webbrowser
-from typing import Callable, List, Optional
+from typing import NoReturn, Optional, cast
 
+import id
 import requests
 from pydantic import BaseModel, StrictStr
 
@@ -175,70 +176,56 @@ class Issuer:
 
 class IdentityError(Error):
     """
-    Raised on any OIDC token format or claim error.
+    Wraps `id`'s IdentityError.
     """
 
-    pass
-
-
-class AmbientCredentialError(IdentityError):
-    """
-    Raised when an ambient credential should be present, but
-    can't be retrieved (e.g. network failure).
-    """
-
-    pass
-
-
-class GitHubOidcPermissionCredentialError(AmbientCredentialError):
-    """
-    Raised when the current GitHub Actions environment doesn't have permission
-    to retrieve an OIDC token.
-    """
+    @classmethod
+    def raise_from_id(cls, exc: id.IdentityError) -> NoReturn:
+        """Raises a wrapped IdentityError from the provided `id.IdentityError`."""
+        raise IdentityError(str(exc)) from exc
 
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""
-        return f"""
-            Insufficient permissions for GitHub Actions workflow.
+        if isinstance(self.__cause__, id.GitHubOidcPermissionCredentialError):
+            return f"""
+                Insufficient permissions for GitHub Actions workflow.
 
-            The most common reason for this is incorrect
-            configuration of the top-level `permissions` setting of the
-            workflow YAML file. It should be configured like so:
+                The most common reason for this is incorrect
+                configuration of the top-level `permissions` setting of the
+                workflow YAML file. It should be configured like so:
 
-                permissions:
-                  id-token: write
+                    permissions:
+                      id-token: write
 
-            Relevant documentation here:
+                Relevant documentation here:
 
-                https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
+                    https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
 
-            Another possible reason is that the workflow run has been
-            triggered by a PR from a forked repository. PRs from forked
-            repositories typically cannot be granted write access.
+                Another possible reason is that the workflow run has been
+                triggered by a PR from a forked repository. PRs from forked
+                repositories typically cannot be granted write access.
 
-            Relevant documentation here:
+                Relevant documentation here:
 
-                https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+                    https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
 
-            Additional context:
+                Additional context:
 
-            {self}
+                {self.__cause__}
+                """
+        else:
+            return f"""
+                An issue occurred with ambient credential detection.
+
+                Additional context:
+
+                {self}
             """
 
 
-def detect_credential() -> Optional[str]:
-    """
-    Try each ambient credential detector, returning the first one to succeed
-    or `None` if all fail.
-
-    Raises `AmbientCredentialError` if any detector fails internally (i.e.
-    detects a credential, but cannot retrieve it).
-    """
-    from sigstore._internal.oidc.ambient import detect_gcp, detect_github
-
-    detectors: List[Callable[..., Optional[str]]] = [detect_github, detect_gcp]
-    for detector in detectors:
-        credential = detector()
-        if credential is not None:
-            return credential
-    return None
+def detect_credential(audience: str) -> Optional[str]:
+    """Calls `id.detect_credential`, but wraps exceptions with our own exception type."""
+    try:
+        return cast(Optional[str], id.detect_credential(audience))
+    except id.IdentityError as exc:
+        IdentityError.raise_from_id(exc)
