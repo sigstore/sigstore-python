@@ -24,7 +24,14 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
-from sigstore._utils import KeyID, key_id, load_pem_public_key
+from sigstore._utils import (
+    InvalidKeyError,
+    KeyID,
+    UnexpectedKeyFormatError,
+    key_id,
+    load_der_public_key,
+    load_pem_public_key,
+)
 
 
 class KeyringError(Exception):
@@ -59,7 +66,15 @@ class Keyring:
         """
         self._keyring = {}
         for key_bytes in keys:
-            key = load_pem_public_key(key_bytes)
+            key = None
+
+            try:
+                key = load_pem_public_key(key_bytes)
+            except InvalidKeyError as e:
+                if isinstance(e, UnexpectedKeyFormatError):
+                    raise e
+                key = load_der_public_key(key_bytes)
+
             self._keyring[key_id(key)] = key
 
     def add(self, key_pem: bytes) -> None:

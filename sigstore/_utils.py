@@ -27,6 +27,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import Certificate
 
+from sigstore._errors import Error
+
 if sys.version_info < (3, 11):
     import importlib_resources as resources
 else:
@@ -57,9 +59,17 @@ A newtype for `bytes` objects that contain a key id.
 """
 
 
-class InvalidKey(Exception):
+class InvalidKeyError(Error):
     """
     Raised when loading a key fails.
+    """
+
+    pass
+
+
+class UnexpectedKeyFormatError(InvalidKeyError):
+    """
+    Raised when loading a key produces a key of an unexpected type.
     """
 
     pass
@@ -68,17 +78,33 @@ class InvalidKey(Exception):
 def load_pem_public_key(key_pem: bytes) -> PublicKey:
     """
     A specialization of `cryptography`'s `serialization.load_pem_public_key`
-    with a uniform exception type (`InvalidKey`) and additional restrictions
+    with a uniform exception type (`InvalidKeyError`) and additional restrictions
     on key validity (only RSA and ECDSA keys are valid).
     """
 
     try:
         key = serialization.load_pem_public_key(key_pem)
     except Exception as exc:
-        raise InvalidKey("could not load PEM-formatted public key") from exc
+        raise InvalidKeyError("could not load PEM-formatted public key") from exc
 
     if not isinstance(key, (rsa.RSAPublicKey, ec.EllipticCurvePublicKey)):
-        raise InvalidKey(f"invalid key format (not ECDSA or RSA): {key}")
+        raise UnexpectedKeyFormatError(f"invalid key format (not ECDSA or RSA): {key}")
+
+    return key
+
+
+def load_der_public_key(key_der: bytes) -> PublicKey:
+    """
+    The `load_pem_public_key` specialization, but DER.
+    """
+
+    try:
+        key = serialization.load_der_public_key(key_der)
+    except Exception as exc:
+        raise InvalidKeyError("could not load DER-formatted public key") from exc
+
+    if not isinstance(key, (rsa.RSAPublicKey, ec.EllipticCurvePublicKey)):
+        raise UnexpectedKeyFormatError(f"invalid key format (not ECDSA or RSA): {key}")
 
     return key
 
