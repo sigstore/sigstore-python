@@ -110,7 +110,7 @@ def _timerange_valid_for_status(period: TimeRange | None, status: KeyStatus) -> 
         return False
 
     # If we want Expired keys, we don't care. Otherwise, check that we are within range.
-    return status == KeyStatus.Expired or (period.end is not None and now < period.end)
+    return status == KeyStatus.Expired or (period.end is None or now < period.end)
 
 
 class TrustUpdater:
@@ -318,13 +318,10 @@ class TrustUpdater:
                     ]
                 )
         else:
-            certs = [
-                load_pem_x509_certificate(c)
-                for c in self._get(
-                    KeyUsage.Fulcio, [KeyStatus.Active, KeyStatus.Expired]
-                )
-            ]
-
+            certs = (
+                self._get(KeyUsage.Fulcio, [KeyStatus.Active, KeyStatus.Expired]) or []
+            )
+            certs = [load_pem_x509_certificate(c) for c in certs]
         if not certs:
             raise MetadataError("Fulcio certificates not found in TUF metadata")
         return certs
