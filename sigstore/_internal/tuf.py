@@ -76,19 +76,25 @@ def _get_dirs(url: str) -> tuple[Path, Path]:
 
 
 class KeyUsage(Enum):
+    """Key types that can be fetched from TUF."""
+
     Rekor = auto()
     Fulcio = auto()
     CTFE = auto()
 
     def __str__(self) -> str:
+        """Returns the name of the enum item."""
         return self.name
 
 
 class KeyStatus(Enum):
+    """Filterable key statuses."""
+
     Active = auto()
     Expired = auto()
 
     def __str__(self) -> str:
+        """Returns the name of the enum item."""
         return self.name
 
 
@@ -248,10 +254,10 @@ class TrustUpdater:
 
         May download files from the remote repository.
         """
+        ctfes = []
 
         self._trusted_root = self._get_trusted_root()
         if self._trusted_root:
-            keys = []
             for key in self._trusted_root.ctlogs:
                 if not _timerange_valid_for_status(
                     key.public_key.valid_for, KeyStatus.Active
@@ -259,11 +265,10 @@ class TrustUpdater:
                     continue
                 key_bytes = key.public_key.raw_bytes
                 if key_bytes:
-                    keys.append(key_bytes)
+                    ctfes.append(key_bytes)
+        else:
+            ctfes = self._get(KeyUsage.CTFE, [KeyStatus.Active])
 
-            return keys
-
-        ctfes = self._get(KeyUsage.CTFE, [KeyStatus.Active])
         if not ctfes:
             raise MetadataError("CTFE keys not found in TUF metadata")
         return ctfes
@@ -273,9 +278,10 @@ class TrustUpdater:
 
         May download files from the remote repository.
         """
+        keys = []
+
         self._trusted_root = self._get_trusted_root()
         if self._trusted_root:
-            keys = []
             for key in self._trusted_root.tlogs:
                 if not _timerange_valid_for_status(
                     key.public_key.valid_for, KeyStatus.Active
@@ -284,10 +290,9 @@ class TrustUpdater:
                 key_bytes = key.public_key.raw_bytes
                 if key_bytes:
                     keys.append(key_bytes)
+        else:
+            keys = self._get(KeyUsage.Rekor, [KeyStatus.Active])
 
-            return keys
-
-        keys = self._get(KeyUsage.Rekor, [KeyStatus.Active])
         if len(keys) != 1:
             raise MetadataError("Did not find one active Rekor key in TUF metadata")
         return keys
@@ -297,24 +302,29 @@ class TrustUpdater:
 
         May download files from the remote repository.
         """
+        certs = []
+
         self._trusted_root = self._get_trusted_root()
+        # Return expired certificates too: they are expired now but may have
+        # been active when the certificate was used to sign.
         if self._trusted_root:
-            keys = []
             for ca in self._trusted_root.certificate_authorities:
                 if not _timerange_valid_for_status(ca.valid_for, KeyStatus.Expired):
                     continue
-                keys.extend(
+                certs.extend(
                     [
                         load_der_x509_certificate(cert.raw_bytes)
                         for cert in ca.cert_chain.certificates
                     ]
                 )
+        else:
+            certs = [
+                load_pem_x509_certificate(c)
+                for c in self._get(
+                    KeyUsage.Fulcio, [KeyStatus.Active, KeyStatus.Expired]
+                )
+            ]
 
-            return keys
-
-        # Return expired certificates too: they are expired now but may have
-        # been active when the certificate was used to sign.
-        certs = self._get(KeyUsage.Fulcio, [KeyStatus.Active, KeyStatus.Expired])
         if not certs:
             raise MetadataError("Fulcio certificates not found in TUF metadata")
-        return [load_pem_x509_certificate(c) for c in certs]
+        return certs
