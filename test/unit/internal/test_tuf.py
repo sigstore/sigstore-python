@@ -124,7 +124,7 @@ def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
 def test_updater_fulcio_certs_error(tuf_asset, monkeypatch):
     updater = TrustUpdater.staging()
     # getter returns no fulcio certs.
-    monkeypatch.setattr(updater, "_get", lambda usage, statuses: None)
+    monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
     monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
     with pytest.raises(
         Exception, match="Fulcio certificates not found in TUF metadata"

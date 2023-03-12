@@ -318,10 +318,12 @@ class TrustUpdater:
                     ]
                 )
         else:
-            certs = (
-                self._get(KeyUsage.Fulcio, [KeyStatus.Active, KeyStatus.Expired]) or []
-            )
-            certs = [load_pem_x509_certificate(c) for c in certs]
+            certs = [
+                load_pem_x509_certificate(c)
+                for c in self._get(
+                    KeyUsage.Fulcio, [KeyStatus.Active, KeyStatus.Expired]
+                )
+            ]
         if not certs:
             raise MetadataError("Fulcio certificates not found in TUF metadata")
         return certs
