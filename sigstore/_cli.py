@@ -27,7 +27,6 @@ from cryptography.x509 import load_pem_x509_certificates
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
-from sigstore._errors import Error
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.keyring import Keyring
@@ -39,6 +38,7 @@ from sigstore._internal.rekor.client import (
 )
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import PEMCert
+from sigstore.errors import Error
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,

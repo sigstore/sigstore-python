@@ -31,10 +31,10 @@ from cryptography.x509.certificate_transparency import (
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
 
-from sigstore._errors import Error
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._utils import DERCert, KeyID, key_id
+from sigstore.errors import Error
 
 logger = logging.getLogger(__name__)
 

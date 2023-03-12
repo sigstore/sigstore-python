@@ -20,7 +20,7 @@ All versions prior to 0.9.0 are untracked.
 * Replaced ambient credential detection logic with the `id` package
   ([#535](https://github.com/sigstore/sigstore-python/pull/535))
 * Revamped error diagnostics reporting. All errors with diagnostics now implement
-  `sigstore._errors.Error`.
+  `sigstore.errors.Error`.
 
 ### Fixed
 

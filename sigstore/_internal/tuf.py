@@ -29,8 +29,8 @@ from cryptography.x509 import Certificate, load_pem_x509_certificate
 from tuf.api import exceptions as TUFExceptions
 from tuf.ngclient import RequestsFetcher, Updater
 
-from sigstore._errors import MetadataError, TUFError
 from sigstore._utils import read_embedded
+from sigstore.errors import MetadataError, TUFError
 
 logger = logging.getLogger(__name__)
 

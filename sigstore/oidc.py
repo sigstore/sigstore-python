@@ -29,7 +29,7 @@ import id
 import requests
 from pydantic import BaseModel, StrictStr
 
-from sigstore._errors import Error, NetworkError
+from sigstore.errors import Error, NetworkError
 
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
 STAGING_OAUTH_ISSUER_URL = "https://oauth2.sigstage.dev/auth"
