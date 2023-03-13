@@ -213,5 +213,9 @@ def verify_sct(
         ct_keyring.verify(
             key_id=KeyID(sct.log_id), signature=sct.signature, data=digitally_signed
         )
-    except (KeyringLookupError, KeyringError) as exc:
+    except KeyringLookupError as exc:
+        raise InvalidSCTError(
+            "Invalid key ID in SCT: not found in current keyring"
+        ) from exc
+    except KeyringError as exc:
         raise InvalidSCTError from exc
