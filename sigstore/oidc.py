@@ -23,12 +23,13 @@ import os
 import time
 import urllib.parse
 import webbrowser
+from typing import NoReturn, Optional, cast
 
+import id
 import requests
-from id import IdentityError
 from pydantic import BaseModel, StrictStr
 
-from sigstore._errors import NetworkError
+from sigstore.errors import Error, NetworkError
 
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
 STAGING_OAUTH_ISSUER_URL = "https://oauth2.sigstage.dev/auth"
@@ -179,3 +180,60 @@ class Issuer:
             raise IdentityError(f"Error response from token endpoint: {token_error}")
 
         return str(token_json["access_token"])
+
+
+class IdentityError(Error):
+    """
+    Wraps `id`'s IdentityError.
+    """
+
+    @classmethod
+    def raise_from_id(cls, exc: id.IdentityError) -> NoReturn:
+        """Raises a wrapped IdentityError from the provided `id.IdentityError`."""
+        raise IdentityError(str(exc)) from exc
+
+    def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
+        if isinstance(self.__cause__, id.GitHubOidcPermissionCredentialError):
+            return f"""
+                Insufficient permissions for GitHub Actions workflow.
+
+                The most common reason for this is incorrect
+                configuration of the top-level `permissions` setting of the
+                workflow YAML file. It should be configured like so:
+
+                    permissions:
+                      id-token: write
+
+                Relevant documentation here:
+
+                    https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
+
+                Another possible reason is that the workflow run has been
+                triggered by a PR from a forked repository. PRs from forked
+                repositories typically cannot be granted write access.
+
+                Relevant documentation here:
+
+                    https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+
+                Additional context:
+
+                {self.__cause__}
+                """
+        else:
+            return f"""
+                An issue occurred with ambient credential detection.
+
+                Additional context:
+
+                {self}
+            """
+
+
+def detect_credential(audience: str) -> Optional[str]:
+    """Calls `id.detect_credential`, but wraps exceptions with our own exception type."""
+    try:
+        return cast(Optional[str], id.detect_credential(audience))
+    except id.IdentityError as exc:
+        IdentityError.raise_from_id(exc)
