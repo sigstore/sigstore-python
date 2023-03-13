@@ -75,7 +75,7 @@ def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
 
     with pytest.raises(
         InvalidSCTError,
-        match="Invalid key ID in SCT: not found in current keyring.",
+        match="Invalid key ID in SCT: not found in current keyring",
     ):
         signer.sign(payload, token)
 
