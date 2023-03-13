@@ -147,3 +147,11 @@ jobs:
           files: |
             built-packages/*
             smoketest-artifacts/*
+
+  pin-requirements:
+    permissions:
+      pull-requests: write
+      contents: write
+    needs: [release-pypi]
+    if: ${{ !github.event.release.prerelease }}
+    uses: ./.github/workflows/pin-requirements.yml
