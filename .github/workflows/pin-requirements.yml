@@ -70,10 +70,10 @@ jobs:
         uses: peter-evans/create-pull-request@2b011faafdcbc9ceb11414d64d0573f37c774b04 # v4.2.3
         with:
           title: |
-            Update pinned requirements for ${{ inputs.tag }}
+            Update pinned requirements for ${{ env.SIGSTORE_RELEASE_TAG }}
           body: |
-            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${{ inputs.tag }}>.
+            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${{ env.SIGSTORE_RELEASE_TAG }}>.
           commit-message: "[BOT] install: update pinned requirements"
-          branch: "pin-requirements/sigstore/${{ inputs.tag }}"
+          branch: "pin-requirements/sigstore/${{ env.SIGSTORE_RELEASE_TAG }}"
           signoff: true
           delete-branch: true
