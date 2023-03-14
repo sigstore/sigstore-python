@@ -21,8 +21,6 @@ permissions:
 jobs:
   update-pinned-requirements:
     runs-on: ubuntu-latest
-    env:
-      TMPDIR: ${{ runner.temp }}
 
     permissions:
       pull-requests: write # Pull Request creation.
@@ -47,14 +45,14 @@ jobs:
           # Do some JSON traversal: get the URL of the asset that has a `.whl` file extension.
           wheel_url=$(curl $release_url | jq -r '.assets[] | select(.name | test(".whl$")) | .browser_download_url')
 
-          curl -L "$TMPDIR/sigstore.whl" -L $wheel_url
+          curl -L "$RUNNER_TEMP/sigstore.whl" -L $wheel_url
 
       - name: Update requirements
         run: |
           cd install
 
           # Pin on the downloaded wheel, as PyPI might not have updated yet.
-          echo "$TMPDIR/sigstore.whl" >requirements.in
+          echo "$RUNNER_TEMP/sigstore.whl" >requirements.in
           pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
 
           # Strip the "v" prefix from the version tag name.
