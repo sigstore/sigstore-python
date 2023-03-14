@@ -22,6 +22,9 @@ jobs:
   update-pinned-requirements:
     runs-on: ubuntu-latest
 
+    env:
+      SIGSTORE_RELEASE_TAG: ${{ inputs.tag }}
+
     permissions:
       pull-requests: write # Pull Request creation.
       contents: write # Branch creation for PR.
@@ -39,28 +42,28 @@ jobs:
 
       - run: pip install pip-tools
 
+      - name: Compute version from tag
+        run: |
+          echo "SIGSTORE_RELEASE_VERSION=$(echo "${{ env.SIGSTORE_RELEASE_TAG }}" | sed 's/^v//')" >>$GITHUB_ENV
+
       - name: Download wheel from GitHub release
         run: |
-          release_url="https://api.github.com/repos/sigstore/sigstore-python/releases/tags/${{ inputs.tag }}"
-          # Do some JSON traversal: get the name and URL of the asset that has a `.whl` file extension.
-          wheel_info=$(curl $release_url | jq '.assets[] | select(.name | test(".whl$")) | {name, browser_download_url}')
-          wheel_path="$RUNNER_TEMP/$(echo $wheel_info | jq -r '.name')"
-          wheel_url=$(echo $wheel_info | jq -r '.browser_download_url')
+          wheel_name="sigstore-${{ env.SIGSTORE_RELEASE_VERSION }}-py3-none-any.whl"
+          wheel_url="https://github.com/sigstore/sigstore-python/releases/download/${{ env.SIGSTORE_RELEASE_TAG }}/$wheel_name"
+          wheel_path="$RUNNER_TEMP/$wheel_name"
 
           curl -o "$wheel_path" -L $wheel_url
-          echo "wheel_path=$wheel_path" >>$GITHUB_ENV
+          echo "SIGSTORE_WHEEL_PATH=$wheel_path" >>$GITHUB_ENV
       - name: Update requirements
         run: |
           cd install
 
           # Pin on the downloaded wheel, as PyPI might not have updated yet.
-          echo "${{ env.wheel_path }}" >requirements.in
+          echo "${{ env.SIGSTORE_WHEEL_PATH }}" >requirements.in
           pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
 
-          # Strip the "v" prefix from the version tag name.
-          version_on_pypi=$(echo "${{ inputs.tag }}" | sed 's/^v//')
           # Replace requirements.in. People should be able to run the `pip-compile` invocation provided in `requirements.txt`.
-          echo "sigstore==$version_on_pypi" >requirements.in
+          echo "sigstore==${{ env.SIGSTORE_RELEASE_VERSION }}" >requirements.in
 
       - name: Open pull request
         id: pr
