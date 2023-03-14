@@ -25,8 +25,8 @@ jobs:
       TMPDIR: ${{ runner.temp }}
 
     permissions:
-      pull-requests: write # Pull Request creation
-      contents: write # Branch creation for PR
+      pull-requests: write # Pull Request creation.
+      contents: write # Branch creation for PR.
 
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
@@ -44,6 +44,7 @@ jobs:
       - name: Download wheel from GitHub release
         run: |
           release_url="https://api.github.com/repos/sigstore/sigstore-python/releases/tags/${{ inputs.tag }}"
+          # Do some JSON traversal: get the URL of the asset that has a `.whl` file extension.
           wheel_url=$(curl $release_url | jq -r '.assets[] | select(.name | test(".whl$")) | .browser_download_url')
 
           curl -L "$TMPDIR/sigstore.whl" -L $wheel_url
@@ -51,18 +52,25 @@ jobs:
       - name: Update requirements
         run: |
           cd install
+
+          # Pin on the downloaded wheel, as PyPI might not have updated yet.
           echo "$TMPDIR/sigstore.whl" >requirements.in
           pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
-          echo "sigstore==${{ env.sigstore_python_version }}" >requirements.in
+
+          # Strip the "v" prefix from the version tag name.
+          version_on_pypi=$(echo "${{ inputs.tag }}" | sed 's/^v//')
+          # Replace requirements.in. People should be able to run the `pip-compile` invocation provided in `requirements.txt`.
+          echo "sigstore==$version_on_pypi" >requirements.in
+
       - name: Open pull request
         id: pr
         uses: peter-evans/create-pull-request@2b011faafdcbc9ceb11414d64d0573f37c774b04 # v4.2.3
         with:
           title: |
-            Update pinned requirements for v${{ env.sigstore_python_version }}
+            Update pinned requirements for ${{ env.sigstore_python_version }}
           body: |
-            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/v${{ env.sigstore_python_version }}>.
+            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/{{ inputs.tag }}>.
           commit-message: "[BOT] install: update pinned requirements"
-          branch: "pin-requirements/sigstore/${{ env.sigstore_python_version }}"
+          branch: "pin-requirements/sigstore/${{ inputs.tag }}"
           signoff: true
           delete-branch: true

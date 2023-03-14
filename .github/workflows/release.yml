@@ -148,10 +148,16 @@ jobs:
             built-packages/*
             smoketest-artifacts/*
 
+  # Trigger workflow to generate pinned requirements.txt.
   pin-requirements:
     permissions:
+      # Needed to create branch and pull request.
       pull-requests: write
       contents: write
-    needs: [release-pypi]
+    # Workflow depends on uploaded release assets.
+    needs: [release-github]
+    # Only trigger workflow on full releases.
     if: ${{ !github.event.release.prerelease }}
     uses: ./.github/workflows/pin-requirements.yml
+    with:
+      tag: ${{ github.ref_name }}
