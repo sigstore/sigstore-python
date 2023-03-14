@@ -18,7 +18,8 @@ jobs:
 
       - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
         with:
-          python-version: "3.x"
+          # NOTE: Update whenever sigstore-python's minimum Python is bumped.
+          python-version: "3.7"
           cache: "pip"
           cache-dependency-path: pyproject.toml
 
@@ -33,13 +34,16 @@ jobs:
           cd install
           echo "sigstore==${{ env.sigstore_python_version }}" >requirements.in
           pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
+
       - name: Open pull request
         id: pr
         uses: peter-evans/create-pull-request@2b011faafdcbc9ceb11414d64d0573f37c774b04 # v4.2.3
         with:
-          title: Update pinned requirements for v${{ env.sigstore_python_version }}
-          body: Pins dependencies for [v${{ env.sigstore_python_version }}](https://github.com/sigstore/sigstore-python/releases/tag/v${{ env.sigstore_python_version }}).
-          commit-message: "install: update pinned requirements"
+          title: |
+            Update pinned requirements for v${{ env.sigstore_python_version }}
+          body: |
+            Pins dependencies for <url>.
+          commit-message: "[BOT] install: update pinned requirements"
           branch: "pin-requirements/sigstore/${{ env.sigstore_python_version }}"
           signoff: true
           delete-branch: true
