@@ -42,17 +42,19 @@ jobs:
       - name: Download wheel from GitHub release
         run: |
           release_url="https://api.github.com/repos/sigstore/sigstore-python/releases/tags/${{ inputs.tag }}"
-          # Do some JSON traversal: get the URL of the asset that has a `.whl` file extension.
-          wheel_url=$(curl $release_url | jq -r '.assets[] | select(.name | test(".whl$")) | .browser_download_url')
+          # Do some JSON traversal: get the name and URL of the asset that has a `.whl` file extension.
+          wheel_info=$(curl $release_url | jq '.assets[] | select(.name | test(".whl$")) | {name, browser_download_url}')
+          wheel_path="$RUNNER_TEMP/$(echo $wheel_info | jq -r '.name')"
+          wheel_url=$(echo $wheel_info | jq -r '.browser_download_url')
 
-          curl -L "$RUNNER_TEMP/sigstore.whl" -L $wheel_url
-
+          curl -o "$wheel_path" -L $wheel_url
+          echo "wheel_path=$wheel_path" >>$GITHUB_ENV
       - name: Update requirements
         run: |
           cd install
 
           # Pin on the downloaded wheel, as PyPI might not have updated yet.
-          echo "$RUNNER_TEMP/sigstore.whl" >requirements.in
+          echo "${{ env.wheel_path }}" >requirements.in
           pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
 
           # Strip the "v" prefix from the version tag name.
@@ -65,9 +67,9 @@ jobs:
         uses: peter-evans/create-pull-request@2b011faafdcbc9ceb11414d64d0573f37c774b04 # v4.2.3
         with:
           title: |
-            Update pinned requirements for ${{ env.sigstore_python_version }}
+            Update pinned requirements for ${{ inputs.tag }}
           body: |
-            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/{{ inputs.tag }}>.
+            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${{ inputs.tag }}>.
           commit-message: "[BOT] install: update pinned requirements"
           branch: "pin-requirements/sigstore/${{ inputs.tag }}"
           signoff: true
