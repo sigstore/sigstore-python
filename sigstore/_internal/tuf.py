@@ -21,7 +21,6 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
-from enum import Enum, auto
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -75,30 +74,7 @@ def _get_dirs(url: str) -> tuple[Path, Path]:
     return (tuf_data_dir / repo_base), (tuf_cache_dir / repo_base)
 
 
-class KeyUsage(Enum):
-    """Key types that can be fetched from TUF."""
-
-    Rekor = auto()
-    Fulcio = auto()
-    CTFE = auto()
-
-    def __str__(self) -> str:
-        """Returns the name of the enum item."""
-        return self.name
-
-
-class KeyStatus(Enum):
-    """Filterable key statuses."""
-
-    Active = auto()
-    Expired = auto()
-
-    def __str__(self) -> str:
-        """Returns the name of the enum item."""
-        return self.name
-
-
-def _timerange_valid_for_status(period: TimeRange | None, status: KeyStatus) -> bool:
+def _is_timerange_valid(period: TimeRange | None, allow_expired: bool) -> bool:
     now = datetime.now(timezone.utc)
 
     # If there was no validity period specified, the key is always valid.
@@ -109,8 +85,8 @@ def _timerange_valid_for_status(period: TimeRange | None, status: KeyStatus) -> 
     if now < period.start:
         return False
 
-    # If we want Expired keys, we don't care. Otherwise, check that we are within range.
-    return status == KeyStatus.Expired or (period.end is None or now < period.end)
+    # If we want Expired keys, the key is valid at this point. Otherwise, check that we are within range.
+    return allow_expired or (period.end is None or now < period.end)
 
 
 class TrustUpdater:
@@ -211,7 +187,7 @@ class TrustUpdater:
 
         return TrustedRoot().from_json(Path(path).read_bytes())
 
-    def _get(self, usage: KeyUsage, statuses: list[KeyStatus]) -> list[bytes]:
+    def _get(self, usage: str, statuses: list[str]) -> list[bytes]:
         """Return all targets with given usage and any of the statuses"""
         if not self._updater:
             self._updater = self._setup()
@@ -223,8 +199,8 @@ class TrustUpdater:
             custom = target_info.unrecognized_fields.get("custom", {}).get("sigstore")
             if (
                 custom
-                and custom.get("status") in [str(x) for x in statuses]
-                and custom.get("usage") == str(usage)
+                and custom.get("status") in statuses
+                and custom.get("usage") == usage
             ):
                 path = self._updater.find_cached_target(target_info)
                 if path is None:
@@ -259,15 +235,15 @@ class TrustUpdater:
         self._trusted_root = self._get_trusted_root()
         if self._trusted_root:
             for key in self._trusted_root.ctlogs:
-                if not _timerange_valid_for_status(
-                    key.public_key.valid_for, KeyStatus.Active
+                if not _is_timerange_valid(
+                    key.public_key.valid_for, allow_expired=False
                 ):
                     continue
                 key_bytes = key.public_key.raw_bytes
                 if key_bytes:
                     ctfes.append(key_bytes)
         else:
-            ctfes = self._get(KeyUsage.CTFE, [KeyStatus.Active])
+            ctfes = self._get("CTFE", ["Active"])
 
         if not ctfes:
             raise MetadataError("CTFE keys not found in TUF metadata")
@@ -283,15 +259,15 @@ class TrustUpdater:
         self._trusted_root = self._get_trusted_root()
         if self._trusted_root:
             for key in self._trusted_root.tlogs:
-                if not _timerange_valid_for_status(
-                    key.public_key.valid_for, KeyStatus.Active
+                if not _is_timerange_valid(
+                    key.public_key.valid_for, allow_expired=False
                 ):
                     continue
                 key_bytes = key.public_key.raw_bytes
                 if key_bytes:
                     keys.append(key_bytes)
         else:
-            keys = self._get(KeyUsage.Rekor, [KeyStatus.Active])
+            keys = self._get("Rekor", ["Active"])
 
         if len(keys) != 1:
             raise MetadataError("Did not find one active Rekor key in TUF metadata")
@@ -309,7 +285,7 @@ class TrustUpdater:
         # been active when the certificate was used to sign.
         if self._trusted_root:
             for ca in self._trusted_root.certificate_authorities:
-                if not _timerange_valid_for_status(ca.valid_for, KeyStatus.Expired):
+                if not _is_timerange_valid(ca.valid_for, allow_expired=True):
                     continue
                 certs.extend(
                     [
@@ -321,7 +297,8 @@ class TrustUpdater:
             certs = [
                 load_pem_x509_certificate(c)
                 for c in self._get(
-                    KeyUsage.Fulcio, [KeyStatus.Active, KeyStatus.Expired]
+                    "Fulcio",
+                    ["Active", "Expired"],
                 )
             ]
         if not certs:
