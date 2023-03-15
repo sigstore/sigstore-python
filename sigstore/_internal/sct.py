@@ -32,7 +32,11 @@ from cryptography.x509.certificate_transparency import (
 from cryptography.x509.oid import ExtendedKeyUsageOID
 
 from sigstore._internal.ctfe import CTKeyring
-from sigstore._internal.keyring import KeyringError, KeyringLookupError
+from sigstore._internal.keyring import (
+    KeyringError,
+    KeyringLookupError,
+    KeyringSignatureError,
+)
 from sigstore._utils import DERCert, KeyID, key_id
 from sigstore.errors import Error
 
@@ -142,13 +146,34 @@ class InvalidSCTError(Error):
 
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""
-        # We specialize this error case, since it usually indicates one of
-        # two conditions: either the current sigstore client is out-of-date,
-        # or that the SCT is well-formed but invalid for the current configuration
-        # (indicating that the user has asked for the wrong instance).
-        if isinstance(self.__cause__, KeyringLookupError):
-            return dedent(
-                f"""
+
+        ctx = f"\nContext: {self.__context__}" if self.__context__ else ""
+        return dedent(
+            f"""
+            SCT verification failed.
+
+            Additional context:
+
+            Message: {str(self)}
+            """
+            + ctx
+        )
+
+
+class InvalidSCTKeyError(Error):
+    """
+    Raised during SCT verification if the SCT can't be validated against the given keyring.
+
+    We specialize this error case, since it usually indicates one of
+    two conditions: either the current sigstore client is out-of-date,
+    or that the SCT is well-formed but invalid for the current configuration
+    (indicating that the user has asked for the wrong instance).
+    """
+
+    def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
+        return dedent(
+            f"""
                 Invalid key ID in SCT: not found in current keyring.
 
                 This may be a result of an outdated `sigstore` installation.
@@ -161,9 +186,27 @@ class InvalidSCTError(Error):
 
                 {self.__cause__}
                 """
-            )
+        )
 
-        return str(self)
+
+class SCTSignatureError(InvalidSCTError):
+    """
+    Raised during SCT verification if the signature of the SCT is invalid.
+    """
+
+    def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
+        return dedent(
+            f"""
+            Invalid signature on SCT.
+
+            If validating a certificate, the certificate associated with this SCT should not be trusted.
+
+            Additional context:
+
+            {self.__cause__}
+            """
+        )
 
 
 def verify_sct(
@@ -214,8 +257,8 @@ def verify_sct(
             key_id=KeyID(sct.log_id), signature=sct.signature, data=digitally_signed
         )
     except KeyringLookupError as exc:
-        raise InvalidSCTError(
-            "Invalid key ID in SCT: not found in current keyring"
-        ) from exc
+        raise InvalidSCTKeyError from exc
+    except KeyringSignatureError as exc:
+        raise SCTSignatureError from exc
     except KeyringError as exc:
         raise InvalidSCTError from exc
