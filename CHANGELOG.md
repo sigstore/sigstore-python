@@ -21,6 +21,8 @@ All versions prior to 0.9.0 are untracked.
   ([#535](https://github.com/sigstore/sigstore-python/pull/535))
 * Revamped error diagnostics reporting. All errors with diagnostics now implement
   `sigstore.errors.Error`.
+* TUF now fetches its trust materials from a single target, if it is available.
+  ([#542](https://github.com/sigstore/sigstore-python/pull/542))
 
 ### Fixed
 
