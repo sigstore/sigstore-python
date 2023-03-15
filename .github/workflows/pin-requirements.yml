@@ -46,22 +46,12 @@ jobs:
         run: |
           echo "SIGSTORE_RELEASE_VERSION=$(echo "${SIGSTORE_RELEASE_TAG}" | sed 's/^v//')" >> "${GITHUB_ENV}"
 
-      - name: Download wheel from GitHub release
-        run: |
-          wheel_name="sigstore-${SIGSTORE_RELEASE_VERSION}-py3-none-any.whl"
-          wheel_url="https://github.com/sigstore/sigstore-python/releases/download/${SIGSTORE_RELEASE_TAG}/${wheel_name}"
-
-          echo "SIGSTORE_WHEEL_URL=${wheel_url}" >> "${GITHUB_ENV}"
       - name: Update requirements
         run: |
           cd install
 
-          # Pin on the wheel's GitHub URL, as PyPI might not have updated yet.
-          echo "${SIGSTORE_WHEEL_URL}" > requirements.in
-          pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
-
-          # Replace requirements.in. People should be able to run the `pip-compile` invocation provided in `requirements.txt`.
           echo "sigstore==${SIGSTORE_RELEASE_VERSION}" > requirements.in
+          pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
 
       - name: Open pull request
         id: pr
