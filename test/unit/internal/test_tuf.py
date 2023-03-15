@@ -14,10 +14,12 @@
 
 
 import os
+from datetime import datetime, timedelta, timezone
 
 import pytest
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
-from sigstore._internal.tuf import TrustUpdater
+from sigstore._internal.tuf import TrustUpdater, _is_timerange_valid
 
 
 def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
@@ -80,6 +82,35 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # Expect no requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
+
+
+def test_is_timerange_valid():
+    def range_from(offset_lower=0, offset_upper=0):
+        base = datetime.now(timezone.utc)
+        return TimeRange(
+            base + timedelta(minutes=offset_lower),
+            base + timedelta(minutes=offset_upper),
+        )
+
+    # Test None should always be valid
+    assert _is_timerange_valid(None, allow_expired=False)
+    assert _is_timerange_valid(None, allow_expired=True)
+
+    # Test lower bound conditions
+    assert _is_timerange_valid(
+        range_from(-1, 1), allow_expired=False
+    )  # Valid: 1 ago, 1 from now
+    assert not _is_timerange_valid(
+        range_from(1, 1), allow_expired=False
+    )  # Invalid: 1 from now, 1 from now
+
+    # Test upper bound conditions
+    assert not _is_timerange_valid(
+        range_from(-1, -1), allow_expired=False
+    )  # Invalid: 1 ago, 1 ago
+    assert _is_timerange_valid(
+        range_from(-1, -1), allow_expired=True
+    )  # Valid: 1 ago, 1 ago
 
 
 def test_updater_staging_get(mock_staging_tuf, tuf_asset):
