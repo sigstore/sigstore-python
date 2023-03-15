@@ -49,7 +49,7 @@ jobs:
       - name: Download wheel from GitHub release
         run: |
           wheel_name="sigstore-${SIGSTORE_RELEASE_VERSION}-py3-none-any.whl"
-          wheel_url="https://github.com/sigstore/sigstore-python/releases/download/${env.SIGSTORE_RELEASE_TAG}/${wheel_name}"
+          wheel_url="https://github.com/sigstore/sigstore-python/releases/download/${SIGSTORE_RELEASE_TAG}/${wheel_name}"
           wheel_path="${RUNNER_TEMP}/${wheel_name}"
 
           curl -L "${wheel_url}" -o "${wheel_path}" 
