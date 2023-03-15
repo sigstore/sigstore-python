@@ -44,36 +44,36 @@ jobs:
 
       - name: Compute version from tag
         run: |
-          echo "SIGSTORE_RELEASE_VERSION=$(echo "${{ env.SIGSTORE_RELEASE_TAG }}" | sed 's/^v//')" >>$GITHUB_ENV
+          echo "SIGSTORE_RELEASE_VERSION=$(echo "${SIGSTORE_RELEASE_TAG}" | sed 's/^v//')" >> "${GITHUB_ENV}"
 
       - name: Download wheel from GitHub release
         run: |
-          wheel_name="sigstore-${{ env.SIGSTORE_RELEASE_VERSION }}-py3-none-any.whl"
-          wheel_url="https://github.com/sigstore/sigstore-python/releases/download/${{ env.SIGSTORE_RELEASE_TAG }}/$wheel_name"
-          wheel_path="$RUNNER_TEMP/$wheel_name"
+          wheel_name="sigstore-${SIGSTORE_RELEASE_VERSION}-py3-none-any.whl"
+          wheel_url="https://github.com/sigstore/sigstore-python/releases/download/${env.SIGSTORE_RELEASE_TAG}/${wheel_name}"
+          wheel_path="${RUNNER_TEMP}/${wheel_name}"
 
-          curl -o "$wheel_path" -L $wheel_url
-          echo "SIGSTORE_WHEEL_PATH=$wheel_path" >>$GITHUB_ENV
+          curl -L "${wheel_url}" -o "${wheel_path}" 
+          echo "SIGSTORE_WHEEL_PATH=${wheel_path}" >> "${GITHUB_ENV}"
       - name: Update requirements
         run: |
           cd install
 
           # Pin on the downloaded wheel, as PyPI might not have updated yet.
-          echo "${{ env.SIGSTORE_WHEEL_PATH }}" >requirements.in
+          echo "${SIGSTORE_WHEEL_PATH}" > requirements.in
           pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
 
           # Replace requirements.in. People should be able to run the `pip-compile` invocation provided in `requirements.txt`.
-          echo "sigstore==${{ env.SIGSTORE_RELEASE_VERSION }}" >requirements.in
+          echo "sigstore==${SIGSTORE_RELEASE_VERSION}" > requirements.in
 
       - name: Open pull request
         id: pr
         uses: peter-evans/create-pull-request@2b011faafdcbc9ceb11414d64d0573f37c774b04 # v4.2.3
         with:
           title: |
-            Update pinned requirements for ${{ env.SIGSTORE_RELEASE_TAG }}
+            Update pinned requirements for ${SIGSTORE_RELEASE_TAG}
           body: |
-            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${{ env.SIGSTORE_RELEASE_TAG }}>.
+            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${SIGSTORE_RELEASE_TAG}>.
           commit-message: "[BOT] install: update pinned requirements"
-          branch: "pin-requirements/sigstore/${{ env.SIGSTORE_RELEASE_TAG }}"
+          branch: "pin-requirements/sigstore/${SIGSTORE_RELEASE_TAG}"
           signoff: true
           delete-branch: true
