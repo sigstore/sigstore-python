@@ -24,11 +24,9 @@ from textwrap import dedent
 from typing import Optional, TextIO, Union, cast
 
 from cryptography.x509 import load_pem_x509_certificates
-from id import GitHubOidcPermissionCredentialError, detect_credential
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
-from sigstore._errors import Error
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.keyring import Keyring
@@ -40,21 +38,23 @@ from sigstore._internal.rekor.client import (
 )
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import PEMCert
+from sigstore.errors import Error
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,
     Issuer,
+    detect_credential,
 )
 from sigstore.sign import Signer
 from sigstore.transparency import LogEntry
 from sigstore.verify import (
     CertificateVerificationFailure,
     LogEntryMissing,
-    VerificationFailure,
     VerificationMaterials,
     Verifier,
     policy,
 )
+from sigstore.verify.models import VerificationFailure
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -844,6 +844,60 @@ def _collect_verification_state(
     return (verifier, all_materials)
 
 
+class VerificationError(Error):
+    """Raised when the verifier returns a `VerificationFailure` result."""
+
+    def __init__(self, result: VerificationFailure):
+        self.message = f"Verification failed: {result.reason}"
+        self.result = result
+
+    def diagnostics(self) -> str:
+        message = f"Failure reason: {self.result.reason}\n"
+
+        if isinstance(self.result, CertificateVerificationFailure):
+            message += dedent(
+                f"""
+                The given certificate could not be verified against the
+                root of trust.
+
+                This may be a result of connecting to the wrong Fulcio instance
+                (for example, staging instead of production, or vice versa).
+
+                Additional context:
+
+                {self.result.exception}
+                """
+            )
+        elif isinstance(self.result, LogEntryMissing):
+            message += dedent(
+                f"""
+                These signing artifacts could not be matched to a entry
+                in the configured transparency log.
+
+                This may be a result of connecting to the wrong Rekor instance
+                (for example, staging instead of production, or vice versa).
+
+                Additional context:
+
+                Signature: {self.result.signature}
+
+                Artifact hash: {self.result.artifact_hash}
+                """
+            )
+        else:
+            message += dedent(
+                f"""
+                A verification error occurred.
+
+                Additional context:
+
+                {self.result}
+                """
+            )
+
+        return message
+
+
 def _verify_identity(args: argparse.Namespace) -> None:
     verifier, files_with_materials = _collect_verification_state(args)
 
@@ -861,64 +915,8 @@ def _verify_identity(args: argparse.Namespace) -> None:
         if result:
             print(f"OK: {file}")
         else:
-            result = cast(VerificationFailure, result)
             print(f"FAIL: {file}")
-            print(f"Failure reason: {result.reason}", file=sys.stderr)
-
-            if isinstance(result, CertificateVerificationFailure):
-                # If certificate verification failed, it's either because of
-                # a chain issue or some outdated state in sigstore itself.
-                # These might already be resolved in a newer version, so
-                # we suggest that users try to upgrade and retry before
-                # anything else.
-                print(
-                    dedent(
-                        f"""
-                        The given certificate could not be verified against the
-                        root of trust.
-
-                        This may be a result of connecting to the wrong Fulcio instance
-                        (for example, staging instead of production, or vice versa).
-
-                        Additional context:
-
-                        {result.exception}
-                        """
-                    ),
-                    file=sys.stderr,
-                )
-            elif isinstance(result, LogEntryMissing):
-                # If Rekor lookup failed, it's because the certificate either
-                # wasn't logged after creation or because the user requested the
-                # wrong Rekor instance (e.g., staging instead of production).
-                # The latter is significantly more likely, so we add
-                # some additional context to the output indicating it.
-                #
-                # NOTE: Even though the latter is more likely, it's still extremely
-                # unlikely that we'd hit this -- we should always fail with
-                # `CertificateVerificationFailure` instead, as the cert store should
-                # fail to validate due to a mismatch between the leaf and the trusted
-                # root + intermediates.
-                print(
-                    dedent(
-                        f"""
-                        These signing artifacts could not be matched to a entry
-                        in the configured transparency log.
-
-                        This may be a result of connecting to the wrong Rekor instance
-                        (for example, staging instead of production, or vice versa).
-
-                        Additional context:
-
-                        Signature: {result.signature}
-
-                        Artifact hash: {result.artifact_hash}
-                        """
-                    ),
-                    file=sys.stderr,
-                )
-
-            sys.exit(1)
+            raise VerificationError(cast(VerificationFailure, result))
 
 
 def _verify_github(args: argparse.Namespace) -> None:
@@ -952,106 +950,14 @@ def _verify_github(args: argparse.Namespace) -> None:
         if result:
             print(f"OK: {file}")
         else:
-            result = cast(VerificationFailure, result)
             print(f"FAIL: {file}")
-            print(f"Failure reason: {result.reason}", file=sys.stderr)
-
-            if isinstance(result, CertificateVerificationFailure):
-                # If certificate verification failed, it's either because of
-                # a chain issue or some outdated state in sigstore itself.
-                # These might already be resolved in a newer version, so
-                # we suggest that users try to upgrade and retry before
-                # anything else.
-                print(
-                    dedent(
-                        f"""
-                        The given certificate could not be verified against the
-                        root of trust.
-
-                        This may be a result of connecting to the wrong Fulcio instance
-                        (for example, staging instead of production, or vice versa).
-
-                        Additional context:
-
-                        {result.exception}
-                        """
-                    ),
-                    file=sys.stderr,
-                )
-            elif isinstance(result, LogEntryMissing):
-                # If Rekor lookup failed, it's because the certificate either
-                # wasn't logged after creation or because the user requested the
-                # wrong Rekor instance (e.g., staging instead of production).
-                # The latter is significantly more likely, so we add
-                # some additional context to the output indicating it.
-                #
-                # NOTE: Even though the latter is more likely, it's still extremely
-                # unlikely that we'd hit this -- we should always fail with
-                # `CertificateVerificationFailure` instead, as the cert store should
-                # fail to validate due to a mismatch between the leaf and the trusted
-                # root + intermediates.
-                print(
-                    dedent(
-                        f"""
-                        These signing artifacts could not be matched to a entry
-                        in the configured transparency log.
-
-                        This may be a result of connecting to the wrong Rekor instance
-                        (for example, staging instead of production, or vice versa).
-
-                        Additional context:
-
-                        Signature: {result.signature}
-
-                        Artifact hash: {result.artifact_hash}
-                        """
-                    ),
-                    file=sys.stderr,
-                )
-
-            sys.exit(1)
+            raise VerificationError(cast(VerificationFailure, result))
 
 
 def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
     token = None
     if not args.oidc_disable_ambient_providers:
-        try:
-            token = detect_credential(DEFAULT_AUDIENCE)
-        except GitHubOidcPermissionCredentialError as exception:
-            # Provide some common reasons for why we hit permission errors in
-            # GitHub Actions.
-            print(
-                dedent(
-                    f"""
-                    Insufficient permissions for GitHub Actions workflow.
-
-                    The most common reason for this is incorrect
-                    configuration of the top-level `permissions` setting of the
-                    workflow YAML file. It should be configured like so:
-
-                        permissions:
-                          id-token: write
-
-                    Relevant documentation here:
-
-                        https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#adding-permissions-settings
-
-                    Another possible reason is that the workflow run has been
-                    triggered by a PR from a forked repository. PRs from forked
-                    repositories typically cannot be granted write access.
-
-                    Relevant documentation here:
-
-                        https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
-
-                    Additional context:
-
-                    {exception}
-                    """
-                ),
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        token = detect_credential(DEFAULT_AUDIENCE)
 
     if not token:
         if args.staging:

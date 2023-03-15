@@ -34,6 +34,7 @@ from cryptography.x509.oid import ExtendedKeyUsageOID
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._utils import DERCert, KeyID, key_id
+from sigstore.errors import Error
 
 logger = logging.getLogger(__name__)
 
@@ -134,12 +135,35 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
     return issuer
 
 
-class InvalidSCTError(Exception):
+class InvalidSCTError(Error):
     """
     Raised during SCT verification if an SCT is invalid in some way.
     """
 
-    pass
+    def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
+        # We specialize this error case, since it usually indicates one of
+        # two conditions: either the current sigstore client is out-of-date,
+        # or that the SCT is well-formed but invalid for the current configuration
+        # (indicating that the user has asked for the wrong instance).
+        if isinstance(self.__cause__, KeyringLookupError):
+            return dedent(
+                f"""
+                Invalid key ID in SCT: not found in current keyring.
+
+                This may be a result of an outdated `sigstore` installation.
+
+                Consider upgrading with:
+
+                    python -m pip install --upgrade sigstore
+
+                Additional context:
+
+                {self.__cause__}
+                """
+            )
+
+        return str(self)
 
 
 def verify_sct(
@@ -190,28 +214,8 @@ def verify_sct(
             key_id=KeyID(sct.log_id), signature=sct.signature, data=digitally_signed
         )
     except KeyringLookupError as exc:
-        # We specialize this error case, since it usually indicates one of
-        # two conditions: either the current sigstore client is out-of-date,
-        # or that the SCT is well-formed but invalid for the current configuration
-        # (indicating that the user has asked for the wrong instance).
-        #
-        # TODO(ww): Longer term, this should be specialized elsewhere.
         raise InvalidSCTError(
-            dedent(
-                f"""
-                Invalid key ID in SCT: not found in current keyring.
-
-                This may be a result of an outdated `sigstore` installation.
-
-                Consider upgrading with:
-
-                    python -m pip install --upgrade sigstore
-
-                Additional context:
-
-                {exc}
-                """
-            ),
-        )
+            "Invalid key ID in SCT: not found in current keyring"
+        ) from exc
     except KeyringError as exc:
         raise InvalidSCTError from exc
