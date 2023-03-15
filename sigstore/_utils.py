@@ -27,7 +27,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509 import Certificate
 
-from sigstore._errors import Error
+from sigstore.errors import Error
 
 if sys.version_info < (3, 11):
     import importlib_resources as resources
