@@ -345,9 +345,9 @@ requests==2.28.2 \
     # via
     #   sigstore
     #   tuf
-securesystemslib==0.26.0 \
-    --hash=sha256:41c7b25c52dc0bafe774413b5738bbf4431f094e72a091e83d9921901972ae4c \
-    --hash=sha256:a8fa49831d6a7e48f81050984ddfac3713af0c326f558727113533edb5ca8eac
+securesystemslib==0.27.0 \
+    --hash=sha256:27fab4aae9adaf82530dc58f8e85a546f637d5ec5c5ef00d261689985420a70b \
+    --hash=sha256:7ba326a41f980b3897356663144f6091531bf3d4e8333b821164526ce8e9f48d
     # via
     #   sigstore
     #   tuf

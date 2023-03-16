@@ -25,4 +25,4 @@ Otherwise, here are some quick starting points:
 * `sigstore.sign`: creation of Sigstore signatures
 """
 
-__version__ = "1.1.1"
+__version__ = "1.1.2rc1"

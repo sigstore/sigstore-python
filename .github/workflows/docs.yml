@@ -49,4 +49,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@0243b6c10d06cb8e95ed8ee471231877621202c0 # v1.2.4
+        uses: actions/deploy-pages@7fec4b245d2292f2713ef02d5488349a5da05175 # v1.2.7
