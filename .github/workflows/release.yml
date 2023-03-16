@@ -17,7 +17,7 @@ jobs:
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
     steps:
-      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # v3.4.0
 
       - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
         with:
@@ -115,16 +115,16 @@ jobs:
   release-pypi:
     needs: [build, generate-provenance]
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      # Used to authenticate to PyPI via OIDC.
+      id-token: write
     steps:
       - name: Download artifacts directories # goes to current working directory
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
 
       - name: publish
-        uses: pypa/gh-action-pypi-publish@22b4d1f12511f2696162c08546dafbaa903448a2
+        uses: pypa/gh-action-pypi-publish@a3a3bafbb3e5a75a854ae1bc53ae128cf22c4af4
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
           packages_dir: built-packages/
 
   release-github:
@@ -147,3 +147,17 @@ jobs:
           files: |
             built-packages/*
             smoketest-artifacts/*
+
+  # Trigger workflow to generate pinned requirements.txt.
+  pin-requirements:
+    permissions:
+      # Needed to create branch and pull request.
+      pull-requests: write
+      contents: write
+    # Workflow depends on uploaded release assets.
+    needs: [release-github]
+    # Only trigger workflow on full releases.
+    if: ${{ !github.event.release.prerelease }}
+    uses: ./.github/workflows/pin-requirements.yml
+    with:
+      tag: ${{ github.ref_name }}
