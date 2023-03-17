@@ -75,11 +75,11 @@ def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
 
     with pytest.raises(
         InvalidSCTError,
-    ) as exc:
+    ) as excinfo:
         signer.sign(payload, token)
 
     # The exception subclass is the one we expect.
-    assert isinstance(exc, InvalidSCTKeyError)
+    assert isinstance(excinfo.value, InvalidSCTKeyError)
 
 
 @pytest.mark.online
