@@ -44,6 +44,12 @@ class KeyringLookupError(KeyringError):
     pass
 
 
+class KeyringSignatureError(KeyringError):
+    """
+    Raised when `Keyring.verify()` is passed an invalid signature.
+    """
+
+
 class Keyring:
     """
     Represents a set of CT signing keys, each of which is a potentially
@@ -101,4 +107,4 @@ class Keyring:
                 # NOTE(ww): Unreachable without API misuse.
                 raise KeyringError(f"unsupported key type: {key}")
         except InvalidSignature as exc:
-            raise KeyringError("invalid signature") from exc
+            raise KeyringSignatureError("invalid signature") from exc
