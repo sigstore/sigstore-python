@@ -21,6 +21,8 @@ All versions prior to 0.9.0 are untracked.
   ([#535](https://github.com/sigstore/sigstore-python/pull/535))
 * Revamped error diagnostics reporting. All errors with diagnostics now implement
   `sigstore.errors.Error`.
+* Improved diagnostics around Signed Certificate Timestamp verification failures.
+  ([#555](https://github.com/sigstore/sigstore-python/pull/555))
 
 ### Fixed
 
