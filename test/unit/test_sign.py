@@ -23,7 +23,7 @@ from id import IdentityError, detect_credential
 import sigstore._internal.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._internal.oidc import DEFAULT_AUDIENCE
-from sigstore._internal.sct import InvalidSCTError
+from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
 from sigstore.sign import Signer
 
 
@@ -75,9 +75,11 @@ def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
 
     with pytest.raises(
         InvalidSCTError,
-        match="Invalid key ID in SCT: not found in current keyring",
-    ):
+    ) as exc:
         signer.sign(payload, token)
+
+    # The exception subclass is the one we expect.
+    assert isinstance(exc, InvalidSCTKeyError)
 
 
 @pytest.mark.online
