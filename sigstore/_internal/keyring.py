@@ -70,9 +70,9 @@ class Keyring:
 
             try:
                 key = load_pem_public_key(key_bytes)
+            except UnexpectedKeyFormatError as e:
+                raise e
             except InvalidKeyError as e:
-                if isinstance(e, UnexpectedKeyFormatError):
-                    raise e
                 key = load_der_public_key(key_bytes)
 
             self._keyring[key_id(key)] = key
