@@ -160,7 +160,7 @@ class InvalidSCTError(Error):
         )
 
 
-class InvalidSCTKeyError(Error):
+class InvalidSCTKeyError(InvalidSCTError):
     """
     Raised during SCT verification if the SCT can't be validated against the given keyring.
 
