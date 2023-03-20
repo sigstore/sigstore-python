@@ -74,7 +74,7 @@ jobs:
       ref: "pin-requirements/sigstore/${{ inputs.tag }}"
 
   create-pr:
-    needs: test-install
+    needs: test-requirements
     runs-on: ubuntu-latest
 
     permissions:
