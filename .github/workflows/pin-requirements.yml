@@ -65,7 +65,7 @@ jobs:
           git commit --all -s -m "[BOT] install: update pinned requirements"
           git push -f origin "main:${SIGSTORE_NEW_BRANCH}"
 
-  test-install:
+  test-requirements:
     needs: update-pinned-requirements
     uses: ./.github/workflows/requirements.yml
     with:
