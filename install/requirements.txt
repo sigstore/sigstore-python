@@ -201,6 +201,10 @@ hyperframe==6.0.1 \
     --hash=sha256:0ec6bafd80d8ad2195c4f03aacba3a8265e57bc4cff261e802bf39970ed02a15 \
     --hash=sha256:ae510046231dc8e9ecb1a6586f63d2347bf4c8905914aa84ba585ae85f28a914
     # via h2
+id==1.0.0 \
+    --hash=sha256:8822ba0454bb8660c4fff439eadbf06236cc354dcabd7ae00d907143d92215f5 \
+    --hash=sha256:d4b3e75ce0d5f38c9e467826436babe8b9bc5f78e22bae716a22a6a0add570ea
+    # via sigstore
 idna==3.4 \
     --hash=sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4 \
     --hash=sha256:90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2
@@ -326,7 +330,9 @@ pydantic==1.10.6 \
     --hash=sha256:ea4e2a7cb409951988e79a469f609bba998a576e6d7b9791ae5d1e0619e1c0f2 \
     --hash=sha256:f9289065611c48147c1dd1fd344e9d57ab45f1d99b0fb26c51f1cf72cd9bcd31 \
     --hash=sha256:fd9b9e98068fa1068edfc9eabde70a7132017bdd4f362f8b4fd0abed79c33083
-    # via sigstore
+    # via
+    #   id
+    #   sigstore
 pyjwt==2.6.0 \
     --hash=sha256:69285c7e31fc44f68a1feb309e948e0df53259d579295e6cfe2b1792329f05fd \
     --hash=sha256:d83c3d892a77bbb74d3e1a2cfa90afaadb60945205d1095d9221f04466f64c14
@@ -343,6 +349,7 @@ requests==2.28.2 \
     --hash=sha256:64299f4909223da747622c030b781c0d7811e359c37124b4bd368fb8c6518baa \
     --hash=sha256:98b1b2782e3c6c4904938b84c0eb932721069dfdb9134313beff7c83c2df24bf
     # via
+    #   id
     #   sigstore
     #   tuf
 securesystemslib==0.27.0 \
@@ -351,9 +358,9 @@ securesystemslib==0.27.0 \
     # via
     #   sigstore
     #   tuf
-sigstore==1.1.1 \
-    --hash=sha256:b4a2bd8a122841858684360b67be8037a40e28e828bbf856a604070b77f4f694 \
-    --hash=sha256:dda096d7673cfae5a93d3b45fa9b6e9d76ce02f57d9848ced1d3b5130906f9d1
+sigstore==1.1.2rc1 \
+    --hash=sha256:61c98603058b0d466ba08877d2b3be96ff929322cfd1126da4e7a55af84dabe1 \
+    --hash=sha256:937582221f3eb4c2dcb314e8a8ca3d3e6e80bfbd081ac87d89db9d99e58601e7
     # via -r requirements.in
 sigstore-protobuf-specs==0.1.0 \
     --hash=sha256:0e7766add04b5bd145181936e6fedbb2609d7e959f2740051cbca12572b277a2 \
