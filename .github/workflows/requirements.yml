@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_call:
+    inputs:
+      ref:
+        description: The branch, tag, or revision to test.
+        type: string
+        required: true
   pull_request:
   schedule:
     - cron: '0 12 * * *'
@@ -12,12 +18,22 @@ jobs:
   test_requirements:
     name: requirements.txt / ${{ matrix.python_version }}
     runs-on: ubuntu-latest
+
+    env:
+      SIGSTORE_REF: ${{ inputs.ref }}
     strategy:
       matrix:
         python_version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
 
     steps:
+      - name: Populate reference from context
+        if: ${{ env.SIGSTORE_REF == '' }}
+        run: |
+          echo "SIGSTORE_REF=${{ github.ref }}" >> "${GITHUB_ENV}"
+
       - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # v3.4.0
+        with:
+          ref: ${{ env.SIGSTORE_REF }}
 
       - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
         name: Install Python ${{ matrix.python_version }}
