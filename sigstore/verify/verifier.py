@@ -39,6 +39,7 @@ from OpenSSL.crypto import (  # type: ignore[import]
 from sigstore._internal.merkle import (
     InvalidInclusionProofError,
     verify_merkle_inclusion,
+    verify_root_hash,
 )
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSETError, verify_set
@@ -248,8 +249,10 @@ class Verifier:
         #
         # We skip the inclusion proof only if explicitly requested.
         if not materials._offline:
-            # Verify root hash.
-            # NOTE(jl): assuming this is an online test, since this should be verified against the fetched Rekor public key
+            try:
+                verify_root_hash(entry)
+            except InvalidInclusionProofError as exc:
+                return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
             try:
                 verify_merkle_inclusion(entry)

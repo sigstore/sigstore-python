@@ -18,6 +18,8 @@ Transparency log data structures.
 
 from __future__ import annotations
 
+import base64
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -90,7 +92,6 @@ class LogEntry:
             raise ValueError("Received multiple entries in response")
 
         uuid, entry = entries[0]
-
         return LogEntry(
             uuid=uuid,
             body=entry["body"],
@@ -120,16 +121,85 @@ class LogEntry:
         return encode_canonical(payload).encode()  # type: ignore
 
 
+# FIXME(jl): this does not feel like a de novo definition...
+# does this exist already in sigstore-python (or its depenencices)?
+@dataclass
+class Signature:
+    name: str
+    sig_hash: bytes
+    sig_base64: bytes
+
+
+class Checkpoint(BaseModel):
+    note: StrictStr = Field(..., alias="note")
+    signatures: List[Signature] = Field(..., alias="signatures")
+
+    @validator("signatures")
+    def _signatures_nonempty(cls, v: List[bytes]) -> List[bytes]:
+        if len(v) < 1:
+            raise ValueError("Inclusion proof signatures list is empty!")
+        return v
+
+    @classmethod
+    def from_note(cls, note: str) -> Checkpoint:
+        """
+        Serialize from a bundled text 'note'.
+
+        A note contains:
+        - a name, a string associated with the signer,
+        - a separator blank line,
+        - and signature(s), each signature takes the form
+            `\u2014 NAME SIGNATURE\n`
+          (where \u2014 == em dash).
+
+        An adaptation of the Rekor's `UnmarshalText`:
+        https://github.com/sigstore/rekor/blob/4b1fa6661cc6dfbc844b4c6ed9b1f44e7c5ae1c0/pkg/util/signed_note.go#L141
+        """
+
+        separator: str = "\n\n"
+        if note.count(separator) != 1:
+            raise ValueError(
+                "Note must contain one blank line, deliniating the text from the signature block"
+            )
+        split = note.index(separator)
+
+        text: str = note[: split + 1]
+        data: str = note[split + len(separator) :]
+
+        if len(data) == 0:
+            raise ValueError("Malformed Note: must contain at least one signature!")
+        if data[-1] != "\n":
+            raise ValueError("Malformed Note: data section must end with newline!")
+
+        signatures: list[Signature] = []
+
+        sig_parser = re.compile(r"\u2014 (\S+) (\S+)\n")
+        for (name, signature) in re.findall(sig_parser, data):
+            signature_bytes: bytes = base64.b64decode(signature)
+            if len(signature_bytes) < 5:
+                raise ValueError("Malformed Note: signature contains too few bytes")
+
+            signature = Signature(
+                name=name,
+                # FIXME(jl): In Go, construct an big-endian UInt32 from 4 bytes. Is this equivalent?
+                sig_hash=signature_bytes[0:4],
+                sig_base64=base64.b64encode(signature_bytes[4:]),
+            )
+            signatures.append(signature)
+
+        return cls(note=text, signatures=signatures)
+
+
 class LogInclusionProof(BaseModel):
     """
     Represents an inclusion proof for a transparency log entry.
     """
 
+    checkpoint: StrictStr = Field(..., alias="checkpoint")
+    hashes: List[StrictStr] = Field(..., alias="hashes")
     log_index: StrictInt = Field(..., alias="logIndex")
     root_hash: StrictStr = Field(..., alias="rootHash")
     tree_size: StrictInt = Field(..., alias="treeSize")
-    hashes: List[StrictStr] = Field(..., alias="hashes")
-    checkpoint: StrictStr = Field(..., alias="checkpoint")
 
     class Config:
         allow_population_by_field_name = True

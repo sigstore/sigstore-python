@@ -144,6 +144,11 @@ class VerificationMaterials:
     # TODO: Support a certificate chain here, with optional intermediates.
     """
 
+    checkpoint: str
+    """
+    The inclusion proof's checkpoint (signed tree head)
+    """
+
     signature: bytes
     """
     The raw signature.
@@ -241,9 +246,9 @@ class VerificationMaterials:
         tlog_entry = tlog_entries[0]
 
         inclusion_proof = LogInclusionProof(
-            log_index=tlog_entry.inclusion_proof.log_index,
-            root_hash=tlog_entry.inclusion_proof.root_hash.hex(),
-            tree_size=tlog_entry.inclusion_proof.tree_size,
+            logIndex=tlog_entry.inclusion_proof.log_index,
+            rootHash=tlog_entry.inclusion_proof.root_hash.hex(),
+            treeSize=tlog_entry.inclusion_proof.tree_size,
             hashes=[h.hex() for h in tlog_entry.inclusion_proof.hashes],
             checkpoint=tlog_entry.inclusion_proof.checkpoint,
         )
