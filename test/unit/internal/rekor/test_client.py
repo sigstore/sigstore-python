@@ -21,7 +21,9 @@ from sigstore.transparency import LogInclusionProof
 
 class TestRekorInclusionProof:
     def test_valid(self):
-        proof = LogInclusionProof(log_index=1, root_hash="abcd", tree_size=2, hashes=[], checkpoint="")
+        proof = LogInclusionProof(
+            log_index=1, root_hash="abcd", tree_size=2, hashes=[], checkpoint=""
+        )
         assert proof is not None
 
     def test_negative_log_index(self):

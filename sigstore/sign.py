@@ -238,7 +238,9 @@ class SigningResult(BaseModel):
                 hashes=[
                     bytes.fromhex(h) for h in self.log_entry.inclusion_proof.hashes
                 ],
-                checkpoint="foo",
+                # FIXME(jl): checkpoint should be a serialzied field here.
+                # this causes tests depending on the commited `bundle.txt.sigstore` to fail;
+                # the bundle doesn't contain the `"checkpoint"` field.
             )
 
         tlog_entry = TransparencyLogEntry(

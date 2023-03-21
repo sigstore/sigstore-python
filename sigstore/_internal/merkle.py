@@ -27,7 +27,7 @@ import struct
 from typing import List, Tuple
 
 from sigstore._utils import HexStr
-from sigstore.transparency import LogEntry
+from sigstore.transparency import Checkpoint, LogEntry
 
 
 class InvalidInclusionProofError(Exception):
@@ -94,6 +94,20 @@ def _hash_leaf(leaf: bytes) -> bytes:
     pattern = f"B{len(leaf)}s"
     data = struct.pack(pattern, _LEAF_HASH_PREFIX, leaf)
     return hashlib.sha256(data).digest()
+
+
+def verify_root_hash(entry: LogEntry) -> None:
+    # verififcaiton occurs in two stages,
+    # 1) verify the signature on the checkpoint
+    # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
+
+    inclusion_proof = entry.inclusion_proof
+    if inclusion_proof is None:
+        raise InvalidInclusionProofError("Rekor entry has no inclusion proof")
+
+    checkpoint = Checkpoint.from_note(entry.inclusion_proof.checkpoint)
+    with open("foo.txt", "w") as f:
+        f.write(f"{checkpoint.signatures}")
 
 
 def verify_merkle_inclusion(entry: LogEntry) -> None:
