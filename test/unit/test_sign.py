@@ -39,8 +39,7 @@ def test_signer_staging(mock_staging_tuf):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_sign_rekor_entry_consistent(signer, id_config):
+def test_sign_rekor_entry_consistent(id_config):
     signer, token = id_config
 
     # NOTE: The actual signer instance is produced lazily, so that parameter
@@ -61,8 +60,7 @@ def test_sign_rekor_entry_consistent(signer, id_config):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_sct_verify_keyring_lookup_error(signer, id_config, monkeypatch):
+def test_sct_verify_keyring_lookup_error(id_config, monkeypatch):
     signer, token = id_config
 
     # a signer whose keyring always fails to lookup a given key.
@@ -83,8 +81,7 @@ def test_sct_verify_keyring_lookup_error(signer, id_config, monkeypatch):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_sct_verify_keyring_error(signer, id_config, monkeypatch):
+def test_sct_verify_keyring_error(id_config, monkeypatch):
     signer, token = id_config
 
     # a signer whose keyring throws an internal error.
@@ -100,8 +97,7 @@ def test_sct_verify_keyring_error(signer, id_config, monkeypatch):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_identity_proof_claim_lookup(signer, id_config, monkeypatch):
+def test_identity_proof_claim_lookup(id_config, monkeypatch):
     signer, token = id_config
 
     signer = signer()
