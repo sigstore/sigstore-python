@@ -123,16 +123,49 @@ class LogEntry:
 
 # FIXME(jl): this does not feel like a de novo definition...
 # does this exist already in sigstore-python (or its depenencices)?
-@dataclass
-class Signature:
-    name: str
+class Signature(BaseModel):
+    name: StrictStr
     sig_hash: bytes
     sig_base64: bytes
 
 
 class Checkpoint(BaseModel):
+    _origin: StrictStr
+    _log_size: int
+    _log_hash: bytes
+    _other_content: list[str]
+
+    @classmethod
+    def from_text(cls, text: str) -> Checkpoint:
+        """
+        Serialize from the text header ("note") of a SignedNote.
+
+        A checkpoint contains:
+        -
+        """
+
+        lines = text.split("\n")
+        if len(lines) < 4:
+            raise ValueError("Malformed Checkpoint: too few items in header!")
+
+        origin = lines[0]
+        if len(origin) == 0:
+            raise ValueError("Malformed Checkpoint: empty origin!")
+
+        log_size = int(lines[1])
+        root_hash = base64.b64decode(lines[2])
+
+        return Checkpoint(
+            _origin=origin,
+            _log_size=log_size,
+            _log_hash=root_hash,
+            _other_content=lines[3:],
+        )
+
+
+class SignedNote(BaseModel):
     note: StrictStr = Field(..., alias="note")
-    signatures: List[Signature] = Field(..., alias="signatures")
+    signatures: list[Signature] = Field(..., alias="signatures")
 
     @validator("signatures")
     def _signatures_nonempty(cls, v: List[bytes]) -> List[bytes]:
@@ -141,7 +174,7 @@ class Checkpoint(BaseModel):
         return v
 
     @classmethod
-    def from_note(cls, note: str) -> Checkpoint:
+    def from_text(cls, text: str) -> SignedNote:
         """
         Serialize from a bundled text 'note'.
 
@@ -157,14 +190,14 @@ class Checkpoint(BaseModel):
         """
 
         separator: str = "\n\n"
-        if note.count(separator) != 1:
+        if text.count(separator) != 1:
             raise ValueError(
                 "Note must contain one blank line, deliniating the text from the signature block"
             )
-        split = note.index(separator)
+        split = text.index(separator)
 
-        text: str = note[: split + 1]
-        data: str = note[split + len(separator) :]
+        header: str = text[: split + 1]
+        data: str = text[split + len(separator) :]
 
         if len(data) == 0:
             raise ValueError("Malformed Note: must contain at least one signature!")
@@ -187,7 +220,18 @@ class Checkpoint(BaseModel):
             )
             signatures.append(signature)
 
-        return cls(note=text, signatures=signatures)
+        return cls(note=header, signatures=signatures)
+
+
+class SignedCheckpoint(BaseModel):
+    _signed_note: SignedNote
+    _checkpoint: Checkpoint
+
+    @classmethod
+    def from_text(cls, text: str) -> SignedCheckpoint:
+        signed_note = SignedNote.from_text(text)
+        checkpoint = Checkpoint.from_text(signed_note.note)
+        return cls(_signed_note=signed_note, _checkpoint=checkpoint)
 
 
 class LogInclusionProof(BaseModel):
