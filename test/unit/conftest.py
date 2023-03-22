@@ -43,7 +43,7 @@ assert _TUF_ASSETS.is_dir()
 
 
 def _has_oidc_id():
-    # If there are tokens manually defined for us in the environment, use it.
+    # If there are tokens manually defined for us in the environment, use them.
     if os.getenv("SIGSTORE_IDENTITY_TOKEN_production") is not None:
         return True
 
