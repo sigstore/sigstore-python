@@ -200,7 +200,8 @@ class SCTSignatureError(InvalidSCTError):
             f"""
             Invalid signature on SCT.
 
-            If validating a certificate, the certificate associated with this SCT should not be trusted.
+            If validating a certificate, the certificate associated with this
+            SCT should not be trusted.
 
             Additional context:
 
