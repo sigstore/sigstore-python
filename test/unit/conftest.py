@@ -194,7 +194,10 @@ def tuf_dirs(monkeypatch, tmp_path):
     return (data_dir, cache_dir)
 
 
-@pytest.fixture(params=[("production", Signer.production), ("staging", Signer.staging)], ids=["production", "staging"])
+@pytest.fixture(
+    params=[("production", Signer.production), ("staging", Signer.staging)],
+    ids=["production", "staging"],
+)
 def id_config(request):
     env, signer = request.param
     # Detect env variable for local interactive tests.
