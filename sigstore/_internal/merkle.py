@@ -27,7 +27,7 @@ import struct
 from typing import List, Tuple
 
 from sigstore._utils import HexStr
-from sigstore.transparency import Checkpoint, LogEntry
+from sigstore.transparency import LogEntry, SignedCheckpoint
 
 
 class InvalidInclusionProofError(Exception):
@@ -104,10 +104,18 @@ def verify_root_hash(entry: LogEntry) -> None:
     inclusion_proof = entry.inclusion_proof
     if inclusion_proof is None:
         raise InvalidInclusionProofError("Rekor entry has no inclusion proof")
+    signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
 
-    checkpoint = Checkpoint.from_note(entry.inclusion_proof.checkpoint)
-    with open("foo.txt", "w") as f:
-        f.write(f"{checkpoint.signatures}")
+    # FIXME(jl): what do the go `.Verify(verifier)` calls do?
+    # checkpoint.verify()
+
+    root_hash = base64.b64decode(inclusion_proof.root_hash)
+
+    if signed_checkpoint._checkpoint._log_hash != root_hash:
+        raise InvalidInclusionProofError(
+            "Inclusion proof contains invalid root hash signature: expected"
+            f"{str(signed_checkpoint._checkpoint._log_hash)}, got {str(root_hash)}"
+        )
 
 
 def verify_merkle_inclusion(entry: LogEntry) -> None:
