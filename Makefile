@@ -80,8 +80,14 @@ reformat: $(VENV)/pyvenv.cfg
 .PHONY: test
 test: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
-		pytest --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
+		$(TEST_ENV) pytest --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
 		python -m coverage report -m $(COV_ARGS)
+
+.PHONY: test-oidc
+test-oidc: TEST_ENV += \
+	SIGSTORE_IDENTITY_TOKEN_production=$$($(MAKE) -s run ARGS="get-identity-token") \
+	SIGSTORE_IDENTITY_TOKEN_staging=$$($(MAKE) -s run ARGS="--staging get-identity-token")
+test-oidc: test
 
 .PHONY: doc
 doc: $(VENV)/pyvenv.cfg
