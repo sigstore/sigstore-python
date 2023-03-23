@@ -68,7 +68,7 @@ class Keyring:
     def __init__(self, keys: List[bytes] = []):
         """
         Create a new `Keyring`, with `keys` as the initial set of signing
-        keys.
+        keys. These `keys` can be in either DER or PEM encoded.
         """
         self._keyring = {}
         for key_bytes in keys:
@@ -78,7 +78,7 @@ class Keyring:
                 key = load_pem_public_key(key_bytes)
             except UnexpectedKeyFormatError as e:
                 raise e
-            except InvalidKeyError as e:
+            except InvalidKeyError:
                 key = load_der_public_key(key_bytes)
 
             self._keyring[key_id(key)] = key

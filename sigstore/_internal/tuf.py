@@ -74,19 +74,26 @@ def _get_dirs(url: str) -> tuple[Path, Path]:
     return (tuf_data_dir / repo_base), (tuf_cache_dir / repo_base)
 
 
-def _is_timerange_valid(period: TimeRange | None, allow_expired: bool) -> bool:
+def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
+    """
+    Given a `period`, checks that the the current time is not before `start`. If
+    `allow_expired` is `False`, also checks that the current time is not after
+    `end`.
+    """
     now = datetime.now(timezone.utc)
 
     # If there was no validity period specified, the key is always valid.
     if not period:
         return True
 
-    # Active: if the current time is before the starting period, we are not yet valid
+    # Active: if the current time is before the starting period, we are not yet
+    # valid.
     if now < period.start:
         return False
 
-    # If we want Expired keys, the key is valid at this point. Otherwise, check that we are within range.
-    return allow_expired or (period.end is None or now < period.end)
+    # If we want Expired keys, the key is valid at this point. Otherwise, check
+    # that we are within range.
+    return allow_expired or (period.end is None or now <= period.end)
 
 
 class TrustUpdater:
@@ -108,9 +115,6 @@ class TrustUpdater:
         roots, i.e. for the production or staging Sigstore TUF repos.
         """
         self._repo_url = url
-        self._updater: Updater | None = None
-        self._trusted_root: TrustedRoot | None = None
-
         self._metadata_dir, self._targets_dir = _get_dirs(url)
 
         # Initialize metadata dir
@@ -149,7 +153,8 @@ class TrustUpdater:
         """
         return cls(STAGING_TUF_URL)
 
-    def _setup(self) -> Updater:
+    @lru_cache()
+    def _updater(self) -> Updater:
         """Initialize and update the toplevel TUF metadata"""
         updater = Updater(
             metadata_dir=str(self._metadata_dir),
@@ -168,17 +173,15 @@ class TrustUpdater:
 
         return updater
 
+    @lru_cache()
     def _get_trusted_root(self) -> Optional[TrustedRoot]:
-        if not self._updater:
-            self._updater = self._setup()
-
-        root_info = self._updater.get_targetinfo("trusted_root.json")
+        root_info = self._updater().get_targetinfo("trusted_root.json")
         if root_info is None:
             return None
-        path = self._updater.find_cached_target(root_info)
+        path = self._updater().find_cached_target(root_info)
         if path is None:
             try:
-                path = self._updater.download_target(root_info)
+                path = self._updater().download_target(root_info)
             except (
                 TUFExceptions.DownloadError,
                 TUFExceptions.RepositoryError,
@@ -189,12 +192,9 @@ class TrustUpdater:
 
     def _get(self, usage: str, statuses: list[str]) -> list[bytes]:
         """Return all targets with given usage and any of the statuses"""
-        if not self._updater:
-            self._updater = self._setup()
-
         data = []
 
-        targets = self._updater._trusted_set.targets.signed.targets
+        targets = self._updater()._trusted_set.targets.signed.targets
         for target_info in targets.values():
             custom = target_info.unrecognized_fields.get("custom", {}).get("sigstore")
             if (
@@ -202,10 +202,10 @@ class TrustUpdater:
                 and custom.get("status") in statuses
                 and custom.get("usage") == usage
             ):
-                path = self._updater.find_cached_target(target_info)
+                path = self._updater().find_cached_target(target_info)
                 if path is None:
                     try:
-                        path = self._updater.download_target(target_info)
+                        path = self._updater().download_target(target_info)
                     except (
                         TUFExceptions.DownloadError,
                         TUFExceptions.RepositoryError,
@@ -232,9 +232,9 @@ class TrustUpdater:
         """
         ctfes = []
 
-        self._trusted_root = self._get_trusted_root()
-        if self._trusted_root:
-            for key in self._trusted_root.ctlogs:
+        trusted_root = self._get_trusted_root()
+        if trusted_root:
+            for key in trusted_root.ctlogs:
                 if not _is_timerange_valid(
                     key.public_key.valid_for, allow_expired=False
                 ):
@@ -256,9 +256,9 @@ class TrustUpdater:
         """
         keys = []
 
-        self._trusted_root = self._get_trusted_root()
-        if self._trusted_root:
-            for key in self._trusted_root.tlogs:
+        trusted_root = self._get_trusted_root()
+        if trusted_root:
+            for key in trusted_root.tlogs:
                 if not _is_timerange_valid(
                     key.public_key.valid_for, allow_expired=False
                 ):
@@ -280,11 +280,11 @@ class TrustUpdater:
         """
         certs = []
 
-        self._trusted_root = self._get_trusted_root()
+        trusted_root = self._get_trusted_root()
         # Return expired certificates too: they are expired now but may have
         # been active when the certificate was used to sign.
-        if self._trusted_root:
-            for ca in self._trusted_root.certificate_authorities:
+        if trusted_root:
+            for ca in trusted_root.certificate_authorities:
                 if not _is_timerange_valid(ca.valid_for, allow_expired=True):
                     continue
                 certs.extend(
