@@ -27,6 +27,9 @@ All versions prior to 0.9.0 are untracked.
   ([#535](https://github.com/sigstore/sigstore-python/pull/535))
 * Revamped error diagnostics reporting. All errors with diagnostics now implement
   `sigstore.errors.Error`.
+* Trust root materials are now retrieved from a single trust bundle,
+  if it is available via TUF
+  ([#542](https://github.com/sigstore/sigstore-python/pull/542))
 * Improved diagnostics around Signed Certificate Timestamp verification failures.
   ([#555](https://github.com/sigstore/sigstore-python/pull/555))
 
