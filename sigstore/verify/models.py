@@ -144,11 +144,6 @@ class VerificationMaterials:
     # TODO: Support a certificate chain here, with optional intermediates.
     """
 
-    checkpoint: str
-    """
-    The inclusion proof's checkpoint (signed tree head)
-    """
-
     signature: bytes
     """
     The raw signature.

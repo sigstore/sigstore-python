@@ -130,10 +130,10 @@ class Signature(BaseModel):
 
 
 class Checkpoint(BaseModel):
-    _origin: StrictStr
-    _log_size: int
-    _log_hash: bytes
-    _other_content: list[str]
+    origin: StrictStr
+    log_size: int
+    log_hash: StrictStr
+    other_content: list[str]
 
     @classmethod
     def from_text(cls, text: str) -> Checkpoint:
@@ -144,7 +144,7 @@ class Checkpoint(BaseModel):
         -
         """
 
-        lines = text.split("\n")
+        lines = text.strip().split("\n")
         if len(lines) < 4:
             raise ValueError("Malformed Checkpoint: too few items in header!")
 
@@ -153,13 +153,13 @@ class Checkpoint(BaseModel):
             raise ValueError("Malformed Checkpoint: empty origin!")
 
         log_size = int(lines[1])
-        root_hash = base64.b64decode(lines[2])
+        root_hash = base64.b64decode(lines[2]).hex()
 
         return Checkpoint(
-            _origin=origin,
-            _log_size=log_size,
-            _log_hash=root_hash,
-            _other_content=lines[3:],
+            origin=origin,
+            log_size=log_size,
+            log_hash=root_hash,
+            other_content=lines[3:],
         )
 
 
@@ -224,14 +224,14 @@ class SignedNote(BaseModel):
 
 
 class SignedCheckpoint(BaseModel):
-    _signed_note: SignedNote
-    _checkpoint: Checkpoint
+    signed_note: SignedNote
+    checkpoint: Checkpoint
 
     @classmethod
     def from_text(cls, text: str) -> SignedCheckpoint:
         signed_note = SignedNote.from_text(text)
         checkpoint = Checkpoint.from_text(signed_note.note)
-        return cls(_signed_note=signed_note, _checkpoint=checkpoint)
+        return cls(signed_note=signed_note, checkpoint=checkpoint)
 
 
 class LogInclusionProof(BaseModel):
