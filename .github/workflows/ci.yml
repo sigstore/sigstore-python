@@ -52,6 +52,9 @@ jobs:
       - name: test
         run: make test TEST_ARGS="-vv --showlocals"
 
+      - name: test (interactive)
+        run: make test-interactive TEST_ARGS="-vv --showlocals"
+
       - uses: ./.github/actions/upload-coverage
         # only aggregate test coverage over linux-based tests to avoid any OS-specific filesystem information stored in
         # coverage metadata.
