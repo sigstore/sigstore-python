@@ -26,17 +26,10 @@ import hashlib
 import struct
 from typing import List, Tuple
 
+from sigstore._internal.checkpoint import SignedCheckpoint
+from sigstore._internal.rekor import RekorClient
 from sigstore._utils import HexStr
-from sigstore.transparency import LogEntry, SignedCheckpoint
-
-
-class InvalidInclusionProofError(Exception):
-    """
-    Raised if the Merkle inclusion proof fails.
-    """
-
-    pass
-
+from sigstore.transparency import LogEntry
 
 _LEAF_HASH_PREFIX = 0
 _NODE_HASH_PREFIX = 1
@@ -96,27 +89,12 @@ def _hash_leaf(leaf: bytes) -> bytes:
     return hashlib.sha256(data).digest()
 
 
-def verify_root_hash(entry: LogEntry) -> None:
-    # verififcaiton occurs in two stages,
-    # 1) verify the signature on the checkpoint
-    # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
+class InvalidInclusionProofError(Exception):
+    """
+    Raised if the Merkle inclusion proof fails.
+    """
 
-    inclusion_proof = entry.inclusion_proof
-    if inclusion_proof is None:
-        raise InvalidInclusionProofError("Rekor entry has no inclusion proof")
-    signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
-
-    # FIXME(jl): verify the signature with the Rekor pubkey.
-    # signed_checkpoint.verify()
-
-    checkpoint_hash = signed_checkpoint.checkpoint.log_hash
-    root_hash = inclusion_proof.root_hash
-
-    if checkpoint_hash != root_hash:
-        raise InvalidInclusionProofError(
-            "Inclusion proof contains invalid root hash signature: ",
-            f"expected {str(checkpoint_hash)} got {str(root_hash)}",
-        )
+    pass
 
 
 def verify_merkle_inclusion(entry: LogEntry) -> None:
@@ -155,4 +133,33 @@ def verify_merkle_inclusion(entry: LogEntry) -> None:
         raise InvalidInclusionProofError(
             f"Inclusion proof contains invalid root hash: expected {inclusion_proof}, calculated "
             f"{calc_hash}"
+        )
+
+
+def verify_checkpoint(client: RekorClient, entry: LogEntry) -> None:
+    """
+    Verify the inclusion proof's checkpoint.
+    """
+
+    inclusion_proof = entry.inclusion_proof
+    if inclusion_proof is None:
+        raise InvalidInclusionProofError("Rekor entry has no inclusion proof")
+
+    # verififcaiton occurs in two stages:
+    # 1) verify the signature on the checkpoint
+    # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
+
+    # TODO(jl): verify the hash signature.
+
+    signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
+    # FIXME(jl): produces an invalid signature exception -- am I using the keyring correctly?
+    # signed_checkpoint.signed_note.verify(client)
+
+    checkpoint_hash = signed_checkpoint.checkpoint.log_hash
+    root_hash = inclusion_proof.root_hash
+
+    if checkpoint_hash != root_hash:
+        raise InvalidInclusionProofError(
+            "Inclusion proof contains invalid root hash signature: ",
+            f"expected {str(checkpoint_hash)} got {str(root_hash)}",
         )
