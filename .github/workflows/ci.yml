@@ -53,6 +53,7 @@ jobs:
         run: make test TEST_ARGS="-vv --showlocals"
 
       - name: test (interactive)
+        if: (github.event_name != 'pull_request') || !github.event.pull_request.head.repo.fork
         run: make test-interactive TEST_ARGS="-vv --showlocals"
 
       - uses: ./.github/actions/upload-coverage
