@@ -31,6 +31,7 @@ from tuf.ngclient import FetcherInterface
 
 from sigstore._internal import tuf
 from sigstore._internal.oidc import DEFAULT_AUDIENCE
+from sigstore.sign import Signer
 from sigstore.verify import VerificationMaterials
 from sigstore.verify.policy import VerificationSuccess
 
@@ -41,7 +42,11 @@ _TUF_ASSETS = (_ASSETS / "staging-tuf").resolve()
 assert _TUF_ASSETS.is_dir()
 
 
-def _is_ambient_env():
+def _has_oidc_id():
+    # If there are tokens manually defined for us in the environment, use them.
+    if os.getenv("SIGSTORE_IDENTITY_TOKEN_production") is not None:
+        return True
+
     try:
         token = detect_credential(DEFAULT_AUDIENCE)
         if token is None:
@@ -76,7 +81,7 @@ def pytest_runtest_setup(item):
         pytest.skip(
             "skipping test that requires network connectivity due to `--skip-online` flag"
         )
-    elif "ambient_oidc" in item.keywords and not _is_ambient_env():
+    elif "ambient_oidc" in item.keywords and not _has_oidc_id():
         pytest.skip("skipping test that requires an ambient OIDC credential")
 
 
@@ -187,3 +192,18 @@ def tuf_dirs(monkeypatch, tmp_path):
     monkeypatch.setattr(tuf, "_get_dirs", lambda u: (data_dir, cache_dir))
 
     return (data_dir, cache_dir)
+
+
+@pytest.fixture(
+    params=[("production", Signer.production), ("staging", Signer.staging)],
+    ids=["production", "staging"],
+)
+def id_config(request):
+    env, signer = request.param
+    # Detect env variable for local interactive tests.
+    token = os.getenv(f"SIGSTORE_IDENTITY_TOKEN_{env}")
+    if not token:
+        # If the variable is not defined, try getting an ambient token.
+        token = detect_credential(DEFAULT_AUDIENCE)
+
+    return signer, token
