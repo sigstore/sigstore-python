@@ -12,6 +12,12 @@ All versions prior to 0.9.0 are untracked.
 
 ### Added
 
+* The whole test suite can now be run locally with `make test-interactive`.
+  ([#576](https://github.com/sigstore/sigstore-python/pull/576))
+  Users will be prompted to authenticate with their identity provider twice to
+  generate staging and production OIDC tokens, which are used to test the
+  `sigstore.sign` module. All signing tests need to be completed before token
+  expiry, which is currently 60 seconds after issuance.
 * Network-related errors from the `sigstore._internal.tuf` module now have better
   diagnostics.
 

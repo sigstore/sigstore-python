@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import time
 import urllib.parse
 import webbrowser
@@ -125,11 +126,12 @@ class Issuer:
         with _OAuthFlow(client_id, client_secret, self) as server:
             # Launch web browser
             if not force_oob and webbrowser.open(server.base_uri):
-                print("Waiting for browser interaction...")
+                print("Waiting for browser interaction...", file=sys.stderr)
             else:
                 server.enable_oob()
                 print(
-                    f"Go to the following link in a browser:\n\n\t{server.auth_endpoint}"
+                    f"Go to the following link in a browser:\n\n\t{server.auth_endpoint}",
+                    file=sys.stderr,
                 )
 
             if not server.is_oob():
