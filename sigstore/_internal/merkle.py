@@ -106,15 +106,16 @@ def verify_root_hash(entry: LogEntry) -> None:
         raise InvalidInclusionProofError("Rekor entry has no inclusion proof")
     signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
 
-    # FIXME(jl): what do the go `.Verify(verifier)` calls do?
-    # checkpoint.verify()
+    # FIXME(jl): verify the signature with the Rekor pubkey.
+    # signed_checkpoint.verify()
 
-    root_hash = base64.b64decode(inclusion_proof.root_hash)
+    checkpoint_hash = signed_checkpoint.checkpoint.log_hash
+    root_hash = inclusion_proof.root_hash
 
-    if signed_checkpoint._checkpoint._log_hash != root_hash:
+    if checkpoint_hash != root_hash:
         raise InvalidInclusionProofError(
-            "Inclusion proof contains invalid root hash signature: expected"
-            f"{str(signed_checkpoint._checkpoint._log_hash)}, got {str(root_hash)}"
+            "Inclusion proof contains invalid root hash signature: ",
+            f"expected {str(checkpoint_hash)} got {str(root_hash)}",
         )
 
 
