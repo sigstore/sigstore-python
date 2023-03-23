@@ -1,0 +1,103 @@
+name: Pin Requirements
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to pin dependencies against.
+        required: true
+        type: string
+
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag to pin dependencies against.
+        required: true
+        type: string
+
+env:
+  SIGSTORE_RELEASE_TAG: ${{ inputs.tag }}
+  SIGSTORE_NEW_BRANCH: "pin-requirements/sigstore/${{ inputs.tag }}"
+
+permissions:
+  contents: read
+
+jobs:
+  update-pinned-requirements:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # Branch creation for PR.
+
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+        with:
+          ref: main
+
+      - name: Configure git
+        run: |
+          # Set up committer info.
+          # https://github.com/orgs/community/discussions/26560
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+      - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
+        with:
+          python-version-file: install/.python-version
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - run: pip install pip-tools
+
+      - name: Compute version from tag
+        run: |
+          echo "SIGSTORE_RELEASE_VERSION=$(echo "${SIGSTORE_RELEASE_TAG}" | sed 's/^v//')" >> "${GITHUB_ENV}"
+
+      - name: Update requirements
+        run: |
+          cd install
+
+          echo "sigstore==${SIGSTORE_RELEASE_VERSION}" > requirements.in
+          pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
+
+      - name: Commit changes and push to branch
+        run: |
+          git commit --all -s -m "[BOT] install: update pinned requirements"
+          git push -f origin "main:${SIGSTORE_NEW_BRANCH}"
+
+  test-requirements:
+    needs: update-pinned-requirements
+    uses: ./.github/workflows/requirements.yml
+    with:
+      # We can't use `env` variables in this context.
+      # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
+      ref: "pin-requirements/sigstore/${{ inputs.tag }}"
+
+  create-pr:
+    needs: test-requirements
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # Pull Request branch modification.
+      pull-requests: write # Pull Request creation.
+
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+        with:
+          ref: ${{ env.SIGSTORE_NEW_BRANCH }}
+
+      - name: Reset remote PR branch
+        run: |
+          git fetch origin main
+          git push -f origin "origin/main:${SIGSTORE_NEW_BRANCH}"
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@38e0b6e68b4c852a5500a94740f0e535e0d7ba54 # v4.2.4
+        with:
+          title: |
+            Update pinned requirements for ${{ env.SIGSTORE_RELEASE_TAG }}
+          body: |
+            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${{ env.SIGSTORE_RELEASE_TAG }}>.
+          base: main
+          branch: ${{ env.SIGSTORE_NEW_BRANCH }}
+          delete-branch: true
