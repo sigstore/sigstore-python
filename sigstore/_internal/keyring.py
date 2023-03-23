@@ -68,7 +68,7 @@ class Keyring:
     def __init__(self, keys: List[bytes] = []):
         """
         Create a new `Keyring`, with `keys` as the initial set of signing
-        keys. These `keys` can be in either DER or PEM encoded.
+        keys. These `keys` can be in either DER format or PEM encoded.
         """
         self._keyring = {}
         for key_bytes in keys:
