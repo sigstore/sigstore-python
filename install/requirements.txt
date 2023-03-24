@@ -205,10 +205,6 @@ idna==3.4 \
     --hash=sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4 \
     --hash=sha256:90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2
     # via requests
-importlib-resources==5.12.0 \
-    --hash=sha256:4be82589bf5c1d7999aedf2a45159d10cb3ca4f19b2271f8792bc8e6da7b22f6 \
-    --hash=sha256:7b1deeebbf351c7578e09bf2f63fa2ce8b5ffec296e0d349139d43cca061a81a
-    # via sigstore
 multidict==6.0.4 \
     --hash=sha256:01a3a55bd90018c9c080fbb0b9f4891db37d148a0a18722b42f94694f8b6d4c9 \
     --hash=sha256:0b1a97283e0c85772d613878028fec909f003993e1007eafa715b24b377cb9b8 \
@@ -331,9 +327,9 @@ pyjwt==2.6.0 \
     --hash=sha256:69285c7e31fc44f68a1feb309e948e0df53259d579295e6cfe2b1792329f05fd \
     --hash=sha256:d83c3d892a77bbb74d3e1a2cfa90afaadb60945205d1095d9221f04466f64c14
     # via sigstore
-pyopenssl==23.0.0 \
-    --hash=sha256:c1cc5f86bcacefc84dada7d31175cae1b1518d5f60d3d0bb595a67822a868a6f \
-    --hash=sha256:df5fc28af899e74e19fccb5510df423581047e10ab6f1f4ba1763ff5fde844c0
+pyopenssl==23.1.0 \
+    --hash=sha256:8cb78010a1eb2c8e24b851693b7b04dfe9b1dc0a5ab3843927b10a85b1dfbb2e \
+    --hash=sha256:fb96e936866ad65662c22d0de84ca0fba58397893cdfe0f01334fa93382af23c
     # via sigstore
 python-dateutil==2.8.2 \
     --hash=sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86 \
@@ -354,7 +350,7 @@ securesystemslib==0.27.0 \
 sigstore==1.1.1 \
     --hash=sha256:b4a2bd8a122841858684360b67be8037a40e28e828bbf856a604070b77f4f694 \
     --hash=sha256:dda096d7673cfae5a93d3b45fa9b6e9d76ce02f57d9848ced1d3b5130906f9d1
-    # via -r requirements.in
+    # via -r install/requirements.in
 sigstore-protobuf-specs==0.1.0 \
     --hash=sha256:0e7766add04b5bd145181936e6fedbb2609d7e959f2740051cbca12572b277a2 \
     --hash=sha256:622b2d231613a28ed3e6660acd87818675b4e83486f49a0f0c198ac5475fcb81
@@ -375,7 +371,3 @@ urllib3==1.26.15 \
     --hash=sha256:8a388717b9476f934a21484e8c8e61875ab60644d29b9b39e11e4b9dc1c6b305 \
     --hash=sha256:aa751d169e23c7479ce47a0cb0da579e3ede798f994f5816a74e4f4500dcea42
     # via requests
-zipp==3.15.0 \
-    --hash=sha256:112929ad649da941c23de50f356a2b5570c954b65150642bccdd66bf194d224b \
-    --hash=sha256:48904fc76a60e542af151aded95726c1a5c34ed43ab4134b597665c86d7ad556
-    # via importlib-resources
