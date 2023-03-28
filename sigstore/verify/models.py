@@ -244,10 +244,10 @@ class VerificationMaterials:
 
         inclusion_proof = LogInclusionProof(
             checkpoint=checkpoint.envelope if checkpoint.envelope != "" else None,
-            hashes=[h.hex() for h in tlog_entry.inclusion_proof.hashes],
-            logIndex=tlog_entry.inclusion_proof.log_index,
-            rootHash=tlog_entry.inclusion_proof.root_hash.hex(),
-            treeSize=tlog_entry.inclusion_proof.tree_size,
+            hashes=[h.hex() for h in inclusion_proof.hashes],
+            logIndex=inclusion_proof.log_index,
+            rootHash=inclusion_proof.root_hash.hex(),
+            treeSize=inclusion_proof.tree_size,
         )
         entry = LogEntry(
             uuid=None,
