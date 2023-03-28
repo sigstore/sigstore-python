@@ -31,6 +31,15 @@ from sigstore._internal.rekor import RekorClient
 from sigstore._utils import HexStr
 from sigstore.transparency import LogEntry
 
+
+class InvalidInclusionProofError(Exception):
+    """
+    Raised if the Merkle inclusion proof fails.
+    """
+
+    pass
+
+
 _LEAF_HASH_PREFIX = 0
 _NODE_HASH_PREFIX = 1
 
@@ -87,14 +96,6 @@ def _hash_leaf(leaf: bytes) -> bytes:
     pattern = f"B{len(leaf)}s"
     data = struct.pack(pattern, _LEAF_HASH_PREFIX, leaf)
     return hashlib.sha256(data).digest()
-
-
-class InvalidInclusionProofError(Exception):
-    """
-    Raised if the Merkle inclusion proof fails.
-    """
-
-    pass
 
 
 def verify_merkle_inclusion(entry: LogEntry) -> None:

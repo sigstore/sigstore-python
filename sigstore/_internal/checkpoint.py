@@ -1,3 +1,17 @@
+# Copyright 2023 The Sigstore Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import base64
@@ -133,7 +147,7 @@ class SignedNote:
 
         sig_parser = re.compile(r"\u2014 (\S+) (\S+)\n")
         signatures: list[RekorSignature] = []
-        for (name, signature) in re.findall(sig_parser, data):
+        for name, signature in re.findall(sig_parser, data):
             signature_bytes: bytes = base64.b64decode(signature)
             if len(signature_bytes) < 5:
                 raise ValueError("Malformed Note: signature contains too few bytes")
