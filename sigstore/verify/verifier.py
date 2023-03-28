@@ -256,12 +256,6 @@ class Verifier:
                     reason=f"invalid Rekor inclusion proof: {exc}"
                 )
 
-            inclusion_proof = entry.inclusion_proof
-            if inclusion_proof is None:
-                return VerificationFailure(
-                    reason="Online Rekor entry has no inclusion proof"
-                )
-
             try:
                 verify_checkpoint(self._rekor, entry)
             except InvalidInclusionProofError as exc:
