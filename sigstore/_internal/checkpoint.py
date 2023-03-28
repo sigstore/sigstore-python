@@ -35,6 +35,7 @@ class LogCheckpoint(BaseModel):
     - the size of the log,
     - the hash of the log,
     - and any ancillary contants, e.g. "Timestamp: 1679349379012118479"
+    see: https://github.com/transparency-dev/formats/blob/main/log/README.md
     """
 
     origin: StrictStr
@@ -46,9 +47,6 @@ class LogCheckpoint(BaseModel):
     def from_text(cls, text: str) -> LogCheckpoint:
         """
         Serialize from the text header ("note") of a SignedNote.
-
-        A checkpoint contains:
-        -
         """
 
         lines = text.strip().split("\n")
@@ -67,6 +65,21 @@ class LogCheckpoint(BaseModel):
             log_size=log_size,
             log_hash=root_hash,
             other_content=lines[3:],
+        )
+
+    @classmethod
+    def to_text(self) -> str:
+        """
+        Serialize a `LogCheckpoint` into text format.
+        See class definition for a prose description of the format.
+        """
+        return "\n".join(
+            [
+                self.origin,
+                str(self.log_size),
+                self.log_hash,
+            ]
+            + self.other_content
         )
 
 
