@@ -151,9 +151,8 @@ def verify_checkpoint(client: RekorClient, entry: LogEntry) -> None:
     # 1) verify the signature on the checkpoint
     # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
 
-    # TODO(jl): verify the hash signature.
-
     signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
+
     # FIXME(jl): produces an invalid signature exception -- am I using the keyring correctly?
     # signed_checkpoint.signed_note.verify(client)
 

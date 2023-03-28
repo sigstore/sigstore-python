@@ -60,6 +60,7 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
     X509CertificateChain,
 )
 from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
+    Checkpoint,
     InclusionPromise,
     InclusionProof,
     KindVersion,
@@ -238,6 +239,9 @@ class SigningResult(BaseModel):
                 hashes=[
                     bytes.fromhex(h) for h in self.log_entry.inclusion_proof.hashes
                 ],
+                checkpoint=Checkpoint(
+                    envelope=self.log_entry.inclusion_proof.checkpoint or ""
+                )
                 # FIXME(jl): checkpoint should be a serialzied field here.
                 # this causes tests depending on the commited `bundle.txt.sigstore` to fail;
                 # the bundle doesn't contain the `"checkpoint"` field.
