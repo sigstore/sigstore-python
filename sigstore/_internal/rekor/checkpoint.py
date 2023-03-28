@@ -19,15 +19,11 @@ Rekor Checkpoint machinery.
 from __future__ import annotations
 
 import base64
-import hashlib
 import re
 from dataclasses import dataclass
+from typing import List
 
-from cryptography.exceptions import InvalidSignature
 from pydantic import BaseModel, Field, StrictStr
-
-from sigstore._internal.rekor import RekorClient
-from sigstore._utils import KeyID
 
 
 @dataclass(frozen=True)
@@ -59,7 +55,7 @@ class LogCheckpoint(BaseModel):
     origin: StrictStr
     log_size: int
     log_hash: StrictStr
-    other_content: list[str]
+    other_content: List[str]
 
     @classmethod
     def from_text(cls, text: str) -> LogCheckpoint:
@@ -165,26 +161,6 @@ class SignedNote:
             signatures.append(signature)
 
         return cls(note=header, signatures=signatures)
-
-    def verify(self, client: RekorClient) -> None:
-        """
-        Verify the SignedNote with using the given RekorClient by verifying each contained signature.
-        """
-
-        note = hashlib.sha256(self.note.encode("utf-8")).digest()
-
-        # Grab the singular Rekor root public key as the signing key.
-        key_id = list(client._rekor_keyring._keyring.keys())[0]
-
-        for signature in self.signatures:
-            try:
-                client._rekor_keyring.verify(
-                    key_id=KeyID(key_id),
-                    signature=base64.b64decode(signature.signature),
-                    data=note,
-                )
-            except InvalidSignature as inval_sig:
-                raise InvalidSignedNote("invalid signature") from inval_sig
 
 
 @dataclass(frozen=True)

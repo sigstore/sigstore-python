@@ -22,7 +22,7 @@ from sigstore.transparency import LogInclusionProof
 class TestRekorInclusionProof:
     def test_valid(self):
         proof = LogInclusionProof(
-            log_index=1, root_hash="abcd", tree_size=2, hashes=[], checkpoint=""
+            log_index=1, root_hash="abcd", tree_size=2, hashes=[], checkpoint=None
         )
         assert proof is not None
 
@@ -30,17 +30,23 @@ class TestRekorInclusionProof:
         with pytest.raises(
             ValidationError, match="Inclusion proof has invalid log index"
         ):
-            LogInclusionProof(log_index=-1, root_hash="abcd", tree_size=2, hashes=[])
+            LogInclusionProof(
+                log_index=-1, root_hash="abcd", tree_size=2, hashes=[], checkpoint=None
+            )
 
     def test_negative_tree_size(self):
         with pytest.raises(
             ValidationError, match="Inclusion proof has invalid tree size"
         ):
-            LogInclusionProof(log_index=1, root_hash="abcd", tree_size=-1, hashes=[])
+            LogInclusionProof(
+                log_index=1, root_hash="abcd", tree_size=-1, hashes=[], checkpoint=None
+            )
 
     def test_log_index_outside_tree_size(self):
         with pytest.raises(
             ValidationError,
             match="Inclusion proof has log index greater than or equal to tree size",
         ):
-            LogInclusionProof(log_index=2, root_hash="abcd", tree_size=1, hashes=[])
+            LogInclusionProof(
+                log_index=2, root_hash="abcd", tree_size=1, hashes=[], checkpoint=None
+            )
