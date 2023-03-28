@@ -144,6 +144,8 @@ def verify_checkpoint(client: RekorClient, entry: LogEntry) -> None:
     inclusion_proof = entry.inclusion_proof
     if inclusion_proof is None:
         raise InvalidInclusionProofError("Rekor entry has no inclusion proof")
+    if inclusion_proof.checkpoint is None:
+        return
 
     # verififcaiton occurs in two stages:
     # 1) verify the signature on the checkpoint

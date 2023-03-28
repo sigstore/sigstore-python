@@ -49,7 +49,6 @@ def test_verifier_multiple_verifications(signing_materials, null_policy):
         assert verifier.verify(materials, null_policy)
 
 
-@pytest.mark.xfail
 def test_verifier_offline(signing_bundle, null_policy, mock_staging_tuf):
     materials = signing_bundle("bundle.txt", offline=True)
 

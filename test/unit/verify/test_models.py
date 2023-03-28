@@ -25,7 +25,6 @@ from sigstore.verify.models import (
 
 
 class TestVerificationMaterials:
-    @pytest.mark.xfail
     def test_rekor_entry_inconsistent_cve_2022_36056(
         self, signing_materials, signing_bundle
     ):

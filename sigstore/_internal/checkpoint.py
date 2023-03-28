@@ -4,19 +4,18 @@ import base64
 import hashlib
 import re
 from dataclasses import dataclass
-from typing import List
 
 from cryptography.exceptions import InvalidSignature
-from pydantic import BaseModel, Field, StrictStr, validator
+from pydantic import BaseModel, Field, StrictStr
 
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import KeyID
 
 
 @dataclass(frozen=True)
-class Signature:
+class RekorSignature:
     """
-    Represents a `Signature` containing:
+    Represents a `RekorSignature` containing:
     - the name of the signature, e.g. "rekor.sigstage.dev"
     - the signature hash
     - the base64 signature
@@ -24,14 +23,14 @@ class Signature:
 
     # FIXME(jl): this does not feel like a de novo definition...
     # does this exist already in sigstore-python (or its depenencices)?
-    _name: StrictStr
-    _hash: bytes
-    _signature: bytes
+    name: str
+    sig_hash: bytes
+    signature: bytes
 
 
-class Checkpoint(BaseModel):
+class LogCheckpoint(BaseModel):
     """
-    Represents a `Checkpoint` containing:
+    Represents a Rekor `LogCheckpoint` containing:
     - an origin, e.g. "rekor.sigstage.dev - 8050909264565447525"
     - the size of the log,
     - the hash of the log,
@@ -44,7 +43,7 @@ class Checkpoint(BaseModel):
     other_content: list[str]
 
     @classmethod
-    def from_text(cls, text: str) -> Checkpoint:
+    def from_text(cls, text: str) -> LogCheckpoint:
         """
         Serialize from the text header ("note") of a SignedNote.
 
@@ -54,16 +53,16 @@ class Checkpoint(BaseModel):
 
         lines = text.strip().split("\n")
         if len(lines) < 4:
-            raise ValueError("Malformed Checkpoint: too few items in header!")
+            raise ValueError("Malformed LogCheckpoint: too few items in header!")
 
         origin = lines[0]
         if len(origin) == 0:
-            raise ValueError("Malformed Checkpoint: empty origin!")
+            raise ValueError("Malformed LogCheckpoint: empty origin!")
 
         log_size = int(lines[1])
         root_hash = base64.b64decode(lines[2]).hex()
 
-        return Checkpoint(
+        return LogCheckpoint(
             origin=origin,
             log_size=log_size,
             log_hash=root_hash,
@@ -79,19 +78,14 @@ class InvalidSignedNote(Exception):
     pass
 
 
-class SignedNote(BaseModel):
+@dataclass(frozen=True)
+class SignedNote:
     """
     Represents a signed `Note` containing a note and its corresponding list of signatures.
     """
 
     note: StrictStr = Field(..., alias="note")
-    signatures: list[Signature] = Field(..., alias="signatures")
-
-    @validator("signatures")
-    def _signatures_nonempty(cls, v: List[bytes]) -> List[bytes]:
-        if len(v) == 0:
-            raise ValueError("Inclusion proof signatures list is empty!")
-        return v
+    signatures: list[RekorSignature] = Field(..., alias="signatures")
 
     @classmethod
     def from_text(cls, text: str) -> SignedNote:
@@ -125,17 +119,17 @@ class SignedNote(BaseModel):
             raise ValueError("Malformed Note: data section must end with newline!")
 
         sig_parser = re.compile(r"\u2014 (\S+) (\S+)\n")
-        signatures: list[Signature] = []
+        signatures: list[RekorSignature] = []
         for (name, signature) in re.findall(sig_parser, data):
             signature_bytes: bytes = base64.b64decode(signature)
             if len(signature_bytes) < 5:
                 raise ValueError("Malformed Note: signature contains too few bytes")
 
-            signature = Signature(
-                _name=name,
+            signature = RekorSignature(
+                name=name,
                 # FIXME(jl): In Go, construct a big-endian UInt32 from 4 bytes. Is this equivalent?
-                _hash=signature_bytes[0:4],
-                _signature=base64.b64encode(signature_bytes[4:]),
+                sig_hash=signature_bytes[0:4],
+                signature=base64.b64encode(signature_bytes[4:]),
             )
             signatures.append(signature)
 
@@ -155,20 +149,21 @@ class SignedNote(BaseModel):
             try:
                 client._rekor_keyring.verify(
                     key_id=KeyID(key_id),
-                    signature=base64.b64decode(signature._signature),
+                    signature=base64.b64decode(signature.signature),
                     data=note,
                 )
             except InvalidSignature as inval_sig:
                 raise InvalidSignedNote("invalid signature") from inval_sig
 
 
-class SignedCheckpoint(BaseModel):
+@dataclass(frozen=True)
+class SignedCheckpoint:
     """
-    Represents a *signed* `Checkpoint`: a `Checkpoint` and its corresponding *signed* `Note`.
+    Represents a *signed* `Checkpoint`: a `LogCheckpoint` and its corresponding *signed* `Note`.
     """
 
     signed_note: SignedNote
-    checkpoint: Checkpoint
+    checkpoint: LogCheckpoint
 
     @classmethod
     def from_text(cls, text: str) -> SignedCheckpoint:
@@ -177,5 +172,5 @@ class SignedCheckpoint(BaseModel):
         """
 
         signed_note = SignedNote.from_text(text)
-        checkpoint = Checkpoint.from_text(signed_note.note)
+        checkpoint = LogCheckpoint.from_text(signed_note.note)
         return cls(signed_note=signed_note, checkpoint=checkpoint)
