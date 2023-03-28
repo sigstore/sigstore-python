@@ -147,7 +147,7 @@ class SignedNote:
 
         sig_parser = re.compile(r"\u2014 (\S+) (\S+)\n")
         signatures: list[RekorSignature] = []
-        for (name, signature) in re.findall(sig_parser, data):
+        for name, signature in re.findall(sig_parser, data):
             signature_bytes: bytes = base64.b64decode(signature)
             if len(signature_bytes) < 5:
                 raise ValueError("Malformed Note: signature contains too few bytes")

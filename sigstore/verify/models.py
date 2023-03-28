@@ -245,9 +245,9 @@ class VerificationMaterials:
         inclusion_proof = LogInclusionProof(
             checkpoint=checkpoint.envelope if checkpoint.envelope != "" else None,
             hashes=[h.hex() for h in inclusion_proof.hashes],
-            logIndex=inclusion_proof.log_index,
-            rootHash=inclusion_proof.root_hash.hex(),
-            treeSize=inclusion_proof.tree_size,
+            log_index=inclusion_proof.log_index,
+            root_hash=inclusion_proof.root_hash.hex(),
+            tree_size=inclusion_proof.tree_size,
         )
         entry = LogEntry(
             uuid=None,
