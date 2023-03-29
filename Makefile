@@ -80,7 +80,7 @@ reformat: $(VENV)/pyvenv.cfg
 .PHONY: test
 test: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
-		$(TEST_ENV) pytest --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
+		$(TEST_ENV) pytest --cov-append --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
 		python -m coverage report -m $(COV_ARGS)
 
 .PHONY: test-interactive
