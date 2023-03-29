@@ -8,6 +8,37 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [1.1.1]
+
+### Added
+
+* The whole test suite can now be run locally with `make test-interactive`.
+  ([#576](https://github.com/sigstore/sigstore-python/pull/576))
+  Users will be prompted to authenticate with their identity provider twice to
+  generate staging and production OIDC tokens, which are used to test the
+  `sigstore.sign` module. All signing tests need to be completed before token
+  expiry, which is currently 60 seconds after issuance.
+* Network-related errors from the `sigstore._internal.tuf` module now have better
+  diagnostics.
+
+### Changed
+
+* Replaced ambient credential detection logic with the `id` package
+  ([#535](https://github.com/sigstore/sigstore-python/pull/535))
+* Revamped error diagnostics reporting. All errors with diagnostics now implement
+  `sigstore.errors.Error`.
+* Trust root materials are now retrieved from a single trust bundle,
+  if it is available via TUF
+  ([#542](https://github.com/sigstore/sigstore-python/pull/542))
+* Improved diagnostics around Signed Certificate Timestamp verification failures.
+  ([#555](https://github.com/sigstore/sigstore-python/pull/555))
+
+### Fixed
+
+* Fixed a bug in TUF target handling revealed by changes to the production
+  and staging TUF repos
+  ([#522](https://github.com/sigstore/sigstore-python/pull/522))
+
 ## [1.1.0]
 
 ### Added
@@ -136,7 +167,8 @@ All versions prior to 0.9.0 are untracked.
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/sigstore/sigstore-python/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/sigstore/sigstore-python/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/sigstore/sigstore-python/compare/v0.10.0...v1.0.0
 [0.10.0]: https://github.com/sigstore/sigstore-python/compare/v0.9.0...v0.10.0

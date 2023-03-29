@@ -237,7 +237,7 @@ class Verifier:
         except RekorEntryMissingError:
             return LogEntryMissing(
                 signature=B64Str(base64.b64encode(materials.signature).decode()),
-                artifact_hash=materials.input_digest.hex(),
+                artifact_hash=HexStr(materials.input_digest.hex()),
             )
         except InvalidRekorEntryError:
             return VerificationFailure(

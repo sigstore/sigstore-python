@@ -24,7 +24,14 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
-from sigstore._utils import KeyID, key_id, load_pem_public_key
+from sigstore._utils import (
+    InvalidKeyError,
+    KeyID,
+    UnexpectedKeyFormatError,
+    key_id,
+    load_der_public_key,
+    load_pem_public_key,
+)
 
 
 class KeyringError(Exception):
@@ -44,6 +51,12 @@ class KeyringLookupError(KeyringError):
     pass
 
 
+class KeyringSignatureError(KeyringError):
+    """
+    Raised when `Keyring.verify()` is passed an invalid signature.
+    """
+
+
 class Keyring:
     """
     Represents a set of CT signing keys, each of which is a potentially
@@ -55,11 +68,19 @@ class Keyring:
     def __init__(self, keys: List[bytes] = []):
         """
         Create a new `Keyring`, with `keys` as the initial set of signing
-        keys.
+        keys. These `keys` can be in either DER format or PEM encoded.
         """
         self._keyring = {}
         for key_bytes in keys:
-            key = load_pem_public_key(key_bytes)
+            key = None
+
+            try:
+                key = load_pem_public_key(key_bytes)
+            except UnexpectedKeyFormatError as e:
+                raise e
+            except InvalidKeyError:
+                key = load_der_public_key(key_bytes)
+
             self._keyring[key_id(key)] = key
 
     def add(self, key_pem: bytes) -> None:
@@ -101,4 +122,4 @@ class Keyring:
                 # NOTE(ww): Unreachable without API misuse.
                 raise KeyringError(f"unsupported key type: {key}")
         except InvalidSignature as exc:
-            raise KeyringError("invalid signature") from exc
+            raise KeyringSignatureError("invalid signature") from exc

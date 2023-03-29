@@ -18,11 +18,11 @@ import secrets
 import jwt
 import pretend
 import pytest
+from id import IdentityError
 
 import sigstore._internal.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
-from sigstore._internal.sct import InvalidSCTError
-from sigstore.oidc import IdentityError, detect_credential
+from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
 from sigstore.sign import Signer
 
 
@@ -39,13 +39,12 @@ def test_signer_staging(mock_staging_tuf):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_sign_rekor_entry_consistent(signer):
+def test_sign_rekor_entry_consistent(id_config):
+    signer, token = id_config
+
     # NOTE: The actual signer instance is produced lazily, so that parameter
     # expansion doesn't fail in offline tests.
     signer = signer()
-
-    token = detect_credential()
     assert token is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
@@ -61,33 +60,33 @@ def test_sign_rekor_entry_consistent(signer):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_sct_verify_keyring_lookup_error(signer, monkeypatch):
+def test_sct_verify_keyring_lookup_error(id_config, monkeypatch):
+    signer, token = id_config
+
     # a signer whose keyring always fails to lookup a given key.
     signer = signer()
     signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringLookupError))
-
-    token = detect_credential()
     assert token is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
 
     with pytest.raises(
         InvalidSCTError,
-        match="Invalid key ID in SCT: not found in current keyring.",
-    ):
+    ) as excinfo:
         signer.sign(payload, token)
+
+    # The exception subclass is the one we expect.
+    assert isinstance(excinfo.value, InvalidSCTKeyError)
 
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_sct_verify_keyring_error(signer, monkeypatch):
+def test_sct_verify_keyring_error(id_config, monkeypatch):
+    signer, token = id_config
+
     # a signer whose keyring throws an internal error.
     signer = signer()
     signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringError))
-
-    token = detect_credential()
     assert token is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
@@ -98,11 +97,10 @@ def test_sct_verify_keyring_error(signer, monkeypatch):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-@pytest.mark.parametrize("signer", [Signer.production, Signer.staging])
-def test_identity_proof_claim_lookup(signer, monkeypatch):
-    signer = signer()
+def test_identity_proof_claim_lookup(id_config, monkeypatch):
+    signer, token = id_config
 
-    token = detect_credential()
+    signer = signer()
     assert token is not None
 
     # clear out the known issuers, forcing the `Identity`'s  `proof_claim` to be looked up.

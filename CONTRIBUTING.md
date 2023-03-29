@@ -65,6 +65,16 @@ You can run the tests locally with:
 make test
 ```
 
+or:
+
+```bash
+make test-interactive
+```
+
+to run tests that require OIDC credentials (will prompt for authentication to generate tokens).
+Note that `test-interactive` may fail if you have a slow network, as the tokens generated are only
+valid for 60 seconds after their issuance.
+
 You can also filter by a pattern (uses `pytest -k`):
 
 ```bash

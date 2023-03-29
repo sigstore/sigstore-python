@@ -5,7 +5,7 @@ on:
     types:
       - published
 
-permissions:  # added using https://github.com/step-security/secure-workflows
+permissions: # added using https://github.com/step-security/secure-workflows
   contents: read
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
     steps:
-      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
 
       - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
         with:
@@ -52,12 +52,21 @@ jobs:
             ./smoketest-env/bin/python -m \
               sigstore sign "${dist}" \
               --output-signature smoketest-artifacts/"${dist_base}.sig" \
-              --output-certificate smoketest-artifacts/"${dist_base}.crt"
+              --output-certificate smoketest-artifacts/"${dist_base}.crt" \
+              --bundle smoketest-artifacts/"${dist_base}.sigstore"
 
+            # Verify using `.sig` `.crt` pair;
             ./smoketest-env/bin/python -m \
               sigstore verify identity "${dist}" \
-              --cert "smoketest-artifacts/${dist_base}.crt" \
               --signature "smoketest-artifacts/${dist_base}.sig" \
+              --cert "smoketest-artifacts/${dist_base}.crt" \
+              --cert-oidc-issuer https://token.actions.githubusercontent.com \
+              --cert-identity ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}
+
+            # Verify using `.sigstore` bundle;
+            ./smoketest-env/bin/python -m \
+              sigstore verify identity "${dist}" \
+              --bundle "smoketest-artifacts/${dist_base}.sigstore" \
               --cert-oidc-issuer https://token.actions.githubusercontent.com \
               --cert-identity ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}
 
@@ -91,7 +100,7 @@ jobs:
     needs: [build]
     name: Generate build provenance
     permissions:
-      actions: read   # To read the workflow path.
+      actions: read # To read the workflow path.
       id-token: write # To sign the provenance.
       contents: write # To add assets to a release.
     # Currently this action needs to be referred by tag. More details at:
@@ -106,16 +115,16 @@ jobs:
   release-pypi:
     needs: [build, generate-provenance]
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      # Used to authenticate to PyPI via OIDC.
+      id-token: write
     steps:
       - name: Download artifacts directories # goes to current working directory
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
 
       - name: publish
-        uses: pypa/gh-action-pypi-publish@c7f29f7adef1a245bd91520e94867e5c6eedddcc
+        uses: pypa/gh-action-pypi-publish@48b317d84d5f59668bb13be49d1697e36b3ad009
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
           packages_dir: built-packages/
 
   release-github:
@@ -138,3 +147,17 @@ jobs:
           files: |
             built-packages/*
             smoketest-artifacts/*
+
+  # Trigger workflow to generate pinned requirements.txt.
+  pin-requirements:
+    permissions:
+      # Needed to create branch and pull request.
+      pull-requests: write
+      contents: write
+    # Workflow depends on uploaded release assets.
+    needs: [release-github]
+    # Only trigger workflow on full releases.
+    if: ${{ !github.event.release.prerelease }}
+    uses: ./.github/workflows/pin-requirements.yml
+    with:
+      tag: ${{ github.ref_name }}

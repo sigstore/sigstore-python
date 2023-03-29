@@ -75,7 +75,7 @@ def test_sha256_streaming(size):
 def test_load_pem_public_key_format():
     keybytes = b"-----BEGIN PUBLIC KEY-----\n" b"bleh\n" b"-----END PUBLIC KEY-----"
     with pytest.raises(
-        utils.InvalidKey, match="could not load PEM-formatted public key"
+        utils.InvalidKeyError, match="could not load PEM-formatted public key"
     ):
         utils.load_pem_public_key([keybytes])
 
@@ -93,6 +93,6 @@ def test_load_pem_public_key_serialization(monkeypatch):
     )
 
     with pytest.raises(
-        utils.InvalidKey, match="invalid key format (not ECDSA or RSA)*"
+        utils.InvalidKeyError, match="invalid key format (not ECDSA or RSA)*"
     ):
         utils.load_pem_public_key([keybytes])
