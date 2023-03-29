@@ -15,6 +15,7 @@
 
 import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
@@ -139,6 +140,18 @@ def test_updater_staging_get(monkeypatch, mock_staging_tuf, tuf_asset):
         "rb",
     ) as f:
         assert updater.get_rekor_keys() == [f.read()]
+
+@pytest.mark.skip()
+def test_bundled_staging_get(tuf_asset):
+    def _asset(name: str):
+        return Path(tuf_asset(name)).read_bytes()
+
+    updater = TrustUpdater.staging()
+
+    # TODO(tnytown): adjust to include intermediates
+    assert updater.get_ctfe_keys() == [_asset("ctfe.pub")]
+    assert updater.get_rekor_keys() == [_asset("rekor.pub")]
+    assert updater.get_fulcio_certs() == [_asset("fulcio.crt.pem")]
 
 
 def test_updater_instance_error():

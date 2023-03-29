@@ -23,7 +23,7 @@ import os
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 from urllib import parse
 
 import appdirs
@@ -33,7 +33,11 @@ from cryptography.x509 import (
     load_pem_x509_certificate,
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
-from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import TrustedRoot
+from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    CertificateAuthority,
+    TransparencyLogInstance,
+    TrustedRoot,
+)
 from tuf.api import exceptions as TUFExceptions
 from tuf.ngclient import RequestsFetcher, Updater
 
@@ -190,9 +194,8 @@ class TrustUpdater:
 
         return TrustedRoot().from_json(Path(path).read_bytes())
 
-    def _get(self, usage: str, statuses: list[str]) -> list[bytes]:
+    def _get(self, usage: str, statuses: list[str]) -> Iterable[bytes]:
         """Return all targets with given usage and any of the statuses"""
-        data = []
 
         targets = self._updater()._trusted_set.targets.signed.targets
         for target_info in targets.values():
@@ -221,29 +224,41 @@ class TrustUpdater:
                         f"TUF cache target {base_name}:\n"
                         f"{target_contents.decode('utf-8')}"
                     )
-                    data.append(target_contents)
+                    yield target_contents
 
-        return data
+    def _get_tlog_keys(self, tlogs: list[TransparencyLogInstance]) -> Iterable[bytes]:
+        """Return public key contents given transparency log instances."""
+
+        for key in tlogs:
+            if not _is_timerange_valid(key.public_key.valid_for, allow_expired=False):
+                continue
+            key_bytes = key.public_key.raw_bytes
+            if key_bytes:
+                yield key_bytes
+
+    def _get_ca_keys(
+        self, cas: list[CertificateAuthority], *, allow_expired: bool
+    ) -> Iterable[bytes]:
+        """Return public key contents given certificate authorities."""
+
+        for ca in cas:
+            if not _is_timerange_valid(ca.valid_for, allow_expired=allow_expired):
+                continue
+            for cert in ca.cert_chain.certificates:
+                yield cert.raw_bytes
 
     def get_ctfe_keys(self) -> list[bytes]:
         """Return the active CTFE public keys contents.
 
         May download files from the remote repository.
         """
-        ctfes = []
+        ctfes: list[bytes]
 
         trusted_root = self._get_trusted_root()
         if trusted_root:
-            for key in trusted_root.ctlogs:
-                if not _is_timerange_valid(
-                    key.public_key.valid_for, allow_expired=False
-                ):
-                    continue
-                key_bytes = key.public_key.raw_bytes
-                if key_bytes:
-                    ctfes.append(key_bytes)
+            ctfes = list(self._get_tlog_keys(trusted_root.ctlogs))
         else:
-            ctfes = self._get("CTFE", ["Active"])
+            ctfes = list(self._get("CTFE", ["Active"]))
 
         if not ctfes:
             raise MetadataError("CTFE keys not found in TUF metadata")
@@ -254,20 +269,13 @@ class TrustUpdater:
 
         May download files from the remote repository.
         """
-        keys = []
+        keys: list[bytes]
 
         trusted_root = self._get_trusted_root()
         if trusted_root:
-            for key in trusted_root.tlogs:
-                if not _is_timerange_valid(
-                    key.public_key.valid_for, allow_expired=False
-                ):
-                    continue
-                key_bytes = key.public_key.raw_bytes
-                if key_bytes:
-                    keys.append(key_bytes)
+            keys = list(self._get_tlog_keys(trusted_root.ctlogs))
         else:
-            keys = self._get("Rekor", ["Active"])
+            keys = list(self._get("Rekor", ["Active"]))
 
         if len(keys) != 1:
             raise MetadataError("Did not find one active Rekor key in TUF metadata")
@@ -278,21 +286,18 @@ class TrustUpdater:
 
         May download files from the remote repository.
         """
-        certs = []
+        certs: list[Certificate]
 
         trusted_root = self._get_trusted_root()
         # Return expired certificates too: they are expired now but may have
         # been active when the certificate was used to sign.
         if trusted_root:
-            for ca in trusted_root.certificate_authorities:
-                if not _is_timerange_valid(ca.valid_for, allow_expired=True):
-                    continue
-                certs.extend(
-                    [
-                        load_der_x509_certificate(cert.raw_bytes)
-                        for cert in ca.cert_chain.certificates
-                    ]
+            certs = [
+                load_der_x509_certificate(c)
+                for c in self._get_ca_keys(
+                    trusted_root.certificate_authorities, allow_expired=True
                 )
+            ]
         else:
             certs = [
                 load_pem_x509_certificate(c)
