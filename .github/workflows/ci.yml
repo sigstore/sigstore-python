@@ -28,7 +28,7 @@ jobs:
           - { py: "3.11", os: "macos-latest" }
     runs-on: ${{ matrix.conf.os }}
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # v3.4.0
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
 
       - uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435
         with:
@@ -51,6 +51,10 @@ jobs:
 
       - name: test
         run: make test TEST_ARGS="-vv --showlocals"
+
+      - name: test (interactive)
+        if: (github.event_name != 'pull_request') || !github.event.pull_request.head.repo.fork
+        run: make test-interactive TEST_ARGS="-vv --showlocals"
 
       - uses: ./.github/actions/upload-coverage
         # only aggregate test coverage over linux-based tests to avoid any OS-specific filesystem information stored in
@@ -78,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # v3.2.0
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.2.0
 
       - uses: actions/setup-python@5ccb29d8773c3f3f653e1705f474dfaa8a06a912
         with:

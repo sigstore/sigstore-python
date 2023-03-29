@@ -14,10 +14,12 @@
 
 
 import os
+from datetime import datetime, timedelta, timezone
 
 import pytest
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
-from sigstore._internal.tuf import TrustUpdater
+from sigstore._internal.tuf import TrustUpdater, _is_timerange_valid
 
 
 def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
@@ -82,6 +84,35 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
     assert fail_reqs == expected_fail_reqs
 
 
+def test_is_timerange_valid():
+    def range_from(offset_lower=0, offset_upper=0):
+        base = datetime.now(timezone.utc)
+        return TimeRange(
+            base + timedelta(minutes=offset_lower),
+            base + timedelta(minutes=offset_upper),
+        )
+
+    # Test None should always be valid
+    assert _is_timerange_valid(None, allow_expired=False)
+    assert _is_timerange_valid(None, allow_expired=True)
+
+    # Test lower bound conditions
+    assert _is_timerange_valid(
+        range_from(-1, 1), allow_expired=False
+    )  # Valid: 1 ago, 1 from now
+    assert not _is_timerange_valid(
+        range_from(1, 1), allow_expired=False
+    )  # Invalid: 1 from now, 1 from now
+
+    # Test upper bound conditions
+    assert not _is_timerange_valid(
+        range_from(-1, -1), allow_expired=False
+    )  # Invalid: 1 ago, 1 ago
+    assert _is_timerange_valid(
+        range_from(-1, -1), allow_expired=True
+    )  # Valid: 1 ago, 1 ago
+
+
 def test_updater_staging_get(mock_staging_tuf, tuf_asset):
     """Test that one of the get-methods returns the expected content"""
     updater = TrustUpdater.staging()
@@ -98,6 +129,7 @@ def test_updater_ctfe_keys_error(monkeypatch):
     updater = TrustUpdater.staging()
     # getter returns no keys.
     monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
+    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
     with pytest.raises(Exception, match="CTFE keys not found in TUF metadata"):
         updater.get_ctfe_keys()
 
@@ -112,6 +144,7 @@ def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
             "_get",
             lambda usage, statuses: [rekor_key, rekor_key],
         )
+    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
 
     with pytest.raises(
         Exception, match="Did not find one active Rekor key in TUF metadata"
@@ -122,7 +155,8 @@ def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
 def test_updater_fulcio_certs_error(tuf_asset, monkeypatch):
     updater = TrustUpdater.staging()
     # getter returns no fulcio certs.
-    monkeypatch.setattr(updater, "_get", lambda usage, statuses: None)
+    monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
+    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
     with pytest.raises(
         Exception, match="Fulcio certificates not found in TUF metadata"
     ):
