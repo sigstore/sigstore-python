@@ -273,7 +273,7 @@ class TrustUpdater:
 
         trusted_root = self._get_trusted_root()
         if trusted_root:
-            keys = list(self._get_tlog_keys(trusted_root.ctlogs))
+            keys = list(self._get_tlog_keys(trusted_root.tlogs))
         else:
             keys = list(self._get("Rekor", ["Active"]))
 
