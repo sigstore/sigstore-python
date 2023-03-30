@@ -145,7 +145,6 @@ def test_updater_staging_get(monkeypatch, mock_staging_tuf, tuf_asset):
         assert updater.get_rekor_keys() == [f.read()]
 
 
-
 def test_bundled_get(monkeypatch, mock_prod_tuf, asset):
     def _contents(name: str):
         path = Path("prod-tuf") / name
