@@ -18,9 +18,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
 from sigstore._internal.tuf import TrustUpdater, _is_timerange_valid
+from sigstore._utils import load_der_public_key, load_pem_public_key
 
 
 def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
@@ -141,17 +144,44 @@ def test_updater_staging_get(monkeypatch, mock_staging_tuf, tuf_asset):
     ) as f:
         assert updater.get_rekor_keys() == [f.read()]
 
-@pytest.mark.skip()
-def test_bundled_staging_get(tuf_asset):
-    def _asset(name: str):
-        return Path(tuf_asset(name)).read_bytes()
 
-    updater = TrustUpdater.staging()
 
-    # TODO(tnytown): adjust to include intermediates
-    assert updater.get_ctfe_keys() == [_asset("ctfe.pub")]
-    assert updater.get_rekor_keys() == [_asset("rekor.pub")]
-    assert updater.get_fulcio_certs() == [_asset("fulcio.crt.pem")]
+def test_bundled_get(monkeypatch, mock_prod_tuf, asset):
+    def _contents(name: str):
+        path = Path("prod-tuf") / name
+        return asset(str(path)).read_bytes()
+
+    def _der_keys(keys):
+        return [
+            load_der_public_key(k).public_bytes(
+                Encoding.DER, PublicFormat.SubjectPublicKeyInfo
+            )
+            for k in keys
+        ]
+
+    def _pem_keys(keys):
+        return [
+            load_pem_public_key(k).public_bytes(
+                Encoding.DER, PublicFormat.SubjectPublicKeyInfo
+            )
+            for k in keys
+        ]
+
+    updater = TrustUpdater.production()
+
+    # The test should use the TUF path, so we stub out the legacy getter here.
+    monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
+
+    assert _der_keys(updater.get_ctfe_keys()) == _pem_keys([_contents("ctfe_2022.pub")])
+    assert _der_keys(updater.get_rekor_keys()) == _pem_keys([_contents("rekor.pub")])
+    assert updater.get_fulcio_certs() == [
+        load_pem_x509_certificate(c)
+        for c in [
+            _contents("fulcio.crt.pem"),
+            _contents("fulcio_v1.crt.pem"),
+            _contents("fulcio_intermediate_v1.crt.pem"),
+        ]
+    ]
 
 
 def test_updater_instance_error():

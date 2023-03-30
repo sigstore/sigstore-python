@@ -42,6 +42,9 @@ assert _ASSETS.is_dir()
 _TUF_ASSETS = (_ASSETS / "staging-tuf").resolve()
 assert _TUF_ASSETS.is_dir()
 
+_PROD_TUF_ASSETS = (_ASSETS / "prod-tuf").resolve()
+assert _PROD_TUF_ASSETS.is_dir()
+
 
 def _has_oidc_id():
     # If there are tokens manually defined for us in the environment, use them.
@@ -158,8 +161,7 @@ def null_policy():
     return NullPolicy()
 
 
-@pytest.fixture
-def mock_staging_tuf(monkeypatch, tuf_dirs):
+def _mock_tuf(monkeypatch, tuf_dirs, tuf_asset_path: Path):
     """Mock that prevents tuf module from making requests: it returns staging
     assets from a local directory instead
 
@@ -170,12 +172,10 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
 
     class MockFetcher(FetcherInterface):
         def _fetch(self, url: str) -> Iterator[bytes]:
-            filepath = _TUF_ASSETS / urlparse(url).path.lstrip("/")
+            filepath = tuf_asset_path / urlparse(url).path.lstrip("/")
             if filepath.is_file():
                 success[filepath] += 1
                 return BytesIO(filepath.read_bytes())
-            else:
-                print(f"POO {filepath}")
 
             failure[filepath] += 1
             raise DownloadHTTPError("File not found", 404)
@@ -183,6 +183,16 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
     monkeypatch.setattr(tuf, "_get_fetcher", lambda: MockFetcher())
 
     return success, failure
+
+
+@pytest.fixture
+def mock_staging_tuf(monkeypatch, tuf_dirs):
+    return _mock_tuf(monkeypatch, tuf_dirs, _TUF_ASSETS)
+
+
+@pytest.fixture
+def mock_prod_tuf(monkeypatch, tuf_dirs):
+    return _mock_tuf(monkeypatch, tuf_dirs, _PROD_TUF_ASSETS)
 
 
 @pytest.fixture
