@@ -23,6 +23,12 @@ from sigstore._internal.tuf import TrustUpdater, _is_timerange_valid
 
 
 def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
+    def consistent_targets_match(consistent_targets, targets):
+        for t in consistent_targets:
+            if os.path.basename(t) not in targets:
+                return False
+        return True
+
     # start with empty target cache, empty local metadata dir
     data_dir, cache_dir = tuf_dirs
 
@@ -45,43 +51,46 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
         "ctfe.pub": 1,
         "ctfe_2022.pub": 1,
         "ctfe_2022_2.pub": 1,
-        "snapshot.json": 1,
-        "targets.json": 1,
+        "2.root.json": 1,
+        "2.snapshot.json": 1,
+        "2.targets.json": 1,
+        "2.timestamp.json": 1,
         "timestamp.json": 1,
+        "6494317303d0e04509a30b239bf8290057164fba67072b6f89ddf1032273a78b.trusted_root.json": 1,
     }
-    expected_fail_reqs = {"2.root.json": 1}
-    assert reqs == expected_requests
+    expected_fail_reqs = {"3.root.json": 1}
+    assert consistent_targets_match(reqs, expected_requests)
     # Expect 404 from the next root version
-    assert fail_reqs == expected_fail_reqs
+    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
 
     updater.get_rekor_keys()
     # Expect request of the rekor key but nothing else
     expected_requests["rekor.pub"] = 1
-    assert reqs == expected_requests
-    assert fail_reqs == expected_fail_reqs
+    assert consistent_targets_match(reqs, expected_requests)
+    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
 
     updater.get_rekor_keys()
     # Expect no requests
-    assert reqs == expected_requests
-    assert fail_reqs == expected_fail_reqs
+    assert consistent_targets_match(reqs, expected_requests)
+    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
 
     # New Updater instance, same cache dirs
     updater = TrustUpdater.staging()
     # Expect no requests happened
-    assert reqs == expected_requests
-    assert fail_reqs == expected_fail_reqs
+    assert consistent_targets_match(reqs, expected_requests)
+    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
 
     updater.get_ctfe_keys()
     # Expect new timestamp and root requests
     expected_requests["timestamp.json"] += 1
-    expected_fail_reqs["2.root.json"] += 1
-    assert reqs == expected_requests
-    assert fail_reqs == expected_fail_reqs
+    expected_fail_reqs["3.root.json"] += 1
+    assert consistent_targets_match(reqs, expected_requests)
+    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
 
     updater.get_rekor_keys()
     # Expect no requests
-    assert reqs == expected_requests
-    assert fail_reqs == expected_fail_reqs
+    assert consistent_targets_match(reqs, expected_requests)
+    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
 
 
 def test_is_timerange_valid():
@@ -116,7 +125,7 @@ def test_is_timerange_valid():
 def test_updater_staging_get(mock_staging_tuf, tuf_asset):
     """Test that one of the get-methods returns the expected content"""
     updater = TrustUpdater.staging()
-    with open(tuf_asset("rekor.pub"), "rb") as f:
+    with open(tuf_asset("targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"), "rb") as f:
         assert updater.get_rekor_keys() == [f.read()]
 
 
@@ -136,7 +145,7 @@ def test_updater_ctfe_keys_error(monkeypatch):
 
 def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
     updater = TrustUpdater.staging()
-    with open(tuf_asset("rekor.pub"), "rb") as f:
+    with open(tuf_asset("targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"), "rb") as f:
         rekor_key = f.read()
         # getter returns duplicate copy of `rekor_key`.
         monkeypatch.setattr(

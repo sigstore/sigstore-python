@@ -1,0 +1,23 @@
+{
+	"signed": {
+		"_type": "targets",
+		"spec_version": "1.0",
+		"version": 2,
+		"expires": "2028-09-29T21:10:55Z",
+		"targets": {
+			"registry.npmjs.org/keys.json": {
+				"length": 1017,
+				"hashes": {
+					"sha256": "7a8ec9678ad824cdccaa7a6dc0961caf8f8df61bc7274189122c123446248426",
+					"sha512": "881a853ee92d8cf513b07c164fea36b22a7305c256125bdfffdc5c65a4205c4c3fc2b5bcc98964349167ea68d40b8cd02551fcaa870a30d4601ba1caf6f63699"
+				}
+			}
+		}
+	},
+	"signatures": [
+		{
+			"keyid": "314ae73abd3012fc73bfcc3783e31d03852716597642b891d6a33155c4baf600",
+			"sig": "3045022057b9fc8afd9feaf45cf3173d3420fdcd6b68c22e4ef7b47e80a6887e1f20246c0221009f39c42fac630ab354c5197288c9a82ab6d46a59b423f81fff719da57cff16ab"
+		}
+	]
+}

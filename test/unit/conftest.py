@@ -17,6 +17,7 @@ import os
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import urlparse
 from typing import Iterator
 
 import pytest
@@ -169,13 +170,14 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
 
     class MockFetcher(FetcherInterface):
         def _fetch(self, url: str) -> Iterator[bytes]:
-            filename = os.path.basename(url)
-            filepath = _TUF_ASSETS / filename
+            filepath = _TUF_ASSETS / urlparse(url).path.lstrip("/")
             if filepath.is_file():
-                success[filename] += 1
+                success[filepath] += 1
                 return BytesIO(filepath.read_bytes())
+            else:
+                print(f"POO {filepath}")
 
-            failure[filename] += 1
+            failure[filepath] += 1
             raise DownloadHTTPError("File not found", 404)
 
     monkeypatch.setattr(tuf, "_get_fetcher", lambda: MockFetcher())

@@ -2,8 +2,8 @@
 	"signed": {
 		"_type": "root",
 		"spec_version": "1.0",
-		"version": 1,
-		"expires": "2024-09-29T16:47:17Z",
+		"version": 2,
+		"expires": "2028-09-29T21:10:11Z",
 		"keys": {
 			"314ae73abd3012fc73bfcc3783e31d03852716597642b891d6a33155c4baf600": {
 				"keytype": "ecdsa-sha2-nistp256",
@@ -59,7 +59,7 @@
 	"signatures": [
 		{
 			"keyid": "c8e09a68b5821b75462ae0df52151c81deb7f1838246dc1da8c34cc91ec12bda",
-			"sig": "304602210085927cdb96e1d9d0876bfc26b6ceea7421a54f959e30b9af3e12d31f6c750543022100dde611b58a1f2b9fb26c43767138c68f4422cdeb898c8b63f3f0193791030d12"
+			"sig": "3045022057bbd23dd9f69f8280c5e5d2b0a0b1ace98d6d8efa0f59ef0a3190188f6e2c89022100b39e6c24091c4271d2b8b4cfa75e6120638b276fbffddda8da5bca1778c8f08c"
 		}
 	]
 }

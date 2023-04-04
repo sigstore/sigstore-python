@@ -1,0 +1,26 @@
+{
+    "keys": [
+        {
+            "keyId": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+            "keyUsage": "npm:signatures",
+            "publicKey": {
+                "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+IhuteBJbuHcA5UogKo0EWtlWwW6KSaKoTNEYL7JlCQiVnkhBktUgg==",
+                "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+                "validFor": {
+                    "start": "1999-01-01T00:00:00.000Z"
+                }
+            }
+        },
+        {
+            "keyId": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+            "keyUsage": "npm:attestations",
+            "publicKey": {
+                "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+IhuteBJbuHcA5UogKo0EWtlWwW6KSaKoTNEYL7JlCQiVnkhBktUgg==",
+                "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+                "validFor": {
+                    "start": "2022-12-01T00:00:00.000Z"
+                }
+            }
+        }
+    ]
+}
