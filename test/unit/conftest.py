@@ -17,8 +17,8 @@ import os
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
-from urllib.parse import urlparse
 from typing import Iterator
+from urllib.parse import urlparse
 
 import pytest
 from id import (
