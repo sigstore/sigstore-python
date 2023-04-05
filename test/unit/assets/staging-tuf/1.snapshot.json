@@ -1,0 +1,32 @@
+{
+	"signed": {
+		"_type": "snapshot",
+		"spec_version": "1.0",
+		"version": 1,
+		"expires": "2024-04-19T16:47:48Z",
+		"meta": {
+			"registry.npmjs.org.json": {
+				"length": 713,
+				"hashes": {
+					"sha256": "17b361687dbb401c2d51d7ce21688d13547eae7f8e7b2183b7dd6d94fa675705",
+					"sha512": "3f60a08cdbab650ece48ded43b54943dc816580fdb2f5a2a20c30e878eb2489ab817f0308666cac80da03d75d6f5b71959431b1ba7794335fece8a4ed635eb4d"
+				},
+				"version": 1
+			},
+			"targets.json": {
+				"length": 4518,
+				"hashes": {
+					"sha256": "cc62e5fb1644717c7429c82b6a1cbd085008f9a2e07aad38573f8fdf9d55386c",
+					"sha512": "5709bc76bc35da403a9a0a5ec96890db49e797c986eda9e5f7973938dbccad96838c8136617c91f5218cfd919d93745d3942ca6d50a52b5fd0e662e6876b395f"
+				},
+				"version": 1
+			}
+		}
+	},
+	"signatures": [
+		{
+			"keyid": "314ae73abd3012fc73bfcc3783e31d03852716597642b891d6a33155c4baf600",
+			"sig": "304602210082d244d5dab0c20ee07b3229964beffaa8bb0bdf4c5107e2f764619878d124a2022100e7c50116ef636c41348ec49a7502f1c98037238b9c717ee781b62c5154f5a1f0"
+		}
+	]
+}
