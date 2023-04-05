@@ -122,10 +122,11 @@ def test_is_timerange_valid():
     )  # Valid: 1 ago, 1 ago
 
 
-@pytest.mark.skip
-def test_updater_staging_get(mock_staging_tuf, tuf_asset):
+def test_updater_staging_get(monkeypatch, mock_staging_tuf, tuf_asset):
     """Test that one of the get-methods returns the expected content"""
     updater = TrustUpdater.staging()
+    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
+
     with open(
         tuf_asset(
             "targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"
@@ -149,9 +150,10 @@ def test_updater_ctfe_keys_error(monkeypatch):
         updater.get_ctfe_keys()
 
 
-@pytest.mark.skip
 def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
     updater = TrustUpdater.staging()
+    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
+
     with open(
         tuf_asset(
             "targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"
@@ -165,7 +167,6 @@ def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
             "_get",
             lambda usage, statuses: [rekor_key, rekor_key],
         )
-    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
 
     with pytest.raises(
         Exception, match="Did not find one active Rekor key in TUF metadata"
