@@ -121,11 +121,17 @@ def test_is_timerange_valid():
         range_from(-1, -1), allow_expired=True
     )  # Valid: 1 ago, 1 ago
 
+
 @pytest.mark.skip
 def test_updater_staging_get(mock_staging_tuf, tuf_asset):
     """Test that one of the get-methods returns the expected content"""
     updater = TrustUpdater.staging()
-    with open(tuf_asset("targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"), "rb") as f:
+    with open(
+        tuf_asset(
+            "targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"
+        ),
+        "rb",
+    ) as f:
         assert updater.get_rekor_keys() == [f.read()]
 
 
@@ -142,10 +148,16 @@ def test_updater_ctfe_keys_error(monkeypatch):
     with pytest.raises(Exception, match="CTFE keys not found in TUF metadata"):
         updater.get_ctfe_keys()
 
+
 @pytest.mark.skip
 def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
     updater = TrustUpdater.staging()
-    with open(tuf_asset("targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"), "rb") as f:
+    with open(
+        tuf_asset(
+            "targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"
+        ),
+        "rb",
+    ) as f:
         rekor_key = f.read()
         # getter returns duplicate copy of `rekor_key`.
         monkeypatch.setattr(
