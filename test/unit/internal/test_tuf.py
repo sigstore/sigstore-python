@@ -123,7 +123,12 @@ def test_is_timerange_valid():
 
 
 def test_updater_staging_get(monkeypatch, mock_staging_tuf, tuf_asset):
-    """Test that one of the get-methods returns the expected content"""
+    """Test that one of the get-methods returns the expected content.
+
+    Note: this test does not exercise "bundled trust root" codepaths, as those
+    are tested separately. We stub out `_get_trusted_root` to enforce this.
+    """
+
     updater = TrustUpdater.staging()
     monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
 
@@ -151,6 +156,12 @@ def test_updater_ctfe_keys_error(monkeypatch):
 
 
 def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
+    """Test a failure case for the Rekor get method.
+
+    Note: this test does not exercise "bundled trust root" codepaths, as those
+    are tested separately. We stub out `_get_trusted_root` to enforce this.
+    """
+
     updater = TrustUpdater.staging()
     monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
 
