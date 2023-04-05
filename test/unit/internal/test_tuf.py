@@ -15,7 +15,6 @@
 
 import os
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -136,20 +135,13 @@ def test_updater_staging_get(monkeypatch, mock_staging_tuf, tuf_asset):
     updater = TrustUpdater.staging()
     monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
 
-    with open(
-        tuf_asset(
-            "targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"
-        ),
-        "rb",
-    ) as f:
-        assert updater.get_rekor_keys() == [f.read()]
+    key = tuf_asset.target("rekor.pub")
+    assert updater.get_rekor_keys() == [key]
 
 
-def test_bundled_get(monkeypatch, mock_prod_tuf, asset):
-    def _contents(name: str):
-        path = Path("prod-tuf") / name
-        return asset(str(path)).read_bytes()
-
+def test_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
+    # We don't strictly need to re-encode these keys as they are already DER,
+    # but by doing so we are also validating the keys structurally.
     def _der_keys(keys):
         return [
             load_der_public_key(k).public_bytes(
@@ -166,19 +158,26 @@ def test_bundled_get(monkeypatch, mock_prod_tuf, asset):
             for k in keys
         ]
 
-    updater = TrustUpdater.production()
+    updater = TrustUpdater.staging()
 
-    # The test should use the TUF path, so we stub out the legacy getter here.
+    # The test should use the bundled root path, so we stub out the legacy getter here.
     monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
 
-    assert _der_keys(updater.get_ctfe_keys()) == _pem_keys([_contents("ctfe_2022.pub")])
-    assert _der_keys(updater.get_rekor_keys()) == _pem_keys([_contents("rekor.pub")])
+    assert _der_keys(updater.get_ctfe_keys()) == _pem_keys(
+        [
+            tuf_asset.target("ctfe.pub"),
+            tuf_asset.target("ctfe_2022.pub"),
+            tuf_asset.target("ctfe_2022_2.pub"),
+        ]
+    )
+    assert _der_keys(updater.get_rekor_keys()) == _pem_keys(
+        [tuf_asset.target("rekor.pub")]
+    )
     assert updater.get_fulcio_certs() == [
         load_pem_x509_certificate(c)
         for c in [
-            _contents("fulcio.crt.pem"),
-            _contents("fulcio_v1.crt.pem"),
-            _contents("fulcio_intermediate_v1.crt.pem"),
+            tuf_asset.target("fulcio.crt.pem"),
+            tuf_asset.target("fulcio_intermediate.crt.pem"),
         ]
     ]
 
@@ -207,19 +206,13 @@ def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
     updater = TrustUpdater.staging()
     monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
 
-    with open(
-        tuf_asset(
-            "targets/1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959.rekor.pub"
-        ),
-        "rb",
-    ) as f:
-        rekor_key = f.read()
-        # getter returns duplicate copy of `rekor_key`.
-        monkeypatch.setattr(
-            updater,
-            "_get",
-            lambda usage, statuses: [rekor_key, rekor_key],
-        )
+    rekor_key = tuf_asset.target("rekor.pub")
+    # getter returns duplicate copy of `rekor_key`.
+    monkeypatch.setattr(
+        updater,
+        "_get",
+        lambda usage, statuses: [rekor_key, rekor_key],
+    )
 
     with pytest.raises(
         Exception, match="Did not find one active Rekor key in TUF metadata"

@@ -192,6 +192,7 @@ class TrustUpdater:
             ) as e:
                 raise TUFError("Failed to download trusted key bundle") from e
 
+        logger.debug("Found trusted root")
         return TrustedRoot().from_json(Path(path).read_bytes())
 
     def _get(self, usage: str, statuses: list[str]) -> Iterable[bytes]:

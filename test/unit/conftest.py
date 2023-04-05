@@ -14,6 +14,7 @@
 
 import base64
 import os
+import re
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
@@ -41,9 +42,6 @@ assert _ASSETS.is_dir()
 
 _TUF_ASSETS = (_ASSETS / "staging-tuf").resolve()
 assert _TUF_ASSETS.is_dir()
-
-_PROD_TUF_ASSETS = (_ASSETS / "prod-tuf").resolve()
-assert _PROD_TUF_ASSETS.is_dir()
 
 
 def _has_oidc_id():
@@ -108,10 +106,30 @@ def asset():
 
 @pytest.fixture
 def tuf_asset():
-    def _tuf_asset(name: str) -> Path:
-        return _TUF_ASSETS / name
+    SHA256_TARGET_PATTERN = re.compile(r"[0-9a-f]{64}\.")
 
-    return _tuf_asset
+    class TUFAsset:
+        def asset(self, name: str):
+            return (_TUF_ASSETS / name).read_bytes()
+
+        def target(self, name: str):
+            # Since TUF contains both sha256 and sha512 prefixed targets, filter
+            # out the sha512 ones.
+            matches = filter(
+                lambda path: SHA256_TARGET_PATTERN.match(path.name) is not None,
+                (_TUF_ASSETS / "targets").glob(f"*.{name}"),
+            )
+
+            try:
+                path = next(matches)
+            except StopIteration as e:
+                raise Exception(f"Unable to match {name} in targets/") from e
+
+            if next(matches, None) is None:
+                return path.read_bytes()
+            return None
+
+    return TUFAsset()
 
 
 @pytest.fixture
@@ -161,7 +179,8 @@ def null_policy():
     return NullPolicy()
 
 
-def _mock_tuf(monkeypatch, tuf_dirs, tuf_asset_path: Path):
+@pytest.fixture
+def mock_staging_tuf(monkeypatch, tuf_dirs):
     """Mock that prevents tuf module from making requests: it returns staging
     assets from a local directory instead
 
@@ -172,7 +191,7 @@ def _mock_tuf(monkeypatch, tuf_dirs, tuf_asset_path: Path):
 
     class MockFetcher(FetcherInterface):
         def _fetch(self, url: str) -> Iterator[bytes]:
-            filepath = tuf_asset_path / urlparse(url).path.lstrip("/")
+            filepath = _TUF_ASSETS / urlparse(url).path.lstrip("/")
             if filepath.is_file():
                 success[filepath] += 1
                 return BytesIO(filepath.read_bytes())
@@ -183,16 +202,6 @@ def _mock_tuf(monkeypatch, tuf_dirs, tuf_asset_path: Path):
     monkeypatch.setattr(tuf, "_get_fetcher", lambda: MockFetcher())
 
     return success, failure
-
-
-@pytest.fixture
-def mock_staging_tuf(monkeypatch, tuf_dirs):
-    return _mock_tuf(monkeypatch, tuf_dirs, _TUF_ASSETS)
-
-
-@pytest.fixture
-def mock_prod_tuf(monkeypatch, tuf_dirs):
-    return _mock_tuf(monkeypatch, tuf_dirs, _PROD_TUF_ASSETS)
 
 
 @pytest.fixture
