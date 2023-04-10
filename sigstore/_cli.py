@@ -14,11 +14,11 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import argparse
 import base64
 import logging
-import os
-import sys
 from pathlib import Path
 from textwrap import dedent
 from typing import Optional, TextIO, Union, cast
