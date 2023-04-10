@@ -14,6 +14,7 @@
 
 import base64
 import os
+import re
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
@@ -105,10 +106,30 @@ def asset():
 
 @pytest.fixture
 def tuf_asset():
-    def _tuf_asset(name: str) -> Path:
-        return _TUF_ASSETS / name
+    SHA256_TARGET_PATTERN = re.compile(r"[0-9a-f]{64}\.")
 
-    return _tuf_asset
+    class TUFAsset:
+        def asset(self, name: str):
+            return (_TUF_ASSETS / name).read_bytes()
+
+        def target(self, name: str):
+            # Since TUF contains both sha256 and sha512 prefixed targets, filter
+            # out the sha512 ones.
+            matches = filter(
+                lambda path: SHA256_TARGET_PATTERN.match(path.name) is not None,
+                (_TUF_ASSETS / "targets").glob(f"*.{name}"),
+            )
+
+            try:
+                path = next(matches)
+            except StopIteration as e:
+                raise Exception(f"Unable to match {name} in targets/") from e
+
+            if next(matches, None) is None:
+                return path.read_bytes()
+            return None
+
+    return TUFAsset()
 
 
 @pytest.fixture
@@ -174,8 +195,6 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
             if filepath.is_file():
                 success[filepath] += 1
                 return BytesIO(filepath.read_bytes())
-            else:
-                print(f"POO {filepath}")
 
             failure[filepath] += 1
             raise DownloadHTTPError("File not found", 404)
