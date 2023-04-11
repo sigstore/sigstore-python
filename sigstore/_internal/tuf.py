@@ -46,8 +46,8 @@ from sigstore.errors import MetadataError, TUFError
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TUF_URL = "https://sigstore-tuf-root.storage.googleapis.com/"
-STAGING_TUF_URL = "https://tuf-root-staging.storage.googleapis.com/"
+DEFAULT_TUF_URL = "https://tuf-repo-cdn.sigstore.dev"
+STAGING_TUF_URL = "https://tuf-repo-cdn.sigstage.dev"
 
 
 @lru_cache()
