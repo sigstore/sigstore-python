@@ -112,6 +112,7 @@ class RootError(Error):
     """Raised when TUF cannot establish its root of trust."""
 
     def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
         return """\
         Unable to establish root of trust.
 
