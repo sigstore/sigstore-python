@@ -23,15 +23,10 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
 from sigstore._internal.tuf import TrustUpdater, _is_timerange_valid
 from sigstore._utils import load_der_public_key, load_pem_public_key
+from sigstore.errors import RootError
 
 
 def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
-    def consistent_targets_match(consistent_targets, targets):
-        for t in consistent_targets:
-            if os.path.basename(t) not in targets:
-                return False
-        return True
-
     # start with empty target cache, empty local metadata dir
     data_dir, cache_dir = tuf_dirs
 
@@ -51,49 +46,41 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
     assert sorted(os.listdir(data_dir)) == expected
     # Expect requests of top-level metadata, and the ctfe targets
     expected_requests = {
-        "ctfe.pub": 1,
-        "ctfe_2022.pub": 1,
-        "ctfe_2022_2.pub": 1,
         "2.root.json": 1,
         "2.snapshot.json": 1,
         "2.targets.json": 1,
-        "2.timestamp.json": 1,
         "timestamp.json": 1,
-        "6494317303d0e04509a30b239bf8290057164fba67072b6f89ddf1032273a78b.trusted_root.json": 1,
+        # trusted_root.json should not be requested, as it is cached locally
     }
     expected_fail_reqs = {"3.root.json": 1}
-    assert consistent_targets_match(reqs, expected_requests)
+
+    assert reqs == expected_requests
     # Expect 404 from the next root version
-    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
+    assert fail_reqs == expected_fail_reqs
 
     updater.get_rekor_keys()
-    # Expect request of the rekor key but nothing else
-    expected_requests["rekor.pub"] = 1
-    assert consistent_targets_match(reqs, expected_requests)
-    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
-
-    updater.get_rekor_keys()
-    # Expect no requests
-    assert consistent_targets_match(reqs, expected_requests)
-    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
+    # Expect no requests, as the `get_ctfe_keys` should have populated the bundled trust root
+    assert reqs == expected_requests
+    assert fail_reqs == expected_fail_reqs
 
     # New Updater instance, same cache dirs
     updater = TrustUpdater.staging()
     # Expect no requests happened
-    assert consistent_targets_match(reqs, expected_requests)
-    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
+    assert reqs == expected_requests
+    assert fail_reqs == expected_fail_reqs
 
     updater.get_ctfe_keys()
     # Expect new timestamp and root requests
     expected_requests["timestamp.json"] += 1
+    expected_requests["2.root.json"] += 1
     expected_fail_reqs["3.root.json"] += 1
-    assert consistent_targets_match(reqs, expected_requests)
-    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
+    assert reqs == expected_requests
+    assert fail_reqs == expected_fail_reqs
 
     updater.get_rekor_keys()
     # Expect no requests
-    assert consistent_targets_match(reqs, expected_requests)
-    assert consistent_targets_match(fail_reqs, expected_fail_reqs)
+    assert reqs == expected_requests
+    assert fail_reqs == expected_fail_reqs
 
 
 def test_is_timerange_valid():
@@ -183,7 +170,7 @@ def test_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
 
 
 def test_updater_instance_error():
-    with pytest.raises(Exception, match="TUF root not found in"):
+    with pytest.raises(RootError):
         TrustUpdater("foo.bar")
 
 

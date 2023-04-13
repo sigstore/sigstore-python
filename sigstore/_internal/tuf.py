@@ -42,7 +42,7 @@ from tuf.api import exceptions as TUFExceptions
 from tuf.ngclient import RequestsFetcher, Updater
 
 from sigstore._utils import read_embedded
-from sigstore.errors import MetadataError, TUFError
+from sigstore.errors import MetadataError, RootError, TUFError
 
 logger = logging.getLogger(__name__)
 
@@ -121,24 +121,35 @@ class TrustUpdater:
         self._repo_url = url
         self._metadata_dir, self._targets_dir = _get_dirs(url)
 
-        # Initialize metadata dir
-        tuf_root = self._metadata_dir / "root.json"
-        if not tuf_root.exists():
-            if self._repo_url == DEFAULT_TUF_URL:
-                fname = "root.json"
-            elif self._repo_url == STAGING_TUF_URL:
-                fname = "staging-root.json"
-            else:
-                raise Exception(f"TUF root not found in {tuf_root}")
+        rsrc_prefix: str
+        if self._repo_url == DEFAULT_TUF_URL:
+            rsrc_prefix = "prod"
+        elif self._repo_url == STAGING_TUF_URL:
+            rsrc_prefix = "staging"
+        else:
+            raise RootError
 
-            self._metadata_dir.mkdir(parents=True, exist_ok=True)
-            root_json = read_embedded(fname)
-            with tuf_root.open("wb") as io:
-                io.write(root_json)
+        # Initialize metadata dir
+        self._metadata_dir.mkdir(parents=True, exist_ok=True)
+        tuf_root = self._metadata_dir / "root.json"
+
+        try:
+            root_json = read_embedded("root.json", rsrc_prefix)
+        except FileNotFoundError as e:
+            raise RootError from e
+
+        tuf_root.write_bytes(root_json)
 
         # Initialize targets cache dir
-        # NOTE: Could prime the cache here with any embedded certs/keys
         self._targets_dir.mkdir(parents=True, exist_ok=True)
+        trusted_root_target = self._targets_dir / "trusted_root.json"
+
+        try:
+            trusted_root_json = read_embedded("trusted_root.json", rsrc_prefix)
+        except FileNotFoundError as e:
+            raise RootError from e
+
+        trusted_root_target.write_bytes(trusted_root_json)
 
         logger.debug(f"TUF metadata: {self._metadata_dir}")
         logger.debug(f"TUF targets cache: {self._targets_dir}")
