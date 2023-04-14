@@ -72,7 +72,6 @@ def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
     updater.get_ctfe_keys()
     # Expect new timestamp and root requests
     expected_requests["timestamp.json"] += 1
-    expected_requests["2.root.json"] += 1
     expected_fail_reqs["3.root.json"] += 1
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
