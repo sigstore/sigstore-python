@@ -133,23 +133,25 @@ class TrustUpdater:
         self._metadata_dir.mkdir(parents=True, exist_ok=True)
         tuf_root = self._metadata_dir / "root.json"
 
-        try:
-            root_json = read_embedded("root.json", rsrc_prefix)
-        except FileNotFoundError as e:
-            raise RootError from e
+        if not tuf_root.exists():
+            try:
+                root_json = read_embedded("root.json", rsrc_prefix)
+            except FileNotFoundError as e:
+                raise RootError from e
 
-        tuf_root.write_bytes(root_json)
+            tuf_root.write_bytes(root_json)
 
         # Initialize targets cache dir
         self._targets_dir.mkdir(parents=True, exist_ok=True)
         trusted_root_target = self._targets_dir / "trusted_root.json"
 
-        try:
-            trusted_root_json = read_embedded("trusted_root.json", rsrc_prefix)
-        except FileNotFoundError as e:
-            raise RootError from e
+        if not trusted_root_target.exists():
+            try:
+                trusted_root_json = read_embedded("trusted_root.json", rsrc_prefix)
+            except FileNotFoundError as e:
+                raise RootError from e
 
-        trusted_root_target.write_bytes(trusted_root_json)
+            trusted_root_target.write_bytes(trusted_root_json)
 
         logger.debug(f"TUF metadata: {self._metadata_dir}")
         logger.debug(f"TUF targets cache: {self._targets_dir}")
