@@ -8,6 +8,15 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [1.1.2]
+
+### Fixed
+
+* Updated the `staging-root.json` for recent changes to the Sigstore staging
+  instance ([#602](https://github.com/sigstore/sigstore-python/pull/602))
+* Switched TUF requests to their CDN endpoints, rather than direct GCS
+  access ([#609](https://github.com/sigstore/sigstore-python/pull/609))
+
 ## [1.1.1]
 
 ### Added
