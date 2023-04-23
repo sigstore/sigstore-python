@@ -167,6 +167,10 @@ Output options:
                         work with multiple input files (default: None)
   --bundle FILE         Write a single Sigstore bundle to the given file; does
                         not work with multiple input files (default: None)
+  --output-directory DIR
+                        Write default outputs to the given directory
+                        (conflicts with --signature, --certificate, --bundle)
+                        (default: None)
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
 
