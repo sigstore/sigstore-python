@@ -14,14 +14,18 @@
 
 import json
 
+import pytest
+
 from sigstore._utils import read_embedded
 
 
-def test_store_reads_root_json():
-    root_json = read_embedded("root.json")
+@pytest.mark.parametrize("env", ["prod", "staging"])
+def test_store_reads_root_json(env):
+    root_json = read_embedded("root.json", env)
     assert json.loads(root_json)
 
 
-def test_store_reads_staging_root_json():
-    root_json = read_embedded("staging-root.json")
-    assert json.loads(root_json)
+@pytest.mark.parametrize("env", ["prod", "staging"])
+def test_store_reads_targets_json(env):
+    trusted_root_json = read_embedded("trusted_root.json", env)
+    assert json.loads(trusted_root_json)
