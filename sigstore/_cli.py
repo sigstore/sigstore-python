@@ -554,17 +554,27 @@ def main() -> None:
 
 
 def _sign(args: argparse.Namespace) -> None:
+    has_sig = bool(args.signature)
+    has_crt = bool(args.certificate)
+    has_bundle = bool(args.bundle)
+
     # `--no-default-files` has no effect on `--bundle`, but we forbid it because
     # it indicates user confusion.
-    if args.no_default_files and args.bundle:
+    if args.no_default_files and has_bundle:
         args._parser.error("--no-default-files may not be combined with --bundle.")
 
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
-    if (args.signature or args.certificate or args.bundle) and len(args.files) > 1:
+    if (has_sig or has_crt or has_bundle) and len(args.files) > 1:
         args._parser.error(
             "Error: --signature, --certificate, and --bundle can't be used with "
             "explicit outputs for multiple inputs.",
+        )
+
+    # Fail if either `--signature` or `--certificate` is specified, but not both.
+    if has_sig ^ has_crt:
+        args._parser.error(
+            "Error: --signature and --certificate must be used together."
         )
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
