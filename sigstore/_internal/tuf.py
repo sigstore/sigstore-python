@@ -191,10 +191,10 @@ class TrustUpdater:
         return updater
 
     @lru_cache()
-    def _get_trusted_root(self) -> Optional[TrustedRoot]:
+    def _get_trusted_root(self) -> TrustedRoot:
         root_info = self._updater().get_targetinfo("trusted_root.json")
         if root_info is None:
-            return None
+            raise TUFError("Unsupported TUF configuration: no trusted root")
         path = self._updater().find_cached_target(root_info)
         if path is None:
             try:
@@ -207,38 +207,6 @@ class TrustUpdater:
 
         logger.debug("Found trusted root")
         return TrustedRoot().from_json(Path(path).read_bytes())
-
-    def _get(self, usage: str, statuses: list[str]) -> Iterable[bytes]:
-        """Return all targets with given usage and any of the statuses"""
-
-        targets = self._updater()._trusted_set.targets.signed.targets
-        for target_info in targets.values():
-            custom = target_info.unrecognized_fields.get("custom", {}).get("sigstore")
-            if (
-                custom
-                and custom.get("status") in statuses
-                and custom.get("usage") == usage
-            ):
-                path = self._updater().find_cached_target(target_info)
-                if path is None:
-                    try:
-                        path = self._updater().download_target(target_info)
-                    except (
-                        TUFExceptions.DownloadError,
-                        TUFExceptions.RepositoryError,
-                    ) as e:
-                        raise TUFError(f"Failed to download keys for {usage}") from e
-                with open(path, "rb") as f:
-                    target_contents = f.read()
-                    base_name = os.path.basename(path)
-                    logger.info(
-                        f"TUF cache target {usage} {statuses}: {base_name} sha256 {target_info.hashes.get('sha256')}"
-                    )
-                    logger.debug(
-                        f"TUF cache target {base_name}:\n"
-                        f"{target_contents.decode('utf-8')}"
-                    )
-                    yield target_contents
 
     def _get_tlog_keys(self, tlogs: list[TransparencyLogInstance]) -> Iterable[bytes]:
         """Return public key contents given transparency log instances."""
@@ -269,10 +237,7 @@ class TrustUpdater:
         ctfes: list[bytes]
 
         trusted_root = self._get_trusted_root()
-        if trusted_root:
-            ctfes = list(self._get_tlog_keys(trusted_root.ctlogs))
-        else:
-            ctfes = list(self._get("CTFE", ["Active"]))
+        ctfes = list(self._get_tlog_keys(trusted_root.ctlogs))
 
         if not ctfes:
             raise MetadataError("CTFE keys not found in TUF metadata")
@@ -286,10 +251,7 @@ class TrustUpdater:
         keys: list[bytes]
 
         trusted_root = self._get_trusted_root()
-        if trusted_root:
-            keys = list(self._get_tlog_keys(trusted_root.tlogs))
-        else:
-            keys = list(self._get("Rekor", ["Active"]))
+        keys = list(self._get_tlog_keys(trusted_root.tlogs))
 
         if len(keys) != 1:
             raise MetadataError("Did not find one active Rekor key in TUF metadata")
@@ -305,21 +267,13 @@ class TrustUpdater:
         trusted_root = self._get_trusted_root()
         # Return expired certificates too: they are expired now but may have
         # been active when the certificate was used to sign.
-        if trusted_root:
-            certs = [
-                load_der_x509_certificate(c)
-                for c in self._get_ca_keys(
-                    trusted_root.certificate_authorities, allow_expired=True
-                )
-            ]
-        else:
-            certs = [
-                load_pem_x509_certificate(c)
-                for c in self._get(
-                    "Fulcio",
-                    ["Active", "Expired"],
-                )
-            ]
+        certs = [
+            load_der_x509_certificate(c)
+            for c in self._get_ca_keys(
+                trusted_root.certificate_authorities, allow_expired=True
+            )
+        ]
+
         if not certs:
             raise MetadataError("Fulcio certificates not found in TUF metadata")
         return certs
