@@ -65,6 +65,14 @@ package_logger = logging.getLogger("sigstore")
 package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
 
 
+def _path_is_filelike(path: Path) -> bool:
+    """
+    A `pathlib.Path` helper for checking whether a path is "file-like,"
+    meaning is either a regular file or a named pipe.
+    """
+    return path.is_file() or path.is_fifo()
+
+
 def _boolify_env(envvar: str) -> bool:
     """
     An `argparse` helper for turning an environment variable into a boolean.
@@ -581,7 +589,7 @@ def _sign(args: argparse.Namespace) -> None:
     # so that we can fail early if overwriting without `--overwrite`.
     output_map = {}
     for file in args.files:
-        if not file.is_file():
+        if not _path_is_filelike(file):
             args._parser.error(f"Input must be a file: {file}")
 
         sig, cert, bundle = (
@@ -712,7 +720,7 @@ def _collect_verification_state(
     # that we have everything so that we can fail early.
     input_map = {}
     for file in args.files:
-        if not file.is_file():
+        if not _path_is_filelike(file):
             args._parser.error(f"Input must be a file: {file}")
 
         sig, cert, bundle = (
@@ -729,16 +737,16 @@ def _collect_verification_state(
 
         missing = []
         if args.signature or args.certificate:
-            if not sig.is_file():
+            if not _path_is_filelike(sig):
                 missing.append(str(sig))
-            if not cert.is_file():
+            if not _path_is_filelike(cert):
                 missing.append(str(cert))
             input_map[file] = {"cert": cert, "sig": sig}
         else:
             # If a user hasn't explicitly supplied `--signature`, `--certificate` or
             # `--rekor-bundle`, we expect a bundle either supplied via `--bundle` or with the
             # default `{input}.sigstore` name.
-            if not bundle.is_file():
+            if not _path_is_filelike(bundle):
                 missing.append(str(bundle))
             input_map[file] = {"bundle": bundle}
 
