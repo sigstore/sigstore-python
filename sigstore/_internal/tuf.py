@@ -19,19 +19,14 @@ TUF functionality for `sigstore-python`.
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable
 from urllib import parse
 
 import appdirs
-from cryptography.x509 import (
-    Certificate,
-    load_der_x509_certificate,
-    load_pem_x509_certificate,
-)
+from cryptography.x509 import Certificate, load_der_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     CertificateAuthority,
