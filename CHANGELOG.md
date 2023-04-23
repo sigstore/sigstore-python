@@ -8,12 +8,18 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Changed
+
+* A cached copy of the trust bundle is now included with the distribution.
+  ([#611](https://github.com/sigstore/sigstore-python/pull/611))
+
 ## [1.1.2]
 
 ### Fixed
 
 * Updated the `staging-root.json` for recent changes to the Sigstore staging
   instance ([#602](https://github.com/sigstore/sigstore-python/pull/602))
+
 * Switched TUF requests to their CDN endpoints, rather than direct GCS
   access ([#609](https://github.com/sigstore/sigstore-python/pull/609))
 
@@ -27,6 +33,7 @@ All versions prior to 0.9.0 are untracked.
   generate staging and production OIDC tokens, which are used to test the
   `sigstore.sign` module. All signing tests need to be completed before token
   expiry, which is currently 60 seconds after issuance.
+
 * Network-related errors from the `sigstore._internal.tuf` module now have better
   diagnostics.
 
@@ -34,11 +41,14 @@ All versions prior to 0.9.0 are untracked.
 
 * Replaced ambient credential detection logic with the `id` package
   ([#535](https://github.com/sigstore/sigstore-python/pull/535))
+
 * Revamped error diagnostics reporting. All errors with diagnostics now implement
   `sigstore.errors.Error`.
+
 * Trust root materials are now retrieved from a single trust bundle,
   if it is available via TUF
   ([#542](https://github.com/sigstore/sigstore-python/pull/542))
+
 * Improved diagnostics around Signed Certificate Timestamp verification failures.
   ([#555](https://github.com/sigstore/sigstore-python/pull/555))
 
