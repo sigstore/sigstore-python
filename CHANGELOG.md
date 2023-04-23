@@ -45,6 +45,7 @@ All versions prior to 0.9.0 are untracked.
 
 * Network-related errors from the `sigstore._internal.tuf` module now have better
   diagnostics.
+  ([#525](https://github.com/sigstore/sigstore-python/pull/525))
 
 ### Changed
 
