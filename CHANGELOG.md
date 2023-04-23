@@ -31,6 +31,11 @@ All versions prior to 0.9.0 are untracked.
 
 ### Added
 
+* `sigstore sign` now supports the `--output-directory` flag, which places
+  default outputs in the specified directory. Without this flag, default outputs
+  are placed adjacent to the signing input.
+  ([#627](https://github.com/sigstore/sigstore-python/pull/627))
+
 * The whole test suite can now be run locally with `make test-interactive`.
   ([#576](https://github.com/sigstore/sigstore-python/pull/576))
   Users will be prompted to authenticate with their identity provider twice to
