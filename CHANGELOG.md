@@ -17,6 +17,11 @@ All versions prior to 0.9.0 are untracked.
   Sigstore bundles are now preferred.
   ([#614](https://github.com/sigstore/sigstore-python/pull/614))
 
+### Fixed
+
+* The `sigstore` CLI now handles named pipes correctly
+  ([#625](https://github.com/sigstore/sigstore-python/pull/625))
+
 ## [1.1.2]
 
 ### Fixed
