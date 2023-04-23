@@ -554,12 +554,6 @@ def main() -> None:
 
 
 def _sign(args: argparse.Namespace) -> None:
-    if args.bundle:
-        logger.warning(
-            "--bundle support is experimental; the behaviour of this flag may change "
-            "between releases until stabilized."
-        )
-
     # `--no-default-files` has no effect on `--bundle`, but we forbid it because
     # it indicates user confusion.
     if args.no_default_files and args.bundle:
