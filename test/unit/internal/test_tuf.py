@@ -16,8 +16,8 @@
 import os
 from datetime import datetime, timedelta, timezone
 
-import pytest
 import pretend
+import pytest
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
