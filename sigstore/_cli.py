@@ -607,6 +607,10 @@ def _sign(args: argparse.Namespace) -> None:
         )
 
         output_dir = args.output_directory if args.output_directory else file.parent
+        if output_dir.exists() and not output_dir.is_dir():
+            args._parser.error(f"Output directory exists and is not a directory: {output_dir}")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         if not bundle and not args.no_default_files:
             bundle = output_dir / f"{file.name}.sigstore"
 
