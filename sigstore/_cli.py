@@ -311,7 +311,7 @@ def _parser() -> argparse.ArgumentParser:
         "--no-default-files",
         action="store_true",
         default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
-        help="Don't emit the default output files ({input}.sig, {input}.crt, {input}.rekor)",
+        help="Don't emit the default output files ({input}.sigstore)",
     )
     output_options.add_argument(
         "--signature",
@@ -341,15 +341,6 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "Write a single Sigstore bundle to the given file; does not work with multiple input "
             "files"
-        ),
-    )
-    output_options.add_argument(
-        "--no-bundle",
-        action="store_true",
-        default=False,
-        help=(
-            "Don't emit {input}.sigstore files for each input; this option is experimental "
-            "and may change between releases until stabilized"
         ),
     )
     output_options.add_argument(
@@ -563,36 +554,27 @@ def main() -> None:
 
 
 def _sign(args: argparse.Namespace) -> None:
-    if args.bundle:
-        logger.warning(
-            "--bundle support is experimental; the behaviour of this flag may change "
-            "between releases until stabilized."
-        )
+    has_sig = bool(args.signature)
+    has_crt = bool(args.certificate)
+    has_bundle = bool(args.bundle)
 
-    if args.no_bundle:
-        logger.warning(
-            "--no-bundle support is experimental; the behaviour of this flag may change "
-            "between releases until stabilized."
-        )
-
-    # `--no-default-files` has no effect on `--{signature,certificate,bundle}`,
-    # but we forbid it because it indicates user confusion.
-    if args.no_default_files and (args.signature or args.certificate or args.bundle):
-        args._parser.error(
-            "--no-default-files may not be combined with --signature, "
-            "--certificate, or --bundle",
-        )
-
-    # Fail if `--bundle` and `--no-bundle` are both specified.
-    if args.bundle and args.no_bundle:
-        args._parser.error("--bundle may not be combined with --no-bundle")
+    # `--no-default-files` has no effect on `--bundle`, but we forbid it because
+    # it indicates user confusion.
+    if args.no_default_files and has_bundle:
+        args._parser.error("--no-default-files may not be combined with --bundle.")
 
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
-    if (args.signature or args.certificate) and len(args.files) > 1:
+    if (has_sig or has_crt or has_bundle) and len(args.files) > 1:
         args._parser.error(
-            "Error: --signature and --certificate can't be used "
-            "with explicit outputs for multiple inputs",
+            "Error: --signature, --certificate, and --bundle can't be used with "
+            "explicit outputs for multiple inputs.",
+        )
+
+    # Fail if either `--signature` or `--certificate` is specified, but not both.
+    if has_sig ^ has_crt:
+        args._parser.error(
+            "Error: --signature and --certificate must be used together."
         )
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
@@ -607,11 +589,9 @@ def _sign(args: argparse.Namespace) -> None:
             args.certificate,
             args.bundle,
         )
-        if not sig and not cert and not bundle and not args.no_default_files:
-            sig = file.parent / f"{file.name}.sig"
-            cert = file.parent / f"{file.name}.crt"
-            if not args.no_bundle:
-                bundle = file.parent / f"{file.name}.sigstore"
+
+        if not bundle and not args.no_default_files:
+            bundle = file.parent / f"{file.name}.sigstore"
 
         if not args.overwrite:
             extants = []
