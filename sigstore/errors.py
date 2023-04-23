@@ -64,7 +64,8 @@ class NetworkError(Error):
         )
 
         return (
-            """A network issue occurred.
+            """\
+        A network issue occurred.
 
         Check your internet connection and try again.
         """
@@ -92,7 +93,8 @@ class TUFError(Error):
             "Please report this issue at <https://github.com/sigstore/sigstore-python/issues/new>.",
         )
 
-        return f"""{self.message}.
+        return f"""\
+        {self.message}.
 
         {details}
         """
@@ -104,3 +106,14 @@ class MetadataError(Error):
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""
         return f"""{str(self)}."""
+
+
+class RootError(Error):
+    """Raised when TUF cannot establish its root of trust."""
+
+    def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
+        return """\
+        Unable to establish root of trust.
+
+        This error may occur when the resources embedded in this distribution of sigstore-python are out of date."""
