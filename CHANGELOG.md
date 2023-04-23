@@ -8,12 +8,18 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Changed
+
+* A cached copy of the trust bundle is now included with the distribution.
+  ([#611](https://github.com/sigstore/sigstore-python/pull/611))
+
 ## [1.1.2]
 
 ### Fixed
 
 * Updated the `staging-root.json` for recent changes to the Sigstore staging
   instance ([#602](https://github.com/sigstore/sigstore-python/pull/602))
+
 * Switched TUF requests to their CDN endpoints, rather than direct GCS
   access ([#609](https://github.com/sigstore/sigstore-python/pull/609))
 
@@ -32,9 +38,6 @@ All versions prior to 0.9.0 are untracked.
   diagnostics.
 
 ### Changed
-
-* A cached copy of the trust bundle is now included with the distribution.
-  ([#611](https://github.com/sigstore/sigstore-python/pull/611))
 
 * Replaced ambient credential detection logic with the `id` package
   ([#535](https://github.com/sigstore/sigstore-python/pull/535))
