@@ -13,6 +13,10 @@ All versions prior to 0.9.0 are untracked.
 * A cached copy of the trust bundle is now included with the distribution.
   ([#611](https://github.com/sigstore/sigstore-python/pull/611))
 
+* Stopped emitting .sig and .crt signing outputs by default in `sigstore sign`.
+  Sigstore bundles are now preferred.
+  ([#614](https://github.com/sigstore/sigstore-python/pull/614))
+
 ## [1.1.2]
 
 ### Fixed
@@ -38,10 +42,6 @@ All versions prior to 0.9.0 are untracked.
   diagnostics.
 
 ### Changed
-
-* Stopped emitting .sig and .crt signing outputs by default in `sigstore sign`.
-  Sigstore bundles are now preferred.
-  ([#614](https://github.com/sigstore/sigstore-python/pull/614))
 
 * Replaced ambient credential detection logic with the `id` package
   ([#535](https://github.com/sigstore/sigstore-python/pull/535))
