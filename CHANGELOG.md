@@ -10,12 +10,16 @@ All versions prior to 0.9.0 are untracked.
 
 ### Changed
 
-* A cached copy of the trust bundle is now included with the distribution.
+* A cached copy of the trust bundle is now included with the distribution
   ([#611](https://github.com/sigstore/sigstore-python/pull/611))
 
 * Stopped emitting .sig and .crt signing outputs by default in `sigstore sign`.
-  Sigstore bundles are now preferred.
+  Sigstore bundles are now preferred
   ([#614](https://github.com/sigstore/sigstore-python/pull/614))
+
+* Trust root configuration now assumes that the TUF repository contains a trust
+  bundle, rather than falling back to deprecated individual targets
+  ([#626](https://github.com/sigstore/sigstore-python/pull/626))
 
 ## [1.1.2]
 

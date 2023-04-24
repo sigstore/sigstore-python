@@ -16,6 +16,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 
+import pretend
 import pytest
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import load_pem_x509_certificate
@@ -111,20 +112,6 @@ def test_is_timerange_valid():
     )  # Valid: 1 ago, 1 ago
 
 
-def test_updater_staging_get(monkeypatch, mock_staging_tuf, tuf_asset):
-    """Test that one of the get-methods returns the expected content.
-
-    Note: this test does not exercise "bundled trust root" codepaths, as those
-    are tested separately. We stub out `_get_trusted_root` to enforce this.
-    """
-
-    updater = TrustUpdater.staging()
-    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
-
-    key = tuf_asset.target("rekor.pub")
-    assert updater.get_rekor_keys() == [key]
-
-
 def test_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     # We don't strictly need to re-encode these keys as they are already DER,
     # but by doing so we are also validating the keys structurally.
@@ -145,9 +132,6 @@ def test_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
         ]
 
     updater = TrustUpdater.staging()
-
-    # The test should use the bundled root path, so we stub out the legacy getter here.
-    monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
 
     assert _der_keys(updater.get_ctfe_keys()) == _pem_keys(
         [
@@ -175,42 +159,16 @@ def test_updater_instance_error():
 
 def test_updater_ctfe_keys_error(monkeypatch):
     updater = TrustUpdater.staging()
-    # getter returns no keys.
-    monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
-    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
+    trusted_root = pretend.stub(ctlogs=[])
+    monkeypatch.setattr(updater, "_get_trusted_root", lambda: trusted_root)
     with pytest.raises(Exception, match="CTFE keys not found in TUF metadata"):
         updater.get_ctfe_keys()
 
 
-def test_updater_rekor_keys_error(tuf_asset, monkeypatch):
-    """Test a failure case for the Rekor get method.
-
-    Note: this test does not exercise "bundled trust root" codepaths, as those
-    are tested separately. We stub out `_get_trusted_root` to enforce this.
-    """
-
-    updater = TrustUpdater.staging()
-    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
-
-    rekor_key = tuf_asset.target("rekor.pub")
-    # getter returns duplicate copy of `rekor_key`.
-    monkeypatch.setattr(
-        updater,
-        "_get",
-        lambda usage, statuses: [rekor_key, rekor_key],
-    )
-
-    with pytest.raises(
-        Exception, match="Did not find one active Rekor key in TUF metadata"
-    ):
-        updater.get_rekor_keys()
-
-
 def test_updater_fulcio_certs_error(tuf_asset, monkeypatch):
     updater = TrustUpdater.staging()
-    # getter returns no fulcio certs.
-    monkeypatch.setattr(updater, "_get", lambda usage, statuses: [])
-    monkeypatch.setattr(updater, "_get_trusted_root", lambda: None)
+    trusted_root = pretend.stub(certificate_authorities=[])
+    monkeypatch.setattr(updater, "_get_trusted_root", lambda: trusted_root)
     with pytest.raises(
         Exception, match="Fulcio certificates not found in TUF metadata"
     ):
