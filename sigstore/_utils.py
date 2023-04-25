@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 import sys
 from typing import IO, NewType, Union
 
@@ -34,6 +35,9 @@ if sys.version_info < (3, 11):
     import importlib_resources as resources
 else:
     from importlib import resources
+
+
+logger = logging.getLogger(__name__)
 
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
@@ -217,6 +221,7 @@ def cert_is_sigstore_leaf(cert: Certificate) -> bool:
         digital_signature = key_usage.value.digital_signature
     except ExtensionNotFound:
         # The absence of this extension indicates an invalid state.
+        logger.debug("invalid state: certificate is missing KeyUsage")
         return False
 
     # If either CA state is set or the digital signature purpose is not set,
@@ -235,4 +240,6 @@ def cert_is_sigstore_leaf(cert: Certificate) -> bool:
 
         return ExtendedKeyUsageOID.CODE_SIGNING in extended_key_usage.value
     except ExtensionNotFound:
+        # The absence of this extension indicates an invalid state.
+        logger.debug("invalid state: certificate is missing ExtendedKeyUsage")
         return False
