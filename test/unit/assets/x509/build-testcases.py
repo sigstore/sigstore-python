@@ -231,9 +231,40 @@ def bogus_leaf_invalid_eku() -> x509.Certificate:
     return _finalize(builder, pubkey=pubkey)
 
 
+def bogus_leaf_missing_eku() -> x509.Certificate:
+    """
+    An invalid leaf certificate (for Sigstore purposes), due to a
+    missing ExtendedKeyUsage extension.
+    """
+
+    pubkey, _ = _keypair()
+    builder = _builder()
+    builder = builder.add_extension(
+        x509.BasicConstraints(ca=False, path_length=None),
+        critical=True,
+    )
+    builder = builder.add_extension(
+        x509.KeyUsage(
+            digital_signature=True,
+            key_cert_sign=False,
+            content_commitment=False,
+            key_encipherment=False,
+            data_encipherment=False,
+            key_agreement=False,
+            crl_sign=False,
+            encipher_only=False,
+            decipher_only=False,
+        ),
+        critical=False,
+    )
+
+    return _finalize(builder, pubkey=pubkey)
+
+
 # Individual testcases; see each function's docstring.
 _dump(bogus_root(), _HERE / "bogus-root.pem")
 _dump(bogus_root_invalid_ku(), _HERE / "bogus-root-invalid-ku.pem")
 _dump(bogus_leaf(), _HERE / "bogus-leaf.pem")
 _dump(bogus_leaf_invalid_ku(), _HERE / "bogus-leaf-invalid-ku.pem")
 _dump(bogus_leaf_invalid_eku(), _HERE / "bogus-leaf-invalid-eku.pem")
+_dump(bogus_leaf_missing_eku(), _HERE / "bogus-leaf-missing-eku.pem")
