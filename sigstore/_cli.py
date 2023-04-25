@@ -344,6 +344,16 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     output_options.add_argument(
+        "--output-directory",
+        metavar="DIR",
+        type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_DIRECTORY"),
+        help=(
+            "Write default outputs to the given directory (conflicts with --signature, --certificate"
+            ", --bundle)"
+        ),
+    )
+    output_options.add_argument(
         "--overwrite",
         action="store_true",
         default=_boolify_env("SIGSTORE_OVERWRITE"),
@@ -571,6 +581,12 @@ def _sign(args: argparse.Namespace) -> None:
             "explicit outputs for multiple inputs.",
         )
 
+    if args.output_directory and (has_sig or has_crt or has_bundle):
+        args._parser.error(
+            "Error: --signature, --certificate, and --bundle can't be used with "
+            "an explicit output directory.",
+        )
+
     # Fail if either `--signature` or `--certificate` is specified, but not both.
     if has_sig ^ has_crt:
         args._parser.error(
@@ -590,8 +606,15 @@ def _sign(args: argparse.Namespace) -> None:
             args.bundle,
         )
 
+        output_dir = args.output_directory if args.output_directory else file.parent
+        if output_dir.exists() and not output_dir.is_dir():
+            args._parser.error(
+                f"Output directory exists and is not a directory: {output_dir}"
+            )
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         if not bundle and not args.no_default_files:
-            bundle = file.parent / f"{file.name}.sigstore"
+            bundle = output_dir / f"{file.name}.sigstore"
 
         if not args.overwrite:
             extants = []
