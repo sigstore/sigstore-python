@@ -179,10 +179,14 @@ def read_embedded(name: str, prefix: str) -> bytes:
     return resources.files("sigstore._store").joinpath(prefix, name).read_bytes()  # type: ignore
 
 
-def cert_is_sigstore_leaf(cert: Certificate) -> bool:
+def cert_is_leaf(cert: Certificate) -> bool:
     """
-    Returns true if and only if the given `Certificate` is *not* a
-    CA (whether root or intermediate).
+    Returns `True` if and only if the given `Certificate` is a valid
+    leaf certificate for Sigstore purposes. This means that:
+
+    * It is not a root or intermediate CA;
+    * It has `BasicKeyUsage.digitalSignature` set;
+    * It has `CODE_SIGNING` as an `ExtendedKeyUsage`.
     """
 
     # NOTE(ww): This function is obnoxiously long to make the different

@@ -38,7 +38,7 @@ from sigstore._utils import (
     B64Str,
     PEMCert,
     base64_encode_pem_cert,
-    cert_is_sigstore_leaf,
+    cert_is_leaf,
     sha256_streaming,
 )
 from sigstore.transparency import LogEntry, LogInclusionProof
@@ -237,7 +237,7 @@ class VerificationMaterials:
         # in those cases.
         leaf_raw, *chain_raw = certs
         leaf_cert = load_der_x509_certificate(leaf_raw.raw_bytes)
-        if not cert_is_sigstore_leaf(leaf_cert):
+        if not cert_is_leaf(leaf_cert):
             raise InvalidMaterials("bundle contains an invalid leaf certificate")
 
         signature = bundle.message_signature.signature
