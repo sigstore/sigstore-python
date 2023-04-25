@@ -11,6 +11,7 @@
 # ...while running from this directory.
 
 import datetime
+import os
 from pathlib import Path
 
 from cryptography import x509
@@ -70,7 +71,8 @@ def _finalize(
 
 def _dump(cert: x509.Certificate, filename: Path):
     pem = cert.public_bytes(Encoding.PEM)
-    filename.write_bytes(pem)
+    if not filename.exists() and not os.getenv("TESTCASE_OVERWRITE"):
+        filename.write_bytes(pem)
 
 
 def bogus_root() -> x509.Certificate:
@@ -86,6 +88,34 @@ def bogus_root() -> x509.Certificate:
         x509.KeyUsage(
             digital_signature=True,
             key_cert_sign=True,
+            content_commitment=False,
+            key_encipherment=False,
+            data_encipherment=False,
+            key_agreement=False,
+            crl_sign=False,
+            encipher_only=False,
+            decipher_only=False,
+        ),
+        critical=False,
+    )
+
+    return _finalize(builder)
+
+
+def bogus_root_invalid_ku() -> x509.Certificate:
+    """
+    An invalid root CA certificate, due to inconsistent
+    KeyUsage state (KU.keyCertSign <> BC.ca)
+    """
+    builder = _builder()
+    builder = builder.add_extension(
+        x509.BasicConstraints(ca=True, path_length=None),
+        critical=True,
+    )
+    builder = builder.add_extension(
+        x509.KeyUsage(
+            digital_signature=True,
+            key_cert_sign=False,
             content_commitment=False,
             key_encipherment=False,
             data_encipherment=False,
@@ -203,6 +233,7 @@ def bogus_leaf_invalid_eku() -> x509.Certificate:
 
 # Individual testcases; see each function's docstring.
 _dump(bogus_root(), _HERE / "bogus-root.pem")
+_dump(bogus_root_invalid_ku(), _HERE / "bogus-root-invalid-ku.pem")
 _dump(bogus_leaf(), _HERE / "bogus-leaf.pem")
 _dump(bogus_leaf_invalid_ku(), _HERE / "bogus-leaf-invalid-ku.pem")
 _dump(bogus_leaf_invalid_eku(), _HERE / "bogus-leaf-invalid-eku.pem")
