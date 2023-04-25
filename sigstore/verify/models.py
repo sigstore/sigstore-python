@@ -238,7 +238,9 @@ class VerificationMaterials:
         leaf_raw, *chain_raw = certs
         leaf_cert = load_der_x509_certificate(leaf_raw.raw_bytes)
         if not cert_is_leaf(leaf_cert):
-            raise InvalidMaterials("bundle contains an invalid leaf certificate")
+            raise InvalidMaterials(
+                "bundle contains an invalid leaf or non-leaf certificate in the leaf position"
+            )
 
         signature = bundle.message_signature.signature
 
