@@ -212,7 +212,7 @@ def cert_is_leaf(cert: Certificate) -> bool:
         basic_constraints = cert.extensions.get_extension_for_oid(
             ExtensionOID.BASIC_CONSTRAINTS
         )
-        ca = basic_constraints.value.ca
+        ca = basic_constraints.value.ca  # type: ignore
     except ExtensionNotFound:
         # Only CA certificates should have BasicConstraints.
         ca = False
@@ -221,8 +221,8 @@ def cert_is_leaf(cert: Certificate) -> bool:
     key_cert_sign = False
     try:
         key_usage = cert.extensions.get_extension_for_oid(ExtensionOID.KEY_USAGE)
-        key_cert_sign = key_usage.value.key_cert_sign
-        digital_signature = key_usage.value.digital_signature
+        key_cert_sign = key_usage.value.key_cert_sign  # type: ignore
+        digital_signature = key_usage.value.digital_signature  # type: ignore
     except ExtensionNotFound:
         # The absence of this extension indicates an invalid state.
         logger.debug("invalid state: certificate is missing KeyUsage")
@@ -242,7 +242,7 @@ def cert_is_leaf(cert: Certificate) -> bool:
             ExtensionOID.EXTENDED_KEY_USAGE
         )
 
-        return ExtendedKeyUsageOID.CODE_SIGNING in extended_key_usage.value
+        return ExtendedKeyUsageOID.CODE_SIGNING in extended_key_usage.value  # type: ignore
     except ExtensionNotFound:
         # The absence of this extension indicates an invalid state.
         logger.debug("invalid state: certificate is missing ExtendedKeyUsage")
