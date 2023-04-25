@@ -131,10 +131,9 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
-                     [--certificate FILE] [--bundle FILE] [--no-bundle]
-                     [--overwrite] [--staging] [--rekor-url URL]
-                     [--rekor-root-pubkey FILE] [--fulcio-url URL]
-                     [--ctfe FILE]
+                     [--certificate FILE] [--bundle FILE] [--overwrite]
+                     [--staging] [--rekor-url URL] [--rekor-root-pubkey FILE]
+                     [--fulcio-url URL] [--ctfe FILE]
                      FILE [FILE ...]
 
 positional arguments:
@@ -158,8 +157,8 @@ OpenID Connect options:
                         --staging) (default: https://oauth2.sigstore.dev/auth)
 
 Output options:
-  --no-default-files    Don't emit the default output files ({input}.sig,
-                        {input}.crt, {input}.rekor) (default: False)
+  --no-default-files    Don't emit the default output files ({input}.sigstore)
+                        (default: False)
   --signature FILE, --output-signature FILE
                         Write a single signature to the given file; does not
                         work with multiple input files (default: None)
@@ -168,9 +167,6 @@ Output options:
                         work with multiple input files (default: None)
   --bundle FILE         Write a single Sigstore bundle to the given file; does
                         not work with multiple input files (default: None)
-  --no-bundle           Don't emit {input}.sigstore files for each input; this
-                        option is experimental and may change between releases
-                        until stabilized (default: False)
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
 

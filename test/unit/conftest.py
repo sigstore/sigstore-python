@@ -192,11 +192,12 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
     class MockFetcher(FetcherInterface):
         def _fetch(self, url: str) -> Iterator[bytes]:
             filepath = _TUF_ASSETS / urlparse(url).path.lstrip("/")
+            filename = filepath.name
             if filepath.is_file():
-                success[filepath] += 1
+                success[filename] += 1
                 return BytesIO(filepath.read_bytes())
 
-            failure[filepath] += 1
+            failure[filename] += 1
             raise DownloadHTTPError("File not found", 404)
 
     monkeypatch.setattr(tuf, "_get_fetcher", lambda: MockFetcher())
