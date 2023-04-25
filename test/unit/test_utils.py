@@ -104,6 +104,8 @@ def test_load_pem_public_key_serialization(monkeypatch):
     (
         ["bogus-root.pem", False],
         ["bogus-root-invalid-ku.pem", False],
+        ["bogus-intermediate.pem", False],
+        ["bogus-intermediate-with-eku.pem", False],
         ["bogus-leaf.pem", True],
         ["bogus-leaf-invalid-ku.pem", False],
         ["bogus-leaf-invalid-eku.pem", False],

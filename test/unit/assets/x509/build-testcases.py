@@ -130,6 +130,72 @@ def bogus_root_invalid_ku() -> x509.Certificate:
     return _finalize(builder)
 
 
+def bogus_intermediate() -> x509.Certificate:
+    """
+    A valid intermediate CA certificate, for Sigstore purposes.
+    """
+
+    pubkey, _ = _keypair()
+    builder = _builder()
+    builder = builder.add_extension(
+        x509.BasicConstraints(ca=True, path_length=1),
+        critical=True,
+    )
+    builder = builder.add_extension(
+        x509.KeyUsage(
+            digital_signature=True,
+            key_cert_sign=True,
+            content_commitment=False,
+            key_encipherment=False,
+            data_encipherment=False,
+            key_agreement=False,
+            crl_sign=False,
+            encipher_only=False,
+            decipher_only=False,
+        ),
+        critical=False,
+    )
+
+    return _finalize(builder, pubkey=pubkey)
+
+
+def bogus_intermediate_with_eku() -> x509.Certificate:
+    """
+    A valid intermediate CA certificate, for Sigstore purposes.
+
+    This is like `bogus_intermediate`, except that it also contains a
+    code signing EKU entitlement to make sure we don't treat
+    that as an incorrect signal.
+    """
+
+    pubkey, _ = _keypair()
+    builder = _builder()
+    builder = builder.add_extension(
+        x509.BasicConstraints(ca=True, path_length=1),
+        critical=True,
+    )
+    builder = builder.add_extension(
+        x509.KeyUsage(
+            digital_signature=True,
+            key_cert_sign=True,
+            content_commitment=False,
+            key_encipherment=False,
+            data_encipherment=False,
+            key_agreement=False,
+            crl_sign=False,
+            encipher_only=False,
+            decipher_only=False,
+        ),
+        critical=False,
+    )
+    builder = builder.add_extension(
+        x509.ExtendedKeyUsage(usages=[x509.OID_CODE_SIGNING]),
+        critical=False,
+    )
+
+    return _finalize(builder, pubkey=pubkey)
+
+
 def bogus_leaf() -> x509.Certificate:
     """
     A valid leaf certificate, for Sigstore purposes.
@@ -264,6 +330,8 @@ def bogus_leaf_missing_eku() -> x509.Certificate:
 # Individual testcases; see each function's docstring.
 _dump(bogus_root(), _HERE / "bogus-root.pem")
 _dump(bogus_root_invalid_ku(), _HERE / "bogus-root-invalid-ku.pem")
+_dump(bogus_intermediate(), _HERE / "bogus-intermediate.pem")
+_dump(bogus_intermediate_with_eku(), _HERE / "bogus-intermediate-with-eku.pem")
 _dump(bogus_leaf(), _HERE / "bogus-leaf.pem")
 _dump(bogus_leaf_invalid_ku(), _HERE / "bogus-leaf-invalid-ku.pem")
 _dump(bogus_leaf_invalid_eku(), _HERE / "bogus-leaf-invalid-eku.pem")
