@@ -20,10 +20,15 @@ from __future__ import annotations
 
 import base64
 import re
+import struct
 from dataclasses import dataclass
 from typing import List
 
+from cryptography.exceptions import InvalidSignature
 from pydantic import BaseModel, Field, StrictStr
+
+from sigstore._internal.rekor.client import RekorClient
+from sigstore._utils import KeyID
 
 
 @dataclass(frozen=True)
@@ -155,12 +160,26 @@ class SignedNote:
             signature = RekorSignature(
                 name=name,
                 # FIXME(jl): In Go, construct a big-endian UInt32 from 4 bytes. Is this equivalent?
-                sig_hash=signature_bytes[0:4],
+                sig_hash=struct.unpack(">4s", signature_bytes[0:4])[0],
                 signature=base64.b64encode(signature_bytes[4:]),
             )
             signatures.append(signature)
 
         return cls(note=header, signatures=signatures)
+
+    def verify(self, client: RekorClient, key_id: KeyID) -> None:
+        note = str.encode(self.note)
+
+        for sig in self.signatures:
+            if sig.sig_hash != key_id[:4]:
+                raise InvalidSignedNote("sig_hash hint does not match expected key_id")
+
+            try:
+                client._rekor_keyring.verify(
+                    key_id=key_id, signature=base64.b64decode(sig.signature), data=note
+                )
+            except InvalidSignature as inval_sig:
+                raise InvalidSignedNote("invalid signature") from inval_sig
 
 
 @dataclass(frozen=True)
