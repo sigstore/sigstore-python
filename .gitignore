@@ -23,4 +23,5 @@ build
 !sigstore/_store/*.pem
 !sigstore/_store/*.pub
 !test/unit/assets/*
+!test/unit/assets/x509/*
 !test/unit/assets/staging-tuf/*

@@ -96,3 +96,18 @@ def test_load_pem_public_key_serialization(monkeypatch):
         utils.InvalidKeyError, match="invalid key format (not ECDSA or RSA)*"
     ):
         utils.load_pem_public_key([keybytes])
+
+
+@pytest.mark.parametrize(
+    ("testcase", "valid"),
+    (
+        ["bogus-root.pem", False],
+        ["bogus-leaf.pem", True],
+        ["bogus-leaf-invalid-ku.pem", False],
+        ["bogus-leaf-invalid-eku.pem", False],
+    ),
+)
+def test_cert_is_leaf(x509_testcase, testcase, valid):
+    cert = x509_testcase(testcase)
+
+    assert utils.cert_is_leaf(cert) is valid
