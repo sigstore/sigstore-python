@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Fixed a case where `sigstore verify` would fail to verify an otherwise valid
+  inclusion proof due to an incorrect timerange check
+  ([#633](https://github.com/sigstore/sigstore-python/pull/633))
+
 ### Changed
 
 * A cached copy of the trust bundle is now included with the distribution
