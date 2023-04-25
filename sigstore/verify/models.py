@@ -38,6 +38,7 @@ from sigstore._utils import (
     B64Str,
     PEMCert,
     base64_encode_pem_cert,
+    cert_is_sigstore_leaf,
     sha256_streaming,
 )
 from sigstore.transparency import LogEntry, LogInclusionProof
@@ -225,11 +226,19 @@ class VerificationMaterials:
         certs = bundle.verification_material.x509_certificate_chain.certificates
         if len(certs) == 0:
             raise InvalidMaterials("expected non-empty certificate chain in bundle")
-        cert_pem = PEMCert(
-            load_der_x509_certificate(certs[0].raw_bytes)
-            .public_bytes(Encoding.PEM)
-            .decode()
-        )
+
+        # Per client policy in protobuf-specs: the first entry in the chain
+        # MUST be a leaf certificate, and the rest of the chain MUST NOT
+        # include a root CA or any intermediate CAs that appear in an
+        # independent root of trust.
+        #
+        # We expect some old bundles to violate the rules around root
+        # and intermediate CAs, so we issue warnings and not hard errors
+        # in those cases.
+        leaf_raw, *chain_raw = certs
+        leaf_cert = load_der_x509_certificate(leaf_raw.raw_bytes)
+        if not cert_is_sigstore_leaf(leaf_cert):
+            raise InvalidMaterials("bundle contains an invalid leaf certificate")
 
         signature = bundle.message_signature.signature
 
@@ -262,7 +271,7 @@ class VerificationMaterials:
 
         return cls(
             input_=input_,
-            cert_pem=PEMCert(cert_pem),
+            cert_pem=PEMCert(leaf_cert.public_bytes(Encoding.PEM).decode()),
             signature=signature,
             offline=offline,
             rekor_entry=entry,

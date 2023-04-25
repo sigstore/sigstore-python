@@ -25,7 +25,8 @@ from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from cryptography.x509 import Certificate
+from cryptography.x509 import Certificate, ExtensionNotFound, Version
+from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
 
 from sigstore.errors import Error
 
@@ -172,3 +173,66 @@ def read_embedded(name: str, prefix: str) -> bytes:
     returning its contents as bytes.
     """
     return resources.files("sigstore._store").joinpath(prefix, name).read_bytes()  # type: ignore
+
+
+def cert_is_sigstore_leaf(cert: Certificate) -> bool:
+    """
+    Returns true if and only if the given `Certificate` is *not* a
+    CA (whether root or intermediate).
+    """
+
+    # NOTE(ww): This function is obnoxiously long to make the different
+    # states explicit.
+
+    # Only v3 certificates should appear in the context of Sigstore;
+    # earlier versions of X.509 lack extensions and have ambiguous CA
+    # behavior.
+    if cert.version != Version.v3:
+        return False
+
+    # Valid CA certificates must have *all* of the following set:
+    #
+    #  * `BasicKeyUsage.digitalSignature`
+    #  * `BasicKeyUsage.keyCertSign`
+    #  * `BasicConstraints.ca`
+    #
+    # Of those, non-CAs must have *only* `BasicKeyUsage.digitalSignature` set.
+    # Any other combination of states is inconsistent and invalid, meaning
+    # that we won't consider the certificate a valid non-CA leaf.
+
+    try:
+        basic_constraints = cert.extensions.get_extension_for_oid(
+            ExtensionOID.BASIC_CONSTRAINTS
+        )
+        ca = basic_constraints.value.ca
+    except ExtensionNotFound:
+        # Only CA certificates should have BasicConstraints.
+        ca = False
+
+    digital_signature = False
+    key_cert_sign = False
+    try:
+        key_usage = cert.extensions.get_extension_for_oid(ExtensionOID.KEY_USAGE)
+        key_cert_sign = key_usage.value.key_cert_sign
+        digital_signature = key_usage.value.digital_signature
+    except ExtensionNotFound:
+        # The absence of this extension indicates an invalid state.
+        return False
+
+    # If either CA state is set or the digital signature purpose is not set,
+    # then this is either a CA, a malformed certificate, or a certificate that's
+    # invalid for digital signing purposes.
+    if (ca or key_cert_sign) or not digital_signature:
+        return False
+
+    # Finally, we check to make sure the leaf has an `ExtendedKeyUsages`
+    # extension that includes a codesigning entitlement. Sigstore should
+    # never issue a leaf that doesn't have this extended usage.
+    try:
+        extended_key_usage = cert.extensions.get_extension_for_oid(
+            ExtensionOID.EXTENDED_KEY_USAGE
+        )
+
+        return ExtendedKeyUsageOID.CODE_SIGNING in extended_key_usage.value
+    except ExtensionNotFound:
+        return False
