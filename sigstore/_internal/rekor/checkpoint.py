@@ -40,8 +40,6 @@ class RekorSignature:
     - the base64 signature
     """
 
-    # FIXME(jl): this does not feel like a de novo definition...
-    # does this exist already in sigstore-python (or its depenencices)?
     name: str
     sig_hash: bytes
     signature: bytes
@@ -155,7 +153,6 @@ class SignedNote:
 
             signature = RekorSignature(
                 name=name,
-                # FIXME(jl): In Go, construct a big-endian UInt32 from 4 bytes. Is this equivalent?
                 sig_hash=struct.unpack(">4s", signature_bytes[0:4])[0],
                 signature=base64.b64encode(signature_bytes[4:]),
             )
