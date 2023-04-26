@@ -266,6 +266,7 @@ class Verifier:
                 return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
             logger.debug("Successfully verified inclusion proof...")
+
         # Paranoia: if this is an online verification, we should *always* have
         # an inclusion proof, as we retrieved the log entry from Rekor. This
         # is an invalid state, so fail.

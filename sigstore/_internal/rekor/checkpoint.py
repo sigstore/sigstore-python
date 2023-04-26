@@ -108,7 +108,7 @@ class LogCheckpoint(BaseModel):
 @dataclass(frozen=True)
 class SignedNote:
     """
-    Represents a signed `Note` containing a note and its corresponding list of signatures.
+    Represents a "signed note" containing a note and its corresponding list of signatures.
     """
 
     note: StrictStr = Field(..., alias="note")
@@ -167,7 +167,7 @@ class SignedNote:
 
     def verify(self, client: RekorClient, key_id: KeyID) -> None:
         """
-        Verify the SignedNote with using the given RekorClient by verifying each contained signature.
+        Verify the `SignedNote` with using the given RekorClient by verifying each contained signature.
         """
 
         note = str.encode(self.note)
@@ -187,7 +187,7 @@ class SignedNote:
 @dataclass(frozen=True)
 class SignedCheckpoint:
     """
-    Represents a *signed* `Checkpoint`: a `LogCheckpoint` and its corresponding *signed* `Note`.
+    Represents a *signed* `Checkpoint`: a `LogCheckpoint` and its corresponding `SignedNote`.
     """
 
     signed_note: SignedNote
