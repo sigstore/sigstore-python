@@ -135,34 +135,3 @@ def verify_merkle_inclusion(entry: LogEntry) -> None:
             f"Inclusion proof contains invalid root hash: expected {inclusion_proof}, calculated "
             f"{calc_hash}"
         )
-
-
-def verify_checkpoint(client: RekorClient, entry: LogEntry) -> None:
-    """
-    Verify the inclusion proof's checkpoint.
-    """
-
-    inclusion_proof = entry.inclusion_proof
-    if inclusion_proof is None:
-        raise InvalidInclusionProofError("Rekor entry has no inclusion proof")
-    if inclusion_proof.checkpoint is None:
-        return
-
-    # verification occurs in two stages:
-    # 1) verify the signature on the checkpoint
-    # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
-
-    try:
-        signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
-        signed_checkpoint.signed_note.verify(client, KeyID(bytes.fromhex(entry.log_id)))
-    except CheckpointError as e:
-        raise InvalidInclusionProofError("Failed to verify checkpoint signature") from e
-
-    checkpoint_hash = signed_checkpoint.checkpoint.log_hash
-    root_hash = inclusion_proof.root_hash
-
-    if checkpoint_hash != root_hash:
-        raise InvalidInclusionProofError(
-            "Inclusion proof contains invalid root hash signature: ",
-            f"expected {str(checkpoint_hash)} got {str(root_hash)}",
-        )

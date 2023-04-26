@@ -41,6 +41,7 @@ from sigstore._internal.merkle import (
     verify_checkpoint,
     verify_merkle_inclusion,
 )
+from sigstore._internal.rekor.checkpoint import CheckpointError
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.tuf import TrustUpdater
@@ -258,7 +259,7 @@ class Verifier:
 
             try:
                 verify_checkpoint(self._rekor, entry)
-            except InvalidInclusionProofError as exc:
+            except CheckpointError as exc:
                 return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
         else:

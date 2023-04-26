@@ -29,6 +29,7 @@ from pydantic import BaseModel, Field, StrictStr
 from sigstore._internal.keyring import KeyringSignatureError
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._utils import KeyID
+from sigstore.transparency import LogEntry
 
 
 @dataclass(frozen=True)
@@ -201,3 +202,30 @@ class SignedCheckpoint:
         signed_note = SignedNote.from_text(text)
         checkpoint = LogCheckpoint.from_text(signed_note.note)
         return cls(signed_note=signed_note, checkpoint=checkpoint)
+
+
+def verify_checkpoint(client: RekorClient, entry: LogEntry) -> None:
+    """
+    Verify the inclusion proof's checkpoint.
+    """
+
+    inclusion_proof = entry.inclusion_proof
+    if inclusion_proof is None:
+        raise CheckpointError("Rekor entry has no inclusion proof")
+    if inclusion_proof.checkpoint is None:
+        return
+
+    # verification occurs in two stages:
+    # 1) verify the signature on the checkpoint
+    # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
+    signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
+    signed_checkpoint.signed_note.verify(client, KeyID(bytes.fromhex(entry.log_id)))
+
+    checkpoint_hash = signed_checkpoint.checkpoint.log_hash
+    root_hash = inclusion_proof.root_hash
+
+    if checkpoint_hash != root_hash:
+        raise CheckpointError(
+            "Inclusion proof contains invalid root hash signature: ",
+            f"expected {str(checkpoint_hash)} got {str(root_hash)}",
+        )
