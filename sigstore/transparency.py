@@ -124,8 +124,6 @@ class LogInclusionProof(BaseModel):
     Represents an inclusion proof for a transparency log entry.
     """
 
-    # `checkpoint` is Optional to preserve backwards compatibility with older
-    # bundles. It should always exist when fetched from Rekor.
     checkpoint: Optional[StrictStr] = Field(..., alias="checkpoint")
     hashes: List[StrictStr] = Field(..., alias="hashes")
     log_index: StrictInt = Field(..., alias="logIndex")
