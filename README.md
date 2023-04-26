@@ -131,8 +131,9 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
-                     [--certificate FILE] [--bundle FILE] [--overwrite]
-                     [--staging] [--rekor-url URL] [--rekor-root-pubkey FILE]
+                     [--certificate FILE] [--bundle FILE]
+                     [--output-directory DIR] [--overwrite] [--staging]
+                     [--rekor-url URL] [--rekor-root-pubkey FILE]
                      [--fulcio-url URL] [--ctfe FILE]
                      FILE [FILE ...]
 
@@ -167,6 +168,10 @@ Output options:
                         work with multiple input files (default: None)
   --bundle FILE         Write a single Sigstore bundle to the given file; does
                         not work with multiple input files (default: None)
+  --output-directory DIR
+                        Write default outputs to the given directory
+                        (conflicts with --signature, --certificate, --bundle)
+                        (default: None)
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
 

@@ -10,12 +10,16 @@ All versions prior to 0.9.0 are untracked.
 
 ### Changed
 
-* A cached copy of the trust bundle is now included with the distribution.
+* A cached copy of the trust bundle is now included with the distribution
   ([#611](https://github.com/sigstore/sigstore-python/pull/611))
 
 * Stopped emitting .sig and .crt signing outputs by default in `sigstore sign`.
-  Sigstore bundles are now preferred.
+  Sigstore bundles are now preferred
   ([#614](https://github.com/sigstore/sigstore-python/pull/614))
+
+* Trust root configuration now assumes that the TUF repository contains a trust
+  bundle, rather than falling back to deprecated individual targets
+  ([#626](https://github.com/sigstore/sigstore-python/pull/626))
 
 ## [1.1.2]
 
@@ -31,6 +35,11 @@ All versions prior to 0.9.0 are untracked.
 
 ### Added
 
+* `sigstore sign` now supports the `--output-directory` flag, which places
+  default outputs in the specified directory. Without this flag, default outputs
+  are placed adjacent to the signing input.
+  ([#627](https://github.com/sigstore/sigstore-python/pull/627))
+
 * The whole test suite can now be run locally with `make test-interactive`.
   ([#576](https://github.com/sigstore/sigstore-python/pull/576))
   Users will be prompted to authenticate with their identity provider twice to
@@ -40,6 +49,7 @@ All versions prior to 0.9.0 are untracked.
 
 * Network-related errors from the `sigstore._internal.tuf` module now have better
   diagnostics.
+  ([#525](https://github.com/sigstore/sigstore-python/pull/525))
 
 ### Changed
 
