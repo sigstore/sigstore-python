@@ -72,7 +72,7 @@ def _die(args: argparse.Namespace, message: str) -> NoReturn:
     `ArgumentParser.error`.
     """
     args._parser.error(message)
-    assert False, "unreachable"
+    raise ValueError("unreachable")
 
 
 def _boolify_env(envvar: str) -> bool:
