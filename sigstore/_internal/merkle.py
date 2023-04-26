@@ -26,9 +26,7 @@ import hashlib
 import struct
 from typing import List, Tuple
 
-from sigstore._internal.rekor import RekorClient, SignedCheckpoint
-from sigstore._internal.rekor.checkpoint import CheckpointError
-from sigstore._utils import HexStr, KeyID
+from sigstore._utils import HexStr
 from sigstore.transparency import LogEntry
 
 

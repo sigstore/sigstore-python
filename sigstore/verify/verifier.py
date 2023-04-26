@@ -38,10 +38,12 @@ from OpenSSL.crypto import (  # type: ignore[import]
 
 from sigstore._internal.merkle import (
     InvalidInclusionProofError,
-    verify_checkpoint,
     verify_merkle_inclusion,
 )
-from sigstore._internal.rekor.checkpoint import CheckpointError
+from sigstore._internal.rekor.checkpoint import (
+    CheckpointError,
+    verify_checkpoint,
+)
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.tuf import TrustUpdater
