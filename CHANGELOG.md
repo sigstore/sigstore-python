@@ -21,6 +21,18 @@ All versions prior to 0.9.0 are untracked.
   bundle, rather than falling back to deprecated individual targets
   ([#626](https://github.com/sigstore/sigstore-python/pull/626))
 
+* API change: the `sigstore.oidc.IdentityToken` API has been stabilized as
+  a wrapper for OIDC tokens
+  ([#635](https://github.com/sigstore/sigstore-python/pull/635))
+
+* API change: `Signer.sign` now takes a `sigstore.oidc.IdentityToken` for
+  its `identity` argument, rather than a "raw" OIDC token
+  ([#635](https://github.com/sigstore/sigstore-python/pull/635))
+
+* API change: `Issuer.identity_token` now returns a
+  `sigstore.oidc.IdentityToken`, rather than a "raw" OIDC token
+  ([#635](https://github.com/sigstore/sigstore-python/pull/635))
+
 ## [1.1.2]
 
 ### Fixed
