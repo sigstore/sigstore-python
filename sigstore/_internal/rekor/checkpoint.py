@@ -140,7 +140,9 @@ class SignedNote:
         data: str = text[split + len(separator) :]
 
         if len(data) == 0:
-            raise CheckpointError("Malformed Note: must contain at least one signature!")
+            raise CheckpointError(
+                "Malformed Note: must contain at least one signature!"
+            )
         if data[-1] != "\n":
             raise CheckpointError("Malformed Note: data section must end with newline!")
 
@@ -149,7 +151,9 @@ class SignedNote:
         for name, signature in re.findall(sig_parser, data):
             signature_bytes: bytes = base64.b64decode(signature)
             if len(signature_bytes) < 5:
-                raise CheckpointError("Malformed Note: signature contains too few bytes")
+                raise CheckpointError(
+                    "Malformed Note: signature contains too few bytes"
+                )
 
             signature = RekorSignature(
                 name=name,
@@ -161,6 +165,10 @@ class SignedNote:
         return cls(note=header, signatures=signatures)
 
     def verify(self, client: RekorClient, key_id: KeyID) -> None:
+        """
+        Verify the SignedNote with using the given RekorClient by verifying each contained signature.
+        """
+
         note = str.encode(self.note)
 
         for sig in self.signatures:
