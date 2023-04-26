@@ -251,23 +251,15 @@ class Verifier:
         # 5) Verify the inclusion proof supplied by Rekor for this artifact.
         #
         # We skip the inclusion proof only if explicitly requested.
-        if not materials._offline:
-            try:
-                verify_merkle_inclusion(entry)
-            except InvalidInclusionProofError as exc:
-                return VerificationFailure(
-                    reason=f"invalid Rekor inclusion proof: {exc}"
-                )
+        try:
+            verify_merkle_inclusion(entry)
+        except InvalidInclusionProofError as exc:
+            return VerificationFailure(reason=f"invalid Rekor inclusion proof: {exc}")
 
-            try:
-                verify_checkpoint(self._rekor, entry)
-            except CheckpointError as exc:
-                return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
-
-        else:
-            logger.debug(
-                "offline verification requested: skipping Merkle inclusion proof"
-            )
+        try:
+            verify_checkpoint(self._rekor._rekor_keyring, entry)
+        except CheckpointError as exc:
+            return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
         # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         try:

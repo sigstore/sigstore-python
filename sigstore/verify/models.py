@@ -117,10 +117,11 @@ class InvalidRekorEntry(InvalidMaterials):
     Raised if the effective Rekor entry in `VerificationMaterials.rekor_entry()`
     does not match the other materials in `VerificationMaterials`.
 
-    This can only happen in two scenarios:
+    This can only happen in three scenarios:
 
     * A user has supplied the wrong offline entry, potentially maliciously;
     * The Rekor log responded with the wrong entry, suggesting a server error.
+    * THe Rekor log responded with a malformed entry, potentially maliciously.
     """
 
     pass
@@ -242,25 +243,39 @@ class VerificationMaterials:
         inclusion_proof = tlog_entry.inclusion_proof
         checkpoint = inclusion_proof.checkpoint
 
-        inclusion_proof = LogInclusionProof(
-            checkpoint=checkpoint.envelope if checkpoint.envelope != "" else None,
-            hashes=[h.hex() for h in inclusion_proof.hashes],
-            log_index=inclusion_proof.log_index,
-            root_hash=inclusion_proof.root_hash.hex(),
-            tree_size=inclusion_proof.tree_size,
+        # Construct the LogInclusionProof. If the checkpoint does not exist, the
+        # bundled inclusion proof is not valid and we should fetch it from Rekor.
+        inclusion_proof = (
+            LogInclusionProof(
+                checkpoint=checkpoint.envelope,
+                hashes=[h.hex() for h in inclusion_proof.hashes],
+                log_index=inclusion_proof.log_index,
+                root_hash=inclusion_proof.root_hash.hex(),
+                tree_size=inclusion_proof.tree_size,
+            )
+            if checkpoint.envelope
+            else None
         )
-        entry = LogEntry(
-            uuid=None,
-            body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
-            integrated_time=tlog_entry.integrated_time,
-            log_id=tlog_entry.log_id.key_id.hex(),
-            log_index=tlog_entry.log_index,
-            inclusion_proof=inclusion_proof,
-            signed_entry_timestamp=B64Str(
-                base64.b64encode(
-                    tlog_entry.inclusion_promise.signed_entry_timestamp
-                ).decode()
-            ),
+
+        # Construct the LogEntry. If the LogInclusionProof is invalid, the
+        # LogEntry is invalid and we should force `VerificationMaterials.rekor_entry`
+        # to perform an online lookup.
+        entry = (
+            LogEntry(
+                uuid=None,
+                body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
+                integrated_time=tlog_entry.integrated_time,
+                log_id=tlog_entry.log_id.key_id.hex(),
+                log_index=tlog_entry.log_index,
+                inclusion_proof=inclusion_proof,
+                signed_entry_timestamp=B64Str(
+                    base64.b64encode(
+                        tlog_entry.inclusion_promise.signed_entry_timestamp
+                    ).decode()
+                ),
+            )
+            if inclusion_proof
+            else None
         )
 
         return cls(
@@ -299,6 +314,11 @@ class VerificationMaterials:
 
         if entry is None:
             raise RekorEntryMissing
+
+        # A log inclusion proof and its associated checkpoint should always be
+        # present in online Rekor lookups.
+        if not entry.inclusion_proof or not entry.inclusion_proof.checkpoint:
+            raise InvalidRekorEntry
 
         # To verify that an entry matches our other signing materials,
         # we transform our signature, artifact hash, and certificate
