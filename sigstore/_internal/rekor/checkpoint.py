@@ -117,7 +117,7 @@ class SignedNote:
     @classmethod
     def from_text(cls, text: str) -> SignedNote:
         """
-        Serialize from a bundled text 'note'.
+        Deserialize from a bundled text 'note'.
 
         A note contains:
         - a name, a string associated with the signer,
