@@ -129,7 +129,7 @@ class Signer:
         logger.debug(f"cert-identity: {identity.proof}")
         logger.debug(f"cert-oidc-issuer: {identity.issuer}")
 
-        # Build an X.509 Certificiate Signing Request
+        # Build an X.509 Certificate Signing Request
         builder = (
             x509.CertificateSigningRequestBuilder()
             .subject_name(

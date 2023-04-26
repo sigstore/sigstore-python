@@ -32,7 +32,7 @@ from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface
 
 from sigstore._internal import tuf
-from sigstore._internal.oidc import DEFAULT_AUDIENCE
+from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
 from sigstore.sign import Signer
 from sigstore.verify import VerificationMaterials
 from sigstore.verify.policy import VerificationSuccess
@@ -50,7 +50,7 @@ def _has_oidc_id():
         return True
 
     try:
-        token = detect_credential(DEFAULT_AUDIENCE)
+        token = detect_credential(_DEFAULT_AUDIENCE)
         if token is None:
             return False
     except GitHubOidcPermissionCredentialError:
@@ -226,6 +226,6 @@ def id_config(request):
     token = os.getenv(f"SIGSTORE_IDENTITY_TOKEN_{env}")
     if not token:
         # If the variable is not defined, try getting an ambient token.
-        token = detect_credential(DEFAULT_AUDIENCE)
+        token = detect_credential(_DEFAULT_AUDIENCE)
 
-    return signer, token
+    return signer, IdentityToken(token)
