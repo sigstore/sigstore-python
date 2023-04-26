@@ -241,7 +241,7 @@ class SigningResult(BaseModel):
                 ],
                 checkpoint=Checkpoint(
                     envelope=self.log_entry.inclusion_proof.checkpoint
-                )
+                ),
             )
 
         tlog_entry = TransparencyLogEntry(
