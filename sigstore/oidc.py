@@ -27,6 +27,7 @@ import webbrowser
 from typing import NoReturn, Optional, cast
 
 import id
+import jwt
 import requests
 from pydantic import BaseModel, StrictStr
 
@@ -35,13 +36,14 @@ from sigstore.errors import Error, NetworkError
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
 STAGING_OAUTH_ISSUER_URL = "https://oauth2.sigstage.dev/auth"
 
-
-class IssuerError(Exception):
-    """
-    Raised on any communication or format error with an OIDC issuer.
-    """
-
-    pass
+# See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
+_KNOWN_OIDC_ISSUERS = {
+    "https://accounts.google.com": "email",
+    "https://oauth2.sigstore.dev/auth": "email",
+    "https://oauth2.sigstage.dev/auth": "email",
+    "https://token.actions.githubusercontent.com": "sub",
+}
+_DEFAULT_AUDIENCE = "sigstore"
 
 
 class _OpenIDConfiguration(BaseModel):
@@ -54,6 +56,74 @@ class _OpenIDConfiguration(BaseModel):
 
     authorization_endpoint: StrictStr
     token_endpoint: StrictStr
+
+
+class IdentityToken:
+    """
+    An OIDC "identity", corresponding to an underlying OIDC token with
+    a sensible subject, issuer, and audience for Sigstore purposes.
+    """
+
+    def __init__(self, raw_token: str) -> None:
+        """
+        Create a new `IdentityToken` from the given OIDC token.
+        """
+
+        self._raw_token = raw_token
+
+        # NOTE: The lack of verification here is intentional, and is part of
+        # Sigstore's verification model: clients like sigstore-python are
+        # responsible only for forwarding the OIDC identity to Fulcio for
+        # certificate binding and issuance.
+        identity_jwt = jwt.decode(self._raw_token, options={"verify_signature": False})
+
+        self.issuer = identity_jwt.get("iss")
+        if self.issuer is None:
+            raise IdentityError("Identity token missing the required `iss` claim")
+
+        if "aud" not in identity_jwt:
+            raise IdentityError("Identity token missing the required `aud` claim")
+
+        aud = identity_jwt.get("aud")
+
+        if aud != _DEFAULT_AUDIENCE:
+            raise IdentityError(
+                f"Audience should be {_DEFAULT_AUDIENCE!r}, not {aud!r}"
+            )
+
+        # When verifying the private key possession proof, Fulcio uses
+        # different claims depending on the token's issuer.
+        # We currently special-case a handful of these, and fall back
+        # on signing the "sub" claim otherwise.
+        proof_claim = _KNOWN_OIDC_ISSUERS.get(self.issuer)
+        if proof_claim is not None:
+            if proof_claim not in identity_jwt:
+                raise IdentityError(
+                    f"Identity token missing the required `{proof_claim!r}` claim"
+                )
+
+            self.proof = str(identity_jwt.get(proof_claim))
+        else:
+            try:
+                self.proof = str(identity_jwt["sub"])
+            except KeyError:
+                raise IdentityError("Identity token missing `sub` claim")
+
+    def __str__(self) -> str:
+        """
+        Returns the underlying OIDC token for this identity.
+
+        That this token is secret in nature and **MUST NOT** be disclosed.
+        """
+        return self._raw_token
+
+
+class IssuerError(Exception):
+    """
+    Raised on any communication or format error with an OIDC issuer.
+    """
+
+    pass
 
 
 class Issuer:
@@ -107,9 +177,9 @@ class Issuer:
 
     def identity_token(  # nosec: B107
         self, client_id: str = "sigstore", client_secret: str = ""
-    ) -> str:
+    ) -> IdentityToken:
         """
-        Retrieves and returns an OpenID Connect token from the current `Issuer`, via OAuth.
+        Retrieves and returns an `IdentityToken` from the current `Issuer`, via OAuth.
 
         This function blocks on user interaction, either via a web browser or an out-of-band
         OAuth flow.
@@ -181,7 +251,7 @@ class Issuer:
         if token_error is not None:
             raise IdentityError(f"Error response from token endpoint: {token_error}")
 
-        return str(token_json["access_token"])
+        return IdentityToken(token_json["access_token"])
 
 
 class IdentityError(Error):
@@ -192,7 +262,7 @@ class IdentityError(Error):
     @classmethod
     def raise_from_id(cls, exc: id.IdentityError) -> NoReturn:
         """Raises a wrapped IdentityError from the provided `id.IdentityError`."""
-        raise IdentityError(str(exc)) from exc
+        raise cls(str(exc)) from exc
 
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""

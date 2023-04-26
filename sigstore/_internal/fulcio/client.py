@@ -46,6 +46,7 @@ from cryptography.x509.certificate_transparency import (
 from pydantic import BaseModel, Field, validator
 
 from sigstore._utils import B64Str
+from sigstore.oidc import IdentityToken
 
 logger = logging.getLogger(__name__)
 
@@ -208,14 +209,14 @@ class FulcioSigningCert(_Endpoint):
     """
 
     def post(
-        self, req: CertificateSigningRequest, token: str
+        self, req: CertificateSigningRequest, identity: IdentityToken
     ) -> FulcioCertificateSigningResponse:
         """
         Get the signing certificate, using an X.509 Certificate
         Signing Request.
         """
         headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {identity}",
             "Content-Type": "application/json",
             "Accept": "application/pem-certificate-chain",
         }

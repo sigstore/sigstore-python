@@ -21,7 +21,7 @@ import os
 import sys
 from pathlib import Path
 from textwrap import dedent
-from typing import Optional, TextIO, Union, cast
+from typing import NoReturn, Optional, TextIO, Union, cast
 
 from cryptography.x509 import load_pem_x509_certificates
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
@@ -30,7 +30,6 @@ from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.keyring import Keyring
-from sigstore._internal.oidc import DEFAULT_AUDIENCE
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
@@ -40,8 +39,10 @@ from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import PEMCert
 from sigstore.errors import Error
 from sigstore.oidc import (
+    _DEFAULT_AUDIENCE,
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,
+    IdentityToken,
     Issuer,
     detect_credential,
 )
@@ -63,6 +64,15 @@ logger = logging.getLogger(__name__)
 # to avoid overly verbose logging in third-party code by default.
 package_logger = logging.getLogger("sigstore")
 package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
+
+
+def _die(args: argparse.Namespace, message: str) -> NoReturn:
+    """
+    An `argparse` helper that fixes up the type hints on our use of
+    `ArgumentParser.error`.
+    """
+    args._parser.error(message)
+    assert False, "unreachable"
 
 
 def _boolify_env(envvar: str) -> bool:
@@ -549,16 +559,16 @@ def main() -> None:
             elif args.verify_subcommand == "github":
                 _verify_github(args)
             else:
-                parser.error(f"Unknown verify subcommand: {args.verify_subcommand}")
+                _die(args, f"Unknown verify subcommand: {args.verify_subcommand}")
         elif args.subcommand == "get-identity-token":
-            token = _get_identity_token(args)
-            if token:
-                print(token)
+            identity = _get_identity(args)
+            if identity:
+                print(identity)
             else:
-                args._parser.error("No identity token supplied or detected!")
+                _die(args, "No identity token supplied or detected!")
 
         else:
-            parser.error(f"Unknown subcommand: {args.subcommand}")
+            _die(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
         e.print_and_exit(args.verbose >= 1)
 
@@ -571,34 +581,34 @@ def _sign(args: argparse.Namespace) -> None:
     # `--no-default-files` has no effect on `--bundle`, but we forbid it because
     # it indicates user confusion.
     if args.no_default_files and has_bundle:
-        args._parser.error("--no-default-files may not be combined with --bundle.")
+        _die(args, "--no-default-files may not be combined with --bundle.")
 
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
     if (has_sig or has_crt or has_bundle) and len(args.files) > 1:
-        args._parser.error(
+        _die(
+            args,
             "Error: --signature, --certificate, and --bundle can't be used with "
             "explicit outputs for multiple inputs.",
         )
 
     if args.output_directory and (has_sig or has_crt or has_bundle):
-        args._parser.error(
+        _die(
+            args,
             "Error: --signature, --certificate, and --bundle can't be used with "
             "an explicit output directory.",
         )
 
     # Fail if either `--signature` or `--certificate` is specified, but not both.
     if has_sig ^ has_crt:
-        args._parser.error(
-            "Error: --signature and --certificate must be used together."
-        )
+        _die(args, "Error: --signature and --certificate must be used together.")
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
     # so that we can fail early if overwriting without `--overwrite`.
     output_map = {}
     for file in args.files:
         if not file.is_file():
-            args._parser.error(f"Input must be a file: {file}")
+            _die(args, f"Input must be a file: {file}")
 
         sig, cert, bundle = (
             args.signature,
@@ -608,9 +618,7 @@ def _sign(args: argparse.Namespace) -> None:
 
         output_dir = args.output_directory if args.output_directory else file.parent
         if output_dir.exists() and not output_dir.is_dir():
-            args._parser.error(
-                f"Output directory exists and is not a directory: {output_dir}"
-            )
+            _die(args, f"Output directory exists and is not a directory: {output_dir}")
         output_dir.mkdir(parents=True, exist_ok=True)
 
         if not bundle and not args.no_default_files:
@@ -626,9 +634,10 @@ def _sign(args: argparse.Namespace) -> None:
                 extants.append(str(bundle))
 
             if extants:
-                args._parser.error(
+                _die(
+                    args,
                     "Refusing to overwrite outputs without --overwrite: "
-                    f"{', '.join(extants)}"
+                    f"{', '.join(extants)}",
                 )
 
         output_map[file] = {
@@ -664,22 +673,26 @@ def _sign(args: argparse.Namespace) -> None:
             rekor=RekorClient(args.rekor_url, rekor_keyring, ct_keyring),
         )
 
-    # The order of precedence is as follows:
+    # The order of precedence for identities is as follows:
     #
     # 1) Explicitly supplied identity token
     # 2) Ambient credential detected in the environment, unless disabled
     # 3) Interactive OAuth flow
-    if not args.identity_token:
-        args.identity_token = _get_identity_token(args)
-    if not args.identity_token:
-        args._parser.error("No identity token supplied or detected!")
+    identity: IdentityToken | None
+    if args.identity_token:
+        identity = IdentityToken(args.identity_token)
+    else:
+        identity = _get_identity(args)
+
+    if not identity:
+        _die(args, "No identity token supplied or detected!")
 
     for file, outputs in output_map.items():
         logger.debug(f"signing for {file.name}")
         with file.open(mode="rb", buffering=0) as io:
             result = signer.sign(
                 input_=io,
-                identity_token=args.identity_token,
+                identity=identity,
             )
 
         print("Using ephemeral certificate:")
@@ -722,21 +735,22 @@ def _collect_verification_state(
     # Fail if --certificate, --signature, or --bundle is specified and we
     # have more than one input.
     if (args.certificate or args.signature or args.bundle) and len(args.files) > 1:
-        args._parser.error(
+        _die(
+            args,
             "--certificate, --signature, or --bundle can only be used "
-            "with a single input file"
+            "with a single input file",
         )
 
     # Fail if `--certificate` or `--signature` is used with `--bundle`.
     if args.bundle and (args.certificate or args.signature):
-        args._parser.error("--bundle cannot be used with --certificate or --signature")
+        _die(args, "--bundle cannot be used with --certificate or --signature")
 
     # The converse of `sign`: we build up an expected input map and check
     # that we have everything so that we can fail early.
     input_map = {}
     for file in args.files:
         if not file.is_file():
-            args._parser.error(f"Input must be a file: {file}")
+            _die(args, f"Input must be a file: {file}")
 
         sig, cert, bundle = (
             args.signature,
@@ -766,8 +780,9 @@ def _collect_verification_state(
             input_map[file] = {"bundle": bundle}
 
         if missing:
-            args._parser.error(
-                f"Missing verification materials for {(file)}: {', '.join(missing)}"
+            _die(
+                args,
+                f"Missing verification materials for {(file)}: {', '.join(missing)}",
             )
 
     if args.staging:
@@ -777,16 +792,14 @@ def _collect_verification_state(
         verifier = Verifier.production()
     else:
         if not args.certificate_chain:
-            args._parser.error(
-                "Custom Rekor URL used without specifying --certificate-chain"
-            )
+            _die(args, "Custom Rekor URL used without specifying --certificate-chain")
 
         try:
             certificate_chain = load_pem_x509_certificates(
                 args.certificate_chain.read()
             )
         except ValueError as error:
-            args._parser.error(f"Invalid certificate chain: {error}")
+            _die(args, f"Invalid certificate chain: {error}")
 
         if args.rekor_root_pubkey is not None:
             rekor_keys = [args.rekor_root_pubkey.read()]
@@ -957,24 +970,27 @@ def _verify_github(args: argparse.Namespace) -> None:
             raise VerificationError(cast(VerificationFailure, result))
 
 
-def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
+def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
     token = None
     if not args.oidc_disable_ambient_providers:
-        token = detect_credential(DEFAULT_AUDIENCE)
+        token = detect_credential(_DEFAULT_AUDIENCE)
 
-    if not token:
-        if args.staging:
-            issuer = Issuer.staging()
-        elif args.oidc_issuer == DEFAULT_OAUTH_ISSUER_URL:
-            issuer = Issuer.production()
-        else:
-            issuer = Issuer(args.oidc_issuer)
+    # Happy path: we've detected an ambient credential, so we can return early.
+    if token:
+        return IdentityToken(token)
 
-        if args.oidc_client_secret is None:
-            args.oidc_client_secret = ""  # nosec: B105
+    if args.staging:
+        issuer = Issuer.staging()
+    elif args.oidc_issuer == DEFAULT_OAUTH_ISSUER_URL:
+        issuer = Issuer.production()
+    else:
+        issuer = Issuer(args.oidc_issuer)
 
-        token = issuer.identity_token(
-            client_id=args.oidc_client_id, client_secret=args.oidc_client_secret
-        )
+    if args.oidc_client_secret is None:
+        args.oidc_client_secret = ""  # nosec: B105
+
+    token = issuer.identity_token(
+        client_id=args.oidc_client_id, client_secret=args.oidc_client_secret
+    )
 
     return token

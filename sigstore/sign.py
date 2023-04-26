@@ -23,14 +23,14 @@ from sigstore.sign import Signer
 from sigstore.oidc import Issuer
 
 issuer = Issuer.production()
-token = issuer.identity_token()
+identity = issuer.identity_token()
 
 # The artifact to sign
 artifact = Path("foo.txt")
 
 with artifact.open("rb") as a:
     signer = Signer.production()
-    result = signer.sign(input_=a, identity_token=token)
+    result = signer.sign(input_=a, identity=identity)
     print(result)
 ```
 """
@@ -67,11 +67,11 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
 )
 
 from sigstore._internal.fulcio import FulcioClient
-from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
+from sigstore.oidc import IdentityToken
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ class Signer:
     def sign(
         self,
         input_: IO[bytes],
-        identity_token: str,
+        identity: IdentityToken,
     ) -> SigningResult:
         """Public API for signing blobs"""
         input_digest = sha256_streaming(input_)
@@ -126,9 +126,8 @@ class Signer:
 
         logger.debug("Retrieving signed certificate...")
 
-        oidc_identity = Identity(identity_token)
-        logger.debug(f"cert-identity: {oidc_identity.proof}")
-        logger.debug(f"cert-oidc-issuer: {oidc_identity.issuer}")
+        logger.debug(f"cert-identity: {identity.proof}")
+        logger.debug(f"cert-oidc-issuer: {identity.issuer}")
 
         # Build an X.509 Certificiate Signing Request
         builder = (
@@ -136,7 +135,7 @@ class Signer:
             .subject_name(
                 x509.Name(
                     [
-                        x509.NameAttribute(NameOID.EMAIL_ADDRESS, oidc_identity.proof),
+                        x509.NameAttribute(NameOID.EMAIL_ADDRESS, identity.proof),
                     ]
                 )
             )
@@ -148,7 +147,7 @@ class Signer:
         certificate_request = builder.sign(private_key, hashes.SHA256())
 
         certificate_response = self._fulcio.signing_cert.post(
-            certificate_request, identity_token
+            certificate_request, identity
         )
 
         # TODO(alex): Retrieve the public key via TUF
