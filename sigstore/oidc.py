@@ -77,8 +77,8 @@ class IdentityToken:
         # certificate binding and issuance.
         identity_jwt = jwt.decode(self._raw_token, options={"verify_signature": False})
 
-        self.issuer = identity_jwt.get("iss")
-        if self.issuer is None:
+        self._issuer = identity_jwt.get("iss")
+        if self._issuer is None:
             raise IdentityError("Identity token missing the required `iss` claim")
 
         if "aud" not in identity_jwt:
@@ -95,19 +95,33 @@ class IdentityToken:
         # different claims depending on the token's issuer.
         # We currently special-case a handful of these, and fall back
         # on signing the "sub" claim otherwise.
-        proof_claim = _KNOWN_OIDC_ISSUERS.get(self.issuer)
-        if proof_claim is not None:
-            if proof_claim not in identity_jwt:
+        identity_claim = _KNOWN_OIDC_ISSUERS.get(self.issuer)
+        if identity_claim is not None:
+            if identity_claim not in identity_jwt:
                 raise IdentityError(
-                    f"Identity token missing the required `{proof_claim!r}` claim"
+                    f"Identity token missing the required `{identity_claim!r}` claim"
                 )
 
-            self.proof = str(identity_jwt.get(proof_claim))
+            self._identity = str(identity_jwt.get(identity_claim))
         else:
             try:
-                self.proof = str(identity_jwt["sub"])
+                self._identity = str(identity_jwt["sub"])
             except KeyError:
                 raise IdentityError("Identity token missing `sub` claim")
+
+    @property
+    def identity(self) -> str:
+        """
+        Returns this `IdentityToken`'s underlying subject.
+        """
+        return self._identity
+
+    @property
+    def issuer(self) -> str:
+        """
+        Returns a URL identifying this `IdentityToken`'s issuer.
+        """
+        return self._issuer
 
     def __str__(self) -> str:
         """

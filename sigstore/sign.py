@@ -126,7 +126,7 @@ class Signer:
 
         logger.debug("Retrieving signed certificate...")
 
-        logger.debug(f"cert-identity: {identity.proof}")
+        logger.debug(f"cert-identity: {identity.identity}")
         logger.debug(f"cert-oidc-issuer: {identity.issuer}")
 
         # Build an X.509 Certificate Signing Request
@@ -135,7 +135,7 @@ class Signer:
             .subject_name(
                 x509.Name(
                     [
-                        x509.NameAttribute(NameOID.EMAIL_ADDRESS, identity.proof),
+                        x509.NameAttribute(NameOID.EMAIL_ADDRESS, identity.identity),
                     ]
                 )
             )
