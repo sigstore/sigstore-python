@@ -258,8 +258,11 @@ class VerificationMaterials:
                 f"expected exactly one log entry, got {len(tlog_entries)}"
             )
         tlog_entry = tlog_entries[0]
-        inclusion_proof = tlog_entry.inclusion_proof
 
+        # NOTE: We only load the inclusion proof from the bundle if we know that
+        # we're performing an offline verification, since that's the only case
+        # in which we'll use it.
+        inclusion_proof = tlog_entry.inclusion_proof
         parsed_inclusion_proof: LogInclusionProof | None = None
         if inclusion_proof and offline:
             checkpoint = inclusion_proof.checkpoint
