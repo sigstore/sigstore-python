@@ -27,7 +27,7 @@ import struct
 from typing import List, Tuple
 
 from sigstore._internal.rekor import RekorClient, SignedCheckpoint
-from sigstore._internal.rekor.checkpoint import InvalidSignedNote
+from sigstore._internal.rekor.checkpoint import CheckpointError, InvalidSignedNote
 from sigstore._utils import HexStr, KeyID
 from sigstore.transparency import LogEntry
 
@@ -148,18 +148,14 @@ def verify_checkpoint(client: RekorClient, entry: LogEntry) -> None:
     if inclusion_proof.checkpoint is None:
         return
 
-    # verififcaiton occurs in two stages:
+    # verification occurs in two stages:
     # 1) verify the signature on the checkpoint
     # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
 
     try:
         signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
-    except ValueError as e:
-        raise InvalidInclusionProofError("Failed to parse checkpoint") from e
-
-    try:
         signed_checkpoint.signed_note.verify(client, KeyID(bytes.fromhex(entry.log_id)))
-    except InvalidSignedNote as e:
+    except CheckpointError as e:
         raise InvalidInclusionProofError("Failed to verify checkpoint signature") from e
 
     checkpoint_hash = signed_checkpoint.checkpoint.log_hash

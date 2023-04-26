@@ -47,6 +47,10 @@ class RekorSignature:
     signature: bytes
 
 
+class CheckpointError(Exception):
+    """Raised during LogCheckpoint parsing or verification."""
+
+
 class LogCheckpoint(BaseModel):
     """
     Represents a Rekor `LogCheckpoint` containing:
@@ -70,11 +74,11 @@ class LogCheckpoint(BaseModel):
 
         lines = text.strip().split("\n")
         if len(lines) < 4:
-            raise ValueError("Malformed LogCheckpoint: too few items in header!")
+            raise CheckpointError("Malformed LogCheckpoint: too few items in header!")
 
         origin = lines[0]
         if len(origin) == 0:
-            raise ValueError("Malformed LogCheckpoint: empty origin!")
+            raise CheckpointError("Malformed LogCheckpoint: empty origin!")
 
         log_size = int(lines[1])
         root_hash = base64.b64decode(lines[2]).hex()
@@ -100,14 +104,6 @@ class LogCheckpoint(BaseModel):
             ]
             + self.other_content
         )
-
-
-class InvalidSignedNote(Exception):
-    """
-    Raised during SignedNote verification if invalid in some way.
-    """
-
-    pass
 
 
 @dataclass(frozen=True)
@@ -137,7 +133,7 @@ class SignedNote:
 
         separator: str = "\n\n"
         if text.count(separator) != 1:
-            raise ValueError(
+            raise CheckpointError(
                 "Note must contain one blank line, deliniating the text from the signature block"
             )
         split = text.index(separator)
@@ -146,16 +142,16 @@ class SignedNote:
         data: str = text[split + len(separator) :]
 
         if len(data) == 0:
-            raise ValueError("Malformed Note: must contain at least one signature!")
+            raise CheckpointError("Malformed Note: must contain at least one signature!")
         if data[-1] != "\n":
-            raise ValueError("Malformed Note: data section must end with newline!")
+            raise CheckpointError("Malformed Note: data section must end with newline!")
 
         sig_parser = re.compile(r"\u2014 (\S+) (\S+)\n")
         signatures: list[RekorSignature] = []
         for name, signature in re.findall(sig_parser, data):
             signature_bytes: bytes = base64.b64decode(signature)
             if len(signature_bytes) < 5:
-                raise ValueError("Malformed Note: signature contains too few bytes")
+                raise CheckpointError("Malformed Note: signature contains too few bytes")
 
             signature = RekorSignature(
                 name=name,
@@ -172,14 +168,14 @@ class SignedNote:
 
         for sig in self.signatures:
             if sig.sig_hash != key_id[:4]:
-                raise InvalidSignedNote("sig_hash hint does not match expected key_id")
+                raise CheckpointError("sig_hash hint does not match expected key_id")
 
             try:
                 client._rekor_keyring.verify(
                     key_id=key_id, signature=base64.b64decode(sig.signature), data=note
                 )
             except KeyringSignatureError as sig_err:
-                raise InvalidSignedNote("invalid signature") from sig_err
+                raise CheckpointError("invalid signature") from sig_err
 
 
 @dataclass(frozen=True)
