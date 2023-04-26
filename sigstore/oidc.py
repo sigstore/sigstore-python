@@ -75,17 +75,20 @@ class IdentityToken:
         # Sigstore's verification model: clients like sigstore-python are
         # responsible only for forwarding the OIDC identity to Fulcio for
         # certificate binding and issuance.
-        identity_jwt = jwt.decode(self._raw_token, options={"verify_signature": False})
+        try:
+            identity_jwt = jwt.decode(
+                self._raw_token, options={"verify_signature": False}
+            )
+        except jwt.InvalidTokenError as exc:
+            raise IdentityError("invalid identity token") from exc
 
         self._issuer = identity_jwt.get("iss")
         if self._issuer is None:
             raise IdentityError("Identity token missing the required `iss` claim")
 
-        if "aud" not in identity_jwt:
-            raise IdentityError("Identity token missing the required `aud` claim")
-
         aud = identity_jwt.get("aud")
-
+        if aud is None:
+            raise IdentityError("Identity token missing the required `aud` claim")
         if aud != _DEFAULT_AUDIENCE:
             raise IdentityError(
                 f"Audience should be {_DEFAULT_AUDIENCE!r}, not {aud!r}"
@@ -99,7 +102,7 @@ class IdentityToken:
         if identity_claim is not None:
             if identity_claim not in identity_jwt:
                 raise IdentityError(
-                    f"Identity token missing the required `{identity_claim!r}` claim"
+                    f"Identity token missing the required {identity_claim!r} claim"
                 )
 
             self._identity = str(identity_jwt.get(identity_claim))
@@ -107,7 +110,7 @@ class IdentityToken:
             try:
                 self._identity = str(identity_jwt["sub"])
             except KeyError:
-                raise IdentityError("Identity token missing `sub` claim")
+                raise IdentityError("Identity token missing the required 'sub' claim")
 
     @property
     def identity(self) -> str:
