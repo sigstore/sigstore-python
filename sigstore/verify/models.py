@@ -22,6 +22,7 @@ import base64
 import json
 import logging
 from dataclasses import dataclass
+from textwrap import dedent
 from typing import IO
 
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -40,6 +41,7 @@ from sigstore._utils import (
     base64_encode_pem_cert,
     sha256_streaming,
 )
+from sigstore.errors import Error
 from sigstore.transparency import LogEntry, LogInclusionProof
 
 logger = logging.getLogger(__name__)
@@ -95,10 +97,26 @@ class VerificationFailure(VerificationResult):
     """
 
 
-class InvalidMaterials(Exception):
+class InvalidMaterials(Error):
     """
-    The associated `VerificationMaterials` are invalid in some way.
+    Raised when the associated `VerificationMaterials` are invalid in some way.
     """
+
+    def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
+
+        return dedent(
+            f"""\
+        An issue occurred while parsing the verification materials.
+
+        The provided verification materials are malformed and may have been
+        modified maliciously.
+
+        Additional context:
+
+        {self}
+        """
+        )
 
 
 class RekorEntryMissing(Exception):
@@ -223,6 +241,7 @@ class VerificationMaterials:
         Effect: `input_` is consumed as part of construction.
         """
         certs = bundle.verification_material.x509_certificate_chain.certificates
+
         if len(certs) == 0:
             raise InvalidMaterials("expected non-empty certificate chain in bundle")
         cert_pem = PEMCert(
@@ -240,22 +259,31 @@ class VerificationMaterials:
             )
         tlog_entry = tlog_entries[0]
         inclusion_proof = tlog_entry.inclusion_proof
-        checkpoint = inclusion_proof.checkpoint
 
-        inclusion_proof = LogInclusionProof(
-            checkpoint=checkpoint.envelope if checkpoint.envelope != "" else None,
-            hashes=[h.hex() for h in inclusion_proof.hashes],
-            log_index=inclusion_proof.log_index,
-            root_hash=inclusion_proof.root_hash.hex(),
-            tree_size=inclusion_proof.tree_size,
-        )
+        parsed_inclusion_proof: LogInclusionProof | None = None
+        if inclusion_proof and offline:
+            checkpoint = inclusion_proof.checkpoint
+
+            # If the bundle to be verified offline includes an inclusion proof,
+            # we verify it, which requires a checkpoint.
+            if not checkpoint.envelope:
+                raise InvalidMaterials("expected checkpoint in inclusion proof")
+
+            parsed_inclusion_proof = LogInclusionProof(
+                checkpoint=checkpoint.envelope,
+                hashes=[h.hex() for h in inclusion_proof.hashes],
+                log_index=inclusion_proof.log_index,
+                root_hash=inclusion_proof.root_hash.hex(),
+                tree_size=inclusion_proof.tree_size,
+            )
+
         entry = LogEntry(
             uuid=None,
             body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
             integrated_time=tlog_entry.integrated_time,
             log_id=tlog_entry.log_id.key_id.hex(),
             log_index=tlog_entry.log_index,
-            inclusion_proof=inclusion_proof,
+            inclusion_proof=parsed_inclusion_proof,
             signed_entry_timestamp=B64Str(
                 base64.b64encode(
                     tlog_entry.inclusion_promise.signed_entry_timestamp

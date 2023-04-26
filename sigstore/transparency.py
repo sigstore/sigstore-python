@@ -124,7 +124,7 @@ class LogInclusionProof(BaseModel):
     Represents an inclusion proof for a transparency log entry.
     """
 
-    checkpoint: Optional[StrictStr] = Field(..., alias="checkpoint")
+    checkpoint: StrictStr = Field(..., alias="checkpoint")
     hashes: List[StrictStr] = Field(..., alias="hashes")
     log_index: StrictInt = Field(..., alias="logIndex")
     root_hash: StrictStr = Field(..., alias="rootHash")

@@ -250,8 +250,9 @@ class Verifier:
 
         # 5) Verify the inclusion proof supplied by Rekor for this artifact.
         #
-        # We skip the inclusion proof only if explicitly requested.
-        if not materials._offline:
+        # The inclusion proof should always be present in the online case. In
+        # the offline case, if it is present, we verify it.
+        if entry.inclusion_proof:
             try:
                 verify_merkle_inclusion(entry)
             except InvalidInclusionProofError as exc:
@@ -264,9 +265,16 @@ class Verifier:
             except CheckpointError as exc:
                 return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
+            logger.debug("Successfully verified inclusion proof...")
+        # Paranoia: if this is an online verification, we should *always* have
+        # an inclusion proof, as we retrieved the log entry from Rekor. This
+        # is an invalid state, so fail.
+        elif not materials._offline:
+            return VerificationFailure(reason="missing Rekor inclusion proof")
         else:
             logger.debug(
-                "offline verification requested: skipping Merkle inclusion proof"
+                "inclusion proof not present in offline bundle: skipping Merkle "
+                "inclusion proof verification"
             )
 
         # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
