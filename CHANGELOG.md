@@ -10,8 +10,7 @@ All versions prior to 0.9.0 are untracked.
 
 ### Changed
 
-* `sigstore verify` now verifies signature timestamps with hashes signed
-  by Rekor.
+* `sigstore verify` now performs additional verification of Rekor's inclusion proofs by cross-checking them against signed checkpoints
   ([#634](https://github.com/sigstore/sigstore-python/pull/634))
 
 * A cached copy of the trust bundle is now included with the distribution
