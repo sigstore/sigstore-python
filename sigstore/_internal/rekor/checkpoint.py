@@ -24,9 +24,9 @@ import struct
 from dataclasses import dataclass
 from typing import List
 
-from cryptography.exceptions import InvalidSignature
 from pydantic import BaseModel, Field, StrictStr
 
+from sigstore._internal.keyring import KeyringSignatureError
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._utils import KeyID
 
@@ -178,8 +178,8 @@ class SignedNote:
                 client._rekor_keyring.verify(
                     key_id=key_id, signature=base64.b64decode(sig.signature), data=note
                 )
-            except InvalidSignature as inval_sig:
-                raise InvalidSignedNote("invalid signature") from inval_sig
+            except KeyringSignatureError as sig_err:
+                raise InvalidSignedNote("invalid signature") from sig_err
 
 
 @dataclass(frozen=True)

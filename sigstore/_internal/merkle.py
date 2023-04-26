@@ -27,6 +27,7 @@ import struct
 from typing import List, Tuple
 
 from sigstore._internal.rekor import RekorClient, SignedCheckpoint
+from sigstore._internal.rekor.checkpoint import InvalidSignedNote
 from sigstore._utils import HexStr, KeyID
 from sigstore.transparency import LogEntry
 
@@ -151,10 +152,15 @@ def verify_checkpoint(client: RekorClient, entry: LogEntry) -> None:
     # 1) verify the signature on the checkpoint
     # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
 
-    signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
+    try:
+        signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
+    except ValueError as e:
+        raise InvalidInclusionProofError("Failed to parse checkpoint") from e
 
-    # FIXME(jl): produces an invalid signature exception -- am I using the keyring correctly?
-    signed_checkpoint.signed_note.verify(client, KeyID(bytes.fromhex(entry.log_id)))
+    try:
+        signed_checkpoint.signed_note.verify(client, KeyID(bytes.fromhex(entry.log_id)))
+    except InvalidSignedNote as e:
+        raise InvalidInclusionProofError("Failed to verify checkpoint signature") from e
 
     checkpoint_hash = signed_checkpoint.checkpoint.log_hash
     root_hash = inclusion_proof.root_hash
