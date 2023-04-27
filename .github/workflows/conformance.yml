@@ -6,7 +6,6 @@ on:
       - main
   workflow_dispatch:
   pull_request_target:
-    types: [labeled]
 
 permissions:  # added using https://github.com/step-security/secure-workflows
   contents: read
