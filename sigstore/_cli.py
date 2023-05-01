@@ -253,12 +253,17 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     subcommands = parser.add_subparsers(
-        required=True, dest="subcommand", metavar="COMMAND"
+        required=True,
+        dest="subcommand",
+        metavar="COMMAND",
+        help="the operation to perform",
     )
 
     # `sigstore sign`
     sign = subcommands.add_parser(
-        "sign", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        "sign",
+        help="sign one or more inputs",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     oidc_options = sign.add_argument_group("OpenID Connect options")
@@ -354,10 +359,14 @@ def _parser() -> argparse.ArgumentParser:
     # `sigstore verify`
     verify = subcommands.add_parser(
         "verify",
+        help="verify one or more inputs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     verify_subcommand = verify.add_subparsers(
-        required=True, dest="verify_subcommand", metavar="COMMAND"
+        required=True,
+        dest="verify_subcommand",
+        metavar="COMMAND",
+        help="the kind of verification to perform",
     )
 
     # `sigstore verify identity`
@@ -458,7 +467,11 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     # `sigstore get-identity-token`
-    get_identity_token = subcommands.add_parser("get-identity-token")
+    get_identity_token = subcommands.add_parser(
+        "get-identity-token",
+        help="retrieve and return a Sigstore-compatible OpenID Connect token",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     _add_shared_oidc_options(get_identity_token)
 
     return parser
