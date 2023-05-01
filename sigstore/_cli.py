@@ -30,7 +30,6 @@ from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.keyring import Keyring
-from sigstore._internal.oidc import DEFAULT_AUDIENCE
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
@@ -960,7 +959,7 @@ def _verify_github(args: argparse.Namespace) -> None:
 def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
     token = None
     if not args.oidc_disable_ambient_providers:
-        token = detect_credential(DEFAULT_AUDIENCE)
+        token = detect_credential()
 
     if not token:
         if args.staging:
