@@ -30,6 +30,7 @@ import id
 import requests
 from pydantic import BaseModel, StrictStr
 
+from sigstore._internal.oidc import DEFAULT_AUDIENCE
 from sigstore.errors import Error, NetworkError
 
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
@@ -233,9 +234,9 @@ class IdentityError(Error):
             """
 
 
-def detect_credential(audience: str) -> Optional[str]:
+def detect_credential() -> Optional[str]:
     """Calls `id.detect_credential`, but wraps exceptions with our own exception type."""
     try:
-        return cast(Optional[str], id.detect_credential(audience))
+        return cast(Optional[str], id.detect_credential(DEFAULT_AUDIENCE))
     except id.IdentityError as exc:
         IdentityError.raise_from_id(exc)
