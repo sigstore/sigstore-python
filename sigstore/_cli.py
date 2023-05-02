@@ -39,7 +39,6 @@ from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import PEMCert
 from sigstore.errors import Error
 from sigstore.oidc import (
-    _DEFAULT_AUDIENCE,
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,
     IdentityToken,
