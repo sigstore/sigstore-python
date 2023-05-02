@@ -23,7 +23,14 @@ fixed_args = [
     ARG_REPLACEMENTS[arg] if arg in ARG_REPLACEMENTS else arg for arg in fixed_args
 ]
 
-# Prepend the `sigstore-python` executable name.
-fixed_args = ["sigstore"] + fixed_args
+# Fix-up the subcommand: the conformance suite uses `verify`, but
+# `sigstore` requires `verify identity` for identity based verifications.
+subcommand, *fixed_args = fixed_args
+if subcommand == "sign":
+    fixed_args = ["sigstore", "sign", *fixed_args]
+elif subcommand == "verify":
+    fixed_args = ["sigstore", "verify", "identity", *fixed_args]
+else:
+    raise ValueError(f"unsupported subcommand: {subcommand}")
 
 subprocess.run(fixed_args, text=True, check=True)
