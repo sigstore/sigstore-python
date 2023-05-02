@@ -98,12 +98,16 @@ Top-level:
 ```
 usage: sigstore [-h] [-V] [-v] [--staging] [--rekor-url URL]
                 [--rekor-root-pubkey FILE]
-                {sign,verify,get-identity-token} ...
+                COMMAND ...
 
 a tool for signing and verifying Python package distributions
 
 positional arguments:
-  {sign,verify,get-identity-token}
+  COMMAND               the operation to perform
+    sign                sign one or more inputs
+    verify              verify one or more inputs
+    get-identity-token  retrieve and return a Sigstore-compatible OpenID
+                        Connect token
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -257,10 +261,6 @@ Sigstore instance options:
                         the Fulcio signing certificate (default: None)
 ```
 <!-- @end-sigstore-verify-identity-help@ -->
-
-For backwards compatibility, `sigstore verify [args ...]` is equivalent to
-`sigstore verify identity [args ...]`, but the latter form is **strongly**
-preferred.
 
 #### Signatures from GitHub Actions
 
