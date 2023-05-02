@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Fixed a case where `sigstore verify` would fail to verify an otherwise valid
+  inclusion proof due to an incorrect timerange check
+  ([#633](https://github.com/sigstore/sigstore-python/pull/633))
+
 ### Changed
 
 * `sigstore verify` now performs additional verification of Rekor's inclusion proofs by cross-checking them against signed checkpoints
@@ -23,6 +29,10 @@ All versions prior to 0.9.0 are untracked.
 * Trust root configuration now assumes that the TUF repository contains a trust
   bundle, rather than falling back to deprecated individual targets
   ([#626](https://github.com/sigstore/sigstore-python/pull/626))
+
+* `sigstore verify` is not longer a backwards-compatible alias for
+  `sigstore verify identity`, as it was during the 1.0 release series
+  ([#642](https://github.com/sigstore/sigstore-python/pull/642))
 
 ### Fixed
 
