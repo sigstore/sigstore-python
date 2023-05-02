@@ -76,17 +76,17 @@ class IdentityToken:
         # responsible only for forwarding the OIDC identity to Fulcio for
         # certificate binding and issuance.
         try:
-            identity_jwt = jwt.decode(
+            self._unverified_claims = jwt.decode(
                 self._raw_token, options={"verify_signature": False}
             )
         except jwt.InvalidTokenError as exc:
             raise IdentityError("invalid identity token") from exc
 
-        self._issuer: str = identity_jwt.get("iss")  # type: ignore
+        self._issuer: str = self._unverified_claims.get("iss")  # type: ignore
         if self._issuer is None:
             raise IdentityError("Identity token missing the required `iss` claim")
 
-        aud = identity_jwt.get("aud")
+        aud = self._unverified_claims.get("aud")
         if aud is None:
             raise IdentityError("Identity token missing the required `aud` claim")
         if aud != _DEFAULT_AUDIENCE:
@@ -100,15 +100,15 @@ class IdentityToken:
         # on signing the "sub" claim otherwise.
         identity_claim = _KNOWN_OIDC_ISSUERS.get(self.issuer)
         if identity_claim is not None:
-            if identity_claim not in identity_jwt:
+            if identity_claim not in self._unverified_claims:
                 raise IdentityError(
                     f"Identity token missing the required {identity_claim!r} claim"
                 )
 
-            self._identity = str(identity_jwt.get(identity_claim))
+            self._identity = str(self._unverified_claims.get(identity_claim))
         else:
             try:
-                self._identity = str(identity_jwt["sub"])
+                self._identity = str(self._unverified_claims["sub"])
             except KeyError:
                 raise IdentityError("Identity token missing the required 'sub' claim")
 
@@ -125,6 +125,22 @@ class IdentityToken:
         Returns a URL identifying this `IdentityToken`'s issuer.
         """
         return self._issuer
+
+    @property
+    def federated_issuer(self) -> str | None:
+        """
+        Returns a URL identifying the "federated" issuer for this `IdentityToken`.
+
+        This is nominally an **implementation detail** of a Sigstore deployment,
+        but is exposed because some applications may find it useful to filter/exclude
+        identity tokens by their "original" issuer, even if the token has been
+        forwarded through a federated provider (e.g., a Dex instance).
+        """
+        federated_claims = self._unverified_claims.get("federated_claims")
+        if federated_claims is None:
+            return None
+
+        return str(federated_claims.get("connector_id"))
 
     def __str__(self) -> str:
         """

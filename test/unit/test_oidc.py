@@ -109,3 +109,19 @@ class TestIdentityToken:
         assert str(token) == jwt == token._raw_token
         assert token.identity == "some-identity"
         assert token.issuer == "https://example.com"
+        assert token.federated_issuer is None
+
+    def test_unknown_issuer_federated_ok(self):
+        jwt = (
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIiwiYXV"
+            "kIjoic2lnc3RvcmUiLCJzdWIiOiJzb21lLWlkZW50aXR5IiwiZmVkZXJhdGVkX2NsYWltcyI6eyJjb25"
+            "uZWN0b3JfaWQiOiJodHRwczovL290aGVyLmV4YW1wbGUuY29tIn19.EkpGq-4TZnHyxMaTd0AlEJrMtv"
+            "wxJ8TZH_0qZ-8CfuE"
+        )
+
+        token = oidc.IdentityToken(jwt)
+
+        assert str(token) == jwt == token._raw_token
+        assert token.identity == "some-identity"
+        assert token.issuer == "https://example.com"
+        assert token.federated_issuer == "https://other.example.com"
