@@ -267,9 +267,10 @@ class Verifier:
 
         # 7) Verify that the signing certificate was valid at the time of signing
         integrated_time = datetime.datetime.utcfromtimestamp(entry.integrated_time)
-        if (
-            integrated_time < materials.certificate.not_valid_before
-            or integrated_time >= materials.certificate.not_valid_after
+        if not (
+            materials.certificate.not_valid_before
+            <= integrated_time
+            <= materials.certificate.not_valid_after
         ):
             return VerificationFailure(
                 reason="invalid signing cert: expired at time of Rekor entry"
