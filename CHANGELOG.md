@@ -27,6 +27,16 @@ All versions prior to 0.9.0 are untracked.
   bundle, rather than falling back to deprecated individual targets
   ([#626](https://github.com/sigstore/sigstore-python/pull/626))
 
+* `sigstore verify` is not longer a backwards-compatible alias for
+  `sigstore verify identity`, as it was during the 1.0 release series
+  ([#642](https://github.com/sigstore/sigstore-python/pull/642))
+
+### Fixed
+
+* Removed an unnecessary and backwards-incompatible parameter from the
+  `sigstore.oidc.detect_credential` API
+  ([#641](https://github.com/sigstore/sigstore-python/pull/641))
+
 ## [1.1.2]
 
 ### Fixed

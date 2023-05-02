@@ -30,7 +30,6 @@ from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
 from sigstore._internal.keyring import Keyring
-from sigstore._internal.oidc import DEFAULT_AUDIENCE
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
@@ -84,42 +83,6 @@ def _boolify_env(envvar: str) -> bool:
         return False
     else:
         raise ValueError(f"can't coerce '{val}' to a boolean")
-
-
-def _set_default_verify_subparser(parser: argparse.ArgumentParser, name: str) -> None:
-    """
-    An argparse patch for configuring a default subparser for `sigstore verify`.
-
-    Adapted from <https://stackoverflow.com/a/26379693>
-    """
-    subparser_found = False
-    for arg in sys.argv[1:]:
-        if arg in ["-h", "--help"]:  # global help if no subparser
-            break
-    else:
-        for x in parser._subparsers._actions:  # type: ignore[union-attr]
-            if not isinstance(x, argparse._SubParsersAction):
-                continue
-            for sp_name in x._name_parser_map.keys():
-                if sp_name in sys.argv[1:]:
-                    subparser_found = True
-        if not subparser_found:
-            try:
-                # If `sigstore verify identity` wasn't passed explicitly, we need
-                # to insert the `identity` subcommand into the correct position
-                # within `sys.argv`. To do that, we get the index of the `verify`
-                # subcommand, and insert it directly after it.
-                verify_idx = sys.argv.index("verify")
-                sys.argv.insert(verify_idx + 1, name)
-                logger.warning(
-                    "`sigstore verify` without a subcommand will be treated as "
-                    "`sigstore verify identity`, but this behavior will be deprecated "
-                    "in a future release"
-                )
-            except ValueError:
-                # This happens when we invoke `sigstore sign`, since there's no
-                # `verify` subcommand to insert under. We do nothing in this case.
-                pass
 
 
 def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
@@ -289,11 +252,18 @@ def _parser() -> argparse.ArgumentParser:
         default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY"),
     )
 
-    subcommands = parser.add_subparsers(required=True, dest="subcommand")
+    subcommands = parser.add_subparsers(
+        required=True,
+        dest="subcommand",
+        metavar="COMMAND",
+        help="the operation to perform",
+    )
 
     # `sigstore sign`
     sign = subcommands.add_parser(
-        "sign", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        "sign",
+        help="sign one or more inputs",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     oidc_options = sign.add_argument_group("OpenID Connect options")
@@ -389,9 +359,15 @@ def _parser() -> argparse.ArgumentParser:
     # `sigstore verify`
     verify = subcommands.add_parser(
         "verify",
+        help="verify one or more inputs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    verify_subcommand = verify.add_subparsers(dest="verify_subcommand")
+    verify_subcommand = verify.add_subparsers(
+        required=True,
+        dest="verify_subcommand",
+        metavar="COMMAND",
+        help="the kind of verification to perform",
+    )
 
     # `sigstore verify identity`
     verify_identity = verify_subcommand.add_parser(
@@ -490,12 +466,12 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
 
-    # `sigstore verify` defaults to `sigstore verify identity`, for backwards
-    # compatibility.
-    _set_default_verify_subparser(verify, "identity")
-
     # `sigstore get-identity-token`
-    get_identity_token = subcommands.add_parser("get-identity-token")
+    get_identity_token = subcommands.add_parser(
+        "get-identity-token",
+        help="retrieve and return a Sigstore-compatible OpenID Connect token",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     _add_shared_oidc_options(get_identity_token)
 
     return parser
@@ -548,8 +524,6 @@ def main() -> None:
                 _verify_identity(args)
             elif args.verify_subcommand == "github":
                 _verify_github(args)
-            else:
-                parser.error(f"Unknown verify subcommand: {args.verify_subcommand}")
         elif args.subcommand == "get-identity-token":
             token = _get_identity_token(args)
             if token:
@@ -960,7 +934,7 @@ def _verify_github(args: argparse.Namespace) -> None:
 def _get_identity_token(args: argparse.Namespace) -> Optional[str]:
     token = None
     if not args.oidc_disable_ambient_providers:
-        token = detect_credential(DEFAULT_AUDIENCE)
+        token = detect_credential()
 
     if not token:
         if args.staging:
