@@ -32,6 +32,19 @@ All versions prior to 0.9.0 are untracked.
 * API change: `Issuer.identity_token` now returns a
   `sigstore.oidc.IdentityToken`, rather than a "raw" OIDC token
   ([#635](https://github.com/sigstore/sigstore-python/pull/635))
+* `sigstore verify` is not longer a backwards-compatible alias for
+  `sigstore verify identity`, as it was during the 1.0 release series
+  ([#642](https://github.com/sigstore/sigstore-python/pull/642))
+
+### Fixed
+
+* Fixed a case where `sigstore verify` would fail to verify an otherwise valid
+  inclusion proof due to an incorrect timerange check
+  ([#633](https://github.com/sigstore/sigstore-python/pull/633))
+
+* Removed an unnecessary and backwards-incompatible parameter from the
+  `sigstore.oidc.detect_credential` API
+  ([#641](https://github.com/sigstore/sigstore-python/pull/641))
 
 ## [1.1.2]
 
