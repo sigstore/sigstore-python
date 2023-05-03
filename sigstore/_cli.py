@@ -329,6 +329,12 @@ def _parser() -> argparse.ArgumentParser:
         default=_boolify_env("SIGSTORE_OVERWRITE"),
         help="Overwrite preexisting signature and certificate outputs, if present",
     )
+    output_options.add_argument(
+        "--single-cert",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_SINGLE_CERT"),
+        help="Use a single signing certificate and key to sign multiple artifacts",
+    )
 
     instance_options = sign.add_argument_group("Sigstore instance options")
     _add_shared_instance_options(instance_options)
@@ -614,10 +620,10 @@ def _sign(args: argparse.Namespace) -> None:
     # Select the signer to use.
     if args.staging:
         logger.debug("sign: staging instances requested")
-        signer = Signer.staging()
+        signer = Signer.staging(single_certificate=args.single_cert)
         args.oidc_issuer = STAGING_OAUTH_ISSUER_URL
     elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
-        signer = Signer.production()
+        signer = Signer.production(single_certificate=args.single_cert)
     else:
         # Assume "production" keys if none are given as arguments
         updater = TrustUpdater.production()
@@ -636,6 +642,7 @@ def _sign(args: argparse.Namespace) -> None:
         signer = Signer(
             fulcio=FulcioClient(args.fulcio_url),
             rekor=RekorClient(args.rekor_url, rekor_keyring, ct_keyring),
+            single_certificate=args.single_cert,
         )
 
     # The order of precedence is as follows:

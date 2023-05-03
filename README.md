@@ -136,8 +136,8 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
                      [--certificate FILE] [--bundle FILE]
-                     [--output-directory DIR] [--overwrite] [--staging]
-                     [--rekor-url URL] [--rekor-root-pubkey FILE]
+                     [--output-directory DIR] [--overwrite] [--single-cert]
+                     [--staging] [--rekor-url URL] [--rekor-root-pubkey FILE]
                      [--fulcio-url URL] [--ctfe FILE]
                      FILE [FILE ...]
 
@@ -178,6 +178,9 @@ Output options:
                         (default: None)
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
+
+  --single-cert         Use a single signing certificate and key to sign 
+                        multiple artifacts (default: False)
 
 Sigstore instance options:
   --staging             Use sigstore's staging instances, instead of the
