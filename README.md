@@ -179,7 +179,7 @@ Output options:
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
 
-  --single-cert         Use a single signing certificate and key to sign 
+  --single-cert         Use a single signing certificate and key to sign
                         multiple artifacts (default: False)
 
 Sigstore instance options:

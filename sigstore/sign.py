@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import IO
+from typing import IO, Callable, Optional
 
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -66,7 +66,10 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     TransparencyLogEntry,
 )
 
-from sigstore._internal.fulcio import FulcioClient
+from sigstore._internal.fulcio import (
+    FulcioCertificateSigningResponse,
+    FulcioClient,
+)
 from sigstore._internal.oidc import Identity
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
@@ -82,7 +85,13 @@ class Signer:
     The primary API for signing operations.
     """
 
-    def __init__(self, *, fulcio: FulcioClient, rekor: RekorClient, single_certificate: bool=False):
+    def __init__(
+        self,
+        *,
+        fulcio: FulcioClient,
+        rekor: RekorClient,
+        single_certificate: bool = False,
+    ):
         """
         Create a new `Signer`.
 
@@ -98,42 +107,55 @@ class Signer:
         self._fulcio = fulcio
         self._rekor = rekor
         self._single_certificate = single_certificate
-        self._signing_certificate = None
-        self._private_key = None
+        self._signing_certificate: Optional[FulcioCertificateSigningResponse] = None
+        self._private_key: Optional[ec.EllipticCurvePrivateKey] = None
 
     @classmethod
-    def production(cls, single_certificate=False) -> Signer:
+    def production(cls, single_certificate: bool = False) -> Signer:
         """
         Return a `Signer` instance configured against Sigstore's production-level services.
         """
         updater = TrustUpdater.production()
         rekor = RekorClient.production(updater)
-        return cls(fulcio=FulcioClient.production(), rekor=rekor, single_certificate=single_certificate)
+        return cls(
+            fulcio=FulcioClient.production(),
+            rekor=rekor,
+            single_certificate=single_certificate,
+        )
 
     @classmethod
-    def staging(cls, single_certificate=False) -> Signer:
+    def staging(cls, single_certificate: bool = False) -> Signer:
         """
         Return a `Signer` instance configured against Sigstore's staging-level services.
         """
         updater = TrustUpdater.staging()
         rekor = RekorClient.staging(updater)
-        return cls(fulcio=FulcioClient.staging(), rekor=rekor, single_certificate=single_certificate)
+        return cls(
+            fulcio=FulcioClient.staging(),
+            rekor=rekor,
+            single_certificate=single_certificate,
+        )
 
     @property
     def private_key(self) -> ec.EllipticCurvePrivateKey:
         """Get or generate a signing key."""
         if not self._single_certificate or self._private_key is None:
+            logger.debug("Generating ephemeral keys...")
             self._private_key = ec.generate_private_key(ec.SECP384R1())
 
         return self._private_key
 
     @property
-    def signing_cert(self) -> FulcioCertificateSigningResponse:
+    def signing_cert(
+        self,
+    ) -> Callable[[str, ec.EllipticCurvePrivateKey], FulcioCertificateSigningResponse]:
         """Get or request a signing certificate for Fulcio."""
-        def get_signing_cert(identity_token: str) -> FulcioCertificateSigningResponse:
+
+        def get_signing_cert(
+            identity_token: str, private_key: ec.EllipticCurvePrivateKey
+        ) -> FulcioCertificateSigningResponse:
             if not self._single_certificate or self._signing_certificate is None:
                 logger.debug("Retrieving signed certificate...")
-
                 oidc_identity = Identity(identity_token)
                 logger.debug(f"cert-identity: {oidc_identity.proof}")
                 logger.debug(f"cert-oidc-issuer: {oidc_identity.issuer}")
@@ -144,7 +166,9 @@ class Signer:
                     .subject_name(
                         x509.Name(
                             [
-                                x509.NameAttribute(NameOID.EMAIL_ADDRESS, oidc_identity.proof),
+                                x509.NameAttribute(
+                                    NameOID.EMAIL_ADDRESS, oidc_identity.proof
+                                ),
                             ]
                         )
                     )
@@ -153,7 +177,7 @@ class Signer:
                         critical=True,
                     )
                 )
-                certificate_request = builder.sign(self.private_key, hashes.SHA256())
+                certificate_request = builder.sign(private_key, hashes.SHA256())
 
                 certificate_response = self._fulcio.signing_cert.post(
                     certificate_request, identity_token
@@ -164,7 +188,6 @@ class Signer:
 
         return get_signing_cert
 
-
     def sign(
         self,
         input_: IO[bytes],
@@ -172,12 +195,8 @@ class Signer:
     ) -> SigningResult:
         """Public API for signing blobs"""
         input_digest = sha256_streaming(input_)
-
-        logger.debug("Generating ephemeral keys...")
         private_key = self.private_key
-
-        logger.debug("Retrieving signed certificate...")
-        certificate_response = self.signing_cert(identity_token)
+        certificate_response = self.signing_cert(identity_token, private_key)
 
         # TODO(alex): Retrieve the public key via TUF
         #
