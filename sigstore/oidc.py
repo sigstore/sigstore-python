@@ -112,6 +112,33 @@ class IdentityToken:
             except KeyError:
                 raise IdentityError("Identity token missing the required 'sub' claim")
 
+        # This identity token might have been retrieved directly from
+        # an identity provider, or it might be a "federated" identity token
+        # retrieved from a federated IdP (e.g., Sigstore's own Dex instance).
+        # In the latter case, the claims will also include a `federated_claims`
+        # set, which in turn should include a `connector_id` that reflects
+        # the "real" token issuer. We retrieve this, despite technically
+        # being an implementation detail, because it has value to client
+        # users: a client might want to make sure that its user is identifying
+        # with a *particular* IdP, which means that they need to pierce the
+        # federation layer to check which IdP is actually being used.
+        self._federated_issuer: str | None = None
+        federated_claims = self._unverified_claims.get("federated_claims")
+        if federated_claims is not None:
+            if not isinstance(federated_claims, dict):
+                raise IdentityError(
+                    "unexpected claim type: federated_claims is not a dict"
+                )
+
+            federated_issuer = federated_claims.get("connector_id")
+            if federated_issuer is not None:
+                if not isinstance(federated_issuer, str):
+                    raise IdentityError(
+                        "unexpected claim type: federated_claims.connector_id is not a string"
+                    )
+
+                self._federated_issuer = federated_issuer
+
     @property
     def identity(self) -> str:
         """
@@ -141,11 +168,7 @@ class IdentityToken:
         identity tokens by their "original" issuer, even if the token has been
         forwarded through a federated provider (e.g., a Dex instance).
         """
-        federated_claims = self._unverified_claims.get("federated_claims")
-        if federated_claims is None:
-            return None
-
-        return str(federated_claims.get("connector_id"))
+        return self._federated_issuer
 
     def __str__(self) -> str:
         """
