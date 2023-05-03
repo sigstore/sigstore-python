@@ -115,7 +115,12 @@ class IdentityToken:
     @property
     def identity(self) -> str:
         """
-        Returns this `IdentityToken`'s underlying subject.
+        Returns this `IdentityToken`'s underlying "subject".
+
+        Note that this is **not** always the `sub` claim in the corresponding
+        identity token: depending onm the token's issuer, it may be a *different*
+        claim, such as `email`. This corresponds to the Sigstore ecosystem's
+        behavior, e.g. in each issued certificate's SAN.
         """
         return self._identity
 
