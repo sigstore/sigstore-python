@@ -101,15 +101,55 @@ def test_load_pem_public_key_serialization(monkeypatch):
 
 @pytest.mark.parametrize(
     ("testcase", "valid"),
+    [
+        ("bogus-root.pem", True),
+        ("bogus-intermediate.pem", True),
+        ("bogus-leaf.pem", False),
+    ],
+)
+def test_cert_is_ca(x509_testcase, testcase, valid):
+    cert = x509_testcase(testcase)
+
+    assert utils.cert_is_ca(cert) is valid
+
+
+@pytest.mark.parametrize(
+    "testcase",
+    [
+        "bogus-root-invalid-ku.pem",
+        "bogus-root-missing-ku.pem",
+        "bogus-leaf-invalid-ku.pem",
+    ],
+)
+def test_cert_is_ca_invalid_states(x509_testcase, testcase):
+    cert = x509_testcase(testcase)
+
+    with pytest.raises(utils.InvalidCertError):
+        utils.cert_is_ca(cert)
+
+
+@pytest.mark.parametrize(
+    ("testcase", "valid"),
+    [
+        ("bogus-root.pem", True),
+        ("bogus-intermediate.pem", False),
+        ("bogus-leaf.pem", False),
+    ],
+)
+def test_cert_is_root_ca(x509_testcase, testcase, valid):
+    cert = x509_testcase(testcase)
+
+    assert utils.cert_is_root_ca(cert) is valid
+
+
+@pytest.mark.parametrize(
+    ("testcase", "valid"),
     (
         ["bogus-root.pem", False],
-        ["bogus-root-invalid-ku.pem", False],
         ["bogus-intermediate.pem", False],
         ["bogus-intermediate-with-eku.pem", False],
         ["bogus-leaf.pem", True],
-        ["bogus-leaf-invalid-ku.pem", False],
         ["bogus-leaf-invalid-eku.pem", False],
-        ["bogus-leaf-missing-eku.pem", False],
     ),
 )
 def test_cert_is_leaf(x509_testcase, testcase, valid):
@@ -118,6 +158,27 @@ def test_cert_is_leaf(x509_testcase, testcase, valid):
     assert utils.cert_is_leaf(cert) is valid
 
 
-def test_cert_is_leaf_invalid_version():
+@pytest.mark.parametrize(
+    "testcase",
+    [
+        "bogus-root-invalid-ku.pem",
+        "bogus-root-missing-ku.pem",
+        "bogus-leaf-invalid-ku.pem",
+        "bogus-leaf-missing-eku.pem",
+    ],
+)
+def test_cert_is_leaf_invalid_states(x509_testcase, testcase):
+    cert = x509_testcase(testcase)
+
+    with pytest.raises(utils.InvalidCertError):
+        utils.cert_is_leaf(cert)
+
+
+@pytest.mark.parametrize(
+    "helper", [utils.cert_is_leaf, utils.cert_is_ca, utils.cert_is_root_ca]
+)
+def test_cert_is_leaf_invalid_version(helper):
     cert = pretend.stub(version=x509.Version.v1)
-    assert not utils.cert_is_leaf(cert)
+
+    with pytest.raises(utils.InvalidCertError):
+        helper(cert)

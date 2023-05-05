@@ -39,6 +39,7 @@ from sigstore._utils import (
     PEMCert,
     base64_encode_pem_cert,
     cert_is_leaf,
+    cert_is_root_ca,
     sha256_streaming,
 )
 from sigstore.transparency import LogEntry, LogInclusionProof
@@ -241,6 +242,15 @@ class VerificationMaterials:
             raise InvalidMaterials(
                 "bundle contains an invalid leaf or non-leaf certificate in the leaf position"
             )
+
+        for chain_cert_raw in chain_raw:
+            chain_cert = load_der_x509_certificate(chain_cert_raw.raw_bytes)
+            # TODO: We should also retrieve the root of trust here and
+            # cross-check against it.
+            if cert_is_root_ca(chain_cert):
+                logger.warning(
+                    "this bundle contains a root CA, making it subject to misuse"
+                )
 
         signature = bundle.message_signature.signature
 
