@@ -159,16 +159,26 @@ class IdentityToken:
         return self._issuer
 
     @property
-    def federated_issuer(self) -> str | None:
+    def expected_certificate_subject(self) -> str:
         """
-        Returns a URL identifying the "federated" issuer for this `IdentityToken`.
+        Returns a URL identifying the **expected** subject for any Sigstore
+        certificate issued against this identity token.
 
-        This is nominally an **implementation detail** of a Sigstore deployment,
-        but is exposed because some applications may find it useful to filter/exclude
-        identity tokens by their "original" issuer, even if the token has been
-        forwarded through a federated provider (e.g., a Dex instance).
+        The behavior of this field is slightly subtle: for non-federated
+        identity providers (like a token issued directly by Google's IdP) it
+        should be exactly equivalent to `IdentityToken.issuer`. For federated
+        issuers (like Sigstore's own federated IdP) it should be equivalent to
+        the underlying federated issuer's URL, which is kept in an
+        implementation-defined claim.
+
+        This attribute exists so that clients who wish to inspect the expected
+        subject of their certificates can do so without relying on
+        implementation-specific behavior.
         """
-        return self._federated_issuer
+        if self._federated_issuer is not None:
+            return self._federated_issuer
+
+        return self._issuer
 
     def __str__(self) -> str:
         """

@@ -109,7 +109,7 @@ class TestIdentityToken:
         assert str(token) == jwt == token._raw_token
         assert token.identity == "some-identity"
         assert token.issuer == "https://example.com"
-        assert token.federated_issuer is None
+        assert token.expected_certificate_subject == "https://example.com"
 
     def test_unknown_issuer_federated_ok(self):
         jwt = (
@@ -124,4 +124,4 @@ class TestIdentityToken:
         assert str(token) == jwt == token._raw_token
         assert token.identity == "some-identity"
         assert token.issuer == "https://example.com"
-        assert token.federated_issuer == "https://other.example.com"
+        assert token.expected_certificate_subject == "https://other.example.com"
