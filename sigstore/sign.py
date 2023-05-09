@@ -121,13 +121,13 @@ class Signer:
         """Public API for signing blobs"""
         input_digest = sha256_streaming(input_)
 
-        logger.debug("Generating ephemeral keys...")
         private_key = ec.generate_private_key(ec.SECP384R1())
 
-        logger.debug("Retrieving signed certificate...")
-
-        logger.debug(f"cert-identity: {identity.identity}")
-        logger.debug(f"cert-oidc-issuer: {identity.issuer}")
+        logger.debug(
+            f"Performing CSR: identity={identity.identity} "
+            f"issuer={identity.issuer} "
+            f"subject={identity.expected_certificate_subject}"
+        )
 
         # Build an X.509 Certificate Signing Request
         builder = (
