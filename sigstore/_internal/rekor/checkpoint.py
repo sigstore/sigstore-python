@@ -36,6 +36,7 @@ from sigstore.transparency import LogEntry
 class RekorSignature:
     """
     Represents a `RekorSignature` containing:
+
     - the name of the signature, e.g. "rekor.sigstage.dev"
     - the signature hash
     - the base64 signature
@@ -53,11 +54,13 @@ class CheckpointError(Exception):
 class LogCheckpoint(BaseModel):
     """
     Represents a Rekor `LogCheckpoint` containing:
+
     - an origin, e.g. "rekor.sigstage.dev - 8050909264565447525"
     - the size of the log,
     - the hash of the log,
     - and any ancillary contants, e.g. "Timestamp: 1679349379012118479"
-    see: https://github.com/transparency-dev/formats/blob/main/log/README.md
+
+    See: <https://github.com/transparency-dev/formats/blob/main/log/README.md>
     """
 
     origin: StrictStr
@@ -126,8 +129,8 @@ class SignedNote:
             `\u2014 NAME SIGNATURE\n`
           (where \u2014 == em dash).
 
-        An adaptation of the Rekor's `UnmarshalText`:
-        https://github.com/sigstore/rekor/blob/4b1fa6661cc6dfbc844b4c6ed9b1f44e7c5ae1c0/pkg/util/signed_note.go#L141
+        This is derived from Rekor's `UnmarshalText`:
+        <https://github.com/sigstore/rekor/blob/4b1fa6661cc6dfbc844b4c6ed9b1f44e7c5ae1c0/pkg/util/signed_note.go#L141>
         """
 
         separator: str = "\n\n"
