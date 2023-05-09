@@ -116,6 +116,34 @@ def bogus_root() -> x509.Certificate:
     return _finalize(builder)
 
 
+def bogus_root_noncritical_bc() -> x509.Certificate:
+    """
+    An invalid root CA certificate, due to the BasicConstraints
+    extension being marked as non-critical.
+    """
+    builder = _builder()
+    builder = builder.add_extension(
+        x509.BasicConstraints(ca=True, path_length=None),
+        critical=False,
+    )
+    builder = builder.add_extension(
+        x509.KeyUsage(
+            digital_signature=True,
+            key_cert_sign=True,
+            content_commitment=False,
+            key_encipherment=False,
+            data_encipherment=False,
+            key_agreement=False,
+            crl_sign=False,
+            encipher_only=False,
+            decipher_only=False,
+        ),
+        critical=False,
+    )
+
+    return _finalize(builder)
+
+
 def bogus_root_missing_ku() -> x509.Certificate:
     """
     An invalid root CA certificate, due to a missing
@@ -357,6 +385,7 @@ def bogus_leaf_missing_eku() -> x509.Certificate:
 
 # Individual testcases; see each function's docstring.
 _dump(bogus_root(), _HERE / "bogus-root.pem")
+_dump(bogus_root_noncritical_bc(), _HERE / "bogus-root-noncritical-bc.pem")
 _dump(bogus_root_missing_ku(), _HERE / "bogus-root-missing-ku.pem")
 _dump(bogus_root_invalid_ku(), _HERE / "bogus-root-invalid-ku.pem")
 _dump(bogus_intermediate(), _HERE / "bogus-intermediate.pem")

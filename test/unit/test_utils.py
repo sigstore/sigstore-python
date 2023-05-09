@@ -116,6 +116,7 @@ def test_cert_is_ca(x509_testcase, testcase, valid):
 @pytest.mark.parametrize(
     "testcase",
     [
+        "bogus-root-noncritical-bc.pem",
         "bogus-root-invalid-ku.pem",
         "bogus-root-missing-ku.pem",
         "bogus-leaf-invalid-ku.pem",

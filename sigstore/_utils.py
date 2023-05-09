@@ -214,10 +214,17 @@ def cert_is_ca(cert: Certificate) -> bool:
         basic_constraints = cert.extensions.get_extension_for_oid(
             ExtensionOID.BASIC_CONSTRAINTS
         )
+
+        # BasicConstraints must be marked as critical, per RFC 5280 4.2.1.9.
+        if not basic_constraints.critical:
+            raise InvalidCertError(
+                "invalid X.509 certificate: non-critical BasicConstraints in CA"
+            )
+
         ca = basic_constraints.value.ca  # type: ignore
     except ExtensionNotFound:
-        # Only CA certificates should have BasicConstraints.
-        ca = False
+        # No BasicConstrains means that this can't possibly be a CA.
+        return False
 
     digital_signature = False
     key_cert_sign = False
