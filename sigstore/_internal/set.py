@@ -38,7 +38,7 @@ def verify_set(client: RekorClient, entry: LogEntry) -> None:
     Verify the Signed Entry Timestamp for a given Rekor `entry` using the given `client`.
     """
 
-    signed_entry_ts = base64.b64decode(entry.signed_entry_timestamp)
+    signed_entry_ts = base64.b64decode(entry.inclusion_promise)
 
     try:
         client._rekor_keyring.verify(

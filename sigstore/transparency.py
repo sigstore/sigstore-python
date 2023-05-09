@@ -69,13 +69,14 @@ class LogEntry:
     inclusion_proof: Optional["LogInclusionProof"]
     """
     An optional inclusion proof for this log entry.
-
-    Only present for entries retrieved from online logs.
     """
 
-    signed_entry_timestamp: B64Str
+    inclusion_promise: B64Str
     """
-    The base64-encoded Signed Entry Timestamp (SET) for this log entry.
+    An inclusion promise for this log entry.
+
+    Internally, this is a base64-encoded Signed Entry Timestamp (SET) for this
+    log entry.
     """
 
     @classmethod
@@ -99,7 +100,7 @@ class LogEntry:
             inclusion_proof=LogInclusionProof.parse_obj(
                 entry["verification"]["inclusionProof"]
             ),
-            signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
+            inclusion_promise=entry["verification"]["signedEntryTimestamp"],
         )
 
     def encode_canonical(self) -> bytes:

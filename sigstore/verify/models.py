@@ -287,7 +287,7 @@ class VerificationMaterials:
             log_id=tlog_entry.log_id.key_id.hex(),
             log_index=tlog_entry.log_index,
             inclusion_proof=parsed_inclusion_proof,
-            signed_entry_timestamp=B64Str(
+            inclusion_promise=B64Str(
                 base64.b64encode(
                     tlog_entry.inclusion_promise.signed_entry_timestamp
                 ).decode()

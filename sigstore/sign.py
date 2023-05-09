@@ -251,7 +251,7 @@ class SigningResult(BaseModel):
             integrated_time=self.log_entry.integrated_time,
             inclusion_promise=InclusionPromise(
                 signed_entry_timestamp=base64.b64decode(
-                    self.log_entry.signed_entry_timestamp
+                    self.log_entry.inclusion_promise
                 )
             ),
             inclusion_proof=inclusion_proof,
