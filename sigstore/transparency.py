@@ -66,7 +66,7 @@ class LogEntry:
     The index of this entry within the log.
     """
 
-    inclusion_proof: Optional["LogInclusionProof"]
+    inclusion_proof: LogInclusionProof | None
     """
     An optional inclusion proof for this log entry.
     """
