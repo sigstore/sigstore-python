@@ -10,7 +10,8 @@ All versions prior to 0.9.0 are untracked.
 
 ### Changed
 
-* `sigstore verify` now performs additional verification of Rekor's inclusion proofs by cross-checking them against signed checkpoints
+* `sigstore verify` now performs additional verification of Rekor's inclusion
+  proofs by cross-checking them against signed checkpoints
   ([#634](https://github.com/sigstore/sigstore-python/pull/634))
 
 * A cached copy of the trust bundle is now included with the distribution
@@ -35,6 +36,7 @@ All versions prior to 0.9.0 are untracked.
 * API change: `Issuer.identity_token` now returns a
   `sigstore.oidc.IdentityToken`, rather than a "raw" OIDC token
   ([#635](https://github.com/sigstore/sigstore-python/pull/635))
+
 * `sigstore verify` is not longer a backwards-compatible alias for
   `sigstore verify identity`, as it was during the 1.0 release series
   ([#642](https://github.com/sigstore/sigstore-python/pull/642))
