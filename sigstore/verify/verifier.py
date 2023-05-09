@@ -266,16 +266,14 @@ class Verifier:
                 return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
             logger.debug("Successfully verified inclusion proof...")
-
-        # Paranoia: if this is an online verification, we should *always* have
-        # an inclusion proof, as we retrieved the log entry from Rekor. This
-        # is an invalid state, so fail.
         elif not materials._offline:
+            # Paranoia: if we weren't given an inclusion proof, then
+            # this *must* have been offline verification. If it was online
+            # then we've somehow entered an invalid state, so fail.
             return VerificationFailure(reason="missing Rekor inclusion proof")
         else:
-            logger.debug(
-                "inclusion proof not present in offline bundle: skipping Merkle "
-                "inclusion proof verification"
+            logger.warning(
+                "inclusion proof not present in bundle: skipping due to offline verification"
             )
 
         # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact

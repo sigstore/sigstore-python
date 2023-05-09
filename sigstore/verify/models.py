@@ -259,16 +259,17 @@ class VerificationMaterials:
             )
         tlog_entry = tlog_entries[0]
 
-        # NOTE: We only load the inclusion proof from the bundle if we know that
-        # we're performing an offline verification, since that's the only case
-        # in which we'll use it.
+        # NOTE: Bundles are not required to include inclusion proofs,
+        # since offline (or non-gossiped) verification of an inclusion proof is
+        # only as strong as verification of the inclusion promise, which
+        # is always provided.
         inclusion_proof = tlog_entry.inclusion_proof
         parsed_inclusion_proof: LogInclusionProof | None = None
-        if inclusion_proof and offline:
+        if inclusion_proof:
             checkpoint = inclusion_proof.checkpoint
 
-            # If the bundle to be verified offline includes an inclusion proof,
-            # we verify it, which requires a checkpoint.
+            # If the inclusion proof is provided, it must include its
+            # checkpoint.
             if not checkpoint.envelope:
                 raise InvalidMaterials("expected checkpoint in inclusion proof")
 
@@ -316,8 +317,23 @@ class VerificationMaterials:
         """
         Returns a `RekorEntry` for the current signing materials.
         """
+
+        # The Rekor entry we use depends on a few different states:
+        # 1. If the user has requested offline verification and we've
+        #    been given an offline Rekor entry to use, we use it.
+        # 2. If the user has not requested offline verification,
+        #    we *opportunistically* use the offline Rekor entry,
+        #    so long as it contains an inclusion proof. If it doesn't
+        #    contain an inclusion proof, then we do an online entry lookup.
+
+        offline = self._offline
+        has_rekor_entry = self.has_rekor_entry
+        has_inclusion_proof = (
+            self.has_rekor_entry and self._rekor_entry.inclusion_proof is not None
+        )
+
         entry: LogEntry | None
-        if self._offline and self.has_rekor_entry:
+        if (offline and has_rekor_entry) or (not offline and has_inclusion_proof):
             logger.debug("using offline rekor entry")
             entry = self._rekor_entry
         else:
@@ -328,6 +344,7 @@ class VerificationMaterials:
                 self.certificate,
             )
 
+        # No matter what we do above, we must end up with a Rekor entry.
         if entry is None:
             raise RekorEntryMissing
 
