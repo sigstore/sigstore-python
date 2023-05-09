@@ -14,10 +14,9 @@
 
 import pretend
 import pytest
-from sigstore.transparency import LogEntry
 
+from sigstore.transparency import LogEntry
 from sigstore.verify import policy
-from sigstore.verify import verifier
 from sigstore.verify.models import (
     VerificationFailure,
     VerificationMaterials,
