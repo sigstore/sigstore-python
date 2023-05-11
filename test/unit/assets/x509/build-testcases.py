@@ -46,8 +46,8 @@ def _keypair(priv_key_file: Path):
 
 
 _HERE = Path(__file__).resolve().parent
-_ROOT_PUBKEY, _ROOT_PRIVKEY = _keypair(_HERE / "root_privkey.pem")
-_NONROOT_PUBKEY, _ = _keypair(_HERE / "nonroot_privkey.pem")
+_ROOT_PUBKEY, _ROOT_PRIVKEY = _keypair(_HERE / "root-privkey.pem")
+_NONROOT_PUBKEY, _ = _keypair(_HERE / "nonroot-privkey.pem")
 
 _NOT_VALID_BEFORE_DATE = datetime.datetime(2023, 1, 1)
 _A_VERY_LONG_TIME = datetime.timedelta(days=365 * 1000)
