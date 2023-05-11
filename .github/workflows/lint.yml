@@ -70,7 +70,7 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: deps
-        run: make dev SIGSTORE_EXTRA=lint
+        run: make dev
 
       - name: test certificates
         run: make test-certificates
