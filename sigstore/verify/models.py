@@ -255,15 +255,15 @@ class VerificationMaterials:
         # We expect some old bundles to violate the rules around root
         # and intermediate CAs, so we issue warnings and not hard errors
         # in those cases.
-        leaf_raw, *chain_raw = certs
-        leaf_cert = load_der_x509_certificate(leaf_raw.raw_bytes)
+        leaf_cert, *chain_certs = [
+            load_der_x509_certificate(cert.raw_bytes) for cert in certs
+        ]
         if not cert_is_leaf(leaf_cert):
             raise InvalidMaterials(
                 "bundle contains an invalid leaf or non-leaf certificate in the leaf position"
             )
 
-        for chain_cert_raw in chain_raw:
-            chain_cert = load_der_x509_certificate(chain_cert_raw.raw_bytes)
+        for chain_cert in chain_certs:
             # TODO: We should also retrieve the root of trust here and
             # cross-check against it.
             if cert_is_root_ca(chain_cert):
