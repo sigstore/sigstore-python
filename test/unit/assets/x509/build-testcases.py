@@ -85,7 +85,7 @@ def _finalize(
 
 def _dump(cert: x509.Certificate, filename: Path):
     pem = cert.public_bytes(Encoding.PEM)
-    if not filename.exists() and not os.getenv("TESTCASE_OVERWRITE"):
+    if not filename.exists() or os.getenv("TESTCASE_OVERWRITE"):
         filename.write_bytes(pem)
 
 
