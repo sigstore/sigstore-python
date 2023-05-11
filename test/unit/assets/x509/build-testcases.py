@@ -26,6 +26,7 @@
 
 import datetime
 import os
+import sys
 from pathlib import Path
 
 from cryptography import x509
@@ -88,7 +89,10 @@ def _finalize(
 def _dump(cert: x509.Certificate, filename: Path):
     pem = cert.public_bytes(Encoding.PEM)
     if not filename.exists() or os.getenv("TESTCASE_OVERWRITE"):
+        print(f"[+] writing: {filename}", file=sys.stderr)
         filename.write_bytes(pem)
+    else:
+        print(f"[+] skipping: {filename}", file=sys.stderr)
 
 
 def bogus_root() -> x509.Certificate:
