@@ -30,25 +30,27 @@ from pathlib import Path
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    load_pem_private_key,
+)
 from cryptography.x509.oid import NameOID
 
 
-def _keypair():
-    priv = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-    )
+def _keypair(priv_key_file: Path):
+    priv_key_bytes: bytes
+    with priv_key_file.open("rb") as f:
+        priv_key_bytes = f.read()
+    priv_key = load_pem_private_key(priv_key_bytes, None)
+    return priv_key.public_key(), priv_key
 
-    return priv.public_key(), priv
-
-
-_ROOT_PUBKEY, _ROOT_PRIVKEY = _keypair()
-
-_A_VERY_LONG_TIME = datetime.timedelta(days=365 * 1000)
 
 _HERE = Path(__file__).resolve().parent
+_ROOT_PUBKEY, _ROOT_PRIVKEY = _keypair(_HERE / "root_privkey.pem")
+_NONROOT_PUBKEY, _ = _keypair(_HERE / "nonroot_privkey.pem")
+
+_NOT_VALID_BEFORE_DATE = datetime.datetime(2023, 1, 1)
+_A_VERY_LONG_TIME = datetime.timedelta(days=365 * 1000)
 
 
 def _builder() -> x509.CertificateBuilder:
@@ -67,9 +69,9 @@ def _builder() -> x509.CertificateBuilder:
             ]
         )
     )
-    builder = builder.not_valid_before(datetime.datetime.today())
-    builder = builder.not_valid_after(datetime.datetime.today() + _A_VERY_LONG_TIME)
-    builder = builder.serial_number(x509.random_serial_number())
+    builder = builder.not_valid_before(_NOT_VALID_BEFORE_DATE)
+    builder = builder.not_valid_after(_NOT_VALID_BEFORE_DATE + _A_VERY_LONG_TIME)
+    builder = builder.serial_number(666)
     builder = builder.add_extension(
         x509.SubjectAlternativeName([x509.DNSName("bogus.example.com")]), critical=False
     )
@@ -191,7 +193,6 @@ def bogus_intermediate() -> x509.Certificate:
     A valid intermediate CA certificate, for Sigstore purposes.
     """
 
-    pubkey, _ = _keypair()
     builder = _builder()
     builder = builder.add_extension(
         x509.BasicConstraints(ca=True, path_length=1),
@@ -212,7 +213,7 @@ def bogus_intermediate() -> x509.Certificate:
         critical=False,
     )
 
-    return _finalize(builder, pubkey=pubkey)
+    return _finalize(builder, pubkey=_NONROOT_PUBKEY)
 
 
 def bogus_intermediate_with_eku() -> x509.Certificate:
@@ -224,7 +225,6 @@ def bogus_intermediate_with_eku() -> x509.Certificate:
     that as an incorrect signal.
     """
 
-    pubkey, _ = _keypair()
     builder = _builder()
     builder = builder.add_extension(
         x509.BasicConstraints(ca=True, path_length=1),
@@ -249,7 +249,7 @@ def bogus_intermediate_with_eku() -> x509.Certificate:
         critical=False,
     )
 
-    return _finalize(builder, pubkey=pubkey)
+    return _finalize(builder, pubkey=_NONROOT_PUBKEY)
 
 
 def bogus_leaf() -> x509.Certificate:
@@ -257,7 +257,6 @@ def bogus_leaf() -> x509.Certificate:
     A valid leaf certificate, for Sigstore purposes.
     """
 
-    pubkey, _ = _keypair()
     builder = _builder()
     builder = builder.add_extension(
         x509.BasicConstraints(ca=False, path_length=None),
@@ -282,7 +281,7 @@ def bogus_leaf() -> x509.Certificate:
         critical=False,
     )
 
-    return _finalize(builder, pubkey=pubkey)
+    return _finalize(builder, pubkey=_NONROOT_PUBKEY)
 
 
 def bogus_leaf_invalid_ku() -> x509.Certificate:
@@ -291,7 +290,6 @@ def bogus_leaf_invalid_ku() -> x509.Certificate:
     KeyUsage (lacking the digitalSignature entitlement).
     """
 
-    pubkey, _ = _keypair()
     builder = _builder()
     builder = builder.add_extension(
         x509.BasicConstraints(ca=False, path_length=None),
@@ -316,7 +314,7 @@ def bogus_leaf_invalid_ku() -> x509.Certificate:
         critical=False,
     )
 
-    return _finalize(builder, pubkey=pubkey)
+    return _finalize(builder, pubkey=_NONROOT_PUBKEY)
 
 
 def bogus_leaf_invalid_eku() -> x509.Certificate:
@@ -325,7 +323,6 @@ def bogus_leaf_invalid_eku() -> x509.Certificate:
     invalid ExtendedKeyUsage (lacking the code signing entitlement).
     """
 
-    pubkey, _ = _keypair()
     builder = _builder()
     builder = builder.add_extension(
         x509.BasicConstraints(ca=False, path_length=None),
@@ -350,7 +347,7 @@ def bogus_leaf_invalid_eku() -> x509.Certificate:
         critical=False,
     )
 
-    return _finalize(builder, pubkey=pubkey)
+    return _finalize(builder, pubkey=_NONROOT_PUBKEY)
 
 
 def bogus_leaf_missing_eku() -> x509.Certificate:
@@ -359,7 +356,6 @@ def bogus_leaf_missing_eku() -> x509.Certificate:
     missing ExtendedKeyUsage extension.
     """
 
-    pubkey, _ = _keypair()
     builder = _builder()
     builder = builder.add_extension(
         x509.BasicConstraints(ca=False, path_length=None),
@@ -380,7 +376,7 @@ def bogus_leaf_missing_eku() -> x509.Certificate:
         critical=False,
     )
 
-    return _finalize(builder, pubkey=pubkey)
+    return _finalize(builder, pubkey=_NONROOT_PUBKEY)
 
 
 # Individual testcases; see each function's docstring.

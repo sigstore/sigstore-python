@@ -89,6 +89,13 @@ test-interactive: TEST_ENV += \
 	SIGSTORE_IDENTITY_TOKEN_staging=$$($(MAKE) -s run ARGS="--staging get-identity-token")
 test-interactive: test
 
+.PHONY: test-certificates
+test-certificates: $(VENV)/pyvenv.cfg
+	. $(VENV_BIN)/activate && \
+		export TESTCASE_OVERWRITE=1 && \
+		python test/unit/assets/x509/build-testcases.py && \
+		git diff --exit-code
+
 .PHONY: doc
 doc: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
