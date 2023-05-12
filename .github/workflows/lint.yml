@@ -82,7 +82,7 @@ jobs:
     - lint
     - check-readme
     - licenses
-    - test-certificates
+    - x509-testcases
 
     runs-on: ubuntu-latest
 
