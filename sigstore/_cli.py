@@ -28,8 +28,13 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
-from sigstore._internal.fulcio.client import DEFAULT_FULCIO_URL, FulcioClient
+from sigstore._internal.fulcio.client import (
+    DEFAULT_FULCIO_URL,
+    ExpiredCertificate,
+    FulcioClient,
+)
 from sigstore._internal.keyring import Keyring
+from sigstore._internal.oidc import ExpiredIdentity
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
@@ -44,7 +49,7 @@ from sigstore.oidc import (
     Issuer,
     detect_credential,
 )
-from sigstore.sign import Signer
+from sigstore.sign import SigningContext
 from sigstore.transparency import LogEntry
 from sigstore.verify import (
     CertificateVerificationFailure,
@@ -330,10 +335,11 @@ def _parser() -> argparse.ArgumentParser:
         help="Overwrite preexisting signature and certificate outputs, if present",
     )
     output_options.add_argument(
-        "--single-cert",
+        "--no-cache",
+        dest="no_cache",
         action="store_true",
-        default=_boolify_env("SIGSTORE_SINGLE_CERT"),
-        help="Use a single signing certificate and key to sign multiple artifacts",
+        default=_boolify_env("SIGSTORE_NO_CACHE"),
+        help="Generate a new signing certificate and private key for each artifact signed",
     )
 
     instance_options = sign.add_argument_group("Sigstore instance options")
@@ -617,13 +623,13 @@ def _sign(args: argparse.Namespace) -> None:
             "bundle": bundle,
         }
 
-    # Select the signer to use.
+    # Select the signing context to use.
     if args.staging:
         logger.debug("sign: staging instances requested")
-        signer = Signer.staging(single_certificate=args.single_cert)
+        signing_ctx = SigningContext.staging()
         args.oidc_issuer = STAGING_OAUTH_ISSUER_URL
     elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
-        signer = Signer.production(single_certificate=args.single_cert)
+        signing_ctx = SigningContext.production()
     else:
         # Assume "production" keys if none are given as arguments
         updater = TrustUpdater.production()
@@ -639,10 +645,9 @@ def _sign(args: argparse.Namespace) -> None:
         ct_keyring = CTKeyring(Keyring(ctfe_keys))
         rekor_keyring = RekorKeyring(Keyring(rekor_keys))
 
-        signer = Signer(
+        signing_ctx = SigningContext(
             fulcio=FulcioClient(args.fulcio_url),
             rekor=RekorClient(args.rekor_url, rekor_keyring, ct_keyring),
-            single_certificate=args.single_cert,
         )
 
     # The order of precedence is as follows:
@@ -655,38 +660,51 @@ def _sign(args: argparse.Namespace) -> None:
     if not args.identity_token:
         args._parser.error("No identity token supplied or detected!")
 
-    for file, outputs in output_map.items():
-        logger.debug(f"signing for {file.name}")
-        with file.open(mode="rb", buffering=0) as io:
-            result = signer.sign(
-                input_=io,
-                identity_token=args.identity_token,
+    cache = not args.no_cache
+    with signing_ctx.with_signer(
+        identity_token=args.identity_token, cache=cache
+    ) as signer:
+        for file, outputs in output_map.items():
+            logger.debug(f"signing for {file.name}")
+            with file.open(mode="rb", buffering=0) as io:
+                try:
+                    result = signer.sign(
+                        input_=io, rekor=signing_ctx._rekor, fulcio=signing_ctx._fulcio
+                    )
+                except ExpiredIdentity as exp_identity:
+                    print("Signature failed: identity token has expired")
+                    raise exp_identity
+
+                except ExpiredCertificate as exp_certificate:
+                    print("Signature failed: Fulcio signing certificate has expired")
+                    raise exp_certificate
+
+            print("Using ephemeral certificate:")
+            print(result.cert_pem)
+
+            print(
+                f"Transparency log entry created at index: {result.log_entry.log_index}"
             )
 
-        print("Using ephemeral certificate:")
-        print(result.cert_pem)
+            sig_output: TextIO
+            if outputs["sig"] is not None:
+                sig_output = outputs["sig"].open("w")
+            else:
+                sig_output = sys.stdout
 
-        print(f"Transparency log entry created at index: {result.log_entry.log_index}")
+            print(result.b64_signature, file=sig_output)
+            if outputs["sig"] is not None:
+                print(f"Signature written to {outputs['sig']}")
 
-        sig_output: TextIO
-        if outputs["sig"] is not None:
-            sig_output = outputs["sig"].open("w")
-        else:
-            sig_output = sys.stdout
+            if outputs["cert"] is not None:
+                with outputs["cert"].open(mode="w") as io:
+                    print(result.cert_pem, file=io)
+                print(f"Certificate written to {outputs['cert']}")
 
-        print(result.b64_signature, file=sig_output)
-        if outputs["sig"] is not None:
-            print(f"Signature written to {outputs['sig']}")
-
-        if outputs["cert"] is not None:
-            with outputs["cert"].open(mode="w") as io:
-                print(result.cert_pem, file=io)
-            print(f"Certificate written to {outputs['cert']}")
-
-        if outputs["bundle"] is not None:
-            with outputs["bundle"].open(mode="w") as io:
-                print(result._to_bundle().to_json(), file=io)
-            print(f"Sigstore bundle written to {outputs['bundle']}")
+            if outputs["bundle"] is not None:
+                with outputs["bundle"].open(mode="w") as io:
+                    print(result._to_bundle().to_json(), file=io)
+                print(f"Sigstore bundle written to {outputs['bundle']}")
 
 
 def _collect_verification_state(

@@ -16,6 +16,8 @@
 OIDC functionality for sigstore-python.
 """
 
+from datetime import datetime, timezone
+
 import jwt
 from id import IdentityError
 
@@ -29,6 +31,10 @@ _KNOWN_OIDC_ISSUERS = {
 DEFAULT_AUDIENCE = "sigstore"
 
 
+class ExpiredIdentity(Exception):
+    """An error raised when an identity token is expired."""
+
+
 class Identity:
     """
     A wrapper for an OIDC "identity", as extracted from an OIDC token.
@@ -40,6 +46,7 @@ class Identity:
         """
         identity_jwt = jwt.decode(identity_token, options={"verify_signature": False})
 
+        self.exp_timestamp = identity_jwt.get("exp")
         self.issuer = identity_jwt.get("iss")
         if self.issuer is None:
             raise IdentityError("Identity token missing the required `iss` claim")
@@ -69,3 +76,12 @@ class Identity:
                 self.proof = str(identity_jwt["sub"])
             except KeyError:
                 raise IdentityError("Identity token missing `sub` claim")
+
+    def is_expired(self) -> bool:
+        """Verify if the identity token for this `Identity` is expired."""
+        if self.exp_timestamp:
+            now: float = datetime.now(timezone.utc).timestamp()
+            token_timestamp: float = self.exp_timestamp
+            return now > token_timestamp
+        else:
+            raise ValueError("Identity token does not have an expiration timestamp")
