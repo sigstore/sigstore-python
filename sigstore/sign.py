@@ -30,7 +30,7 @@ artifact = Path("foo.txt")
 
 with artifact.open("rb") as a:
     signing_ctx = SigningContext.production()
-    with signing_ctx.with_signer(token, cache=True) as signer:
+    with signing_ctx.with_signer(token, fulcio=singing_ctx._fulcio, cache=True) as signer:
         result = signer.sign(input_=a, rekor=signing_ctx._rekor, fulcio=signing_ctx._fulcio)
         print(result)
 ```
@@ -42,7 +42,7 @@ import base64
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import IO, Callable, Generator, Optional
+from typing import IO, Iterator, Optional
 
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -89,86 +89,105 @@ class Signer:
     The primary API for signing operations.
     """
 
-    def __init__(self, identity_token: str, cache: bool = True) -> None:
+    def __init__(
+        self, identity_token: str, fulcio: FulcioClient, cache: bool = True
+    ) -> None:
         """
         Create a new `Signer`.
 
         `identity_token` is the identity token used to request a signing certificate
         from Fulcio.
 
+        `fulcio` is a `FulcioClient` capable of connecting to a Fulcio instance
+        and returning signing certificates.
+
         `cache` determines whether the signing certificate and ephemeral private key
         should be reused (until the certificate expires) to sign different artifacts.
         Default is `True`.
         """
         self._identity_token: str = identity_token
-        self.cache: bool = cache
-        self._signing_certificate: Optional[FulcioCertificateSigningResponse] = None
-        self._private_key: Optional[ec.EllipticCurvePrivateKey] = None
-
-    @property
-    def private_key(self) -> ec.EllipticCurvePrivateKey:
-        """Get or generate a signing key."""
-        if not self.cache or self._private_key is None:
+        self.__cached_private_key: Optional[ec.EllipticCurvePrivateKey] = None
+        self.__private_key: Optional[ec.EllipticCurvePrivateKey] = None
+        self.__cached_signing_certificate: Optional[
+            FulcioCertificateSigningResponse
+        ] = None
+        self.__signing_certificate: Optional[FulcioCertificateSigningResponse] = None
+        if cache:
             logger.debug("Generating ephemeral keys...")
-            self._private_key = ec.generate_private_key(ec.SECP384R1())
+            self.__cached_private_key = ec.generate_private_key(ec.SECP384R1())
+            logger.debug("Requesting ephemeral certificate...")
+            self.__cached_signing_certificate = self._signing_cert(
+                self._private_key, fulcio
+            )
 
-        return self._private_key
+    def __del__(self) -> None:
+        """
+        Delete the Signer internal attributes.
+        This allows to not persist the certificate and private key
+        outside of the scope defined by `SigningContext`.
+        """
+        del self.__signing_certificate
+        del self.__private_key
 
     @property
-    def signing_cert(
+    def _private_key(self) -> ec.EllipticCurvePrivateKey:
+        """Get or generate a signing key."""
+        if self.__cached_private_key is None:
+            logger.debug("Generating ephemeral keys...")
+            self.__private_key = ec.generate_private_key(ec.SECP384R1())
+        else:
+            self.__private_key = self.__cached_private_key
+
+        return self.__private_key
+
+    def _signing_cert(
         self,
-    ) -> Callable[
-        [str, ec.EllipticCurvePrivateKey, FulcioClient],
-        FulcioCertificateSigningResponse,
-    ]:
+        private_key: ec.EllipticCurvePrivateKey,
+        fulcio: FulcioClient,
+    ) -> FulcioCertificateSigningResponse:
         """Get or request a signing certificate from Fulcio."""
+        # If it exists, verify if the current certificate is expired
+        if self.__cached_signing_certificate:
+            if (
+                datetime.now(timezone.utc).timestamp()
+                > self.__cached_signing_certificate.cert.not_valid_after.timestamp()
+            ):
+                raise ExpiredCertificate
+            else:
+                self.__signing_certificate = self.__cached_signing_certificate
 
-        def get_signing_cert(
-            identity_token: str,
-            private_key: ec.EllipticCurvePrivateKey,
-            fulcio: FulcioClient,
-        ) -> FulcioCertificateSigningResponse:
-            # If it exists, verify if the current certificate is expired
-            if self.cache and self._signing_certificate:
-                if (
-                    datetime.now(timezone.utc).timestamp()
-                    > self._signing_certificate.cert.not_valid_after.timestamp()
-                ):
-                    raise ExpiredCertificate
+        else:
+            logger.debug("Retrieving signed certificate...")
+            oidc_identity = Identity(self._identity_token)
+            logger.debug(f"cert-identity: {oidc_identity.proof}")
+            logger.debug(f"cert-oidc-issuer: {oidc_identity.issuer}")
 
-            elif not self.cache or self._signing_certificate is None:
-                logger.debug("Retrieving signed certificate...")
-                oidc_identity = Identity(identity_token)
-                logger.debug(f"cert-identity: {oidc_identity.proof}")
-                logger.debug(f"cert-oidc-issuer: {oidc_identity.issuer}")
-
-                # Build an X.509 Certificiate Signing Request
-                builder = (
-                    x509.CertificateSigningRequestBuilder()
-                    .subject_name(
-                        x509.Name(
-                            [
-                                x509.NameAttribute(
-                                    NameOID.EMAIL_ADDRESS, oidc_identity.proof
-                                ),
-                            ]
-                        )
-                    )
-                    .add_extension(
-                        x509.BasicConstraints(ca=False, path_length=None),
-                        critical=True,
+            # Build an X.509 Certificiate Signing Request
+            builder = (
+                x509.CertificateSigningRequestBuilder()
+                .subject_name(
+                    x509.Name(
+                        [
+                            x509.NameAttribute(
+                                NameOID.EMAIL_ADDRESS, oidc_identity.proof
+                            ),
+                        ]
                     )
                 )
-                certificate_request = builder.sign(private_key, hashes.SHA256())
-
-                certificate_response = fulcio.signing_cert.post(
-                    certificate_request, identity_token
+                .add_extension(
+                    x509.BasicConstraints(ca=False, path_length=None),
+                    critical=True,
                 )
+            )
+            certificate_request = builder.sign(private_key, hashes.SHA256())
 
-                self._signing_certificate = certificate_response
-            return self._signing_certificate
+            certificate_response = fulcio.signing_cert.post(
+                certificate_request, self._identity_token
+            )
 
-        return get_signing_cert
+            self.__signing_certificate = certificate_response
+
+        return self.__signing_certificate
 
     def sign(
         self,
@@ -178,15 +197,13 @@ class Signer:
     ) -> SigningResult:
         """Public API for signing blobs"""
         input_digest = sha256_streaming(input_)
-        private_key = self.private_key
+        private_key = self._private_key
 
         if Identity(self._identity_token).is_expired():
             raise ExpiredIdentity
 
         try:
-            certificate_response = self.signing_cert(
-                self._identity_token, private_key, fulcio
-            )
+            certificate_response = self._signing_cert(private_key, fulcio)
         except ExpiredCertificate as e:
             raise e
 
@@ -279,9 +296,7 @@ class SigningContext:
         )
 
     @contextmanager
-    def with_signer(
-        self, identity_token: str, cache: bool = True
-    ) -> Generator[Signer, None, None]:
+    def with_signer(self, identity_token: str, cache: bool = True) -> Iterator[Signer]:
         """
         A context manager for signing operations.
 
@@ -293,7 +308,7 @@ class SigningContext:
         to sign different artifacts.
         Default is `True`.
         """
-        signer = Signer(identity_token, cache)
+        signer = Signer(identity_token, self._fulcio, cache)
         try:
             yield signer
         finally:
