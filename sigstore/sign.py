@@ -179,7 +179,7 @@ class Signer:
         input_digest = sha256_streaming(input_)
         private_key = self._private_key
 
-        if Identity(self._identity_token).is_expired():
+        if not Identity(self._identity_token).in_validity_period():
             raise ExpiredIdentity
 
         try:

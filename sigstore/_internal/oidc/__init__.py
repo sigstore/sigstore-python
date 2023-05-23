@@ -42,22 +42,40 @@ class Identity:
 
     def __init__(self, identity_token: str) -> None:
         """
-        Create a new `Identity` from the given OIDC token.
+        Create a new `Identity` from the given OIDC token. The token must
+        contain a set of basic claims (`aud`, `iat`, `nbf`, `exp`, and `iss`),
+        as well as whatever "core identity" claim corresponds to the token's
+        `iss`.
+
+        The token must also be non-expired (according to its claims)
+        at the time of construction. It may become expired over the lifetime
+        of the `Identity` object.
+
+        NOTE: This is **not** a verifying wrapper: the given OIDC token's
+        signature is not verified.
         """
-        identity_jwt = jwt.decode(identity_token, options={"verify_signature": False})
 
-        self.exp_timestamp = identity_jwt.get("exp")
-        self.issuer = identity_jwt.get("iss")
-        if self.issuer is None:
-            raise IdentityError("Identity token missing the required `iss` claim")
+        try:
+            identity_jwt = jwt.decode(
+                identity_token,
+                options={
+                    "verify_signature": False,
+                    "verify_aud": True,
+                    "verify_iat": True,
+                    "verify_nbf": True,
+                    "verify_exp": True,
+                    "require": ["aud", "iat", "nbf", "exp", "iss"],
+                },
+                audience=DEFAULT_AUDIENCE,
+            )
+        except Exception as exc:
+            raise IdentityError(
+                "Identity token is malformed or missing claims"
+            ) from exc
 
-        if "aud" not in identity_jwt:
-            raise IdentityError("Identity token missing the required `aud` claim")
-
-        aud = identity_jwt.get("aud")
-
-        if aud != DEFAULT_AUDIENCE:
-            raise IdentityError(f"Audience should be {DEFAULT_AUDIENCE!r}, not {aud!r}")
+        self.issuer = identity_jwt["iss"]
+        self._nbf: int = identity_jwt["nbf"]
+        self._exp: int = identity_jwt["exp"]
 
         # When verifying the private key possession proof, Fulcio uses
         # different claims depending on the token's issuer.
@@ -77,11 +95,15 @@ class Identity:
             except KeyError:
                 raise IdentityError("Identity token missing `sub` claim")
 
-    def is_expired(self) -> bool:
-        """Verify if the identity token for this `Identity` is expired."""
-        if self.exp_timestamp:
-            now: float = datetime.now(timezone.utc).timestamp()
-            token_timestamp: float = self.exp_timestamp
-            return now > token_timestamp
-        else:
-            raise ValueError("Identity token does not have an expiration timestamp")
+    def in_validity_period(self) -> bool:
+        """
+        Returns whether or not this `Identity` is currently within its self-stated validity period.
+
+        NOTE: As noted in `Identity.__init__`, this is not a verifying wrapper;
+        the check here only asserts whether the *unverified* identity's claims
+        are within their validity period.
+        """
+
+        now = datetime.now(timezone.utc).timestamp()
+
+        return self._nbf <= now <= self._exp
