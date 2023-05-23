@@ -80,3 +80,9 @@ class TestVerificationMaterials:
             InvalidMaterials, match="expected exactly one log entry, got 0"
         ):
             signing_bundle("bundle_no_log_entry.txt")
+
+    def test_verification_materials_offline_no_checkpoint(self, signing_bundle):
+        with pytest.raises(
+            InvalidMaterials, match="expected checkpoint in inclusion proof"
+        ):
+            signing_bundle("bundle_no_checkpoint.txt", offline=True)

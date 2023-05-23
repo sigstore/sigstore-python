@@ -40,6 +40,10 @@ from sigstore._internal.merkle import (
     InvalidInclusionProofError,
     verify_merkle_inclusion,
 )
+from sigstore._internal.rekor.checkpoint import (
+    CheckpointError,
+    verify_checkpoint,
+)
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.tuf import TrustUpdater
@@ -246,17 +250,30 @@ class Verifier:
 
         # 5) Verify the inclusion proof supplied by Rekor for this artifact.
         #
-        # We skip the inclusion proof only if explicitly requested.
-        if not materials._offline:
+        # The inclusion proof should always be present in the online case. In
+        # the offline case, if it is present, we verify it.
+        if entry.inclusion_proof:
             try:
                 verify_merkle_inclusion(entry)
             except InvalidInclusionProofError as exc:
                 return VerificationFailure(
                     reason=f"invalid Rekor inclusion proof: {exc}"
                 )
+
+            try:
+                verify_checkpoint(self._rekor, entry)
+            except CheckpointError as exc:
+                return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
+
+            logger.debug("Successfully verified inclusion proof...")
+        elif not materials._offline:
+            # Paranoia: if we weren't given an inclusion proof, then
+            # this *must* have been offline verification. If it was online
+            # then we've somehow entered an invalid state, so fail.
+            return VerificationFailure(reason="missing Rekor inclusion proof")
         else:
-            logger.debug(
-                "offline verification requested: skipping Merkle inclusion proof"
+            logger.warning(
+                "inclusion proof not present in bundle: skipping due to offline verification"
             )
 
         # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact

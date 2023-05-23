@@ -66,16 +66,17 @@ class LogEntry:
     The index of this entry within the log.
     """
 
-    inclusion_proof: Optional["LogInclusionProof"]
+    inclusion_proof: Optional[LogInclusionProof]
     """
     An optional inclusion proof for this log entry.
-
-    Only present for entries retrieved from online logs.
     """
 
-    signed_entry_timestamp: B64Str
+    inclusion_promise: B64Str
     """
-    The base64-encoded Signed Entry Timestamp (SET) for this log entry.
+    An inclusion promise for this log entry.
+
+    Internally, this is a base64-encoded Signed Entry Timestamp (SET) for this
+    log entry.
     """
 
     @classmethod
@@ -90,7 +91,6 @@ class LogEntry:
             raise ValueError("Received multiple entries in response")
 
         uuid, entry = entries[0]
-
         return LogEntry(
             uuid=uuid,
             body=entry["body"],
@@ -100,7 +100,7 @@ class LogEntry:
             inclusion_proof=LogInclusionProof.parse_obj(
                 entry["verification"]["inclusionProof"]
             ),
-            signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"],
+            inclusion_promise=entry["verification"]["signedEntryTimestamp"],
         )
 
     def encode_canonical(self) -> bytes:
@@ -125,10 +125,11 @@ class LogInclusionProof(BaseModel):
     Represents an inclusion proof for a transparency log entry.
     """
 
+    checkpoint: StrictStr = Field(..., alias="checkpoint")
+    hashes: List[StrictStr] = Field(..., alias="hashes")
     log_index: StrictInt = Field(..., alias="logIndex")
     root_hash: StrictStr = Field(..., alias="rootHash")
     tree_size: StrictInt = Field(..., alias="treeSize")
-    hashes: List[StrictStr] = Field(..., alias="hashes")
 
     class Config:
         allow_population_by_field_name = True

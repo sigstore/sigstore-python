@@ -36,7 +36,7 @@ dependencies = [
   "requests",
   "securesystemslib",
   "sigstore-protobuf-specs ~= 0.1.0",
-  "tuf ~= 2.1",
+  "tuf >= 2.1,< 4.0",
 ]
 requires-python = ">=3.7"
 
@@ -64,7 +64,7 @@ lint = [
   "mypy ~= 1.1",
   # NOTE(ww): ruff is under active development, so we pin conservatively here
   # and let Dependabot periodically perform this update.
-  "ruff < 0.0.264",
+  "ruff < 0.0.270",
   "types-requests",
   # Needed for protocol typing in 3.7; remove when our minimum Python is 3.8.
   "typing-extensions; python_version < '3.8'",

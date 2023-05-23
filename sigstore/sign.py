@@ -63,6 +63,7 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
     X509CertificateChain,
 )
 from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
+    Checkpoint,
     InclusionPromise,
     InclusionProof,
     KindVersion,
@@ -349,6 +350,9 @@ class SigningResult(BaseModel):
                 hashes=[
                     bytes.fromhex(h) for h in self.log_entry.inclusion_proof.hashes
                 ],
+                checkpoint=Checkpoint(
+                    envelope=self.log_entry.inclusion_proof.checkpoint
+                ),
             )
 
         tlog_entry = TransparencyLogEntry(
@@ -358,7 +362,7 @@ class SigningResult(BaseModel):
             integrated_time=self.log_entry.integrated_time,
             inclusion_promise=InclusionPromise(
                 signed_entry_timestamp=base64.b64decode(
-                    self.log_entry.signed_entry_timestamp
+                    self.log_entry.inclusion_promise
                 )
             ),
             inclusion_proof=inclusion_proof,

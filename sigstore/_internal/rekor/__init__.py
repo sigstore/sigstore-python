@@ -16,6 +16,7 @@
 APIs for interacting with Rekor.
 """
 
+from .checkpoint import SignedCheckpoint
 from .client import RekorClient
 
-__all__ = ["RekorClient"]
+__all__ = ["RekorClient", "SignedCheckpoint"]

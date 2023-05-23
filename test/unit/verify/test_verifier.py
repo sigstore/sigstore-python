@@ -15,8 +15,13 @@
 import pretend
 import pytest
 
+from sigstore.transparency import LogEntry
 from sigstore.verify import policy
-from sigstore.verify.models import VerificationFailure, VerificationSuccess
+from sigstore.verify.models import (
+    VerificationFailure,
+    VerificationMaterials,
+    VerificationSuccess,
+)
 from sigstore.verify.verifier import CertificateVerificationFailure, Verifier
 
 
@@ -110,11 +115,33 @@ def test_verifier_policy_check(signing_materials):
 
 
 @pytest.mark.online
-def test_verifier_invalid_signature(signing_materials, null_policy, monkeypatch):
+def test_verifier_invalid_signature(signing_materials, null_policy):
     materials = signing_materials("bad.txt")
 
     verifier = Verifier.staging()
     assert not verifier.verify(materials, null_policy)
+
+
+@pytest.mark.online
+def test_verifier_invalid_online_missing_inclusion_proof(
+    signing_materials, null_policy, monkeypatch
+):
+    verifier = Verifier.staging()
+
+    materials: VerificationMaterials = signing_materials("a.txt")
+    # Retrieve the entry, strip its inclusion proof, stuff it back
+    # into the materials, and then patch out the check that insures the
+    # inclusion proof's presence.
+    # This effectively emulates a "misbehaving" Rekor instance that returns
+    # log entries without corresponding inclusion proofs.
+    entry: LogEntry = materials.rekor_entry(verifier._rekor)
+    entry.__dict__["inclusion_proof"] = None
+    materials._rekor_entry = entry
+    monkeypatch.setattr(materials, "rekor_entry", lambda *a: entry)
+
+    result = verifier.verify(materials, null_policy)
+    assert not result
+    assert result == VerificationFailure(reason="missing Rekor inclusion proof")
 
 
 @pytest.mark.online
