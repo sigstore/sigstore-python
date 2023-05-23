@@ -34,7 +34,7 @@ from tuf.ngclient import FetcherInterface
 
 from sigstore._internal import tuf
 from sigstore._internal.oidc import DEFAULT_AUDIENCE
-from sigstore.sign import Signer
+from sigstore.sign import SigningContext
 from sigstore.verify import VerificationMaterials
 from sigstore.verify.policy import VerificationSuccess
 
@@ -227,7 +227,10 @@ def tuf_dirs(monkeypatch, tmp_path):
 
 
 @pytest.fixture(
-    params=[("production", Signer.production), ("staging", Signer.staging)],
+    params=[
+        ("production", SigningContext.production),
+        ("staging", SigningContext.staging),
+    ],
     ids=["production", "staging"],
 )
 def id_config(request):
