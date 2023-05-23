@@ -22,6 +22,7 @@ from typing import Iterator
 from urllib.parse import urlparse
 
 import pytest
+from cryptography.x509 import Certificate, load_pem_x509_certificate
 from id import (
     AmbientCredentialError,
     GitHubOidcPermissionCredentialError,
@@ -102,6 +103,15 @@ def asset():
         return _ASSETS / name
 
     return _asset
+
+
+@pytest.fixture
+def x509_testcase():
+    def _x509_testcase(name: str) -> Certificate:
+        pem = (_ASSETS / "x509" / name).read_bytes()
+        return load_pem_x509_certificate(pem)
+
+    return _x509_testcase
 
 
 @pytest.fixture

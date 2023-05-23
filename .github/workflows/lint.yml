@@ -57,6 +57,24 @@ jobs:
             fi
           done
 
+  x509-testcases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+
+      # NOTE: We intentionally check test certificates against our minimum supported Python.
+      - uses: actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b
+        with:
+          python-version: "3.7"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - name: deps
+        run: make dev
+
+      - name: ensure testcase generation does not regress
+        run: make gen-x509-testcases
+
   all-lints-pass:
     if: always()
 
@@ -64,6 +82,7 @@ jobs:
     - lint
     - check-readme
     - licenses
+    - x509-testcases
 
     runs-on: ubuntu-latest
 
