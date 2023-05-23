@@ -2,3 +2,4 @@
 # or sized-checked so CRLF normalization breaks them.
 sigstore/_store/** binary
 test/unit/assets/** binary
+test/unit/assets/x509/** -binary

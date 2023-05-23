@@ -39,6 +39,8 @@ from sigstore._utils import (
     B64Str,
     PEMCert,
     base64_encode_pem_cert,
+    cert_is_leaf,
+    cert_is_root_ca,
     sha256_streaming,
 )
 from sigstore.errors import Error
@@ -244,11 +246,30 @@ class VerificationMaterials:
 
         if len(certs) == 0:
             raise InvalidMaterials("expected non-empty certificate chain in bundle")
-        cert_pem = PEMCert(
-            load_der_x509_certificate(certs[0].raw_bytes)
-            .public_bytes(Encoding.PEM)
-            .decode()
-        )
+
+        # Per client policy in protobuf-specs: the first entry in the chain
+        # MUST be a leaf certificate, and the rest of the chain MUST NOT
+        # include a root CA or any intermediate CAs that appear in an
+        # independent root of trust.
+        #
+        # We expect some old bundles to violate the rules around root
+        # and intermediate CAs, so we issue warnings and not hard errors
+        # in those cases.
+        leaf_cert, *chain_certs = [
+            load_der_x509_certificate(cert.raw_bytes) for cert in certs
+        ]
+        if not cert_is_leaf(leaf_cert):
+            raise InvalidMaterials(
+                "bundle contains an invalid leaf or non-leaf certificate in the leaf position"
+            )
+
+        for chain_cert in chain_certs:
+            # TODO: We should also retrieve the root of trust here and
+            # cross-check against it.
+            if cert_is_root_ca(chain_cert):
+                logger.warning(
+                    "this bundle contains a root CA, making it subject to misuse"
+                )
 
         signature = bundle.message_signature.signature
 
@@ -297,7 +318,7 @@ class VerificationMaterials:
 
         return cls(
             input_=input_,
-            cert_pem=PEMCert(cert_pem),
+            cert_pem=PEMCert(leaf_cert.public_bytes(Encoding.PEM).decode()),
             signature=signature,
             offline=offline,
             rekor_entry=entry,

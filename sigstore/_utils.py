@@ -25,7 +25,8 @@ from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from cryptography.x509 import Certificate
+from cryptography.x509 import Certificate, ExtensionNotFound, Version
+from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
 
 from sigstore.errors import Error
 
@@ -65,6 +66,12 @@ class InvalidKeyError(Error):
     """
 
     pass
+
+
+class InvalidCertError(Error):
+    """
+    Raised when loading or evaluating a certificate fails.
+    """
 
 
 class UnexpectedKeyFormatError(InvalidKeyError):
@@ -172,3 +179,147 @@ def read_embedded(name: str, prefix: str) -> bytes:
     returning its contents as bytes.
     """
     return resources.files("sigstore._store").joinpath(prefix, name).read_bytes()  # type: ignore
+
+
+def cert_is_ca(cert: Certificate) -> bool:
+    """
+    Returns `True` if and only if the given `Certificate`
+    is a CA certificate.
+
+    This function doesn't indicate the trustworthiness of the given
+    `Certificate`, only whether it has the appropriate interior state.
+
+    This function is **not** naively invertible: users **must** use the
+    dedicated `cert_is_leaf` utility function to determine whether a particular
+    leaf upholds Sigstore's invariants.
+    """
+
+    # Only v3 certificates should appear in the context of Sigstore;
+    # earlier versions of X.509 lack extensions and have ambiguous CA
+    # behavior.
+    if cert.version != Version.v3:
+        raise InvalidCertError(f"invalid X.509 version: {cert.version}")
+
+    # Valid CA certificates must have *all* of the following set:
+    #
+    #  * `BasicKeyUsage.digitalSignature`
+    #  * `BasicKeyUsage.keyCertSign`
+    #  * `BasicConstraints.ca`
+    #
+    # Of those, non-CAs must have *only* `BasicKeyUsage.digitalSignature` set.
+    # Any other combination of states is inconsistent and invalid, meaning
+    # that we won't consider the certificate a valid non-CA leaf.
+
+    try:
+        basic_constraints = cert.extensions.get_extension_for_oid(
+            ExtensionOID.BASIC_CONSTRAINTS
+        )
+
+        # BasicConstraints must be marked as critical, per RFC 5280 4.2.1.9.
+        if not basic_constraints.critical:
+            raise InvalidCertError(
+                "invalid X.509 certificate: non-critical BasicConstraints in CA"
+            )
+
+        ca = basic_constraints.value.ca  # type: ignore
+    except ExtensionNotFound:
+        # No BasicConstrains means that this can't possibly be a CA.
+        return False
+
+    digital_signature = False
+    key_cert_sign = False
+    try:
+        key_usage = cert.extensions.get_extension_for_oid(ExtensionOID.KEY_USAGE)
+        key_cert_sign = key_usage.value.key_cert_sign  # type: ignore
+        digital_signature = key_usage.value.digital_signature  # type: ignore
+    except ExtensionNotFound:
+        raise InvalidCertError("invalid X.509 certificate: missing KeyUsage")
+
+    # If all three states are set, this is a CA.
+    if ca and key_cert_sign and digital_signature:
+        return True
+
+    # Non-CA in the Sigstore ecosystem have `digitalSignature` but neither of
+    # the CA states.
+    if digital_signature and not (ca or key_cert_sign):
+        return False
+
+    # Anything else is an invalid state that should never occur.
+    raise InvalidCertError(
+        f"invalid certificate states: KeyUsage.digitalSignature={digital_signature}, "
+        f"KeyUsage.keyCertSign={key_cert_sign}, BasicConstraints.ca={ca}"
+    )
+
+
+def cert_is_root_ca(cert: Certificate) -> bool:
+    """
+    Returns `True` if and only if the given `Certificate` indicates
+    that it's a root CA.
+
+    This is **not** a verification function, and it does not establish
+    the trustworthiness of the given certificate.
+    """
+
+    # NOTE(ww): This function is obnoxiously long to make the different
+    # states explicit.
+
+    # Only v3 certificates should appear in the context of Sigstore;
+    # earlier versions of X.509 lack extensions and have ambiguous CA
+    # behavior.
+    if cert.version != Version.v3:
+        raise InvalidCertError(f"invalid X.509 version: {cert.version}")
+
+    # Non-CAs can't possibly be root CAs.
+    if not cert_is_ca(cert):
+        return False
+
+    # A certificate that is its own issuer and signer is considered a root CA.
+    try:
+        cert.verify_directly_issued_by(cert)
+        return True
+    except Exception:
+        return False
+
+
+def cert_is_leaf(cert: Certificate) -> bool:
+    """
+    Returns `True` if and only if the given `Certificate` is a valid
+    leaf certificate for Sigstore purposes. This means that:
+
+    * It is not a root or intermediate CA;
+    * It has `KeyUsage.digitalSignature`;
+    * It has `CODE_SIGNING` as an `ExtendedKeyUsage`.
+
+    This is **not** a verification function, and it does not establish
+    the trustworthiness of the given certificate.
+    """
+
+    # Only v3 certificates should appear in the context of Sigstore;
+    # earlier versions of X.509 lack extensions and have ambiguous CA
+    # behavior.
+    if cert.version != Version.v3:
+        raise InvalidCertError(f"invalid X.509 version: {cert.version}")
+
+    # CAs are not leaves.
+    if cert_is_ca(cert):
+        return False
+
+    key_usage = cert.extensions.get_extension_for_oid(ExtensionOID.KEY_USAGE)
+    digital_signature = key_usage.value.digital_signature  # type: ignore
+
+    if not digital_signature:
+        raise InvalidCertError(
+            "invalid certificate for Sigstore purposes: missing digital signature usage"
+        )
+
+    # Finally, we check to make sure the leaf has an `ExtendedKeyUsages`
+    # extension that includes a codesigning entitlement. Sigstore should
+    # never issue a leaf that doesn't have this extended usage.
+    try:
+        extended_key_usage = cert.extensions.get_extension_for_oid(
+            ExtensionOID.EXTENDED_KEY_USAGE
+        )
+
+        return ExtendedKeyUsageOID.CODE_SIGNING in extended_key_usage.value  # type: ignore
+    except ExtensionNotFound:
+        raise InvalidCertError("invalid X.509 certificate: missing ExtendedKeyUsage")
