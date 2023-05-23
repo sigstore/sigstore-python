@@ -30,7 +30,7 @@ artifact = Path("foo.txt")
 
 with artifact.open("rb") as a:
     signing_ctx = SigningContext.production()
-    with signing_ctx.with_signer(token, cache=True) as signer:
+    with signing_ctx.signer(token, cache=True) as signer:
         result = signer.sign(input_=a, rekor=signing_ctx._rekor, fulcio=signing_ctx._fulcio)
         print(result)
 ```
@@ -284,7 +284,7 @@ class SigningContext:
         )
 
     @contextmanager
-    def with_signer(self, identity_token: str, cache: bool = True) -> Iterator[Signer]:
+    def signer(self, identity_token: str, cache: bool = True) -> Iterator[Signer]:
         """
         A context manager for signing operations.
 

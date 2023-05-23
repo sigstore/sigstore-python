@@ -661,9 +661,7 @@ def _sign(args: argparse.Namespace) -> None:
         args._parser.error("No identity token supplied or detected!")
 
     cache = not args.no_cache
-    with signing_ctx.with_signer(
-        identity_token=args.identity_token, cache=cache
-    ) as signer:
+    with signing_ctx.signer(identity_token=args.identity_token, cache=cache) as signer:
         for file, outputs in output_map.items():
             logger.debug(f"signing for {file.name}")
             with file.open(mode="rb", buffering=0) as io:
