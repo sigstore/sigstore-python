@@ -82,7 +82,7 @@ class IdentityToken:
         except jwt.InvalidTokenError as exc:
             raise IdentityError("invalid identity token") from exc
 
-        self._issuer: str = self._unverified_claims.get("iss")  # type: ignore[assignment]
+        self._issuer: str = self._unverified_claims.get("iss")
         if self._issuer is None:
             raise IdentityError("Identity token missing the required `iss` claim")
 
