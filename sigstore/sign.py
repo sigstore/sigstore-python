@@ -118,15 +118,6 @@ class Signer:
             logger.debug("Requesting ephemeral certificate...")
             self.__cached_signing_certificate = self._signing_cert(self._private_key)
 
-    def __del__(self) -> None:
-        """
-        Delete the Signer internal attributes.
-        This allows to not persist the certificate and private key
-        outside of the scope defined by `SigningContext`.
-        """
-        del self.__cached_signing_certificate
-        del self.__cached_private_key
-
     @property
     def _private_key(self) -> ec.EllipticCurvePrivateKey:
         """Get or generate a signing key."""
@@ -297,11 +288,7 @@ class SigningContext:
         to sign different artifacts.
         Default is `True`.
         """
-        signer = Signer(identity_token, self, cache)
-        try:
-            yield signer
-        finally:
-            del signer
+        yield Signer(identity_token, self, cache)
 
 
 class SigningResult(BaseModel):
