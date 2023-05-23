@@ -15,15 +15,13 @@
 import io
 import secrets
 
-import jwt
 import pretend
 import pytest
-from id import IdentityError
 
 import sigstore._internal.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
-from sigstore.sign import Signer, SigningContext
+from sigstore.sign import SigningContext
 
 
 class TestSigningContext:
