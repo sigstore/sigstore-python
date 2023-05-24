@@ -27,22 +27,23 @@ import webbrowser
 from typing import NoReturn, Optional, cast
 
 import id
+import jwt
 import requests
 from pydantic import BaseModel, StrictStr
 
-from sigstore._internal.oidc import DEFAULT_AUDIENCE
 from sigstore.errors import Error, NetworkError
 
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
 STAGING_OAUTH_ISSUER_URL = "https://oauth2.sigstage.dev/auth"
 
-
-class IssuerError(Exception):
-    """
-    Raised on any communication or format error with an OIDC issuer.
-    """
-
-    pass
+# See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
+_KNOWN_OIDC_ISSUERS = {
+    "https://accounts.google.com": "email",
+    "https://oauth2.sigstore.dev/auth": "email",
+    "https://oauth2.sigstage.dev/auth": "email",
+    "https://token.actions.githubusercontent.com": "sub",
+}
+_DEFAULT_AUDIENCE = "sigstore"
 
 
 class _OpenIDConfiguration(BaseModel):
@@ -55,6 +56,145 @@ class _OpenIDConfiguration(BaseModel):
 
     authorization_endpoint: StrictStr
     token_endpoint: StrictStr
+
+
+class IdentityToken:
+    """
+    An OIDC "identity", corresponding to an underlying OIDC token with
+    a sensible subject, issuer, and audience for Sigstore purposes.
+    """
+
+    def __init__(self, raw_token: str) -> None:
+        """
+        Create a new `IdentityToken` from the given OIDC token.
+        """
+
+        self._raw_token = raw_token
+
+        # NOTE: The lack of verification here is intentional, and is part of
+        # Sigstore's verification model: clients like sigstore-python are
+        # responsible only for forwarding the OIDC identity to Fulcio for
+        # certificate binding and issuance.
+        try:
+            self._unverified_claims = jwt.decode(
+                self._raw_token, options={"verify_signature": False}
+            )
+        except jwt.InvalidTokenError as exc:
+            raise IdentityError("invalid identity token") from exc
+
+        self._issuer: str = self._unverified_claims.get("iss")
+        if self._issuer is None:
+            raise IdentityError("Identity token missing the required `iss` claim")
+
+        aud = self._unverified_claims.get("aud")
+        if aud is None:
+            raise IdentityError("Identity token missing the required `aud` claim")
+        if aud != _DEFAULT_AUDIENCE:
+            raise IdentityError(
+                f"Audience should be {_DEFAULT_AUDIENCE!r}, not {aud!r}"
+            )
+
+        # When verifying the private key possession proof, Fulcio uses
+        # different claims depending on the token's issuer.
+        # We currently special-case a handful of these, and fall back
+        # on signing the "sub" claim otherwise.
+        identity_claim = _KNOWN_OIDC_ISSUERS.get(self.issuer)
+        if identity_claim is not None:
+            if identity_claim not in self._unverified_claims:
+                raise IdentityError(
+                    f"Identity token missing the required {identity_claim!r} claim"
+                )
+
+            self._identity = str(self._unverified_claims.get(identity_claim))
+        else:
+            try:
+                self._identity = str(self._unverified_claims["sub"])
+            except KeyError:
+                raise IdentityError("Identity token missing the required 'sub' claim")
+
+        # This identity token might have been retrieved directly from
+        # an identity provider, or it might be a "federated" identity token
+        # retrieved from a federated IdP (e.g., Sigstore's own Dex instance).
+        # In the latter case, the claims will also include a `federated_claims`
+        # set, which in turn should include a `connector_id` that reflects
+        # the "real" token issuer. We retrieve this, despite technically
+        # being an implementation detail, because it has value to client
+        # users: a client might want to make sure that its user is identifying
+        # with a *particular* IdP, which means that they need to pierce the
+        # federation layer to check which IdP is actually being used.
+        self._federated_issuer: str | None = None
+        federated_claims = self._unverified_claims.get("federated_claims")
+        if federated_claims is not None:
+            if not isinstance(federated_claims, dict):
+                raise IdentityError(
+                    "unexpected claim type: federated_claims is not a dict"
+                )
+
+            federated_issuer = federated_claims.get("connector_id")
+            if federated_issuer is not None:
+                if not isinstance(federated_issuer, str):
+                    raise IdentityError(
+                        "unexpected claim type: federated_claims.connector_id is not a string"
+                    )
+
+                self._federated_issuer = federated_issuer
+
+    @property
+    def identity(self) -> str:
+        """
+        Returns this `IdentityToken`'s underlying "subject".
+
+        Note that this is **not** always the `sub` claim in the corresponding
+        identity token: depending onm the token's issuer, it may be a *different*
+        claim, such as `email`. This corresponds to the Sigstore ecosystem's
+        behavior, e.g. in each issued certificate's SAN.
+        """
+        return self._identity
+
+    @property
+    def issuer(self) -> str:
+        """
+        Returns a URL identifying this `IdentityToken`'s issuer.
+        """
+        return self._issuer
+
+    @property
+    def expected_certificate_subject(self) -> str:
+        """
+        Returns a URL identifying the **expected** subject for any Sigstore
+        certificate issued against this identity token.
+
+        The behavior of this field is slightly subtle: for non-federated
+        identity providers (like a token issued directly by Google's IdP) it
+        should be exactly equivalent to `IdentityToken.issuer`. For federated
+        issuers (like Sigstore's own federated IdP) it should be equivalent to
+        the underlying federated issuer's URL, which is kept in an
+        implementation-defined claim.
+
+        This attribute exists so that clients who wish to inspect the expected
+        subject of their certificates can do so without relying on
+        implementation-specific behavior.
+        """
+        if self._federated_issuer is not None:
+            return self._federated_issuer
+
+        return self._issuer
+
+    def __str__(self) -> str:
+        """
+        Returns the underlying OIDC token for this identity.
+
+        That this token is secret in nature and **MUST NOT** be disclosed.
+        """
+        return self._raw_token
+
+
+class IssuerError(Exception):
+    """
+    Raised on any communication or format error with an OIDC issuer.
+    """
+
+    pass
 
 
 class Issuer:
@@ -108,9 +248,9 @@ class Issuer:
 
     def identity_token(  # nosec: B107
         self, client_id: str = "sigstore", client_secret: str = ""
-    ) -> str:
+    ) -> IdentityToken:
         """
-        Retrieves and returns an OpenID Connect token from the current `Issuer`, via OAuth.
+        Retrieves and returns an `IdentityToken` from the current `Issuer`, via OAuth.
 
         This function blocks on user interaction, either via a web browser or an out-of-band
         OAuth flow.
@@ -182,7 +322,7 @@ class Issuer:
         if token_error is not None:
             raise IdentityError(f"Error response from token endpoint: {token_error}")
 
-        return str(token_json["access_token"])
+        return IdentityToken(token_json["access_token"])
 
 
 class IdentityError(Error):
@@ -193,7 +333,7 @@ class IdentityError(Error):
     @classmethod
     def raise_from_id(cls, exc: id.IdentityError) -> NoReturn:
         """Raises a wrapped IdentityError from the provided `id.IdentityError`."""
-        raise IdentityError(str(exc)) from exc
+        raise cls(str(exc)) from exc
 
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""
@@ -237,6 +377,6 @@ class IdentityError(Error):
 def detect_credential() -> Optional[str]:
     """Calls `id.detect_credential`, but wraps exceptions with our own exception type."""
     try:
-        return cast(Optional[str], id.detect_credential(DEFAULT_AUDIENCE))
+        return cast(Optional[str], id.detect_credential(_DEFAULT_AUDIENCE))
     except id.IdentityError as exc:
         IdentityError.raise_from_id(exc)
