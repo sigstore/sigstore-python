@@ -34,7 +34,6 @@ from sigstore._internal.fulcio.client import (
     FulcioClient,
 )
 from sigstore._internal.keyring import Keyring
-from sigstore._internal.oidc import ExpiredIdentity
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
@@ -46,6 +45,7 @@ from sigstore.errors import Error
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,
+    ExpiredIdentity,
     IdentityToken,
     Issuer,
     detect_credential,
@@ -674,7 +674,7 @@ def _sign(args: argparse.Namespace) -> None:
         _die(args, "No identity token supplied or detected!")
 
     cache = not args.no_cache
-    with signing_ctx.signer(identity=identity, cache=cache) as signer:
+    with signing_ctx.signer(identity, cache=cache) as signer:
         for file, outputs in output_map.items():
             logger.debug(f"signing for {file.name}")
             with file.open(mode="rb", buffering=0) as io:

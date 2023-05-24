@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Iterator
 from urllib.parse import urlparse
 
+import jwt
 import pytest
 from cryptography.x509 import Certificate, load_pem_x509_certificate
 from id import (
@@ -242,3 +243,11 @@ def id_config(request):
         token = detect_credential(_DEFAULT_AUDIENCE)
 
     return signer, IdentityToken(token)
+
+
+@pytest.fixture
+def dummy_jwt():
+    def _dummy_jwt(claims: dict):
+        return jwt.encode(claims, key="definitely not secure")
+
+    return _dummy_jwt

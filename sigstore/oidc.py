@@ -24,6 +24,7 @@ import sys
 import time
 import urllib.parse
 import webbrowser
+from datetime import datetime, timezone
 from typing import NoReturn, Optional, cast
 
 import id
@@ -57,11 +58,6 @@ class _OpenIDConfiguration(BaseModel):
     authorization_endpoint: StrictStr
     token_endpoint: StrictStr
 
-
-from datetime import datetime, timezone
-
-import jwt
-from id import IdentityError
 
 # See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
 _KNOWN_OIDC_ISSUERS = {
@@ -112,7 +108,7 @@ class IdentityToken:
                 "Identity token is malformed or missing claims"
             ) from exc
 
-        self.issuer = self._unverified_claims["iss"]
+        self._iss: str = self._unverified_claims["iss"]
         self._nbf: int = self._unverified_claims["nbf"]
         self._exp: int = self._unverified_claims["exp"]
 
@@ -124,7 +120,7 @@ class IdentityToken:
         if identity_claim is not None:
             if identity_claim not in self._unverified_claims:
                 raise IdentityError(
-                    f"Identity token missing the required {identity_claim!r} claim"
+                    f"Identity token is missing the required {identity_claim!r} claim"
                 )
 
             self._identity = str(self._unverified_claims.get(identity_claim))
@@ -132,7 +128,9 @@ class IdentityToken:
             try:
                 self._identity = str(self._unverified_claims["sub"])
             except KeyError:
-                raise IdentityError("Identity token missing the required 'sub' claim")
+                raise IdentityError(
+                    "Identity token is missing the required 'sub' claim"
+                )
 
         # This identity token might have been retrieved directly from
         # an identity provider, or it might be a "federated" identity token
@@ -191,7 +189,7 @@ class IdentityToken:
         """
         Returns a URL identifying this `IdentityToken`'s issuer.
         """
-        return self._issuer
+        return self._iss
 
     @property
     def expected_certificate_subject(self) -> str:
@@ -213,7 +211,7 @@ class IdentityToken:
         if self._federated_issuer is not None:
             return self._federated_issuer
 
-        return self._issuer
+        return self.issuer
 
     def __str__(self) -> str:
         """

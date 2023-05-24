@@ -76,12 +76,11 @@ from sigstore._internal.fulcio import (
     FulcioCertificateSigningResponse,
     FulcioClient,
 )
-from sigstore._internal.oidc import ExpiredIdentity, Identity
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
-from sigstore.oidc import IdentityToken
+from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -278,7 +277,9 @@ class SigningContext:
         )
 
     @contextmanager
-    def signer(self, identity_token: str, cache: bool = True) -> Iterator[Signer]:
+    def signer(
+        self, identity_token: IdentityToken, *, cache: bool = True
+    ) -> Iterator[Signer]:
         """
         A context manager for signing operations.
 
