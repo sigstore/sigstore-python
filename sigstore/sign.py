@@ -16,6 +16,7 @@
 API for signing artifacts.
 
 Example:
+
 ```python
 from pathlib import Path
 
@@ -23,14 +24,14 @@ from sigstore.sign import Signer
 from sigstore.oidc import Issuer
 
 issuer = Issuer.production()
-token = issuer.identity_token()
+identity = issuer.identity_token()
 
 # The artifact to sign
 artifact = Path("foo.txt")
 
 with artifact.open("rb") as a:
     signing_ctx = SigningContext.production()
-    with signing_ctx.signer(token, cache=True) as signer:
+    with signing_ctx.signer(identity, cache=True) as signer:
         result = signer.sign(input_=a, rekor=signing_ctx._rekor, fulcio=signing_ctx._fulcio)
         print(result)
 ```
@@ -80,6 +81,7 @@ from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
+from sigstore.oidc import IdentityToken
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -91,7 +93,10 @@ class Signer:
     """
 
     def __init__(
-        self, identity_token: str, signing_ctx: SigningContext, cache: bool = True
+        self,
+        identity_token: IdentityToken,
+        signing_ctx: SigningContext,
+        cache: bool = True,
     ) -> None:
         """
         Create a new `Signer`.
@@ -106,7 +111,7 @@ class Signer:
         should be reused (until the certificate expires) to sign different artifacts.
         Default is `True`.
         """
-        self._identity_token: str = identity_token
+        self._identity_token = identity_token
         self._signing_ctx: SigningContext = signing_ctx
         self.__cached_private_key: Optional[ec.EllipticCurvePrivateKey] = None
         self.__cached_signing_certificate: Optional[
@@ -142,9 +147,6 @@ class Signer:
 
         else:
             logger.debug("Retrieving signed certificate...")
-            oidc_identity = Identity(self._identity_token)
-            logger.debug(f"cert-identity: {oidc_identity.proof}")
-            logger.debug(f"cert-oidc-issuer: {oidc_identity.issuer}")
 
             # Build an X.509 Certificiate Signing Request
             builder = (
@@ -153,7 +155,7 @@ class Signer:
                     x509.Name(
                         [
                             x509.NameAttribute(
-                                NameOID.EMAIL_ADDRESS, oidc_identity.proof
+                                NameOID.EMAIL_ADDRESS, self._identity_token._identity
                             ),
                         ]
                     )
@@ -179,7 +181,7 @@ class Signer:
         input_digest = sha256_streaming(input_)
         private_key = self._private_key
 
-        if not Identity(self._identity_token).in_validity_period():
+        if not self._identity_token.in_validity_period():
             raise ExpiredIdentity
 
         try:
