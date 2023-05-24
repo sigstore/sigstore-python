@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import datetime
-import time
+
 import pytest
 
 from sigstore import oidc
