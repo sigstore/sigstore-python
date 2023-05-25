@@ -136,9 +136,9 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--no-default-files] [--signature FILE]
                      [--certificate FILE] [--bundle FILE]
-                     [--output-directory DIR] [--overwrite] [--no-cache]
-                     [--staging] [--rekor-url URL] [--rekor-root-pubkey FILE]
-                     [--fulcio-url URL] [--ctfe FILE]
+                     [--output-directory DIR] [--overwrite] [--staging]
+                     [--rekor-url URL] [--rekor-root-pubkey FILE]
+                     [--fulcio-url URL] [--ctfe FILE] [--no-cache]
                      FILE [FILE ...]
 
 positional arguments:
@@ -179,9 +179,6 @@ Output options:
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
 
-  --no-cache            Generate a new signing certificate and private key for
-                        each artifact signed (default: False)
-
 Sigstore instance options:
   --staging             Use sigstore's staging instances, instead of the
                         default production instances. This option will be
@@ -200,6 +197,14 @@ Sigstore instance options:
                         (default: https://fulcio.sigstore.dev)
   --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
                         with --staging) (default: None)
+
+Advanced signing options:
+  Advanced signing options; you should not use these without understanding
+  them!
+
+  --no-cache            For multiple inputs: generate a new signing
+                        certificate and private key for each artifact signed,
+                        rather than caching (default: False)
 ```
 <!-- @end-sigstore-sign-help@ -->
 

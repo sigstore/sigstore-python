@@ -344,13 +344,6 @@ def _parser() -> argparse.ArgumentParser:
         default=_boolify_env("SIGSTORE_OVERWRITE"),
         help="Overwrite preexisting signature and certificate outputs, if present",
     )
-    output_options.add_argument(
-        "--no-cache",
-        dest="no_cache",
-        action="store_true",
-        default=_boolify_env("SIGSTORE_NO_CACHE"),
-        help="Generate a new signing certificate and private key for each artifact signed",
-    )
 
     instance_options = sign.add_argument_group("Sigstore instance options")
     _add_shared_instance_options(instance_options)
@@ -368,6 +361,21 @@ def _parser() -> argparse.ArgumentParser:
         type=argparse.FileType("rb"),
         help="A PEM-encoded public key for the CT log (conflicts with --staging)",
         default=os.getenv("SIGSTORE_CTFE"),
+    )
+
+    advanced_options = sign.add_argument_group(
+        "Advanced signing options",
+        description="Advanced signing options; you should not use these without understanding them!",
+    )
+    advanced_options.add_argument(
+        "--no-cache",
+        dest="no_cache",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_NO_CACHE"),
+        help=(
+            "For multiple inputs: generate a new signing certificate and private key for each "
+            "artifact signed, rather than caching"
+        ),
     )
 
     sign.add_argument(
@@ -673,8 +681,7 @@ def _sign(args: argparse.Namespace) -> None:
     if not identity:
         _die(args, "No identity token supplied or detected!")
 
-    cache = not args.no_cache
-    with signing_ctx.signer(identity, cache=cache) as signer:
+    with signing_ctx.signer(identity, cache=not args.no_cache) as signer:
         for file, outputs in output_map.items():
             logger.debug(f"signing for {file.name}")
             with file.open(mode="rb", buffering=0) as io:
