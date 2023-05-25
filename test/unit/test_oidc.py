@@ -110,7 +110,7 @@ class TestIdentityToken:
         ):
             oidc.IdentityToken(jwt)
 
-    def test_missing_nbf(self, dummy_jwt):
+    def test_missing_nbf_ok(self, dummy_jwt):
         now = int(datetime.datetime.now().timestamp())
         jwt = dummy_jwt(
             {
@@ -118,13 +118,11 @@ class TestIdentityToken:
                 "iat": now,
                 "exp": now + 600,
                 "iss": "fake-issuer",
+                "sub": "sigstore",
             }
         )
 
-        with pytest.raises(
-            oidc.IdentityError, match="Identity token is malformed or missing claims"
-        ):
-            oidc.IdentityToken(jwt)
+        assert oidc.IdentityToken(jwt) is not None
 
     def test_invalid_nbf(self, dummy_jwt):
         now = int(datetime.datetime.now().timestamp())
@@ -139,7 +137,8 @@ class TestIdentityToken:
         )
 
         with pytest.raises(
-            oidc.IdentityError, match="Identity token is malformed or missing claims"
+            oidc.IdentityError,
+            match="Identity token is not within its validity period",
         ):
             oidc.IdentityToken(jwt)
 

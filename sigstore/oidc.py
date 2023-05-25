@@ -97,9 +97,8 @@ class IdentityToken:
                     "verify_signature": False,
                     "verify_aud": True,
                     "verify_iat": True,
-                    "verify_nbf": True,
                     "verify_exp": True,
-                    "require": ["aud", "iat", "nbf", "exp", "iss"],
+                    "require": ["aud", "iat", "exp", "iss"],
                 },
                 audience=DEFAULT_AUDIENCE,
             )
@@ -109,8 +108,12 @@ class IdentityToken:
             ) from exc
 
         self._iss: str = self._unverified_claims["iss"]
-        self._nbf: int = self._unverified_claims["nbf"]
+        self._nbf: int | None = self._unverified_claims.get("nbf")
         self._exp: int = self._unverified_claims["exp"]
+
+        # Fail early if this token isn't within its validity period.
+        if not self.in_validity_period():
+            raise IdentityError("Identity token is not within its validity period")
 
         # When verifying the private key possession proof, Fulcio uses
         # different claims depending on the token's issuer.
@@ -170,7 +173,10 @@ class IdentityToken:
 
         now = datetime.now(timezone.utc).timestamp()
 
-        return self._nbf <= now <= self._exp
+        if self._nbf is not None:
+            return self._nbf <= now < self._exp
+        else:
+            return now < self._exp
 
     @property
     def identity(self) -> str:
