@@ -138,7 +138,8 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--certificate FILE] [--bundle FILE]
                      [--output-directory DIR] [--overwrite] [--staging]
                      [--rekor-url URL] [--rekor-root-pubkey FILE]
-                     [--fulcio-url URL] [--ctfe FILE] [--no-cache]
+                     [--fulcio-url URL] [--ctfe FILE]
+                     [--advanced-no-signing-key-reuse]
                      FILE [FILE ...]
 
 positional arguments:
@@ -202,7 +203,8 @@ Advanced signing options:
   Advanced signing options; you should not use these without understanding
   them!
 
-  --no-cache            For multiple inputs: generate a new signing
+  --advanced-no-signing-key-reuse
+                        For multiple inputs: generate a new signing
                         certificate and private key for each artifact signed,
                         rather than caching (default: False)
 ```

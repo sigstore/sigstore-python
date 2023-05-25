@@ -368,10 +368,10 @@ def _parser() -> argparse.ArgumentParser:
         description="Advanced signing options; you should not use these without understanding them!",
     )
     advanced_options.add_argument(
-        "--no-cache",
-        dest="no_cache",
+        "--advanced-no-signing-key-reuse",
+        dest="advanced_no_signing_key_reuse",
         action="store_true",
-        default=_boolify_env("SIGSTORE_NO_CACHE"),
+        default=_boolify_env("SIGSTORE_ADVANCED_NO_SIGNING_KEY_REUSE"),
         help=(
             "For multiple inputs: generate a new signing certificate and private key for each "
             "artifact signed, rather than caching"
@@ -681,7 +681,9 @@ def _sign(args: argparse.Namespace) -> None:
     if not identity:
         _die(args, "No identity token supplied or detected!")
 
-    with signing_ctx.signer(identity, cache=not args.no_cache) as signer:
+    with signing_ctx.signer(
+        identity, cache=not args.advanced_no_signing_key_reuse
+    ) as signer:
         for file, outputs in output_map.items():
             logger.debug(f"signing for {file.name}")
             with file.open(mode="rb", buffering=0) as io:
