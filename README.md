@@ -139,7 +139,6 @@ usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--output-directory DIR] [--overwrite] [--staging]
                      [--rekor-url URL] [--rekor-root-pubkey FILE]
                      [--fulcio-url URL] [--ctfe FILE]
-                     [--advanced-no-signing-key-reuse]
                      FILE [FILE ...]
 
 positional arguments:
@@ -198,15 +197,6 @@ Sigstore instance options:
                         (default: https://fulcio.sigstore.dev)
   --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
                         with --staging) (default: None)
-
-Advanced signing options:
-  Advanced signing options; you should not use these without understanding
-  them!
-
-  --advanced-no-signing-key-reuse
-                        For multiple inputs: generate a new signing
-                        certificate and private key for each artifact signed,
-                        rather than caching (default: False)
 ```
 <!-- @end-sigstore-sign-help@ -->
 
