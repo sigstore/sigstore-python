@@ -122,7 +122,7 @@ class Signer:
         """Public API for signing blobs"""
         input_digest = sha256_streaming(input_)
 
-        private_key = ec.generate_private_key(ec.SECP384R1())
+        private_key = ec.generate_private_key(ec.SECP256R1())
 
         logger.debug(
             f"Performing CSR: identity={identity.identity} "
