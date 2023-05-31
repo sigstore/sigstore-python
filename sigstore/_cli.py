@@ -663,11 +663,11 @@ def _sign(args: argparse.Namespace) -> None:
 
     for file, outputs in output_map.items():
         logger.debug(f"signing for {file.name}")
-        with file.open(mode="rb", buffering=0) as io:
-            result = signer.sign(
-                input_=io,
-                identity=identity,
-            )
+        input_ = file.read_bytes()
+        result = signer.sign(
+            input_=input_,
+            identity=identity,
+        )
 
         print("Using ephemeral certificate:")
         print(result.cert_pem)

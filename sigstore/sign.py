@@ -39,12 +39,11 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import IO
+from hashlib import sha256
 
 import cryptography.x509 as x509
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.x509.oid import NameOID
 from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
@@ -71,7 +70,7 @@ from sigstore._internal.fulcio import FulcioClient
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
+from sigstore._utils import B64Str, HexStr, PEMCert
 from sigstore.oidc import IdentityToken
 from sigstore.transparency import LogEntry
 
@@ -116,13 +115,11 @@ class Signer:
 
     def sign(
         self,
-        input_: IO[bytes],
+        input_: bytes,
         identity: IdentityToken,
     ) -> SigningResult:
         """Public API for signing blobs"""
-        input_digest = sha256_streaming(input_)
-
-        private_key = ec.generate_private_key(ec.SECP384R1())
+        private_key = ed25519.Ed25519PrivateKey.generate()
 
         logger.debug(
             f"Performing CSR: identity={identity.identity} "
@@ -145,7 +142,7 @@ class Signer:
                 critical=True,
             )
         )
-        certificate_request = builder.sign(private_key, hashes.SHA256())
+        certificate_request = builder.sign(private_key, None)
 
         certificate_response = self._fulcio.signing_cert.post(
             certificate_request, identity
@@ -163,9 +160,7 @@ class Signer:
         logger.debug("Successfully verified SCT...")
 
         # Sign artifact
-        artifact_signature = private_key.sign(
-            input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
-        )
+        artifact_signature = private_key.sign(input_)
         b64_artifact_signature = B64Str(base64.b64encode(artifact_signature).decode())
 
         # Prepare inputs
@@ -174,6 +169,7 @@ class Signer:
         )
 
         # Create the transparency log entry
+        input_digest = sha256(input_).digest()
         entry = self._rekor.log.entries.post(
             b64_artifact_signature=B64Str(b64_artifact_signature),
             sha256_artifact_hash=input_digest.hex(),

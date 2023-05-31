@@ -161,6 +161,8 @@ class RekorEntries(_Endpoint):
             },
         }
 
+        logger.debug(f"submitting rekor payload: {data}")
+
         resp: requests.Response = self.session.post(self.url, json=data)
         try:
             resp.raise_for_status()
