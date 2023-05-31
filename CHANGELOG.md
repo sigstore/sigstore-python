@@ -41,6 +41,9 @@ All versions prior to 0.9.0 are untracked.
   `sigstore verify identity`, as it was during the 1.0 release series
   ([#642](https://github.com/sigstore/sigstore-python/pull/642))
 
+* `sigstore sign` now uses an ephemeral P-256 keypair, rather than P-384
+  ([#662](https://github.com/sigstore/sigstore-python/pull/662))
+
 ### Fixed
 
 * Fixed a case where `sigstore verify` would fail to verify an otherwise valid
