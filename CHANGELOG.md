@@ -10,6 +10,9 @@ All versions prior to 0.9.0 are untracked.
 
 ### Changed
 
+* CLI now supports a `--oauth-force-oob` option.
+  ([#667](https://github.com/sigstore/sigstore-python/pull/667))
+
 * `sigstore verify` now performs additional verification of Rekor's inclusion
   proofs by cross-checking them against signed checkpoints
   ([#634](https://github.com/sigstore/sigstore-python/pull/634))
