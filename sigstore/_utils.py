@@ -178,7 +178,7 @@ def read_embedded(name: str, prefix: str) -> bytes:
     Read a resource embedded in this distribution of sigstore-python,
     returning its contents as bytes.
     """
-    return resources.files("sigstore._store").joinpath(prefix, name).read_bytes()  # type: ignore
+    return resources.files("sigstore._store").joinpath(prefix, name).read_bytes()
 
 
 def cert_is_ca(cert: Certificate) -> bool:
