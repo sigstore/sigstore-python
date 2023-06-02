@@ -254,8 +254,11 @@ class Issuer:
         """
         Retrieves and returns an `IdentityToken` from the current `Issuer`, via OAuth.
 
-        This function blocks on user interaction, either via a web browser or an out-of-band
-        OAuth flow. When force_oob is true, the out-of-band flow is always used.
+        This function blocks on user interaction.
+
+        The `force_oob` flag controls the kind of flow performed. When `False` (the default),
+        this function attempts to open the user's web browser before falling back to
+        an out-of-band flow. When `True`, the out-of-band flow is always used.
         """
 
         # This function and the components that it relies on are based off of:
