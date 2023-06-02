@@ -221,6 +221,12 @@ def _add_shared_oidc_options(
         default=os.getenv("SIGSTORE_OIDC_ISSUER", DEFAULT_OAUTH_ISSUER_URL),
         help="The OpenID Connect issuer to use (conflicts with --staging)",
     )
+    group.add_argument(
+        "--oidc-disable-default-browser",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_OIDC_DISABLE_DEFAULT_BROWSER"),
+        help="Do not start the default web browser to complete the OAuth flow. Instead display a web link to the user.",
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -964,7 +970,9 @@ def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
         args.oidc_client_secret = ""  # nosec: B105
 
     token = issuer.identity_token(
-        client_id=args.oidc_client_id, client_secret=args.oidc_client_secret
+        client_id=args.oidc_client_id,
+        client_secret=args.oidc_client_secret,
+        force_oob=args.oidc_disable_default_browser,
     )
 
     return token

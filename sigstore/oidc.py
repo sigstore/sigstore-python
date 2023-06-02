@@ -19,7 +19,6 @@ API for retrieving OIDC tokens.
 from __future__ import annotations
 
 import logging
-import os
 import sys
 import time
 import urllib.parse
@@ -247,7 +246,10 @@ class Issuer:
         return cls(STAGING_OAUTH_ISSUER_URL)
 
     def identity_token(  # nosec: B107
-        self, client_id: str = "sigstore", client_secret: str = ""
+        self,
+        client_id: str = "sigstore",
+        client_secret: str = "",
+        force_oob: bool = False,
     ) -> IdentityToken:
         """
         Retrieves and returns an `IdentityToken` from the current `Issuer`, via OAuth.
@@ -260,8 +262,6 @@ class Issuer:
         # https://github.com/psteniusubi/python-sample
 
         from sigstore._internal.oidc.oauth import _OAuthFlow
-
-        force_oob = os.getenv("SIGSTORE_OAUTH_FORCE_OOB") is not None
 
         code: str
         with _OAuthFlow(client_id, client_secret, self) as server:
