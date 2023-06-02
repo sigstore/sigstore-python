@@ -972,7 +972,7 @@ def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
     token = issuer.identity_token(
         client_id=args.oidc_client_id,
         client_secret=args.oidc_client_secret,
-        force_oob=args.oath_force_oob,
+        force_oob=args.oauth_force_oob,
     )
 
     return token
