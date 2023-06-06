@@ -45,8 +45,9 @@ def test_sign_rekor_entry_consistent(id_config):
 
     payload = io.BytesIO(secrets.token_bytes(32))
     with ctx.signer(identity) as signer:
-        expected_entry = signer.sign(payload, identity).log_entry
-        actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
+        expected_entry = signer.sign(payload).log_entry
+
+    actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
     assert expected_entry.uuid == actual_entry.uuid
     assert expected_entry.body == actual_entry.body
@@ -71,7 +72,7 @@ def test_sct_verify_keyring_lookup_error(id_config, monkeypatch):
         InvalidSCTError,
     ) as excinfo:
         with ctx.signer(identity) as signer:
-            signer.sign(payload, identity)
+            signer.sign(payload)
 
     # The exception subclass is the one we expect.
     assert isinstance(excinfo.value, InvalidSCTKeyError)
@@ -109,7 +110,7 @@ def test_identity_proof_claim_lookup(id_config, monkeypatch):
 
     with ctx.signer(identity) as signer:
         expected_entry = signer.sign(payload).log_entry
-    actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
+    actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
     assert expected_entry.uuid == actual_entry.uuid
     assert expected_entry.body == actual_entry.body
