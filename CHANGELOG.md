@@ -48,6 +48,14 @@ All versions prior to 0.9.0 are untracked.
   `sigstore verify identity`, as it was during the 1.0 release series
   ([#642](https://github.com/sigstore/sigstore-python/pull/642))
 
+* API change: the `Signer` API has been broken up into `SigningContext`
+  and `Signer`, allowing a `SigningContext` to create individual `Signer`
+  instances that correspond to a single `IdentityToken`. This new API
+  also enables ephemeral key and certificate reuse across multiple inputs,
+  reducing the number of cryptographic operations and network roundtrips
+  required when signing more than one input
+  ([#645](https://github.com/sigstore/sigstore-python/pull/645))
+
 ### Fixed
 
 * Fixed a case where `sigstore verify` would fail to verify an otherwise valid

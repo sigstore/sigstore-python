@@ -21,33 +21,32 @@ import pytest
 import sigstore.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
-from sigstore.sign import Signer
+from sigstore.sign import SigningContext
 
 
-@pytest.mark.online
-def test_signer_production():
-    signer = Signer.production()
-    assert signer is not None
+class TestSigningContext:
+    @pytest.mark.online
+    def test_production(self):
+        assert SigningContext.production() is not None
 
-
-def test_signer_staging(mock_staging_tuf):
-    signer = Signer.staging()
-    assert signer is not None
+    def test_staging(self, mock_staging_tuf):
+        assert SigningContext.staging() is not None
 
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_sign_rekor_entry_consistent(id_config):
-    signer, identity = id_config
+    ctx, identity = id_config
 
     # NOTE: The actual signer instance is produced lazily, so that parameter
     # expansion doesn't fail in offline tests.
-    signer = signer()
+    ctx: SigningContext = ctx()
     assert identity is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
-    expected_entry = signer.sign(payload, identity).log_entry
-    actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
+    with ctx.signer(identity) as signer:
+        expected_entry = signer.sign(payload, identity).log_entry
+        actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
 
     assert expected_entry.uuid == actual_entry.uuid
     assert expected_entry.body == actual_entry.body
@@ -59,11 +58,11 @@ def test_sign_rekor_entry_consistent(id_config):
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_sct_verify_keyring_lookup_error(id_config, monkeypatch):
-    signer, identity = id_config
+    ctx, identity = id_config
 
     # a signer whose keyring always fails to lookup a given key.
-    signer = signer()
-    signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringLookupError))
+    ctx: SigningContext = ctx()
+    ctx._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringLookupError))
     assert identity is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
@@ -71,7 +70,8 @@ def test_sct_verify_keyring_lookup_error(id_config, monkeypatch):
     with pytest.raises(
         InvalidSCTError,
     ) as excinfo:
-        signer.sign(payload, identity)
+        with ctx.signer(identity) as signer:
+            signer.sign(payload, identity)
 
     # The exception subclass is the one we expect.
     assert isinstance(excinfo.value, InvalidSCTKeyError)
@@ -80,25 +80,26 @@ def test_sct_verify_keyring_lookup_error(id_config, monkeypatch):
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_sct_verify_keyring_error(id_config, monkeypatch):
-    signer, identity = id_config
+    ctx, identity = id_config
 
     # a signer whose keyring throws an internal error.
-    signer = signer()
-    signer._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringError))
+    ctx: SigningContext = ctx()
+    ctx._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringError))
     assert identity is not None
 
     payload = io.BytesIO(secrets.token_bytes(32))
 
     with pytest.raises(InvalidSCTError):
-        signer.sign(payload, identity)
+        with ctx.signer(identity) as signer:
+            signer.sign(payload)
 
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_identity_proof_claim_lookup(id_config, monkeypatch):
-    signer, identity = id_config
+    ctx, identity = id_config
 
-    signer = signer()
+    ctx: SigningContext = ctx()
     assert identity is not None
 
     # clear out the known issuers, forcing the `Identity`'s  `proof_claim` to be looked up.
@@ -106,7 +107,8 @@ def test_identity_proof_claim_lookup(id_config, monkeypatch):
 
     payload = io.BytesIO(secrets.token_bytes(32))
 
-    expected_entry = signer.sign(payload, identity).log_entry
+    with ctx.signer(identity) as signer:
+        expected_entry = signer.sign(payload).log_entry
     actual_entry = signer._rekor.log.entries.get(log_index=expected_entry.log_index)
 
     assert expected_entry.uuid == actual_entry.uuid

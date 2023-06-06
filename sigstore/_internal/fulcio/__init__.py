@@ -19,12 +19,14 @@ APIs for interacting with Fulcio.
 
 from .client import (
     DetachedFulcioSCT,
+    ExpiredCertificate,
     FulcioCertificateSigningResponse,
     FulcioClient,
 )
 
 __all__ = [
     "DetachedFulcioSCT",
+    "ExpiredCertificate",
     "FulcioCertificateSigningResponse",
     "FulcioClient",
 ]

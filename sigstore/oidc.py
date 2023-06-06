@@ -23,6 +23,7 @@ import sys
 import time
 import urllib.parse
 import webbrowser
+from datetime import datetime, timezone
 from typing import NoReturn, Optional, cast
 
 import id
@@ -57,6 +58,20 @@ class _OpenIDConfiguration(BaseModel):
     token_endpoint: StrictStr
 
 
+# See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
+_KNOWN_OIDC_ISSUERS = {
+    "https://accounts.google.com": "email",
+    "https://oauth2.sigstore.dev/auth": "email",
+    "https://oauth2.sigstage.dev/auth": "email",
+    "https://token.actions.githubusercontent.com": "sub",
+}
+DEFAULT_AUDIENCE = "sigstore"
+
+
+class ExpiredIdentity(Exception):
+    """An error raised when an identity token is expired."""
+
+
 class IdentityToken:
     """
     An OIDC "identity", corresponding to an underlying OIDC token with
@@ -76,22 +91,28 @@ class IdentityToken:
         # certificate binding and issuance.
         try:
             self._unverified_claims = jwt.decode(
-                self._raw_token, options={"verify_signature": False}
+                raw_token,
+                options={
+                    "verify_signature": False,
+                    "verify_aud": True,
+                    "verify_iat": True,
+                    "verify_exp": True,
+                    "require": ["aud", "iat", "exp", "iss"],
+                },
+                audience=DEFAULT_AUDIENCE,
             )
-        except jwt.InvalidTokenError as exc:
-            raise IdentityError("invalid identity token") from exc
-
-        self._issuer: str = self._unverified_claims.get("iss")
-        if self._issuer is None:
-            raise IdentityError("Identity token missing the required `iss` claim")
-
-        aud = self._unverified_claims.get("aud")
-        if aud is None:
-            raise IdentityError("Identity token missing the required `aud` claim")
-        if aud != _DEFAULT_AUDIENCE:
+        except Exception as exc:
             raise IdentityError(
-                f"Audience should be {_DEFAULT_AUDIENCE!r}, not {aud!r}"
-            )
+                "Identity token is malformed or missing claims"
+            ) from exc
+
+        self._iss: str = self._unverified_claims["iss"]
+        self._nbf: int | None = self._unverified_claims.get("nbf")
+        self._exp: int = self._unverified_claims["exp"]
+
+        # Fail early if this token isn't within its validity period.
+        if not self.in_validity_period():
+            raise IdentityError("Identity token is not within its validity period")
 
         # When verifying the private key possession proof, Fulcio uses
         # different claims depending on the token's issuer.
@@ -101,7 +122,7 @@ class IdentityToken:
         if identity_claim is not None:
             if identity_claim not in self._unverified_claims:
                 raise IdentityError(
-                    f"Identity token missing the required {identity_claim!r} claim"
+                    f"Identity token is missing the required {identity_claim!r} claim"
                 )
 
             self._identity = str(self._unverified_claims.get(identity_claim))
@@ -109,7 +130,9 @@ class IdentityToken:
             try:
                 self._identity = str(self._unverified_claims["sub"])
             except KeyError:
-                raise IdentityError("Identity token missing the required 'sub' claim")
+                raise IdentityError(
+                    "Identity token is missing the required 'sub' claim"
+                )
 
         # This identity token might have been retrieved directly from
         # an identity provider, or it might be a "federated" identity token
@@ -138,6 +161,22 @@ class IdentityToken:
 
                 self._federated_issuer = federated_issuer
 
+    def in_validity_period(self) -> bool:
+        """
+        Returns whether or not this `Identity` is currently within its self-stated validity period.
+
+        NOTE: As noted in `Identity.__init__`, this is not a verifying wrapper;
+        the check here only asserts whether the *unverified* identity's claims
+        are within their validity period.
+        """
+
+        now = datetime.now(timezone.utc).timestamp()
+
+        if self._nbf is not None:
+            return self._nbf <= now < self._exp
+        else:
+            return now < self._exp
+
     @property
     def identity(self) -> str:
         """
@@ -155,7 +194,7 @@ class IdentityToken:
         """
         Returns a URL identifying this `IdentityToken`'s issuer.
         """
-        return self._issuer
+        return self._iss
 
     @property
     def expected_certificate_subject(self) -> str:
@@ -177,7 +216,7 @@ class IdentityToken:
         if self._federated_issuer is not None:
             return self._federated_issuer
 
-        return self._issuer
+        return self.issuer
 
     def __str__(self) -> str:
         """
