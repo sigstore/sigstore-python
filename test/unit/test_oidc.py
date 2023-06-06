@@ -120,7 +120,6 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
-                "sub": "fakesubject",
                 "iat": now,
                 "exp": now + 600,
                 "iss": "fake-issuer",
