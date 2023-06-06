@@ -16,6 +16,7 @@
 API for signing artifacts.
 
 Example:
+
 ```python
 from pathlib import Path
 
@@ -29,9 +30,10 @@ identity = issuer.identity_token()
 artifact = Path("foo.txt")
 
 with artifact.open("rb") as a:
-    signer = Signer.production()
-    result = signer.sign(input_=a, identity=identity)
-    print(result)
+    signing_ctx = SigningContext.production()
+    with signing_ctx.signer(identity, cache=True) as signer:
+        result = signer.sign(input_=a, rekor=signing_ctx._rekor, fulcio=signing_ctx._fulcio)
+        print(result)
 ```
 """
 
@@ -39,7 +41,9 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import IO
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from typing import IO, Iterator, Optional
 
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -67,12 +71,16 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     TransparencyLogEntry,
 )
 
-from sigstore._internal.fulcio import FulcioClient
+from sigstore._internal.fulcio import (
+    ExpiredCertificate,
+    FulcioCertificateSigningResponse,
+    FulcioClient,
+)
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
-from sigstore.oidc import IdentityToken
+from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -83,73 +91,102 @@ class Signer:
     The primary API for signing operations.
     """
 
-    def __init__(self, *, fulcio: FulcioClient, rekor: RekorClient):
+    def __init__(
+        self,
+        identity_token: IdentityToken,
+        signing_ctx: SigningContext,
+        cache: bool = True,
+    ) -> None:
         """
         Create a new `Signer`.
 
-        `fulcio` is a `FulcioClient` capable of connecting to a Fulcio instance
-        and returning signing certificates.
+        `identity_token` is the identity token used to request a signing certificate
+        from Fulcio.
 
-        `rekor` is a `RekorClient` capable of connecting to a Rekor instance
-        and creating transparency log entries.
-        """
-        self._fulcio = fulcio
-        self._rekor = rekor
+        `signing_ctx` is a `SigningContext` that keeps information about the signing
+        configuration.
 
-    @classmethod
-    def production(cls) -> Signer:
+        `cache` determines whether the signing certificate and ephemeral private key
+        should be reused (until the certificate expires) to sign different artifacts.
+        Default is `True`.
         """
-        Return a `Signer` instance configured against Sigstore's production-level services.
-        """
-        updater = TrustUpdater.production()
-        rekor = RekorClient.production(updater)
-        return cls(fulcio=FulcioClient.production(), rekor=rekor)
+        self._identity_token = identity_token
+        self._signing_ctx: SigningContext = signing_ctx
+        self.__cached_private_key: Optional[ec.EllipticCurvePrivateKey] = None
+        self.__cached_signing_certificate: Optional[
+            FulcioCertificateSigningResponse
+        ] = None
+        if cache:
+            logger.debug("Generating ephemeral keys...")
+            self.__cached_private_key = ec.generate_private_key(ec.SECP384R1())
+            logger.debug("Requesting ephemeral certificate...")
+            self.__cached_signing_certificate = self._signing_cert(self._private_key)
 
-    @classmethod
-    def staging(cls) -> Signer:
-        """
-        Return a `Signer` instance configured against Sigstore's staging-level services.
-        """
-        updater = TrustUpdater.staging()
-        rekor = RekorClient.staging(updater)
-        return cls(fulcio=FulcioClient.staging(), rekor=rekor)
+    @property
+    def _private_key(self) -> ec.EllipticCurvePrivateKey:
+        """Get or generate a signing key."""
+        if self.__cached_private_key is None:
+            logger.debug("no cached key; generating ephemeral key")
+            return ec.generate_private_key(ec.SECP384R1())
+        return self.__cached_private_key
+
+    def _signing_cert(
+        self,
+        private_key: ec.EllipticCurvePrivateKey,
+    ) -> FulcioCertificateSigningResponse:
+        """Get or request a signing certificate from Fulcio."""
+        # If it exists, verify if the current certificate is expired
+        if self.__cached_signing_certificate:
+            if (
+                datetime.now(timezone.utc).timestamp()
+                > self.__cached_signing_certificate.cert.not_valid_after.timestamp()
+            ):
+                raise ExpiredCertificate
+            return self.__cached_signing_certificate
+
+        else:
+            logger.debug("Retrieving signed certificate...")
+
+            # Build an X.509 Certificiate Signing Request
+            builder = (
+                x509.CertificateSigningRequestBuilder()
+                .subject_name(
+                    x509.Name(
+                        [
+                            x509.NameAttribute(
+                                NameOID.EMAIL_ADDRESS, self._identity_token._identity
+                            ),
+                        ]
+                    )
+                )
+                .add_extension(
+                    x509.BasicConstraints(ca=False, path_length=None),
+                    critical=True,
+                )
+            )
+            certificate_request = builder.sign(private_key, hashes.SHA256())
+
+            certificate_response = self._signing_ctx._fulcio.signing_cert.post(
+                certificate_request, self._identity_token
+            )
+
+            return certificate_response
 
     def sign(
         self,
         input_: IO[bytes],
-        identity: IdentityToken,
     ) -> SigningResult:
         """Public API for signing blobs"""
         input_digest = sha256_streaming(input_)
+        private_key = self._private_key
 
-        private_key = ec.generate_private_key(ec.SECP384R1())
+        if not self._identity_token.in_validity_period():
+            raise ExpiredIdentity
 
-        logger.debug(
-            f"Performing CSR: identity={identity.identity} "
-            f"issuer={identity.issuer} "
-            f"subject={identity.expected_certificate_subject}"
-        )
-
-        # Build an X.509 Certificate Signing Request
-        builder = (
-            x509.CertificateSigningRequestBuilder()
-            .subject_name(
-                x509.Name(
-                    [
-                        x509.NameAttribute(NameOID.EMAIL_ADDRESS, identity.identity),
-                    ]
-                )
-            )
-            .add_extension(
-                x509.BasicConstraints(ca=False, path_length=None),
-                critical=True,
-            )
-        )
-        certificate_request = builder.sign(private_key, hashes.SHA256())
-
-        certificate_response = self._fulcio.signing_cert.post(
-            certificate_request, identity
-        )
+        try:
+            certificate_response = self._signing_cert(private_key)
+        except ExpiredCertificate as e:
+            raise e
 
         # TODO(alex): Retrieve the public key via TUF
         #
@@ -158,7 +195,7 @@ class Signer:
         cert = certificate_response.cert  # noqa
         chain = certificate_response.chain
 
-        verify_sct(sct, cert, chain, self._rekor._ct_keyring)
+        verify_sct(sct, cert, chain, self._signing_ctx._rekor._ct_keyring)
 
         logger.debug("Successfully verified SCT...")
 
@@ -174,7 +211,7 @@ class Signer:
         )
 
         # Create the transparency log entry
-        entry = self._rekor.log.entries.post(
+        entry = self._signing_ctx._rekor.log.entries.post(
             b64_artifact_signature=B64Str(b64_artifact_signature),
             sha256_artifact_hash=input_digest.hex(),
             b64_cert=B64Str(b64_cert.decode()),
@@ -190,6 +227,71 @@ class Signer:
             b64_signature=B64Str(b64_artifact_signature),
             log_entry=entry,
         )
+
+
+class SigningContext:
+    """
+    Keep a context between signing operations.
+    """
+
+    def __init__(
+        self,
+        *,
+        fulcio: FulcioClient,
+        rekor: RekorClient,
+    ):
+        """
+        Create a new `SigningContext`.
+
+        `fulcio` is a `FulcioClient` capable of connecting to a Fulcio instance
+        and returning signing certificates.
+
+        `rekor` is a `RekorClient` capable of connecting to a Rekor instance
+        and creating transparency log entries.
+        """
+        self._fulcio = fulcio
+        self._rekor = rekor
+
+    @classmethod
+    def production(cls) -> SigningContext:
+        """
+        Return a `SigningContext` instance configured against Sigstore's production-level services.
+        """
+        updater = TrustUpdater.production()
+        rekor = RekorClient.production(updater)
+        return cls(
+            fulcio=FulcioClient.production(),
+            rekor=rekor,
+        )
+
+    @classmethod
+    def staging(cls) -> SigningContext:
+        """
+        Return a `SignerContext` instance configured against Sigstore's staging-level services.
+        """
+        updater = TrustUpdater.staging()
+        rekor = RekorClient.staging(updater)
+        return cls(
+            fulcio=FulcioClient.staging(),
+            rekor=rekor,
+        )
+
+    @contextmanager
+    def signer(
+        self, identity_token: IdentityToken, *, cache: bool = True
+    ) -> Iterator[Signer]:
+        """
+        A context manager for signing operations.
+
+        `identity_token` is the identity token passed to the `Signer` instance
+        and used to request a signing certificate from Fulcio.
+
+        `cache` determines whether the signing certificate and ephemeral private key
+        generated by the `Signer` instance should be reused (until the certificate expires)
+        to sign different artifacts.
+        Default is `True`.
+        """
+        yield Signer(identity_token, self, cache)
 
 
 class SigningResult(BaseModel):

@@ -164,6 +164,10 @@ class DetachedFulcioSCT(BaseModel):
 SignedCertificateTimestamp.register(DetachedFulcioSCT)
 
 
+class ExpiredCertificate(Exception):
+    """An error raised when the Certificate is expired."""
+
+
 @dataclass(frozen=True)
 class FulcioCertificateSigningResponse:
     """Certificate response"""

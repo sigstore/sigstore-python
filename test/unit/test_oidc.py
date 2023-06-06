@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
+
 import pytest
 
 from sigstore import oidc
@@ -19,109 +21,236 @@ from sigstore import oidc
 
 class TestIdentityToken:
     def test_invalid_jwt(self):
-        with pytest.raises(oidc.IdentityError, match="invalid identity token"):
+        with pytest.raises(
+            oidc.IdentityError, match="Identity token is malformed or missing claims"
+        ):
             oidc.IdentityToken("invalid jwt")
 
-    def test_missing_iss(self):
-        # HS256 for testing, empty claim set
-        jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.RX-vj8lcO2nwYZa_ALhrQkO55BGH-x4AOC0LzW7IFew"
+    def test_missing_iss(self, dummy_jwt):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "iat": now,
+                "nbf": now,
+                "exp": now + 600,
+            }
+        )
+
         with pytest.raises(
-            oidc.IdentityError, match="Identity token missing the required `iss` claim"
+            oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
             oidc.IdentityToken(jwt)
 
-    def test_missing_aud(self):
-        # HS256 for testing, `{ "iss": "https://example.com" }`
-        jwt = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIn0"
-            ".ajiTV42uC6T7M9AH-gS0DyzpJoGY4xLXCSrL0U6ELmE"
+    def test_missing_aud(self, dummy_jwt):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "iat": now,
+                "nbf": now,
+                "exp": now + 600,
+                "iss": "fake-issuer",
+            }
         )
+
         with pytest.raises(
-            oidc.IdentityError, match="Identity token missing the required `aud` claim"
+            oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
             oidc.IdentityToken(jwt)
 
-    def test_wrong_aud(self):
-        # HS256 for testing, `{ "iss": "https://example.com", "aud": "notsigstore" }`
-        jwt = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tI"
-            "iwiYXVkIjoibm90c2lnc3RvcmUifQ.vM6kUdGyaabfyYaQY3YfNhcR1Hy59rrdVKHFExWA0Bo"
+    @pytest.mark.parametrize("aud", (None, "not-sigstore"))
+    def test_invalid_aud(self, dummy_jwt, aud):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": aud,
+                "iat": now,
+                "nbf": now,
+                "exp": now + 600,
+                "iss": "fake-issuer",
+            }
         )
+
         with pytest.raises(
-            oidc.IdentityError, match="Audience should be 'sigstore', not 'notsigstore'"
+            oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
             oidc.IdentityToken(jwt)
 
-    def test_known_issuer_missing_identity_claim(self):
-        # HS256 for testing; no `email` claim
-        #
-        # {
-        #   "iss": "https://accounts.google.com",
-        #   "aud": "sigstore"
-        # }
-        jwt = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZ"
-            "S5jb20iLCJhdWQiOiJzaWdzdG9yZSJ9.qcgUH_e0s7lg6wZuzwBT5SdB0SlbsZM6gk8li2OVOmg"
+    def test_missing_iat(self, dummy_jwt):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "nbf": now,
+                "exp": now + 600,
+                "iss": "fake-issuer",
+            }
         )
+
+        with pytest.raises(
+            oidc.IdentityError, match="Identity token is malformed or missing claims"
+        ):
+            oidc.IdentityToken(jwt)
+
+    @pytest.mark.parametrize("iat", (None, "not-an-int"))
+    def test_invalid_iat(self, dummy_jwt, iat):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "iat": iat,
+                "nbf": now,
+                "exp": now + 600,
+                "iss": "fake-issuer",
+            }
+        )
+
+        with pytest.raises(
+            oidc.IdentityError, match="Identity token is malformed or missing claims"
+        ):
+            oidc.IdentityToken(jwt)
+
+    def test_missing_nbf_ok(self, dummy_jwt):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "iat": now,
+                "exp": now + 600,
+                "iss": "fake-issuer",
+                "sub": "sigstore",
+            }
+        )
+
+        assert oidc.IdentityToken(jwt) is not None
+
+    def test_invalid_nbf(self, dummy_jwt):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "iat": now,
+                "nbf": now + 600,
+                "exp": now + 601,
+                "iss": "fake-issuer",
+            }
+        )
+
         with pytest.raises(
             oidc.IdentityError,
-            match="Identity token missing the required 'email' claim",
+            match="Identity token is not within its validity period",
         ):
             oidc.IdentityToken(jwt)
 
-    def test_known_issuer_ok(self):
-        jwt = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5"
-            "jb20iLCJhdWQiOiJzaWdzdG9yZSIsImVtYWlsIjoiZXhhbXBsZUBleGFtcGxlLmNvbSJ9.NDvzhMRf7O"
-            "ueWpesIyqBFDkL9mGmcOK0S3UC3tMx_Ws"
+    def test_missing_exp(self, dummy_jwt):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "iat": now,
+                "nbf": now,
+                "iss": "fake-issuer",
+            }
         )
-        token = oidc.IdentityToken(jwt)
 
-        assert str(token) == jwt == token._raw_token
-        assert token.identity == "example@example.com"
-        assert token.issuer == "https://accounts.google.com"
+        with pytest.raises(
+            oidc.IdentityError, match="Identity token is malformed or missing claims"
+        ):
+            oidc.IdentityToken(jwt)
 
-    def test_unknown_issuer_missing_sub(self):
-        # HS256 for testing; no `sub` claim
-        #
-        # {
-        #  "iss": "https://example.com",
-        #  "aud": "sigstore"
-        # }
-        jwt = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIiwiY"
-            "XVkIjoic2lnc3RvcmUifQ.t3qwWcGfy5dj_NAFliPviVSmI3Us4mV9mEkDpKrgLn0"
+    def test_invalid_exp(self, dummy_jwt):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "iat": now - 600,
+                "nbf": now - 300,
+                "exp": now - 1,
+                "iss": "fake-issuer",
+            }
         )
+
+        with pytest.raises(
+            oidc.IdentityError, match="Identity token is malformed or missing claims"
+        ):
+            oidc.IdentityToken(jwt)
+
+    @pytest.mark.parametrize("iss", oidc._KNOWN_OIDC_ISSUERS.keys())
+    def test_missing_identity_claim(self, dummy_jwt, iss):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "iat": now,
+                "nbf": now,
+                "exp": now + 600,
+                "iss": iss,
+            }
+        )
+
         with pytest.raises(
             oidc.IdentityError,
-            match="Identity token missing the required 'sub' claim",
+            match=r"Identity token is missing the required '.+' claim",
         ):
             oidc.IdentityToken(jwt)
 
-    def test_unknown_issuer_ok(self):
-        jwt = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIiwiYXV"
-            "kIjoic2lnc3RvcmUiLCJzdWIiOiJzb21lLWlkZW50aXR5In0.xdmbAw5jagKqsHCUmwLyA7JR1fWo8nk"
-            "8AHFVIJo-gfY"
-        )
-        token = oidc.IdentityToken(jwt)
-
-        assert str(token) == jwt == token._raw_token
-        assert token.identity == "some-identity"
-        assert token.issuer == "https://example.com"
-        assert token.expected_certificate_subject == "https://example.com"
-
-    def test_unknown_issuer_federated_ok(self):
-        jwt = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tIiwiYXV"
-            "kIjoic2lnc3RvcmUiLCJzdWIiOiJzb21lLWlkZW50aXR5IiwiZmVkZXJhdGVkX2NsYWltcyI6eyJjb25"
-            "uZWN0b3JfaWQiOiJodHRwczovL290aGVyLmV4YW1wbGUuY29tIn19.EkpGq-4TZnHyxMaTd0AlEJrMtv"
-            "wxJ8TZH_0qZ-8CfuE"
+    @pytest.mark.parametrize("fed", ("notadict", {"connector_id": 123}))
+    def test_invalid_federated_claims(self, dummy_jwt, fed):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "iat": now,
+                "nbf": now,
+                "exp": now + 600,
+                "iss": "https://accounts.google.com",
+                "email": "example@example.com",
+                "federated_claims": fed,
+            }
         )
 
-        token = oidc.IdentityToken(jwt)
+        with pytest.raises(
+            oidc.IdentityError,
+            match="unexpected claim type: federated_claims.*",
+        ):
+            oidc.IdentityToken(jwt)
 
-        assert str(token) == jwt == token._raw_token
-        assert token.identity == "some-identity"
-        assert token.issuer == "https://example.com"
-        assert token.expected_certificate_subject == "https://other.example.com"
+    @pytest.mark.parametrize(
+        ("iss", "identity_claim", "identity_value", "fed_iss"),
+        [
+            ("https://accounts.google.com", "email", "example@example.com", None),
+            (
+                "https://oauth2.sigstore.dev/auth",
+                "email",
+                "example@example.com",
+                "https://accounts.google.com",
+            ),
+            ("https://oauth2.sigstore.dev/auth", "email", "example@example.com", None),
+            (
+                "https://token.actions.githubusercontent.com",
+                "sub",
+                "some-subject",
+                None,
+            ),
+            ("hxxps://unknown.issuer.example.com/auth", "sub", "some-subject", None),
+        ],
+    )
+    def test_ok(self, dummy_jwt, iss, identity_claim, identity_value, fed_iss):
+        now = int(datetime.datetime.now().timestamp())
+        jwt = dummy_jwt(
+            {
+                "aud": "sigstore",
+                "iat": now,
+                "nbf": now,
+                "exp": now + 600,
+                "iss": iss,
+                identity_claim: identity_value,
+                "federated_claims": {"connector_id": fed_iss},
+            }
+        )
+
+        identity = oidc.IdentityToken(jwt)
+        assert identity.in_validity_period()
+        assert identity.identity == identity_value
+        assert identity.issuer == iss
+        assert identity.expected_certificate_subject == iss if not fed_iss else fed_iss
