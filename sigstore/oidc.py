@@ -96,7 +96,7 @@ class IdentityToken:
                 options={
                     "verify_signature": False,
                     "verify_aud": True,
-                    "verify_iat": True,
+                    # "verify_iat": True,
                     "verify_exp": True,
                     "require": ["aud", "iat", "exp", "iss"],
                 },
