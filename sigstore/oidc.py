@@ -97,9 +97,16 @@ class IdentityToken:
                     "verify_aud": True,
                     "verify_iat": True,
                     "verify_exp": True,
-                    "require": ["aud", "iat", "exp", "iss"],
+                    # These claims are required by OpenID Connect, so
+                    # we can strongly enforce their presence.
+                    # See: https://openid.net/specs/openid-connect-basic-1_0.html#IDToken
+                    "require": ["aud", "sub", "iat", "exp", "iss"],
                 },
                 audience=DEFAULT_AUDIENCE,
+                # NOTE: This leeway shouldn't be strictly necessary, but is
+                # included to preempt any (small) skew between the host
+                # and the originating IdP.
+                leeway=5,
             )
         except Exception as exc:
             raise IdentityError(
