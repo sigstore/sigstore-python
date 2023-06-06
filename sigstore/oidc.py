@@ -104,6 +104,7 @@ class IdentityToken:
                     "require": ["aud", "sub", "iat", "exp", "iss"],
                 },
                 audience=DEFAULT_AUDIENCE,
+                leeway=5,
             )
         except Exception as exc:
             raise IdentityError(
