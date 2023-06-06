@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Iterator
 from urllib.parse import urlparse
 
+import jwt
 import pytest
 from cryptography.x509 import Certificate, load_pem_x509_certificate
 from id import (
@@ -34,7 +35,7 @@ from tuf.ngclient import FetcherInterface
 
 from sigstore._internal import tuf
 from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
-from sigstore.sign import Signer
+from sigstore.sign import SigningContext
 from sigstore.verify import VerificationMaterials
 from sigstore.verify.policy import VerificationSuccess
 
@@ -227,7 +228,10 @@ def tuf_dirs(monkeypatch, tmp_path):
 
 
 @pytest.fixture(
-    params=[("production", Signer.production), ("staging", Signer.staging)],
+    params=[
+        ("production", SigningContext.production),
+        ("staging", SigningContext.staging),
+    ],
     ids=["production", "staging"],
 )
 def id_config(request):
@@ -239,3 +243,11 @@ def id_config(request):
         token = detect_credential(_DEFAULT_AUDIENCE)
 
     return signer, IdentityToken(token)
+
+
+@pytest.fixture
+def dummy_jwt():
+    def _dummy_jwt(claims: dict):
+        return jwt.encode(claims, key="definitely not secure")
+
+    return _dummy_jwt
