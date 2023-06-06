@@ -11,7 +11,6 @@ on:
   push:
     branches:
       - main
-      - ww/debug-staging
   schedule:
     - cron: '0 */8 * * *'
 
@@ -71,12 +70,12 @@ jobs:
           ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/$GITHUB_RUN_ID
           EOF
 
-      # - name: open an issue if the staging tests fail
-      #   if: failure()
-      #   uses: peter-evans/create-issue-from-file@433e51abf769039ee20ba1293a088ca19d573b7f # v4.0.1
-      #   with:
-      #     title: "[CI] Integration failure: staging instance"
-      #     # created in the previous step
-      #     content-filepath: /tmp/staging-instance-issue.md
-      #     labels: bug,component:cicd,component:tests
-      #     assignees: woodruffw,di,tetsuo-cpp
+      - name: open an issue if the staging tests fail
+        if: failure()
+        uses: peter-evans/create-issue-from-file@433e51abf769039ee20ba1293a088ca19d573b7f # v4.0.1
+        with:
+          title: "[CI] Integration failure: staging instance"
+          # created in the previous step
+          content-filepath: /tmp/staging-instance-issue.md
+          labels: bug,component:cicd,component:tests
+          assignees: woodruffw,di,tetsuo-cpp
