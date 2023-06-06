@@ -104,6 +104,9 @@ class IdentityToken:
                     "require": ["aud", "sub", "iat", "exp", "iss"],
                 },
                 audience=DEFAULT_AUDIENCE,
+                # NOTE: This leeway shouldn't be strictly necessary, but is
+                # included to preempt any (small) skew between the host
+                # and the originating IdP.
                 leeway=5,
             )
         except Exception as exc:
