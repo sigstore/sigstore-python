@@ -31,6 +31,7 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
+                "sub": "fakesubject",
                 "iat": now,
                 "nbf": now,
                 "exp": now + 600,
@@ -46,6 +47,7 @@ class TestIdentityToken:
         now = int(datetime.datetime.now().timestamp())
         jwt = dummy_jwt(
             {
+                "sub": "fakesubject",
                 "iat": now,
                 "nbf": now,
                 "exp": now + 600,
@@ -64,6 +66,7 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": aud,
+                "sub": "fakesubject",
                 "iat": now,
                 "nbf": now,
                 "exp": now + 600,
@@ -81,6 +84,7 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
+                "sub": "fakesubject",
                 "nbf": now,
                 "exp": now + 600,
                 "iss": "fake-issuer",
@@ -98,6 +102,7 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
+                "sub": "fakesubject",
                 "iat": iat,
                 "nbf": now,
                 "exp": now + 600,
@@ -129,6 +134,7 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
+                "sub": "fakesubject",
                 "iat": now,
                 "nbf": now + 600,
                 "exp": now + 601,
@@ -147,6 +153,7 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
+                "sub": "fakesubject",
                 "iat": now,
                 "nbf": now,
                 "iss": "fake-issuer",
@@ -163,9 +170,11 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
+                "sub": "fakesubject",
                 "iat": now - 600,
                 "nbf": now - 300,
-                "exp": now - 1,
+                # NOTE: 6 seconds due to +/- 5 second flutter.
+                "exp": now - 6,
                 "iss": "fake-issuer",
             }
         )
@@ -175,12 +184,15 @@ class TestIdentityToken:
         ):
             oidc.IdentityToken(jwt)
 
-    @pytest.mark.parametrize("iss", oidc._KNOWN_OIDC_ISSUERS.keys())
+    @pytest.mark.parametrize(
+        "iss", [k for k, v in oidc._KNOWN_OIDC_ISSUERS.items() if v != "sub"]
+    )
     def test_missing_identity_claim(self, dummy_jwt, iss):
         now = int(datetime.datetime.now().timestamp())
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
+                "sub": "fakesubject",
                 "iat": now,
                 "nbf": now,
                 "exp": now + 600,
@@ -200,6 +212,7 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
+                "sub": "fakesubject",
                 "iat": now,
                 "nbf": now,
                 "exp": now + 600,
@@ -240,6 +253,7 @@ class TestIdentityToken:
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
+                "sub": "fakesubject",
                 "iat": now,
                 "nbf": now,
                 "exp": now + 600,
