@@ -173,7 +173,8 @@ class TestIdentityToken:
                 "sub": "fakesubject",
                 "iat": now - 600,
                 "nbf": now - 300,
-                "exp": now - 1,
+                # NOTE: 6 seconds due to +/- 5 second flutter.
+                "exp": now - 6,
                 "iss": "fake-issuer",
             }
         )
