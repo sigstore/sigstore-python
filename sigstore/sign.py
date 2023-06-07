@@ -127,7 +127,7 @@ class Signer:
         """Get or generate a signing key."""
         if self.__cached_private_key is None:
             logger.debug("no cached key; generating ephemeral key")
-            return ec.generate_private_key(ec.SECP384R1())
+            return ec.generate_private_key(ec.SECP256R1())
         return self.__cached_private_key
 
     def _signing_cert(
