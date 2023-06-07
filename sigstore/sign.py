@@ -118,7 +118,7 @@ class Signer:
         ] = None
         if cache:
             logger.debug("Generating ephemeral keys...")
-            self.__cached_private_key = ec.generate_private_key(ec.SECP384R1())
+            self.__cached_private_key = ec.generate_private_key(ec.SECP256R1())
             logger.debug("Requesting ephemeral certificate...")
             self.__cached_signing_certificate = self._signing_cert(self._private_key)
 
