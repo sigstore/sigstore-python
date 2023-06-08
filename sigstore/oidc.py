@@ -364,7 +364,9 @@ class Issuer:
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
-            raise IdentityError from http_error
+            raise IdentityError(
+                f"Token request failed with {resp.status_code}"
+            ) from http_error
 
         token_json = resp.json()
         token_error = token_json.get("error")

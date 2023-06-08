@@ -29,8 +29,8 @@ def test_init_url():
 
 
 @pytest.mark.online
-def test_get_identity_token_identity_error(monkeypatch):
+def test_get_identity_token_bad_code(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda _: "hunter2")
 
-    with pytest.raises(IdentityError):
+    with pytest.raises(IdentityError, match=r"^Token request failed with .+$"):
         Issuer.staging().identity_token(force_oob=True)
