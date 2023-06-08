@@ -30,8 +30,7 @@ def test_init_url():
 
 @pytest.mark.online
 def test_get_identity_token_identity_error(monkeypatch):
-    monkeypatch.setenv("SIGSTORE_OAUTH_FORCE_OOB", "")
     monkeypatch.setattr("builtins.input", lambda _: "hunter2")
 
     with pytest.raises(IdentityError):
-        Issuer.staging().identity_token()
+        Issuer.staging().identity_token(force_oob=True)
