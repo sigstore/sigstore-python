@@ -134,8 +134,8 @@ Sigstore instance options:
 usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
-                     [--no-default-files] [--signature FILE]
-                     [--certificate FILE] [--bundle FILE]
+                     [--oauth-force-oob] [--no-default-files]
+                     [--signature FILE] [--certificate FILE] [--bundle FILE]
                      [--output-directory DIR] [--overwrite] [--staging]
                      [--rekor-url URL] [--rekor-root-pubkey FILE]
                      [--fulcio-url URL] [--ctfe FILE]
@@ -160,6 +160,9 @@ OpenID Connect options:
                         (e.g. on GitHub Actions) (default: False)
   --oidc-issuer URL     The OpenID Connect issuer to use (conflicts with
                         --staging) (default: https://oauth2.sigstore.dev/auth)
+  --oauth-force-oob     Force an out-of-band OAuth flow and do not
+                        automatically start the default web browser (default:
+                        False)
 
 Output options:
   --no-default-files    Don't emit the default output files ({input}.sigstore)

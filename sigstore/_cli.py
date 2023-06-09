@@ -226,6 +226,12 @@ def _add_shared_oidc_options(
         default=os.getenv("SIGSTORE_OIDC_ISSUER", DEFAULT_OAUTH_ISSUER_URL),
         help="The OpenID Connect issuer to use (conflicts with --staging)",
     )
+    group.add_argument(
+        "--oauth-force-oob",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_OAUTH_FORCE_OOB"),
+        help="Force an out-of-band OAuth flow and do not automatically start the default web browser",
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -977,7 +983,9 @@ def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
         args.oidc_client_secret = ""  # nosec: B105
 
     token = issuer.identity_token(
-        client_id=args.oidc_client_id, client_secret=args.oidc_client_secret
+        client_id=args.oidc_client_id,
+        client_secret=args.oidc_client_secret,
+        force_oob=args.oauth_force_oob,
     )
 
     return token

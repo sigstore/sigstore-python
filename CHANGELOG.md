@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* CLI: `sigstore sign` and `sigstore get-identity-token` now support the
+  `--oauth-force-oob` option; which has the same behavior as the
+  preexisting `SIGSTORE_OAUTH_FORCE_OOB` environment variable
+  ([#667](https://github.com/sigstore/sigstore-python/pull/667))
+
 ### Changed
 
 * `sigstore verify` now performs additional verification of Rekor's inclusion
