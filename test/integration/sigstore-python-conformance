@@ -10,6 +10,11 @@ found at: https://github.com/trailofbits/sigstore-conformance.
 import subprocess
 import sys
 
+SUBCMD_REPLACEMENTS = {
+    "sign-bundle": "sign",
+    "verify-bundle": "verify",
+}
+
 ARG_REPLACEMENTS = {
     "--certificate-identity": "--cert-identity",
     "--certificate-oidc-issuer": "--cert-oidc-issuer",
@@ -17,6 +22,11 @@ ARG_REPLACEMENTS = {
 
 # Trim the script name.
 fixed_args = sys.argv[1:]
+
+# Substitute incompatible subcommands.
+subcmd = fixed_args[0]
+if subcmd in SUBCMD_REPLACEMENTS:
+    fixed_args[0] = SUBCMD_REPLACEMENTS[subcmd]
 
 # Replace incompatible flags.
 fixed_args = [
