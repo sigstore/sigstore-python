@@ -20,7 +20,6 @@ import logging
 import os
 import sys
 from pathlib import Path
-from textwrap import dedent
 from typing import NoReturn, Optional, TextIO, Union, cast
 
 from cryptography.x509 import load_pem_x509_certificates
@@ -52,14 +51,8 @@ from sigstore.oidc import (
 )
 from sigstore.sign import SigningContext
 from sigstore.transparency import LogEntry
-from sigstore.verify import (
-    CertificateVerificationFailure,
-    LogEntryMissing,
-    VerificationMaterials,
-    Verifier,
-    policy,
-)
-from sigstore.verify.models import VerificationFailure
+from sigstore.verify import VerificationMaterials, Verifier, policy
+from sigstore.verify.models import VerificationError, VerificationFailure
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -851,60 +844,6 @@ def _collect_verification_state(
             all_materials.append((file, materials))
 
     return (verifier, all_materials)
-
-
-class VerificationError(Error):
-    """Raised when the verifier returns a `VerificationFailure` result."""
-
-    def __init__(self, result: VerificationFailure):
-        self.message = f"Verification failed: {result.reason}"
-        self.result = result
-
-    def diagnostics(self) -> str:
-        message = f"Failure reason: {self.result.reason}\n"
-
-        if isinstance(self.result, CertificateVerificationFailure):
-            message += dedent(
-                f"""
-                The given certificate could not be verified against the
-                root of trust.
-
-                This may be a result of connecting to the wrong Fulcio instance
-                (for example, staging instead of production, or vice versa).
-
-                Additional context:
-
-                {self.result.exception}
-                """
-            )
-        elif isinstance(self.result, LogEntryMissing):
-            message += dedent(
-                f"""
-                These signing artifacts could not be matched to a entry
-                in the configured transparency log.
-
-                This may be a result of connecting to the wrong Rekor instance
-                (for example, staging instead of production, or vice versa).
-
-                Additional context:
-
-                Signature: {self.result.signature}
-
-                Artifact hash: {self.result.artifact_hash}
-                """
-            )
-        else:
-            message += dedent(
-                f"""
-                A verification error occurred.
-
-                Additional context:
-
-                {self.result}
-                """
-            )
-
-        return message
 
 
 def _verify_identity(args: argparse.Namespace) -> None:

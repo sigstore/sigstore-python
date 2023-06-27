@@ -37,6 +37,7 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import (
     B64Str,
+    HexStr,
     PEMCert,
     base64_encode_pem_cert,
     cert_is_leaf,
@@ -99,6 +100,75 @@ class VerificationFailure(VerificationResult):
     """
 
 
+class CertificateVerificationFailure(VerificationFailure):
+    """
+    A specialization of `VerificationFailure` for certificate signature
+    verification failures, with additional exception context.
+    """
+
+    reason: str = "Failed to verify signing certificate"
+    exception: Exception
+
+    class Config:
+        # Needed for the `exception` field above, since exceptions are
+        # not trivially serializable.
+        arbitrary_types_allowed = True
+
+
+class VerificationError(Error):
+    """Raised when the verifier returns a `VerificationFailure` result."""
+
+    def __init__(self, result: VerificationFailure):
+        self.message = f"Verification failed: {result.reason}"
+        self.result = result
+
+    def diagnostics(self) -> str:
+        message = f"Failure reason: {self.result.reason}\n"
+
+        if isinstance(self.result, CertificateVerificationFailure):
+            message += dedent(
+                f"""
+                The given certificate could not be verified against the
+                root of trust.
+
+                This may be a result of connecting to the wrong Fulcio instance
+                (for example, staging instead of production, or vice versa).
+
+                Additional context:
+
+                {self.result.exception}
+                """
+            )
+        elif isinstance(self.result, LogEntryMissing):
+            message += dedent(
+                f"""
+                These signing artifacts could not be matched to a entry
+                in the configured transparency log.
+
+                This may be a result of connecting to the wrong Rekor instance
+                (for example, staging instead of production, or vice versa).
+
+                Additional context:
+
+                Signature: {self.result.signature}
+
+                Artifact hash: {self.result.artifact_hash}
+                """
+            )
+        else:
+            message += dedent(
+                f"""
+                A verification error occurred.
+
+                Additional context:
+
+                {self.result}
+                """
+            )
+
+        return message
+
+
 class InvalidMaterials(Error):
     """
     Raised when the associated `VerificationMaterials` are invalid in some way.
@@ -130,6 +200,27 @@ class RekorEntryMissing(Exception):
     """
 
     pass
+
+
+class LogEntryMissing(VerificationFailure):
+    """
+    A specialization of `VerificationFailure` for transparency log lookup failures,
+    with additional lookup context.
+    """
+
+    reason: str = (
+        "The transparency log has no entry for the given verification materials"
+    )
+
+    signature: B64Str
+    """
+    The signature present during lookup failure, encoded with base64.
+    """
+
+    artifact_hash: HexStr
+    """
+    The artifact hash present during lookup failure, encoded as a hex string.
+    """
 
 
 class InvalidRekorEntry(InvalidMaterials):

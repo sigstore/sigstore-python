@@ -52,16 +52,14 @@ with artifact.open("rb") as a, cert.open("r") as c, signature.open("rb") as s:
 """
 
 from sigstore.verify.models import (
+    CertificateVerificationFailure,
+    LogEntryMissing,
     VerificationFailure,
     VerificationMaterials,
     VerificationResult,
     VerificationSuccess,
 )
-from sigstore.verify.verifier import (
-    CertificateVerificationFailure,
-    LogEntryMissing,
-    Verifier,
-)
+from sigstore.verify.verifier import Verifier
 
 __all__ = [
     "CertificateVerificationFailure",
