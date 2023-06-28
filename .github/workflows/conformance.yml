@@ -7,9 +7,6 @@ on:
   workflow_dispatch:
   pull_request:
 
-permissions:  # added using https://github.com/step-security/secure-workflows
-  contents: read
-
 jobs:
   conformance:
     runs-on: ubuntu-latest
@@ -25,6 +22,6 @@ jobs:
       - name: install sigstore-python
         run: python -m pip install .
 
-      - uses: sigstore/sigstore-conformance@064fb32a890c30235f305281f3509c5e65e6f9e5 # v0.0.4
+      - uses: sigstore/sigstore-conformance@954233f9a4ea6d0b355626b283b4f837f465e4ec # v0.0.5
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance
