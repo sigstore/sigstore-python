@@ -226,7 +226,7 @@ class RekorEntriesRetrieve(_Endpoint):
         except requests.HTTPError as http_error:
             if http_error.response.status_code == 404:
                 return None
-            raise RekorClientError(resp.json()) from http_error
+            raise RekorClientError(resp.text) from http_error
 
         results = resp.json()
 
