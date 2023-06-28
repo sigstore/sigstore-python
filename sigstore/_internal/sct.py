@@ -24,7 +24,7 @@ from typing import List, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from cryptography.x509 import Certificate, ExtendedKeyUsage
+from cryptography.x509 import Certificate, ExtendedKeyUsage, ExtensionNotFound
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
     SignedCertificateTimestamp,
@@ -37,7 +37,13 @@ from sigstore._internal.keyring import (
     KeyringLookupError,
     KeyringSignatureError,
 )
-from sigstore._utils import DERCert, KeyID, key_id
+from sigstore._utils import (
+    DERCert,
+    InvalidCertError,
+    KeyID,
+    cert_is_ca,
+    key_id,
+)
 from sigstore.errors import Error
 
 logger = logging.getLogger(__name__)
@@ -127,7 +133,11 @@ def _pack_digitally_signed(
 
 
 def _is_preissuer(issuer: Certificate) -> bool:
-    ext_key_usage = issuer.extensions.get_extension_for_class(ExtendedKeyUsage)
+    try:
+        ext_key_usage = issuer.extensions.get_extension_for_class(ExtendedKeyUsage)
+    # If we do not have any EKU, we certainly do not have CT Ext
+    except ExtensionNotFound:
+        return False
 
     return ExtendedKeyUsageOID.CERTIFICATE_TRANSPARENCY in ext_key_usage.value
 
@@ -137,6 +147,16 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
     if _is_preissuer(issuer):
         issuer = chain[1]
     return issuer
+
+
+def _cert_is_ca(cert: Certificate) -> bool:
+    logger.debug(f"Found {cert.subject} as issuer, verifying if it is a ca")
+    try:
+        cert_is_ca(cert)
+    except InvalidCertError as e:
+        logger.debug(f"Invalid {cert.subject}: failed to validate as a CA: {e}")
+        return False
+    return True
 
 
 class InvalidSCTError(Error):
@@ -231,7 +251,13 @@ def verify_sct(
         # find its issuer in the chain and calculate a hash over
         # its public key information, as part of the "binding" proof
         # that ties the issuer to the final certificate.
-        issuer_pubkey = _get_issuer_cert(chain).public_key()
+        issuer_cert = _get_issuer_cert(chain)
+        issuer_pubkey = issuer_cert.public_key()
+
+        if not _cert_is_ca(issuer_cert):
+            raise InvalidSCTError(
+                f"Invalid issuer pubkey basicConstraint (not a CA): {issuer_pubkey}"
+            )
 
         if not isinstance(issuer_pubkey, (rsa.RSAPublicKey, ec.EllipticCurvePublicKey)):
             raise InvalidSCTError(

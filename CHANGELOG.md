@@ -55,7 +55,7 @@ All versions prior to 0.9.0 are untracked.
   reducing the number of cryptographic operations and network roundtrips
   required when signing more than one input
   ([#645](https://github.com/sigstore/sigstore-python/pull/645))
-  
+
 * `sigstore sign` now uses an ephemeral P-256 keypair, rather than P-384
   ([#662](https://github.com/sigstore/sigstore-python/pull/662))
 
@@ -68,6 +68,11 @@ All versions prior to 0.9.0 are untracked.
 * Removed an unnecessary and backwards-incompatible parameter from the
   `sigstore.oidc.detect_credential` API
   ([#641](https://github.com/sigstore/sigstore-python/pull/641))
+
+* Fixed a case where `sigstore sign` (and `sigstore verify`) could fail while
+  using a private instance due to a missing due to a missing `ExtendedKeyUsage`
+  in the CA. We now enforce the fact that the TBSPrecertificate signer must be
+  a valid CA ([#658](https://github.com/sigstore/sigstore-python/pull/658))
 
 ## [1.1.2]
 
