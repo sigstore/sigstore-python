@@ -226,28 +226,24 @@ def cert_is_ca(cert: Certificate) -> bool:
         # No BasicConstrains means that this can't possibly be a CA.
         return False
 
-    digital_signature = False
     key_cert_sign = False
     try:
         key_usage = cert.extensions.get_extension_for_oid(ExtensionOID.KEY_USAGE)
         key_cert_sign = key_usage.value.key_cert_sign  # type: ignore
-        digital_signature = key_usage.value.digital_signature  # type: ignore
     except ExtensionNotFound:
         raise InvalidCertError("invalid X.509 certificate: missing KeyUsage")
 
-    # If all three states are set, this is a CA.
-    if ca and key_cert_sign and digital_signature:
+    # If both states are set, this is a CA.
+    if ca and key_cert_sign:
         return True
 
-    # Non-CA in the Sigstore ecosystem have `digitalSignature` but neither of
-    # the CA states.
-    if digital_signature and not (ca or key_cert_sign):
+    if not (ca or key_cert_sign):
         return False
 
     # Anything else is an invalid state that should never occur.
     raise InvalidCertError(
-        f"invalid certificate states: KeyUsage.digitalSignature={digital_signature}, "
-        f"KeyUsage.keyCertSign={key_cert_sign}, BasicConstraints.ca={ca}"
+        f"invalid certificate states: KeyUsage.keyCertSign={key_cert_sign}"
+        f", BasicConstraints.ca={ca}"
     )
 
 

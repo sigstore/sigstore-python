@@ -119,7 +119,6 @@ def test_cert_is_ca(x509_testcase, testcase, valid):
         "bogus-root-noncritical-bc.pem",
         "bogus-root-invalid-ku.pem",
         "bogus-root-missing-ku.pem",
-        "bogus-leaf-invalid-ku.pem",
     ],
 )
 def test_cert_is_ca_invalid_states(x509_testcase, testcase):
@@ -135,6 +134,7 @@ def test_cert_is_ca_invalid_states(x509_testcase, testcase):
         ("bogus-root.pem", True),
         ("bogus-intermediate.pem", False),
         ("bogus-leaf.pem", False),
+        ("bogus-leaf-invalid-ku.pem", False),
     ],
 )
 def test_cert_is_root_ca(x509_testcase, testcase, valid):
