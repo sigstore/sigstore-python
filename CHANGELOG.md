@@ -59,6 +59,10 @@ All versions prior to 0.9.0 are untracked.
 * `sigstore sign` now uses an ephemeral P-256 keypair, rather than P-384
   ([#662](https://github.com/sigstore/sigstore-python/pull/662))
 
+* API change: `RekorClientError` does not try to always parse response
+  content as JSON
+  ([#694](https://github.com/sigstore/sigstore-python/pull/694))
+
 ### Fixed
 
 * Fixed a case where `sigstore verify` would fail to verify an otherwise valid
