@@ -20,7 +20,7 @@ Example:
 ```python
 from pathlib import Path
 
-from sigstore.sign import Signer
+from sigstore.sign import SigningContext
 from sigstore.oidc import Issuer
 
 issuer = Issuer.production()
