@@ -137,10 +137,12 @@ class Signer:
         """Get or request a signing certificate from Fulcio."""
         # If it exists, verify if the current certificate is expired
         if self.__cached_signing_certificate:
-            if (
-                datetime.now(timezone.utc).timestamp()
-                > self.__cached_signing_certificate.cert.not_valid_after.timestamp()
-            ):
+            not_valid_after = self.__cached_signing_certificate.cert.not_valid_after
+            not_valid_after_timestamp = not_valid_after.replace(
+                tzinfo=timezone.utc
+            ).timestamp()
+
+            if datetime.now(timezone.utc).timestamp() > not_valid_after_timestamp:
                 raise ExpiredCertificate
             return self.__cached_signing_certificate
 
