@@ -29,10 +29,10 @@ identity = issuer.identity_token()
 # The artifact to sign
 artifact = Path("foo.txt")
 
-with artifact.open("rb") as a:
+with artifact.open("rb") as file:
     signing_ctx = SigningContext.production()
     with signing_ctx.signer(identity, cache=True) as signer:
-        result = signer.sign(input_=a, rekor=signing_ctx._rekor, fulcio=signing_ctx._fulcio)
+        result = signer.sign(file)
         print(result)
 ```
 """
