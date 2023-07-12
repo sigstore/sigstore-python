@@ -48,6 +48,11 @@ from sigstore.transparency import LogEntry, LogInclusionProof
 
 logger = logging.getLogger(__name__)
 
+_KNOWN_BUNDLE_TYPES: set[str] = {
+    "application/vnd.dev.sigstore.bundle+json;version=0.1",
+    "application/vnd.dev.sigstore.bundle+json;version=0.2",
+}
+
 
 class VerificationResult(BaseModel):
     """
@@ -242,6 +247,9 @@ class VerificationMaterials:
 
         Effect: `input_` is consumed as part of construction.
         """
+        if bundle.media_type not in _KNOWN_BUNDLE_TYPES:
+            raise InvalidMaterials(f"unsupported bundle format: {bundle.media_type}")
+
         certs = bundle.verification_material.x509_certificate_chain.certificates
 
         if len(certs) == 0:
