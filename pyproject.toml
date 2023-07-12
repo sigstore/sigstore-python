@@ -9,7 +9,7 @@ description = "A tool for signing Python package distributions"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-  { name = "Sigstore Authors", email = "sigstore-dev@googlegroups.com" }
+  { name = "Sigstore Authors", email = "sigstore-dev@googlegroups.com" },
 ]
 classifiers = [
   "License :: OSI Approved :: Apache Software License",
@@ -35,7 +35,7 @@ dependencies = [
   "pyOpenSSL >= 23.0.0",
   "requests",
   "securesystemslib",
-  "sigstore-protobuf-specs ~= 0.1.0",
+  "sigstore-protobuf-specs ~= 0.2.0",
   "tuf >= 2.1,< 4.0",
 ]
 requires-python = ">=3.7"
@@ -50,12 +50,7 @@ Source = "https://github.com/sigstore/sigstore-python"
 Documentation = "https://sigstore.github.io/sigstore-python/"
 
 [project.optional-dependencies]
-test = [
-  "pytest",
-  "pytest-cov",
-  "pretend",
-  "coverage[toml]",
-]
+test = ["pytest", "pytest-cov", "pretend", "coverage[toml]"]
 lint = [
   "bandit",
   "black",
@@ -72,14 +67,8 @@ lint = [
   # See: https://github.com/python/typeshed/issues/8699
   # "types-pyOpenSSL",
 ]
-doc = [
-  "pdoc",
-]
-dev = [
-  "build",
-  "bump >= 1.3.2",
-  "sigstore[doc,test,lint]",
-]
+doc = ["pdoc"]
+dev = ["build", "bump >= 1.3.2", "sigstore[doc,test,lint]"]
 
 [tool.isort]
 multi_line_output = 3
@@ -100,9 +89,9 @@ omit = ["sigstore/_cli.py"]
 
 [tool.coverage.report]
 exclude_lines = [
-    "@abc.abstractmethod",
-    "@typing.overload",
-    "if typing.TYPE_CHECKING",
+  "@abc.abstractmethod",
+  "@typing.overload",
+  "if typing.TYPE_CHECKING",
 ]
 
 [tool.interrogate]
