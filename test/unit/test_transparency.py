@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from base64 import b64encode
+
 import pytest
+
 from sigstore.transparency import LogEntry
 
 
