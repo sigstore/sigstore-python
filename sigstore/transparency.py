@@ -84,6 +84,9 @@ class LogEntry:
     """
 
     def __post_init__(self) -> None:
+        """
+        Invariant preservation.
+        """
         if self.inclusion_proof is None and self.inclusion_promise is None:
             raise ValueError("Log entry must have either inclusion proof or promise")
 
