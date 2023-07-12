@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from base64 import b64encode
-from pydantic import ValidationError
 
 import pytest
+from pydantic import ValidationError
 
 from sigstore.transparency import LogEntry, LogInclusionProof
 
