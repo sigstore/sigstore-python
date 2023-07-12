@@ -35,7 +35,7 @@ dependencies = [
   "pyOpenSSL >= 23.0.0",
   "requests",
   "securesystemslib",
-  "sigstore-protobuf-specs ~= 0.1.0",
+  "sigstore-protobuf-specs >= 0.1,< 0.3",
   "tuf >= 2.1,< 4.0",
 ]
 requires-python = ">=3.7"
