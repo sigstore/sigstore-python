@@ -33,6 +33,10 @@ from cryptography.x509 import (
 )
 from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
+from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
+    InclusionPromise,
+    InclusionProof,
+)
 
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import (
@@ -48,9 +52,11 @@ from sigstore.transparency import LogEntry, LogInclusionProof
 
 logger = logging.getLogger(__name__)
 
-_KNOWN_BUNDLE_TYPES: set[str] = {
-    "application/vnd.dev.sigstore.bundle+json;version=0.1",
-    "application/vnd.dev.sigstore.bundle+json;version=0.2",
+_BUNDLE_0_1 = "application/vnd.dev.sigstore.bundle+json;version=0.1"
+_BUNDLE_0_2 = "application/vnd.dev.sigstore.bundle+json;version=0.2"
+_KNOWN_BUNDLE_TYPES = {
+    _BUNDLE_0_1,
+    _BUNDLE_0_2,
 }
 
 
@@ -288,22 +294,33 @@ class VerificationMaterials:
             )
         tlog_entry = tlog_entries[0]
 
-        # NOTE: Bundles are not required to include inclusion proofs,
-        # since offline (or non-gossiped) verification of an inclusion proof is
-        # only as strong as verification of the inclusion promise, which
-        # is always provided.
-        inclusion_proof = tlog_entry.inclusion_proof
-        parsed_inclusion_proof: LogInclusionProof | None = None
-        if inclusion_proof:
-            checkpoint = inclusion_proof.checkpoint
+        # Handling of inclusion promises and proofs varies between bundle
+        # format versions:
+        # * For 0.1, an inclusion promise is required; the client
+        #   MUST verify the inclusion promise.
+        #   The inclusion proof is NOT required. If provided, it might NOT
+        #   contain a checkpoint.
+        # * For 0.2, an inclusion proof is required; the client MUST
+        #   verify the inclusion proof. The inclusion prof MUST contain
+        #   a checkpoint.
+        #   The inclusion promise is NOT required; if present, SHOULD
+        #   verify it.
 
-            # If the inclusion proof is provided, it must include its
-            # checkpoint.
-            if not checkpoint.envelope:
+        inclusion_promise: InclusionPromise | None = tlog_entry.inclusion_promise
+        inclusion_proof: InclusionProof | None = tlog_entry.inclusion_proof
+        if bundle.media_type == _BUNDLE_0_1:
+            if not inclusion_promise:
+                raise InvalidMaterials("bundle must contain an inclusion promise")
+        elif bundle.media_type == _BUNDLE_0_2:
+            if not inclusion_proof:
+                raise InvalidMaterials("bundle must contain an inclusion proof")
+            if not inclusion_proof.checkpoint.envelope:
                 raise InvalidMaterials("expected checkpoint in inclusion proof")
 
+        parsed_inclusion_proof: InclusionProof | None = None
+        if inclusion_proof is not None:
             parsed_inclusion_proof = LogInclusionProof(
-                checkpoint=checkpoint.envelope,
+                checkpoint=inclusion_proof.checkpoint.envelope,
                 hashes=[h.hex() for h in inclusion_proof.hashes],
                 log_index=inclusion_proof.log_index,
                 root_hash=inclusion_proof.root_hash.hex(),
