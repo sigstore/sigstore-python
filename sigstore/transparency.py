@@ -70,12 +70,12 @@ class LogEntry:
     The index of this entry within the log.
     """
 
-    inclusion_proof: LogInclusionProof | None
+    inclusion_proof: Optional[LogInclusionProof]
     """
     An inclusion proof for this log entry, if present.
     """
 
-    inclusion_promise: B64Str | None
+    inclusion_promise: Optional[B64Str]
     """
     An inclusion promise for this log entry, if present.
 
