@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from base64 import b64encode
+from pydantic import ValidationError
 
 import pytest
 
-from sigstore.transparency import LogEntry
+from sigstore.transparency import LogEntry, LogInclusionProof
 
 
 class TestLogEntry:
@@ -32,4 +33,37 @@ class TestLogEntry:
                 log_index=1,
                 inclusion_proof=None,
                 inclusion_promise=None,
+            )
+
+
+class TestLogInclusionProof:
+    def test_valid(self):
+        proof = LogInclusionProof(
+            log_index=1, root_hash="abcd", tree_size=2, hashes=[], checkpoint=""
+        )
+        assert proof is not None
+
+    def test_negative_log_index(self):
+        with pytest.raises(
+            ValidationError, match="Inclusion proof has invalid log index"
+        ):
+            LogInclusionProof(
+                log_index=-1, root_hash="abcd", tree_size=2, hashes=[], checkpoint=""
+            )
+
+    def test_negative_tree_size(self):
+        with pytest.raises(
+            ValidationError, match="Inclusion proof has invalid tree size"
+        ):
+            LogInclusionProof(
+                log_index=1, root_hash="abcd", tree_size=-1, hashes=[], checkpoint=""
+            )
+
+    def test_log_index_outside_tree_size(self):
+        with pytest.raises(
+            ValidationError,
+            match="Inclusion proof has log index greater than or equal to tree size",
+        ):
+            LogInclusionProof(
+                log_index=2, root_hash="abcd", tree_size=1, hashes=[], checkpoint=""
             )
