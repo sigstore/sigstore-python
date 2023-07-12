@@ -34,6 +34,10 @@ class LogEntry:
 
     Log entries are retrieved from the transparency log after signing or verification events,
     or loaded from "Sigstore" bundles provided by the user.
+
+    This representation allows for either a missing inclusion promise or a missing
+    inclusion proof, but not both: attempting to construct a `LogEntry` without
+    at least one will fail.
     """
 
     uuid: Optional[str]
@@ -66,18 +70,22 @@ class LogEntry:
     The index of this entry within the log.
     """
 
-    inclusion_proof: Optional[LogInclusionProof]
+    inclusion_proof: LogInclusionProof | None
     """
-    An optional inclusion proof for this log entry.
+    An inclusion proof for this log entry, if present.
     """
 
-    inclusion_promise: B64Str
+    inclusion_promise: B64Str | None
     """
-    An inclusion promise for this log entry.
+    An inclusion promise for this log entry, if present.
 
     Internally, this is a base64-encoded Signed Entry Timestamp (SET) for this
     log entry.
     """
+
+    def __post_init__(self) -> None:
+        if self.inclusion_proof is None and self.inclusion_promise is None:
+            raise ValueError("Log entry must have either inclusion proof or promise")
 
     @classmethod
     def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:

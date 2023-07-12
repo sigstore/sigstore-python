@@ -277,10 +277,13 @@ class Verifier:
             )
 
         # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
-        try:
-            verify_set(self._rekor, entry)
-        except InvalidSETError as inval_set:
-            return VerificationFailure(reason=f"invalid Rekor entry SET: {inval_set}")
+        if entry.inclusion_promise:
+            try:
+                verify_set(self._rekor, entry)
+            except InvalidSETError as inval_set:
+                return VerificationFailure(
+                    reason=f"invalid Rekor entry SET: {inval_set}"
+                )
 
         # 7) Verify that the signing certificate was valid at the time of signing
         integrated_time = datetime.datetime.utcfromtimestamp(entry.integrated_time)

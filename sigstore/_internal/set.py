@@ -35,8 +35,13 @@ class InvalidSETError(Exception):
 
 def verify_set(client: RekorClient, entry: LogEntry) -> None:
     """
-    Verify the Signed Entry Timestamp for a given Rekor `entry` using the given `client`.
+    Verify the inclusion promise (Signed Entry Timestamp) for a given transparency log
+    `entry` using the given `client`.
+
+    Fails if the given log entry does not contain an inclusion promise.
     """
+    if entry.inclusion_promise is None:
+        raise InvalidSETError("invalid log entry: no inclusion promise")
 
     signed_entry_ts = base64.b64decode(entry.inclusion_promise)
 

@@ -361,7 +361,7 @@ class VerificationMaterials:
 
     def rekor_entry(self, client: RekorClient) -> LogEntry:
         """
-        Returns a `RekorEntry` for the current signing materials.
+        Returns a `LogEntry` for the current signing materials.
         """
 
         # The Rekor entry we use depends on a few different states:
