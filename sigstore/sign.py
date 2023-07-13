@@ -378,3 +378,6 @@ class SigningResult(BaseModel):
         )
 
         return bundle
+
+
+SigningResult.model_rebuild()
