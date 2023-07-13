@@ -18,7 +18,6 @@ Transparency log data structures.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from pydantic import (
@@ -29,6 +28,7 @@ from pydantic import (
     StrictStr,
     validator,
 )
+from pydantic.dataclasses import dataclass
 from securesystemslib.formats import encode_canonical
 
 from sigstore._utils import B64Str
