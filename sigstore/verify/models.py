@@ -371,6 +371,7 @@ class VerificationMaterials:
         #    we *opportunistically* use the offline Rekor entry,
         #    so long as it contains an inclusion proof. If it doesn't
         #    contain an inclusion proof, then we do an online entry lookup.
+        # TODO: Check for checkpoint here?
         offline = self._offline
         has_rekor_entry = self.has_rekor_entry
         has_inclusion_proof = (

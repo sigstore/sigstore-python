@@ -21,7 +21,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    StrictStr,
+    validator,
+)
 from securesystemslib.formats import encode_canonical
 
 from sigstore._utils import B64Str
@@ -136,14 +143,13 @@ class LogInclusionProof(BaseModel):
     Represents an inclusion proof for a transparency log entry.
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     checkpoint: StrictStr = Field(..., alias="checkpoint")
     hashes: List[StrictStr] = Field(..., alias="hashes")
     log_index: StrictInt = Field(..., alias="logIndex")
     root_hash: StrictStr = Field(..., alias="rootHash")
     tree_size: StrictInt = Field(..., alias="treeSize")
-
-    class Config:
-        allow_population_by_field_name = True
 
     @validator("log_index")
     def _log_index_positive(cls, v: int) -> int:

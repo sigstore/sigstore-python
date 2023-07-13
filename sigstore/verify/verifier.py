@@ -35,6 +35,7 @@ from OpenSSL.crypto import (  # type: ignore[import]
     X509StoreContext,
     X509StoreContextError,
 )
+from pydantic import ConfigDict
 
 from sigstore._internal.merkle import (
     InvalidInclusionProofError,
@@ -88,13 +89,12 @@ class CertificateVerificationFailure(VerificationFailure):
     verification failures, with additional exception context.
     """
 
+    # Needed for the `exception` field above, since exceptions are
+    # not trivially serializable.
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     reason: str = "Failed to verify signing certificate"
     exception: Exception
-
-    class Config:
-        # Needed for the `exception` field above, since exceptions are
-        # not trivially serializable.
-        arbitrary_types_allowed = True
 
 
 class Verifier:
