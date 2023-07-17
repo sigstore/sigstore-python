@@ -296,15 +296,18 @@ class VerificationMaterials:
 
         # Handling of inclusion promises and proofs varies between bundle
         # format versions:
+        #
         # * For 0.1, an inclusion promise is required; the client
         #   MUST verify the inclusion promise.
         #   The inclusion proof is NOT required. If provided, it might NOT
-        #   contain a checkpoint.
+        #   contain a checkpoint; in this case, we ignore it (since it's
+        #   useless without one).
+        #
         # * For 0.2, an inclusion proof is required; the client MUST
         #   verify the inclusion proof. The inclusion prof MUST contain
         #   a checkpoint.
-        #   The inclusion promise is NOT required; if present, SHOULD
-        #   verify it.
+        #   The inclusion promise is NOT required; if present, the client
+        #   SHOULD verify it.
 
         inclusion_promise: InclusionPromise | None = tlog_entry.inclusion_promise
         inclusion_proof: InclusionProof | None = tlog_entry.inclusion_proof
@@ -318,7 +321,10 @@ class VerificationMaterials:
                 raise InvalidMaterials("expected checkpoint in inclusion proof")
 
         parsed_inclusion_proof: InclusionProof | None = None
-        if inclusion_proof is not None:
+        if (
+            inclusion_proof is not None
+            and inclusion_proof.checkpoint.envelope is not None
+        ):
             parsed_inclusion_proof = LogInclusionProof(
                 checkpoint=inclusion_proof.checkpoint.envelope,
                 hashes=[h.hex() for h in inclusion_proof.hashes],
@@ -371,11 +377,11 @@ class VerificationMaterials:
         #    we *opportunistically* use the offline Rekor entry,
         #    so long as it contains an inclusion proof. If it doesn't
         #    contain an inclusion proof, then we do an online entry lookup.
-        # TODO: Check for checkpoint here?
         offline = self._offline
         has_rekor_entry = self.has_rekor_entry
         has_inclusion_proof = (
-            self.has_rekor_entry and self._rekor_entry.inclusion_proof is not None  # type: ignore
+            self.has_rekor_entry
+            and self._rekor_entry.inclusion_proof is not None  # type: ignore
         )
 
         entry: LogEntry | None
