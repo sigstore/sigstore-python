@@ -15,6 +15,9 @@ All versions prior to 0.9.0 are untracked.
   preexisting `SIGSTORE_OAUTH_FORCE_OOB` environment variable
   ([#667](https://github.com/sigstore/sigstore-python/pull/667))
 
+* Version `0.2` of the Sigstore bundle format is now supported
+  ([#705](https://github.com/sigstore/sigstore-python/pull/705))
+
 ### Changed
 
 * `sigstore verify` now performs additional verification of Rekor's inclusion
@@ -62,6 +65,10 @@ All versions prior to 0.9.0 are untracked.
 * API change: `RekorClientError` does not try to always parse response
   content as JSON
   ([#694](https://github.com/sigstore/sigstore-python/pull/694))
+
+* API change: `LogEntry.inclusion_promise` can now be `None`, but only
+  if `LogEntry.inclusion_proof` is not `None`
+  ([#705](https://github.com/sigstore/sigstore-python/pull/705))
 
 ### Fixed
 
