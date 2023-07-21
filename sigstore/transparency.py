@@ -18,13 +18,57 @@ Transparency log data structures.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, StrictInt, StrictStr, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    StrictStr,
+    validator,
+)
+from pydantic.dataclasses import dataclass
 from securesystemslib.formats import encode_canonical
 
 from sigstore._utils import B64Str
+
+
+class LogInclusionProof(BaseModel):
+    """
+    Represents an inclusion proof for a transparency log entry.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    checkpoint: StrictStr = Field(..., alias="checkpoint")
+    hashes: List[StrictStr] = Field(..., alias="hashes")
+    log_index: StrictInt = Field(..., alias="logIndex")
+    root_hash: StrictStr = Field(..., alias="rootHash")
+    tree_size: StrictInt = Field(..., alias="treeSize")
+
+    @validator("log_index")
+    def _log_index_positive(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError(f"Inclusion proof has invalid log index: {v} < 0")
+        return v
+
+    @validator("tree_size")
+    def _tree_size_positive(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError(f"Inclusion proof has invalid tree size: {v} < 0")
+        return v
+
+    @validator("tree_size")
+    def _log_index_within_tree_size(
+        cls, v: int, values: Dict[str, Any], **kwargs: Any
+    ) -> int:
+        if "log_index" in values and v <= values["log_index"]:
+            raise ValueError(
+                "Inclusion proof has log index greater than or equal to tree size: "
+                f"{v} <= {values['log_index']}"
+            )
+        return v
 
 
 @dataclass(frozen=True)
@@ -34,6 +78,10 @@ class LogEntry:
 
     Log entries are retrieved from the transparency log after signing or verification events,
     or loaded from "Sigstore" bundles provided by the user.
+
+    This representation allows for either a missing inclusion promise or a missing
+    inclusion proof, but not both: attempting to construct a `LogEntry` without
+    at least one will fail.
     """
 
     uuid: Optional[str]
@@ -68,16 +116,23 @@ class LogEntry:
 
     inclusion_proof: Optional[LogInclusionProof]
     """
-    An optional inclusion proof for this log entry.
+    An inclusion proof for this log entry, if present.
     """
 
-    inclusion_promise: B64Str
+    inclusion_promise: Optional[B64Str]
     """
-    An inclusion promise for this log entry.
+    An inclusion promise for this log entry, if present.
 
     Internally, this is a base64-encoded Signed Entry Timestamp (SET) for this
     log entry.
     """
+
+    def __post_init__(self) -> None:
+        """
+        Invariant preservation.
+        """
+        if self.inclusion_proof is None and self.inclusion_promise is None:
+            raise ValueError("Log entry must have either inclusion proof or promise")
 
     @classmethod
     def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:
@@ -118,41 +173,3 @@ class LogEntry:
         }
 
         return encode_canonical(payload).encode()  # type: ignore
-
-
-class LogInclusionProof(BaseModel):
-    """
-    Represents an inclusion proof for a transparency log entry.
-    """
-
-    checkpoint: StrictStr = Field(..., alias="checkpoint")
-    hashes: List[StrictStr] = Field(..., alias="hashes")
-    log_index: StrictInt = Field(..., alias="logIndex")
-    root_hash: StrictStr = Field(..., alias="rootHash")
-    tree_size: StrictInt = Field(..., alias="treeSize")
-
-    class Config:
-        allow_population_by_field_name = True
-
-    @validator("log_index")
-    def _log_index_positive(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError(f"Inclusion proof has invalid log index: {v} < 0")
-        return v
-
-    @validator("tree_size")
-    def _tree_size_positive(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError(f"Inclusion proof has invalid tree size: {v} < 0")
-        return v
-
-    @validator("tree_size")
-    def _log_index_within_tree_size(
-        cls, v: int, values: Dict[str, Any], **kwargs: Any
-    ) -> int:
-        if "log_index" in values and v <= values["log_index"]:
-            raise ValueError(
-                "Inclusion proof has log index greater than or equal to tree size: "
-                f"{v} <= {values['log_index']}"
-            )
-        return v

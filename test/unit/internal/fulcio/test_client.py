@@ -14,7 +14,7 @@
 
 import json
 from base64 import b64encode
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from cryptography.hazmat.primitives import hashes
@@ -53,7 +53,7 @@ class TestDetachedFulcioSCT:
 
     def test_fields(self):
         blob = enc(b"this is a base64-encoded blob")
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         sct = client.DetachedFulcioSCT(
             version=0,
             log_id=blob,
@@ -102,7 +102,8 @@ class TestDetachedFulcioSCT:
     @pytest.mark.parametrize("version", [-1, 1, 2, 3])
     def test_invalid_version(self, version):
         with pytest.raises(
-            ValidationError, match="value is not a valid enumeration member"
+            ValidationError,
+            match=r"1 validation error for DetachedFulcioSCT.*",
         ):
             client.DetachedFulcioSCT(
                 version=version,

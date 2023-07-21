@@ -353,7 +353,9 @@ class SigningResult(BaseModel):
                 signed_entry_timestamp=base64.b64decode(
                     self.log_entry.inclusion_promise
                 )
-            ),
+            )
+            if self.log_entry.inclusion_promise
+            else None,
             inclusion_proof=inclusion_proof,
             canonicalized_body=base64.b64decode(self.log_entry.body),
         )
@@ -364,7 +366,7 @@ class SigningResult(BaseModel):
         )
 
         bundle = Bundle(
-            media_type="application/vnd.dev.sigstore.bundle+json;version=0.1",
+            media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
             verification_material=material,
             message_signature=MessageSignature(
                 message_digest=HashOutput(

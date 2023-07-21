@@ -12,14 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from base64 import b64encode
 
 import pytest
 from pydantic import ValidationError
 
-from sigstore.transparency import LogInclusionProof
+from sigstore.transparency import LogEntry, LogInclusionProof
 
 
-class TestRekorInclusionProof:
+class TestLogEntry:
+    def test_consistency(self):
+        with pytest.raises(
+            ValueError, match=r"Log entry must have either inclusion proof or promise"
+        ):
+            LogEntry(
+                uuid="fake",
+                body=b64encode("fake".encode()),
+                integrated_time=0,
+                log_id="1234",
+                log_index=1,
+                inclusion_proof=None,
+                inclusion_promise=None,
+            )
+
+
+class TestLogInclusionProof:
     def test_valid(self):
         proof = LogInclusionProof(
             log_index=1, root_hash="abcd", tree_size=2, hashes=[], checkpoint=""
