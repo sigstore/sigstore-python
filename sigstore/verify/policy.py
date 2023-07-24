@@ -55,12 +55,31 @@ _OIDC_GITHUB_WORKFLOW_NAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.4")
 _OIDC_GITHUB_WORKFLOW_REPOSITORY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.5")
 _OIDC_GITHUB_WORKFLOW_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.6")
 _OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
+_OIDC_ISSUER_V2_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.8")
+_OIDC_BUILD_SIGNER_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.9")
+_OIDC_BUILD_SIGNED_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.10")
+_OIDC_RUNNER_ENVIRONMENT_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.11")
+_OIDC_SOURCE_REPOSITORY_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.12")
+_OIDC_SOURCE_REPOSITORY_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.13")
+_OIDC_SOURCE_REPOSITORY_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.14")
+_OIDC_SOURCE_REPOSITORY_IDENTIFIER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.15")
+_OIDC_SOURCE_REPOSITORY_OWNER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.16")
+_OIDC_SOURCE_REPOSITORY_OWNER_IDENTIFIER_OID = ObjectIdentifier(
+    "1.3.6.1.4.1.57264.1.17"
+)
+_OIDC_BUILD_CONFIG_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.18")
+_OIDC_BUILD_CONFIG_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.19")
+_OIDC_BUILD_TRIGGER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.20")
+_OIDC_RUN_INVOCATION_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.21")
+_OIDC_SOURCE_REPOSITORY_VISIBILITY_AT_SIGNING_OID = ObjectIdentifier(
+    "1.3.6.1.4.1.57264.1.22"
+)
 
 
-class _SingleX509ExtPolicy(ABC):
+class _SingleX509RawExtPolicy(ABC):
     """
     An ABC for verification policies that boil down to checking a single
-    X.509 extension's value.
+    X.509 extension's *raw* value.
     """
 
     oid: ObjectIdentifier
@@ -103,7 +122,7 @@ class _SingleX509ExtPolicy(ABC):
         return VerificationSuccess()
 
 
-class OIDCIssuer(_SingleX509ExtPolicy):
+class OIDCIssuer(_SingleX509RawExtPolicy):
     """
     Verifies the certificate's OIDC issuer, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.1`.
@@ -112,7 +131,7 @@ class OIDCIssuer(_SingleX509ExtPolicy):
     oid = _OIDC_ISSUER_OID
 
 
-class GitHubWorkflowTrigger(_SingleX509ExtPolicy):
+class GitHubWorkflowTrigger(_SingleX509RawExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow trigger,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.2`.
@@ -121,7 +140,7 @@ class GitHubWorkflowTrigger(_SingleX509ExtPolicy):
     oid = _OIDC_GITHUB_WORKFLOW_TRIGGER_OID
 
 
-class GitHubWorkflowSHA(_SingleX509ExtPolicy):
+class GitHubWorkflowSHA(_SingleX509RawExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow commit SHA,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.3`.
@@ -130,7 +149,7 @@ class GitHubWorkflowSHA(_SingleX509ExtPolicy):
     oid = _OIDC_GITHUB_WORKFLOW_SHA_OID
 
 
-class GitHubWorkflowName(_SingleX509ExtPolicy):
+class GitHubWorkflowName(_SingleX509RawExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow name,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.4`.
@@ -139,7 +158,7 @@ class GitHubWorkflowName(_SingleX509ExtPolicy):
     oid = _OIDC_GITHUB_WORKFLOW_NAME_OID
 
 
-class GitHubWorkflowRepository(_SingleX509ExtPolicy):
+class GitHubWorkflowRepository(_SingleX509RawExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow repository,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.5`.
@@ -148,7 +167,7 @@ class GitHubWorkflowRepository(_SingleX509ExtPolicy):
     oid = _OIDC_GITHUB_WORKFLOW_REPOSITORY_OID
 
 
-class GitHubWorkflowRef(_SingleX509ExtPolicy):
+class GitHubWorkflowRef(_SingleX509RawExtPolicy):
     """
     Verifies the certificate's GitHub Actions workflow ref,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.6`.
