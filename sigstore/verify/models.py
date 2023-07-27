@@ -462,6 +462,26 @@ class VerificationMaterials:
                 "Must have Rekor entry before converting to a Bundle"
             )
         rekor_entry = self._rekor_entry
+        assert rekor_entry is not None
+
+        inclusion_proof: InclusionProof | None = None
+        if rekor_entry.inclusion_proof is not None:
+            inclusion_proof = InclusionProof(
+                log_index=rekor_entry.inclusion_proof.log_index,
+                root_hash=bytes.fromhex(rekor_entry.inclusion_proof.root_hash),
+                tree_size=rekor_entry.inclusion_proof.tree_size,
+                hashes=[
+                    bytes.fromhex(hash_hex)
+                    for hash_hex in rekor_entry.inclusion_proof.hashes
+                ],
+                checkpoint=Checkpoint(envelope=rekor_entry.inclusion_proof.checkpoint),
+            )
+
+        inclusion_promise: InclusionPromise | None = None
+        if rekor_entry.inclusion_promise:
+            inclusion_promise = InclusionPromise(
+                signed_entry_timestamp=base64.b64decode(rekor_entry.inclusion_promise)
+            )
 
         bundle = Bundle(
             media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
@@ -480,25 +500,8 @@ class VerificationMaterials:
                         log_id=LogId(key_id=bytes.fromhex(rekor_entry.log_id)),
                         kind_version=KindVersion(kind="hashedrekord", version="0.0.1"),
                         integrated_time=rekor_entry.integrated_time,
-                        inclusion_promise=InclusionPromise(
-                            signed_entry_timestamp=base64.b64decode(
-                                rekor_entry.inclusion_promise
-                            )
-                        ),
-                        inclusion_proof=InclusionProof(
-                            log_index=rekor_entry.inclusion_proof.log_index,
-                            root_hash=bytes.fromhex(
-                                rekor_entry.inclusion_proof.root_hash
-                            ),
-                            tree_size=rekor_entry.inclusion_proof.tree_size,
-                            hashes=[
-                                bytes.fromhex(hash_hex)
-                                for hash_hex in rekor_entry.inclusion_proof.hashes
-                            ],
-                            checkpoint=Checkpoint(
-                                envelope=rekor_entry.inclusion_proof.checkpoint
-                            ),
-                        ),
+                        inclusion_promise=inclusion_promise,
+                        inclusion_proof=inclusion_proof,
                         canonicalized_body=base64.b64decode(rekor_entry.body),
                     )
                 ],

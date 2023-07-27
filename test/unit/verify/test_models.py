@@ -93,7 +93,7 @@ class TestVerificationMaterials:
 
         with asset("bundle.txt").open(mode="rb", buffering=0) as io:
             round_tripped_bundle = VerificationMaterials.from_bundle(
-                input_=io, bundle=bundle, offline=False
+                input_=io, bundle=bundle, offline=True
             ).to_bundle()
 
         assert bundle == round_tripped_bundle
