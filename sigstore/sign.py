@@ -324,8 +324,10 @@ class SigningResult(BaseModel):
         from this `SigningResult`.
         """
 
-        # TODO: Include the current Fulcio intermediate and root in the
-        # chain as well.
+        # NOTE: We explicitly only include the leaf certificate in the bundle's "chain"
+        # here: the specs explicitly forbid the inclusion of the root certificate,
+        # and discourage inclusion of any intermediates (since they're in the root of
+        # trust already).
         cert = x509.load_pem_x509_certificate(self.cert_pem.encode())
         cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
         chain = X509CertificateChain(certificates=[X509Certificate(raw_bytes=cert_der)])
