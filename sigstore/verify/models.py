@@ -461,8 +461,7 @@ class VerificationMaterials:
             raise InvalidMaterials(
                 "Must have Rekor entry before converting to a Bundle"
             )
-        rekor_entry = self._rekor_entry
-        assert rekor_entry is not None
+        rekor_entry: LogEntry = self._rekor_entry  # type: ignore[assignment]
 
         inclusion_proof: InclusionProof | None = None
         if rekor_entry.inclusion_proof is not None:
