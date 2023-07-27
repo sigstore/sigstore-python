@@ -200,13 +200,11 @@ def cert_is_ca(cert: Certificate) -> bool:
     if cert.version != Version.v3:
         raise InvalidCertError(f"invalid X.509 version: {cert.version}")
 
-    # Valid CA certificates must have *all* of the following set:
+    # Valid CA certificates must have the following set:
     #
-    #  * `BasicKeyUsage.digitalSignature`
     #  * `BasicKeyUsage.keyCertSign`
     #  * `BasicConstraints.ca`
     #
-    # Of those, non-CAs must have *only* `BasicKeyUsage.digitalSignature` set.
     # Any other combination of states is inconsistent and invalid, meaning
     # that we won't consider the certificate a valid non-CA leaf.
 
