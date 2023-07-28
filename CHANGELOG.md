@@ -18,6 +18,10 @@ All versions prior to 0.9.0 are untracked.
 * Version `0.2` of the Sigstore bundle format is now supported
   ([#705](https://github.com/sigstore/sigstore-python/pull/705))
 
+* API addition: `VerificationMaterials.to_bundle()` is a new public API for
+  producing a standard Sigstore bundle from `sigstore-python`'s internal
+  representation ([#719](https://github.com/sigstore/sigstore-python/pull/719))
+
 ### Changed
 
 * `sigstore verify` now performs additional verification of Rekor's inclusion

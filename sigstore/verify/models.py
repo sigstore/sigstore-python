@@ -32,10 +32,25 @@ from cryptography.x509 import (
     load_pem_x509_certificate,
 )
 from pydantic import BaseModel
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
+    Bundle,
+    VerificationMaterial,
+)
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
+    HashAlgorithm,
+    HashOutput,
+    LogId,
+    MessageSignature,
+    PublicKeyIdentifier,
+    X509Certificate,
+    X509CertificateChain,
+)
 from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
+    Checkpoint,
     InclusionPromise,
     InclusionProof,
+    KindVersion,
+    TransparencyLogEntry,
 )
 
 from sigstore._internal.rekor import RekorClient
@@ -171,8 +186,6 @@ class VerificationMaterials:
     certificate: Certificate
     """
     The certificate that attests to and contains the public signing key.
-
-    # TODO: Support a certificate chain here, with optional intermediates.
     """
 
     signature: bytes
@@ -438,3 +451,66 @@ class VerificationMaterials:
             raise InvalidRekorEntry
 
         return entry
+
+    def to_bundle(self) -> Bundle:
+        """Converts VerificationMaterials into a Bundle. Requires that
+        the VerificationMaterials have a Rekor entry loaded. This is
+        the reverse operation of VerificationMaterials.from_bundle()
+        """
+        if not self.has_rekor_entry:
+            raise InvalidMaterials(
+                "Must have Rekor entry before converting to a Bundle"
+            )
+        rekor_entry: LogEntry = self._rekor_entry  # type: ignore[assignment]
+
+        inclusion_proof: InclusionProof | None = None
+        if rekor_entry.inclusion_proof is not None:
+            inclusion_proof = InclusionProof(
+                log_index=rekor_entry.inclusion_proof.log_index,
+                root_hash=bytes.fromhex(rekor_entry.inclusion_proof.root_hash),
+                tree_size=rekor_entry.inclusion_proof.tree_size,
+                hashes=[
+                    bytes.fromhex(hash_hex)
+                    for hash_hex in rekor_entry.inclusion_proof.hashes
+                ],
+                checkpoint=Checkpoint(envelope=rekor_entry.inclusion_proof.checkpoint),
+            )
+
+        inclusion_promise: InclusionPromise | None = None
+        if rekor_entry.inclusion_promise:
+            inclusion_promise = InclusionPromise(
+                signed_entry_timestamp=base64.b64decode(rekor_entry.inclusion_promise)
+            )
+
+        bundle = Bundle(
+            media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
+            verification_material=VerificationMaterial(
+                public_key=PublicKeyIdentifier(),
+                x509_certificate_chain=X509CertificateChain(
+                    certificates=[
+                        X509Certificate(
+                            raw_bytes=self.certificate.public_bytes(Encoding.DER)
+                        )
+                    ]
+                ),
+                tlog_entries=[
+                    TransparencyLogEntry(
+                        log_index=rekor_entry.log_index,
+                        log_id=LogId(key_id=bytes.fromhex(rekor_entry.log_id)),
+                        kind_version=KindVersion(kind="hashedrekord", version="0.0.1"),
+                        integrated_time=rekor_entry.integrated_time,
+                        inclusion_promise=inclusion_promise,
+                        inclusion_proof=inclusion_proof,
+                        canonicalized_body=base64.b64decode(rekor_entry.body),
+                    )
+                ],
+            ),
+            message_signature=MessageSignature(
+                message_digest=HashOutput(
+                    algorithm=HashAlgorithm.SHA2_256,
+                    digest=self.input_digest,
+                ),
+                signature=self.signature,
+            ),
+        )
+        return bundle

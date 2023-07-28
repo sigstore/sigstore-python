@@ -21,6 +21,7 @@ from sigstore.verify.models import (
     InvalidMaterials,
     InvalidRekorEntry,
     RekorEntryMissing,
+    VerificationMaterials,
 )
 
 
@@ -86,3 +87,24 @@ class TestVerificationMaterials:
             InvalidMaterials, match="expected checkpoint in inclusion proof"
         ):
             signing_bundle("bundle_no_checkpoint.txt", offline=True)
+
+    def test_verification_materials_to_bundle_round_trip(self, asset, signing_bundle):
+        bundle = signing_bundle("bundle.txt").to_bundle()
+
+        with asset("bundle.txt").open(mode="rb", buffering=0) as io:
+            round_tripped_bundle = VerificationMaterials.from_bundle(
+                input_=io, bundle=bundle, offline=True
+            ).to_bundle()
+
+        assert bundle == round_tripped_bundle
+
+    def test_verification_materials_to_bundle_no_rekor_entry(
+        self, asset, signing_materials
+    ):
+        materials = signing_materials("bundle.txt")
+
+        with pytest.raises(
+            InvalidMaterials,
+            match="Must have Rekor entry before converting to a Bundle",
+        ):
+            materials.to_bundle()
