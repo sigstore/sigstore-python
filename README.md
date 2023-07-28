@@ -346,7 +346,7 @@ detection. This includes many popular CI platforms and cloud providers. See the 
 supported environments [here](https://github.com/di/id#supported-environments).
 
 Sign a single file (`foo.txt`) using an ambient OpenID Connect credential,
-saving the signature and certificate to `foo.txt.sig` and `foo.txt.crt`:
+saving the bundle to `foo.txt.sigstore`:
 
 ```console
 $ python -m sigstore sign foo.txt
@@ -359,7 +359,7 @@ allowing you to request signing certificates that attest to control over
 that email.
 
 Sign a single file (`foo.txt`) using the OAuth2 flow, saving the
-signature and certificate to `foo.txt.sig` and `foo.txt.crt`:
+bundle to `foo.txt.sigstore`:
 
 ```console
 $ python -m sigstore sign foo.txt
@@ -387,11 +387,11 @@ namely the Fulcio's supported identity providers and the claims expected within 
 
 ### Verifying against a signature and certificate
 
-By default, `sigstore verify` will attempt to find a `<filename>.sig` and `<filename>.crt` in the
+By default, `sigstore verify` will attempt to find a `<filename>.sigstore` in the
 same directory as the file being verified:
 
 ```console
-# looks for foo.txt.sig and foo.txt.crt
+# looks for foo.txt.sigstore
 $ python -m sigstore verify identity foo.txt \
     --cert-identity 'hamilcar@example.com' \
     --cert-oidc-issuer 'https://github.com/login/oauth'
@@ -400,23 +400,11 @@ $ python -m sigstore verify identity foo.txt \
 Multiple files can be verified at once:
 
 ```console
-# looks for {foo,bar}.txt.{sig,crt}
+# looks for {foo,bar}.txt.sigstore
 $ python -m sigstore verify identity foo.txt bar.txt \
     --cert-identity 'hamilcar@example.com' \
     --cert-oidc-issuer 'https://github.com/login/oauth'
 ```
-
-If your signature and certificate are at different paths, you can specify them
-explicitly (but only for one file at a time):
-
-```console
-$ python -m sigstore verify identity foo.txt \
-    --certificate some/other/path/foo.crt \
-    --signature some/other/path/foo.sig \
-    --cert-identity 'hamilcar@example.com' \
-    --cert-oidc-issuer 'https://github.com/login/oauth'
-```
-
 
 ### Verifying signatures from GitHub Actions
 
@@ -430,8 +418,7 @@ inferred.
 
 ```console
 $ python -m sigstore verify github sigstore-0.10.0-py3-none-any.whl \
-    --certificate sigstore-0.10.0-py3-none-any.whl.crt \
-    --signature sigstore-0.10.0-py3-none-any.whl.sig \
+    --bundle sigstore-0.10.0-py3-none-any.whl.bundle \
     --cert-identity https://github.com/sigstore/sigstore-python/.github/workflows/release.yml@refs/tags/v0.10.0
 ```
 
@@ -439,8 +426,7 @@ Additionally, GitHub Actions specific claims can be verified like so:
 
 ```console
 $ python -m sigstore verify github sigstore-0.10.0-py3-none-any.whl \
-    --certificate sigstore-0.10.0-py3-none-any.whl.crt \
-    --signature sigstore-0.10.0-py3-none-any.whl.sig \
+    --bundle sigstore-0.10.0-py3-none-any.whl.bundle \
     --cert-identity https://github.com/sigstore/sigstore-python/.github/workflows/release.yml@refs/tags/v0.10.0 \
     --trigger release \
     --sha 66581529803929c3ccc45334632ccd90f06e0de4 \
