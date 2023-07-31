@@ -396,7 +396,7 @@ class VerificationMaterials:
         has_inclusion_proof = (
             self.has_rekor_entry
             and self._rekor_entry.inclusion_proof is not None  # type: ignore
-            and self._rekor_entry.inclusion_proof.checkpoint is not None  # type: ignore
+            and self._rekor_entry.inclusion_proof.checkpoint  # type: ignore
         )
 
         entry: LogEntry | None
