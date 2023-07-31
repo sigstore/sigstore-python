@@ -252,7 +252,7 @@ class Verifier:
         #
         # The inclusion proof should always be present in the online case. In
         # the offline case, if it is present, we verify it.
-        if entry.inclusion_proof:
+        if entry.inclusion_proof and entry.inclusion_proof.checkpoint:
             try:
                 verify_merkle_inclusion(entry)
             except InvalidInclusionProofError as exc:
@@ -265,7 +265,9 @@ class Verifier:
             except CheckpointError as exc:
                 return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
-            logger.debug("Successfully verified inclusion proof...")
+            logger.debug(
+                f"successfully verified inclusion proof: index={entry.log_index}"
+            )
         elif not materials._offline:
             # Paranoia: if we weren't given an inclusion proof, then
             # this *must* have been offline verification. If it was online
@@ -280,6 +282,9 @@ class Verifier:
         if entry.inclusion_promise:
             try:
                 verify_set(self._rekor, entry)
+                logger.debug(
+                    f"successfully verified inclusion promise: index={entry.log_index}"
+                )
             except InvalidSETError as inval_set:
                 return VerificationFailure(
                     reason=f"invalid Rekor entry SET: {inval_set}"
@@ -296,5 +301,4 @@ class Verifier:
                 reason="invalid signing cert: expired at time of Rekor entry"
             )
 
-        logger.debug(f"Successfully verified Rekor entry at index {entry.log_index}")
         return VerificationSuccess()
