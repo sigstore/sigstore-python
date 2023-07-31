@@ -2,12 +2,9 @@
 
 """
 A wrapper to convert `sigstore-conformance` CLI protocol invocations to match `sigstore-python`.
-
-The client conformance test suite will exercise `sigstore-python` via this wrapper. The suite can be
-found at: https://github.com/trailofbits/sigstore-conformance.
 """
 
-import subprocess
+import os
 import sys
 
 SUBCMD_REPLACEMENTS = {
@@ -43,4 +40,4 @@ elif subcommand == "verify":
 else:
     raise ValueError(f"unsupported subcommand: {subcommand}")
 
-subprocess.run(fixed_args, text=True, check=True)
+os.execvp("sigstore", fixed_args)
