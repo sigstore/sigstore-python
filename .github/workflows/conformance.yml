@@ -22,6 +22,6 @@ jobs:
       - name: install sigstore-python
         run: python -m pip install .
 
-      - uses: sigstore/sigstore-conformance@954233f9a4ea6d0b355626b283b4f837f465e4ec # v0.0.5
+      - uses: sigstore/sigstore-conformance@887e2090d0f5f8a4487b778d0bf6448e55ed4005
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance
