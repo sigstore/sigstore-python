@@ -383,16 +383,7 @@ class VerificationMaterials:
         Returns a `LogEntry` for the current signing materials.
         """
 
-        # The Rekor entry we use depends on a few different states:
-        # 1. If the user has requested offline verification and we've
-        #    been given an offline Rekor entry to use, we use it.
-        # 2. If the user has not requested offline verification,
-        #    we *opportunistically* use the offline Rekor entry,
-        #    so long as it contains an inclusion proof (including checkpoint).
-        #    If it doesn't contain an inclusion proof, then we do an online
-        #    entry lookup.
         offline = self._offline
-        has_rekor_entry = self.has_rekor_entry
         has_inclusion_promise = (
             self.has_rekor_entry
             and self._rekor_entry.inclusion_promise is not None  # type: ignore
