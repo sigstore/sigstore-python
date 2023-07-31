@@ -388,13 +388,15 @@ class VerificationMaterials:
         #    been given an offline Rekor entry to use, we use it.
         # 2. If the user has not requested offline verification,
         #    we *opportunistically* use the offline Rekor entry,
-        #    so long as it contains an inclusion proof. If it doesn't
-        #    contain an inclusion proof, then we do an online entry lookup.
+        #    so long as it contains an inclusion proof (including checkpoint).
+        #    If it doesn't contain an inclusion proof, then we do an online
+        #    entry lookup.
         offline = self._offline
         has_rekor_entry = self.has_rekor_entry
         has_inclusion_proof = (
             self.has_rekor_entry
             and self._rekor_entry.inclusion_proof is not None  # type: ignore
+            and self._rekor_entry.inclusion_proof.checkpoint is not None  # type: ignore
         )
 
         entry: LogEntry | None
