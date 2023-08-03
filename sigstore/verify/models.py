@@ -327,6 +327,10 @@ class VerificationMaterials:
         if bundle.media_type == _BUNDLE_0_1:
             if not inclusion_promise:
                 raise InvalidMaterials("bundle must contain an inclusion promise")
+            if inclusion_proof and not inclusion_proof.checkpoint.envelope:
+                logger.debug(
+                    "0.1 bundle contains inclusion proof without checkpoint; ignoring"
+                )
         elif bundle.media_type == _BUNDLE_0_2:
             if not inclusion_proof:
                 raise InvalidMaterials("bundle must contain an inclusion proof")

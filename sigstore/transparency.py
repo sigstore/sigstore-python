@@ -134,10 +134,10 @@ class LogEntry:
 
         # An inclusion proof isn't considered present unless its checkpoint
         # is also present.
-        has_incluson_proof = (
+        has_inclusion_proof = (
             self.inclusion_proof is not None and self.inclusion_proof.checkpoint
         )
-        if not has_incluson_proof and self.inclusion_promise is None:
+        if not has_inclusion_proof and self.inclusion_promise is None:
             raise ValueError("Log entry must have either inclusion proof or promise")
 
     @classmethod
