@@ -327,6 +327,10 @@ class VerificationMaterials:
         if bundle.media_type == _BUNDLE_0_1:
             if not inclusion_promise:
                 raise InvalidMaterials("bundle must contain an inclusion promise")
+            if inclusion_proof and not inclusion_proof.checkpoint.envelope:
+                logger.debug(
+                    "0.1 bundle contains inclusion proof without checkpoint; ignoring"
+                )
         elif bundle.media_type == _BUNDLE_0_2:
             if not inclusion_proof:
                 raise InvalidMaterials("bundle must contain an inclusion proof")
@@ -383,31 +387,41 @@ class VerificationMaterials:
         Returns a `LogEntry` for the current signing materials.
         """
 
-        # The Rekor entry we use depends on a few different states:
-        # 1. If the user has requested offline verification and we've
-        #    been given an offline Rekor entry to use, we use it.
-        # 2. If the user has not requested offline verification,
-        #    we *opportunistically* use the offline Rekor entry,
-        #    so long as it contains an inclusion proof. If it doesn't
-        #    contain an inclusion proof, then we do an online entry lookup.
         offline = self._offline
-        has_rekor_entry = self.has_rekor_entry
+        has_inclusion_promise = (
+            self.has_rekor_entry
+            and self._rekor_entry.inclusion_promise is not None  # type: ignore
+        )
         has_inclusion_proof = (
             self.has_rekor_entry
             and self._rekor_entry.inclusion_proof is not None  # type: ignore
+            and self._rekor_entry.inclusion_proof.checkpoint  # type: ignore
         )
 
-        entry: LogEntry | None
-        if (offline and has_rekor_entry) or (not offline and has_inclusion_proof):
-            logger.debug("using offline rekor entry")
+        logger.debug(
+            f"has_inclusion_proof={has_inclusion_proof} "
+            f"has_inclusion_promise={has_inclusion_promise}"
+        )
+
+        entry: LogEntry | None = None
+        if offline:
+            logger.debug("offline mode; using offline log entry")
+            # In offline mode, we require either an inclusion proof or an
+            # inclusion promise. Every `LogEntry` has at least one as a
+            # construction invariant, so no additional check is required here.
             entry = self._rekor_entry
         else:
-            logger.debug("retrieving rekor entry")
-            entry = client.log.entries.retrieve.post(
-                self.signature,
-                self.input_digest.hex(),
-                self.certificate,
-            )
+            # In online mode, we require an inclusion proof. If our supplied log
+            # entry doesn't have one, then we perform a lookup.
+            if not has_inclusion_proof:
+                logger.debug("retrieving transparency log entry")
+                entry = client.log.entries.retrieve.post(
+                    self.signature,
+                    self.input_digest.hex(),
+                    self.certificate,
+                )
+            else:
+                entry = self._rekor_entry
 
         # No matter what we do above, we must end up with a Rekor entry.
         if entry is None:
