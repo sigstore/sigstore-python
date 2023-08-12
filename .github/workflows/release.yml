@@ -123,7 +123,7 @@ jobs:
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
 
       - name: publish
-        uses: pypa/gh-action-pypi-publish@ade57f54dcc56d4858ca681c80269c26dc7b9149
+        uses: pypa/gh-action-pypi-publish@b7f401de30cb6434a1e19f805ff006643653240e
         with:
           packages_dir: built-packages/
 
