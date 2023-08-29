@@ -31,13 +31,11 @@ jobs:
           ref: main
 
       - name: Get latest tag
-        id: latest_tag
-        run: echo "::set-output name=tag::$(git describe --tags --abbrev=0)"
+        run: echo "LATEST_TAG="$(git rev-list --tags --max-count=1 --abbrev-commit)" >> $GITHUB_ENV
 
       - name: Set SIGSTORE_RELEASE_TAG and SIGSTORE_NEW_BRANCH
         env:
           INPUT_TAG: "${{ inputs.tag }}"
-          LATEST_TAG: "${{ steps.latest_tag.outputs.tag }}"
         run: |
           if [ -n "${INPUT_TAG}" ]; then
             echo "SIGSTORE_RELEASE_TAG=${INPUT_TAG}" >> $GITHUB_ENV
