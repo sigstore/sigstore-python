@@ -15,7 +15,6 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
@@ -38,7 +37,7 @@ dependencies = [
   "sigstore-protobuf-specs ~= 0.2.0",
   "tuf >= 2.1,< 4.0",
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 
 [project.scripts]
 sigstore = "sigstore._cli:main"
@@ -59,10 +58,8 @@ lint = [
   "mypy ~= 1.1",
   # NOTE(ww): ruff is under active development, so we pin conservatively here
   # and let Dependabot periodically perform this update.
-  "ruff < 0.0.282",
+  "ruff < 0.0.286",
   "types-requests",
-  # Needed for protocol typing in 3.7; remove when our minimum Python is 3.8.
-  "typing-extensions; python_version < '3.8'",
   # TODO(ww): Re-enable once dependency on types-cryptography is dropped.
   # See: https://github.com/python/typeshed/issues/8699
   # "types-pyOpenSSL",
@@ -132,4 +129,4 @@ ignore = ["E501"]
 # TODO: Enable "UP" here once Pydantic allows us to:
 # See: https://github.com/pydantic/pydantic/issues/4146
 select = ["E", "F", "W"]
-target-version = "py37"
+target-version = "py38"

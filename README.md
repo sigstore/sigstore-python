@@ -4,7 +4,7 @@ sigstore-python
 <!--- @begin-badges@ --->
 ![CI](https://github.com/sigstore/sigstore-python/workflows/CI/badge.svg)
 [![PyPI version](https://badge.fury.io/py/sigstore.svg)](https://pypi.org/project/sigstore)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python/badge)](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python/badge)](https://securityscorecards.dev/viewer/?uri=github.com/sigstore/sigstore-python)
 [![SLSA](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/)
 ![Conformance Tests](https://github.com/sigstore/sigstore-python/workflows/Conformance%20Tests/badge.svg)
 [![Documentation](https://github.com/sigstore/sigstore-python/actions/workflows/docs.yml/badge.svg)](https://sigstore.github.io/sigstore-python)
@@ -46,7 +46,7 @@ else!
 
 ## Installation
 
-`sigstore` requires Python 3.7 or newer, and can be installed directly via `pip`:
+`sigstore` requires Python 3.8 or newer, and can be installed directly via `pip`:
 
 ```console
 python -m pip install sigstore

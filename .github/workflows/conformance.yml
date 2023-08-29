@@ -11,7 +11,7 @@ jobs:
   conformance:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
 
       - uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1
         with:
@@ -22,6 +22,6 @@ jobs:
       - name: install sigstore-python
         run: python -m pip install .
 
-      - uses: sigstore/sigstore-conformance@954233f9a4ea6d0b355626b283b4f837f465e4ec # v0.0.5
+      - uses: sigstore/sigstore-conformance@1abc82cdefe80bd907855d8447f903ba8b4918e0 # v0.0.6
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance

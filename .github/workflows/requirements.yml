@@ -23,7 +23,7 @@ jobs:
       SIGSTORE_REF: ${{ inputs.ref }}
     strategy:
       matrix:
-        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python_version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
       - name: Populate reference from context
@@ -31,7 +31,7 @@ jobs:
         run: |
           echo "SIGSTORE_REF=${{ github.ref }}" >> "${GITHUB_ENV}"
 
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
         with:
           ref: ${{ env.SIGSTORE_REF }}
 
