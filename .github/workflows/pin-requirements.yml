@@ -5,14 +5,14 @@ on:
     inputs:
       tag:
         description: Tag to pin dependencies against.
-        required: true
+        required: false
         type: string
 
   workflow_call:
     inputs:
       tag:
         description: Tag to pin dependencies against.
-        required: true
+        required: false
         type: string
 
 permissions:
@@ -25,27 +25,41 @@ jobs:
     permissions:
       contents: write # Branch creation for PR.
 
+    outputs:
+      sigstore-release-tag: ${{ steps.get-branch.outputs.sigstore-release-tag }}
+      sigstore-pin-requirements-branch: ${{ steps.get-branch.outputs.sigstore-pin-requirements-branch }}
+
     steps:
       - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.3.0
         with:
           ref: main
+          # NOTE: Needed for `git describe` below.
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Get latest tag
-        id: latest_tag
-        run: echo "::set-output name=tag::$(git describe --tags --abbrev=0)"
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0)
+          echo "LATEST_TAG=${latest_tag}" >> "${GITHUB_ENV}"
 
       - name: Set SIGSTORE_RELEASE_TAG and SIGSTORE_NEW_BRANCH
+        id: get-branch
         env:
           INPUT_TAG: "${{ inputs.tag }}"
-          LATEST_TAG: "${{ steps.latest_tag.outputs.tag }}"
         run: |
-          if [ -n "${INPUT_TAG}" ]; then
-            echo "SIGSTORE_RELEASE_TAG=${INPUT_TAG}" >> $GITHUB_ENV
-            echo "SIGSTORE_NEW_BRANCH=pin-requirements/sigstore/${INPUT_TAG}" >> $GITHUB_ENV
+          if [[ -n "${INPUT_TAG}" ]]; then
+            effective_tag="${INPUT_TAG}"
           else
-            echo "SIGSTORE_RELEASE_TAG=${LATEST_TAG}" >> $GITHUB_ENV
-            echo "SIGSTORE_NEW_BRANCH=pin-requirements/sigstore/${LATEST_TAG}" >> $GITHUB_ENV
+            effective_tag="${LATEST_TAG}"
           fi
+
+          # Environment
+          echo "SIGSTORE_RELEASE_TAG=${effective_tag}" >> "${GITHUB_ENV}"
+          echo "SIGSTORE_NEW_BRANCH=pin-requirements/sigstore/${effective_tag}" >> "${GITHUB_ENV}"
+
+          # Outputs
+          echo "sigstore-release-tag=${effective_tag}" >> "${GITHUB_OUTPUT}"
+          echo "sigstore-pin-requirements-branch=pin-requirements/sigstore/${effective_tag}" >> "${GITHUB_OUTPUT}"
 
       - name: Configure git
         run: |
@@ -84,25 +98,31 @@ jobs:
     with:
       # We can't use `env` variables in this context.
       # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
-      ref: "pin-requirements/sigstore/${{ inputs.tag }}"
+      ref: ${{ needs.update-pinned-requirements.outputs.sigstore-pin-requirements-branch }}
 
   create-pr:
-    needs: test-requirements
+    needs:
+      - update-pinned-requirements
+      - test-requirements
     runs-on: ubuntu-latest
 
     permissions:
       contents: write # Pull Request branch modification.
       pull-requests: write # Pull Request creation.
 
+    env:
+      SIGSTORE_RELEASE_TAG: ${{ needs.update-pinned-requirements.outputs.sigstore-release-tag }}
+      SIGSTORE_PIN_REQUIREMENTS_BRANCH: ${{ needs.update-pinned-requirements.outputs.sigstore-pin-requirements-branch }}
+
     steps:
       - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.3.0
         with:
-          ref: ${{ env.SIGSTORE_NEW_BRANCH }}
+          ref: ${{ env.SIGSTORE_PIN_REQUIREMENTS_BRANCH }}
 
       - name: Reset remote PR branch
         run: |
           git fetch origin main
-          git push -f origin "origin/main:${SIGSTORE_NEW_BRANCH}"
+          git push -f origin "origin/main:${SIGSTORE_PIN_REQUIREMENTS_BRANCH}"
 
       - name: Open pull request
         uses: peter-evans/create-pull-request@153407881ec5c347639a548ade7d8ad1d6740e38 # v5.0.2
@@ -112,5 +132,5 @@ jobs:
           body: |
             Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${{ env.SIGSTORE_RELEASE_TAG }}>.
           base: main
-          branch: ${{ env.SIGSTORE_NEW_BRANCH }}
+          branch: ${{ env.SIGSTORE_PIN_REQUIREMENTS_BRANCH }}
           delete-branch: true

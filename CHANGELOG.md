@@ -74,6 +74,9 @@ All versions prior to 0.9.0 are untracked.
   if `LogEntry.inclusion_proof` is not `None`
   ([#705](https://github.com/sigstore/sigstore-python/pull/705))
 
+* `sigstore-python`'s minimum supported Python version is now 3.8
+  ([#745](https://github.com/sigstore/sigstore-python/pull/745))
+
 ### Fixed
 
 * Fixed a case where `sigstore verify` would fail to verify an otherwise valid
