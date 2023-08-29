@@ -31,7 +31,7 @@ jobs:
           ref: main
 
       - name: Get latest tag
-        run: echo "LATEST_TAG="$(git rev-list --tags --max-count=1 --abbrev-commit)" >> $GITHUB_ENV
+        run: echo "LATEST_TAG=$(git rev-list --tags --max-count=1 --abbrev-commit)" >> $GITHUB_ENV
 
       - name: Set SIGSTORE_RELEASE_TAG and SIGSTORE_NEW_BRANCH
         env:
