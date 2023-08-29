@@ -15,7 +15,7 @@ jobs:
       # NOTE: We intentionally lint against our minimum supported Python.
       - uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1
         with:
-          python-version: "3.7"
+          python-version: "3.8"
           cache: "pip"
           cache-dependency-path: pyproject.toml
 
@@ -34,7 +34,7 @@ jobs:
       # since it changes slightly between Python versions.
       - uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1
         with:
-          python-version: "3.7"
+          python-version: "3.8"
           cache: "pip"
           cache-dependency-path: pyproject.toml
 
@@ -65,7 +65,7 @@ jobs:
       # NOTE: We intentionally check test certificates against our minimum supported Python.
       - uses: actions/setup-python@61a6322f88396a6271a6ee3565807d608ecaddd1
         with:
-          python-version: "3.7"
+          python-version: "3.8"
           cache: "pip"
           cache-dependency-path: pyproject.toml
 
