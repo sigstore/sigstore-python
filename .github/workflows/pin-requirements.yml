@@ -58,7 +58,7 @@ jobs:
           cd install
 
           echo "sigstore==${SIGSTORE_RELEASE_VERSION}" > requirements.in
-          pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
+          pip-compile --allow-unsafe --generate-hashes --upgrade --output-file=requirements.txt requirements.in
 
       - name: Commit changes and push to branch
         run: |
