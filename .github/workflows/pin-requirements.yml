@@ -35,7 +35,6 @@ jobs:
       - name: Get latest tag
         run: |
           latest_tag=$(git describe --tags --abbrev=0)
-          [[ -z "${latest_tag}" ]] && exit 1
           echo "LATEST_TAG=${latest_tag}" >> "$GITHUB_ENV"
 
       - name: Set SIGSTORE_RELEASE_TAG and SIGSTORE_NEW_BRANCH
