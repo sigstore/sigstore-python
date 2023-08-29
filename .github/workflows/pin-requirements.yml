@@ -25,6 +25,9 @@ jobs:
     permissions:
       contents: write # Branch creation for PR.
 
+    outputs:
+      pin-requirements-branch: ${{ steps.get-branch.outputs.pin-requirements-branch }}
+
     steps:
       - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.3.0
         with:
@@ -36,18 +39,21 @@ jobs:
       - name: Get latest tag
         run: |
           latest_tag=$(git describe --tags --abbrev=0)
-          echo "LATEST_TAG=${latest_tag}" >> "$GITHUB_ENV"
+          echo "LATEST_TAG=${latest_tag}" >> "${GITHUB_ENV}"
 
       - name: Set SIGSTORE_RELEASE_TAG and SIGSTORE_NEW_BRANCH
+        id: get-branch
         env:
           INPUT_TAG: "${{ inputs.tag }}"
         run: |
           if [ -n "${INPUT_TAG}" ]; then
-            echo "SIGSTORE_RELEASE_TAG=${INPUT_TAG}" >> "$GITHUB_ENV"
-            echo "SIGSTORE_NEW_BRANCH=pin-requirements/sigstore/${INPUT_TAG}" >> "$GITHUB_ENV"
+            echo "SIGSTORE_RELEASE_TAG=${INPUT_TAG}" >> "${GITHUB_ENV}"
+            echo "SIGSTORE_NEW_BRANCH=pin-requirements/sigstore/${INPUT_TAG}" >> "${GITHUB_ENV}"
+            echo "pin-requirements-branch=pin-requirements/sigstore/${INPUT_TAG}" >> "${GITHUB_OUTPUT}"
           else
-            echo "SIGSTORE_RELEASE_TAG=${LATEST_TAG}" >> "$GITHUB_ENV"
-            echo "SIGSTORE_NEW_BRANCH=pin-requirements/sigstore/${LATEST_TAG}" >> "$GITHUB_ENV"
+            echo "SIGSTORE_RELEASE_TAG=${LATEST_TAG}" >> "${GITHUB_ENV}"
+            echo "SIGSTORE_NEW_BRANCH=pin-requirements/sigstore/${LATEST_TAG}" >> "${GITHUB_ENV}"
+            echo "pin-requirements-branch=pin-requirements/sigstore/${LATEST_TAG}" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Configure git
@@ -87,7 +93,7 @@ jobs:
     with:
       # We can't use `env` variables in this context.
       # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
-      ref: "pin-requirements/sigstore/${{ inputs.tag }}"
+      ref: ${{ needs.update-pinned-requirements.outputs.pin-requirements-branch }}
 
   create-pr:
     needs: test-requirements
