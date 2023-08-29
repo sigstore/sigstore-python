@@ -15,10 +15,6 @@ on:
         required: true
         type: string
 
-env:
-  SIGSTORE_RELEASE_TAG: ${{ inputs.tag }}
-  SIGSTORE_NEW_BRANCH: "pin-requirements/sigstore/${{ inputs.tag }}"
-
 permissions:
   contents: read
 
@@ -33,6 +29,23 @@ jobs:
       - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.3.0
         with:
           ref: main
+
+      - name: Get latest tag
+        id: latest_tag
+        run: echo "::set-output name=tag::$(git describe --tags --abbrev=0)"
+
+      - name: Set SIGSTORE_RELEASE_TAG and SIGSTORE_NEW_BRANCH
+        env:
+          INPUT_TAG: "${{ inputs.tag }}"
+          LATEST_TAG: "${{ steps.latest_tag.outputs.tag }}"
+        run: |
+          if [ -n "${INPUT_TAG}" ]; then
+            echo "SIGSTORE_RELEASE_TAG=${INPUT_TAG}" >> $GITHUB_ENV
+            echo "SIGSTORE_NEW_BRANCH=pin-requirements/sigstore/${INPUT_TAG}" >> $GITHUB_ENV
+          else
+            echo "SIGSTORE_RELEASE_TAG=${LATEST_TAG}" >> $GITHUB_ENV
+            echo "SIGSTORE_NEW_BRANCH=pin-requirements/sigstore/${LATEST_TAG}" >> $GITHUB_ENV
+          fi
 
       - name: Configure git
         run: |
