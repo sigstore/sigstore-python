@@ -29,6 +29,8 @@ jobs:
       - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.3.0
         with:
           ref: main
+          # NOTE: Needed for `git describe` below.
+          fetch-tags: true
 
       - name: Get latest tag
         run: echo "LATEST_TAG=$(git describe --tags --abbrev=0)" >> "$GITHUB_ENV"
