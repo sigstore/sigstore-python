@@ -5,14 +5,14 @@ on:
     inputs:
       tag:
         description: Tag to pin dependencies against.
-        required: true
+        required: false
         type: string
 
   workflow_call:
     inputs:
       tag:
         description: Tag to pin dependencies against.
-        required: true
+        required: false
         type: string
 
 permissions:
