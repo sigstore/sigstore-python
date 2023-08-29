@@ -109,7 +109,7 @@ positional arguments:
     get-identity-token  retrieve and return a Sigstore-compatible OpenID
                         Connect token
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   -V, --version         show program's version number and exit
   -v, --verbose         run with additional debug logging; supply multiple
