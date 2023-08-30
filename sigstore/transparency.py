@@ -159,7 +159,7 @@ class LogEntry:
             integrated_time=entry["integratedTime"],
             log_id=entry["logID"],
             log_index=entry["logIndex"],
-            inclusion_proof=LogInclusionProof.parse_obj(
+            inclusion_proof=LogInclusionProof.model_validate(
                 entry["verification"]["inclusionProof"]
             ),
             inclusion_promise=entry["verification"]["signedEntryTimestamp"],

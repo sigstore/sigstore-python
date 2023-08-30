@@ -94,8 +94,8 @@ class TestDetachedFulcioSCT:
         )
 
         sct1 = client.DetachedFulcioSCT(**payload)
-        sct2 = client.DetachedFulcioSCT.parse_obj(payload)
-        sct3 = client.DetachedFulcioSCT.parse_raw(json.dumps(payload))
+        sct2 = client.DetachedFulcioSCT.model_validate(payload)
+        sct3 = client.DetachedFulcioSCT.model_validate_json(json.dumps(payload))
 
         assert sct1 == sct2 == sct3
 
@@ -137,7 +137,7 @@ class TestDetachedFulcioSCT:
             client.DetachedFulcioSCT(**payload)
 
         with pytest.raises(ValidationError, match=reason):
-            client.DetachedFulcioSCT.parse_obj(payload)
+            client.DetachedFulcioSCT.model_validate(payload)
 
     def test_log_id_invalid(self):
         with pytest.raises(ValidationError, match="Invalid base64-encoded string"):

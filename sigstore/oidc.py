@@ -273,7 +273,7 @@ class Issuer:
             # We don't generally expect this to fail (since the provider should
             # return a non-success HTTP code which we catch above), but we
             # check just in case we have a misbehaving OIDC issuer.
-            self.oidc_config = _OpenIDConfiguration.parse_obj(resp.json())
+            self.oidc_config = _OpenIDConfiguration.model_validate(resp.json())
         except ValueError as exc:
             raise IssuerError(f"OIDC issuer returned invalid configuration: {exc}")
 
