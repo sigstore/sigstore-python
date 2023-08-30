@@ -43,7 +43,7 @@ from cryptography.x509.certificate_transparency import (
     SignedCertificateTimestamp,
     Version,
 )
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from sigstore._utils import B64Str
 from sigstore.oidc import IdentityToken
@@ -104,11 +104,11 @@ class DetachedFulcioSCT(BaseModel):
     digitally_signed: bytes = Field(..., alias="signature")
     extension_bytes: bytes = Field(..., alias="extensions")
 
-    @validator("timestamp")
+    @field_validator("timestamp")
     def _validate_timestamp(cls, v: datetime.datetime) -> datetime.datetime:
         return v.replace(tzinfo=datetime.timezone.utc)
 
-    @validator("digitally_signed", pre=True)
+    @field_validator("digitally_signed", mode="before")
     def _validate_digitally_signed(cls, v: bytes) -> bytes:
         digitally_signed = base64.b64decode(v)
 
@@ -117,11 +117,11 @@ class DetachedFulcioSCT(BaseModel):
 
         return digitally_signed
 
-    @validator("log_id", pre=True)
+    @field_validator("log_id", mode="before")
     def _validate_log_id(cls, v: bytes) -> bytes:
         return base64.b64decode(v)
 
-    @validator("extension_bytes", pre=True)
+    @field_validator("extension_bytes", mode="before")
     def _validate_extensions(cls, v: bytes) -> bytes:
         return base64.b64decode(v)
 

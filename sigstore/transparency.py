@@ -18,15 +18,16 @@ Transparency log data structures.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    FieldValidationInfo,
     StrictInt,
     StrictStr,
-    validator,
+    field_validator,
 )
 from pydantic.dataclasses import dataclass
 from securesystemslib.formats import encode_canonical
@@ -47,26 +48,26 @@ class LogInclusionProof(BaseModel):
     root_hash: StrictStr = Field(..., alias="rootHash")
     tree_size: StrictInt = Field(..., alias="treeSize")
 
-    @validator("log_index")
+    @field_validator("log_index")
     def _log_index_positive(cls, v: int) -> int:
         if v < 0:
             raise ValueError(f"Inclusion proof has invalid log index: {v} < 0")
         return v
 
-    @validator("tree_size")
+    @field_validator("tree_size")
     def _tree_size_positive(cls, v: int) -> int:
         if v < 0:
             raise ValueError(f"Inclusion proof has invalid tree size: {v} < 0")
         return v
 
-    @validator("tree_size")
+    @field_validator("tree_size")
     def _log_index_within_tree_size(
-        cls, v: int, values: Dict[str, Any], **kwargs: Any
+        cls, v: int, info: FieldValidationInfo, **kwargs: Any
     ) -> int:
-        if "log_index" in values and v <= values["log_index"]:
+        if "log_index" in info.data and v <= info.data["log_index"]:
             raise ValueError(
                 "Inclusion proof has log index greater than or equal to tree size: "
-                f"{v} <= {values['log_index']}"
+                f"{v} <= {info.data['log_index']}"
             )
         return v
 
