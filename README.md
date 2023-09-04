@@ -96,7 +96,7 @@ Top-level:
 
 <!-- @begin-sigstore-help@ -->
 ```
-usage: sigstore [-h] [-V] [-v] [--staging] [--rekor-url URL]
+usage: sigstore [-h] [-v] [-V] [--staging] [--rekor-url URL]
                 [--rekor-root-pubkey FILE]
                 COMMAND ...
 
@@ -111,9 +111,9 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -V, --version         show program's version number and exit
   -v, --verbose         run with additional debug logging; supply multiple
-                        times to increase verbosity (default: 0)
+                        times to increase verbosity
+  -V, --version         show program's version number and exit
 
 Sigstore instance options:
   --staging             Use sigstore's staging instances, instead of the
@@ -131,7 +131,7 @@ Sigstore instance options:
 
 <!-- @begin-sigstore-sign-help@ -->
 ```
-usage: sigstore sign [-h] [--identity-token TOKEN] [--oidc-client-id ID]
+usage: sigstore sign [-h] [-v] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--oauth-force-oob] [--no-default-files]
@@ -146,6 +146,8 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --verbose         run with additional debug logging; supply multiple
+                        times to increase verbosity
 
 OpenID Connect options:
   --identity-token TOKEN
@@ -214,15 +216,18 @@ to by a particular OIDC provider (like `https://github.com/login/oauth`).
 
 <!-- @begin-sigstore-verify-identity-help@ -->
 ```
-usage: sigstore verify identity [-h] [--certificate FILE] [--signature FILE]
-                                [--bundle FILE] --cert-identity IDENTITY
-                                [--offline] --cert-oidc-issuer URL [--staging]
+usage: sigstore verify identity [-h] [-v] [--certificate FILE]
+                                [--signature FILE] [--bundle FILE]
+                                --cert-identity IDENTITY [--offline]
+                                --cert-oidc-issuer URL [--staging]
                                 [--rekor-url URL] [--rekor-root-pubkey FILE]
                                 [--certificate-chain FILE]
                                 FILE [FILE ...]
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --verbose         run with additional debug logging; supply multiple
+                        times to increase verbosity
 
 Verification inputs:
   --certificate FILE, --cert FILE
@@ -274,17 +279,19 @@ claims more precisely than `sigstore verify identity` allows:
 
 <!-- @begin-sigstore-verify-github-help@ -->
 ```
-usage: sigstore verify github [-h] [--certificate FILE] [--signature FILE]
-                              [--bundle FILE] --cert-identity IDENTITY
-                              [--offline] [--trigger EVENT] [--sha SHA]
-                              [--name NAME] [--repository REPO] [--ref REF]
-                              [--staging] [--rekor-url URL]
-                              [--rekor-root-pubkey FILE]
+usage: sigstore verify github [-h] [-v] [--certificate FILE]
+                              [--signature FILE] [--bundle FILE]
+                              --cert-identity IDENTITY [--offline]
+                              [--trigger EVENT] [--sha SHA] [--name NAME]
+                              [--repository REPO] [--ref REF] [--staging]
+                              [--rekor-url URL] [--rekor-root-pubkey FILE]
                               [--certificate-chain FILE]
                               FILE [FILE ...]
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --verbose         run with additional debug logging; supply multiple
+                        times to increase verbosity
 
 Verification inputs:
   --certificate FILE, --cert FILE
