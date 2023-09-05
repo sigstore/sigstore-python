@@ -235,20 +235,24 @@ def _add_shared_oidc_options(
 
 
 def _parser() -> argparse.ArgumentParser:
+    # Arguments in parent_parser can be used for both commands and subcommands
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=argparse.SUPPRESS,
+        help="run with additional debug logging; supply multiple times to increase verbosity",
+    )
+
     parser = argparse.ArgumentParser(
         prog="sigstore",
         description="a tool for signing and verifying Python package distributions",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
     )
     parser.add_argument(
-        "-V", "--version", action="version", version=f"%(prog)s {__version__}"
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="count",
-        default=0,
-        help="run with additional debug logging; supply multiple times to increase verbosity",
+        "-V", "--version", action="version", version=f"sigstore {__version__}"
     )
 
     global_instance_options = parser.add_argument_group("Sigstore instance options")
@@ -285,6 +289,7 @@ def _parser() -> argparse.ArgumentParser:
         "sign",
         help="sign one or more inputs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
     )
 
     oidc_options = sign.add_argument_group("OpenID Connect options")
@@ -382,6 +387,7 @@ def _parser() -> argparse.ArgumentParser:
         "verify",
         help="verify one or more inputs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
     )
     verify_subcommand = verify.add_subparsers(
         required=True,
@@ -395,6 +401,7 @@ def _parser() -> argparse.ArgumentParser:
         "identity",
         help="verify against a known identity and identity provider",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
     )
     input_options = verify_identity.add_argument_group("Verification inputs")
     _add_shared_verify_input_options(input_options)
@@ -427,6 +434,7 @@ def _parser() -> argparse.ArgumentParser:
         "github",
         help="verify against GitHub Actions-specific claims",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
     )
 
     input_options = verify_github.add_argument_group("Verification inputs")
@@ -492,6 +500,7 @@ def _parser() -> argparse.ArgumentParser:
         "get-identity-token",
         help="retrieve and return a Sigstore-compatible OpenID Connect token",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
     )
     _add_shared_oidc_options(get_identity_token)
 
@@ -503,9 +512,10 @@ def main() -> None:
     args = parser.parse_args()
 
     # Configure logging upfront, so that we don't miss anything.
-    if args.verbose >= 1:
+    verbose = args.verbose if hasattr(args, "verbose") else 0
+    if verbose >= 1:
         package_logger.setLevel("DEBUG")
-    if args.verbose >= 2:
+    if verbose >= 2:
         logging.getLogger().setLevel("DEBUG")
 
     logger.debug(f"parsed arguments {args}")
@@ -555,7 +565,7 @@ def main() -> None:
         else:
             _die(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
-        e.print_and_exit(args.verbose >= 1)
+        e.print_and_exit(verbose >= 1)
 
 
 def _sign(args: argparse.Namespace) -> None:
