@@ -318,7 +318,7 @@ class SigningResult(BaseModel):
     A record of the Rekor log entry for the signing operation.
     """
 
-    def _to_bundle(self) -> Bundle:
+    def to_bundle(self) -> Bundle:
         """
         Creates a Sigstore bundle (as defined by Sigstore's protobuf specs)
         from this `SigningResult`.
