@@ -22,6 +22,11 @@ All versions prior to 0.9.0 are untracked.
   producing a standard Sigstore bundle from `sigstore-python`'s internal
   representation ([#719](https://github.com/sigstore/sigstore-python/pull/719))
 
+* API addition: New method `sign.SigningResult.to_bundle()` allows signing
+  applications to serialize to the bundle format that is already usable in
+  verification with `verify.VerificationMaterials.from_bundle()`
+  ([#765](https://github.com/sigstore/sigstore-python/pull/765))
+
 ### Changed
 
 * `sigstore verify` now performs additional verification of Rekor's inclusion
