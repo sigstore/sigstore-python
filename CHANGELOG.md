@@ -97,6 +97,9 @@ All versions prior to 0.9.0 are untracked.
   in the CA. We now enforce the fact that the TBSPrecertificate signer must be
   a valid CA ([#658](https://github.com/sigstore/sigstore-python/pull/658))
 
+* Fixed a case where identity token retrieval would produce an unhelpful
+  error message ([#767](https://github.com/sigstore/sigstore-python/pull/767))
+
 ## [1.1.2]
 
 ### Fixed
