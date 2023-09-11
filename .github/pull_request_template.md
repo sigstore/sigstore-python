@@ -17,7 +17,7 @@ Thank you :)
 
 #### Release Note
 <!--
-Add a release note for each of the following conditions:
+Add a release note for each of the following conditions in CHANGELOG.md:
 
 * Config changes (additions, deletions, updates)
 * API additions—new endpoint, new response fields, or newly accepted request parameters
@@ -28,7 +28,7 @@ Add a release note for each of the following conditions:
 * Bug fixes and fixes of previous known issues
 * Deprecation warnings, breaking changes, or compatibility notes
 
-If no release notes are required write NONE. Use past-tense.
+Use past-tense.
 
 -->
 
