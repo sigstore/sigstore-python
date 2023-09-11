@@ -720,7 +720,7 @@ def _sign(args: argparse.Namespace) -> None:
 
             if outputs["bundle"] is not None:
                 with outputs["bundle"].open(mode="w") as io:
-                    print(result._to_bundle().to_json(), file=io)
+                    print(result.to_bundle().to_json(), file=io)
                 print(f"Sigstore bundle written to {outputs['bundle']}")
 
 
