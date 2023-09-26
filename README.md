@@ -394,7 +394,7 @@ namely the Fulcio's supported identity providers and the claims expected within 
 
 ### Verifying against a signature and certificate
 
-By default, `sigstore verify` will attempt to find a `<filename>.sigstore` in the
+By default, `sigstore verify identity` will attempt to find a `<filename>.sigstore` in the
 same directory as the file being verified:
 
 ```console

@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [2.0.0]
+
 ### Added
 
 * CLI: `sigstore sign` and `sigstore get-identity-token` now support the
@@ -279,7 +281,8 @@ All versions prior to 0.9.0 are untracked.
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/sigstore/sigstore-python/compare/v1.1.2...v2.0.0
 [1.1.2]: https://github.com/sigstore/sigstore-python/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/sigstore/sigstore-python/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/sigstore/sigstore-python/compare/v1.0.0...v1.1.0
