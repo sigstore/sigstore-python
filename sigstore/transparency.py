@@ -24,9 +24,9 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    FieldValidationInfo,
     StrictInt,
     StrictStr,
+    ValidationInfo,
     field_validator,
 )
 from pydantic.dataclasses import dataclass
@@ -62,7 +62,7 @@ class LogInclusionProof(BaseModel):
 
     @field_validator("tree_size")
     def _log_index_within_tree_size(
-        cls, v: int, info: FieldValidationInfo, **kwargs: Any
+        cls, v: int, info: ValidationInfo, **kwargs: Any
     ) -> int:
         if "log_index" in info.data and v <= info.data["log_index"]:
             raise ValueError(
