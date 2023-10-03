@@ -27,6 +27,7 @@ from urllib.parse import urljoin
 
 import requests
 from cryptography.x509 import Certificate
+from sigstore_rekor_types import hashedrekord
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import Keyring
@@ -139,9 +140,7 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        b64_artifact_signature: B64Str,
-        sha256_artifact_hash: str,
-        b64_cert: B64Str,
+        spec: hashedrekord.HashedrekordV001Schema,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
@@ -150,15 +149,7 @@ class RekorEntries(_Endpoint):
         data = {
             "kind": "hashedrekord",
             "apiVersion": "0.0.1",
-            "spec": {
-                "signature": {
-                    "content": b64_artifact_signature,
-                    "publicKey": {"content": b64_cert},
-                },
-                "data": {
-                    "hash": {"algorithm": "sha256", "value": sha256_artifact_hash}
-                },
-            },
+            "spec": spec.model_dump(mode="json"),
         }
 
         resp: requests.Response = self.session.post(self.url, json=data)

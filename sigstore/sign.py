@@ -70,6 +70,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     KindVersion,
     TransparencyLogEntry,
 )
+from sigstore_rekor_types import hashedrekord
 
 from sigstore._internal.fulcio import (
     ExpiredCertificate,
@@ -210,11 +211,17 @@ class Signer:
         )
 
         # Create the transparency log entry
-        entry = self._signing_ctx._rekor.log.entries.post(
-            b64_artifact_signature=B64Str(b64_artifact_signature),
-            sha256_artifact_hash=input_digest.hex(),
-            b64_cert=B64Str(b64_cert.decode()),
+        spec = hashedrekord.HashedrekordV001Schema(
+            signature=hashedrekord.Signature(
+                content=b64_artifact_signature, publicKey=b64_cert.decode()
+            ),
+            data=hashedrekord.Data(
+                hash=hashedrekord.Hash(
+                    algorithm=hashedrekord.Algorithm.SHA256, value=input_digest.hex()
+                )
+            ),
         )
+        entry = self._signing_ctx._rekor.log.entries.post(spec)
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
