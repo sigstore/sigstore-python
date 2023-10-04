@@ -156,7 +156,7 @@ class RekorEntries(_Endpoint):
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
-            raise RekorClientError(http_error)
+            raise RekorClientError from http_error
 
         return LogEntry._from_response(resp.json())
 
