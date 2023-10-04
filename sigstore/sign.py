@@ -46,6 +46,7 @@ from datetime import datetime, timezone
 from typing import IO, Iterator, Optional
 
 import cryptography.x509 as x509
+import sigstore_rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
@@ -70,7 +71,6 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     KindVersion,
     TransparencyLogEntry,
 )
-from sigstore_rekor_types import hashedrekord
 
 from sigstore._internal.fulcio import (
     ExpiredCertificate,
@@ -211,18 +211,23 @@ class Signer:
         )
 
         # Create the transparency log entry
-        spec = hashedrekord.HashedrekordV001Schema(
-            signature=hashedrekord.Signature(
-                content=b64_artifact_signature,
-                publicKey=hashedrekord.PublicKey(content=b64_cert.decode()),
-            ),
-            data=hashedrekord.Data(
-                hash=hashedrekord.Hash(
-                    algorithm=hashedrekord.Algorithm.SHA256, value=input_digest.hex()
-                )
+        proposed_entry = sigstore_rekor_types.Hashedrekord(
+            kind="hashedrekord",
+            api_version="0.0.1",
+            spec=sigstore_rekor_types.HashedrekordV001Schema(
+                signature=sigstore_rekor_types.Signature(
+                    content=b64_artifact_signature,
+                    publicKey=sigstore_rekor_types.PublicKey(content=b64_cert.decode()),
+                ),
+                data=sigstore_rekor_types.Data(
+                    hash=sigstore_rekor_types.Hash(
+                        algorithm=sigstore_rekor_types.Algorithm.SHA256,
+                        value=input_digest.hex(),
+                    )
+                ),
             ),
         )
-        entry = self._signing_ctx._rekor.log.entries.post(spec)
+        entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 

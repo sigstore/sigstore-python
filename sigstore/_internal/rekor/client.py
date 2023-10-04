@@ -26,8 +26,8 @@ from typing import Any, Dict, NewType, Optional
 from urllib.parse import urljoin
 
 import requests
+import sigstore_rekor_types
 from cryptography.x509 import Certificate
-from sigstore_rekor_types import hashedrekord
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import Keyring
@@ -140,19 +140,15 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        spec: hashedrekord.HashedrekordV001Schema,
+        proposed_entry: sigstore_rekor_types.Hashedrekord,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
-        # TODO(ww): Dedupe this payload construction with the retrieve endpoint below.
-        data = {
-            "kind": "hashedrekord",
-            "apiVersion": "0.0.1",
-            "spec": spec.model_dump(mode="json", by_alias=True),
-        }
 
-        resp: requests.Response = self.session.post(self.url, json=data)
+        resp: requests.Response = self.session.post(
+            self.url, json=proposed_entry.model_dump(mode="json", by_alias=True)
+        )
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
