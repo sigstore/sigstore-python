@@ -149,7 +149,7 @@ class RekorEntries(_Endpoint):
         data = {
             "kind": "hashedrekord",
             "apiVersion": "0.0.1",
-            "spec": spec.model_dump(mode="json"),
+            "spec": spec.model_dump(mode="json", by_alias=True),
         }
 
         resp: requests.Response = self.session.post(self.url, json=data)
