@@ -404,6 +404,9 @@ class VerificationMaterials:
             f"has_inclusion_promise={has_inclusion_promise}"
         )
 
+        # This "expected" entry is used both to retrieve the Rekor entry
+        # (if we don't have one) *and* to cross-check whatever response
+        # we receive. See below.
         expected_entry = sigstore_rekor_types.Hashedrekord(
             kind="hashedrekord",
             api_version="0.0.1",
@@ -443,24 +446,13 @@ class VerificationMaterials:
         if entry is None:
             raise RekorEntryMissing
 
-        # To verify that an entry matches our other signing materials,
-        # we transform our signature, artifact hash, and certificate
-        # into a "hashedrekord" style payload and compare it against the
-        # entry's own body.
-        #
-        # This is done by:
-        #
-        # * Serializing the certificate as PEM, and then base64-encoding it;
-        # * base64-encoding the signature;
-        # * Packing the resulting cert, signature, and hash into the
-        #   hashedrekord body format;
-        # * Comparing that body against the entry's own body, which
-        #   is extracted from its base64(json(...)) encoding.
-
         logger.debug("Rekor entry: ensuring contents match signing materials")
 
+        # To catch a potentially dishonest or compromised Rekor instance, we compare
+        # the expected entry (generated above) with the JSON structure returned
+        # by Rekor. If the two don't match, then we have an invalid entry
+        # and can't proceed.
         actual_body = json.loads(base64.b64decode(entry.body))
-
         if actual_body != expected_entry.model_dump(mode="json", by_alias=True):
             raise InvalidRekorEntry
 
