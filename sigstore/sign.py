@@ -213,7 +213,8 @@ class Signer:
         # Create the transparency log entry
         spec = hashedrekord.HashedrekordV001Schema(
             signature=hashedrekord.Signature(
-                content=b64_artifact_signature, publicKey=b64_cert.decode()
+                content=b64_artifact_signature,
+                publicKey=hashedrekord.PublicKey(content=b64_cert.decode()),
             ),
             data=hashedrekord.Data(
                 hash=hashedrekord.Hash(
