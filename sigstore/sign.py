@@ -215,7 +215,7 @@ class Signer:
             kind="hashedrekord",
             api_version="0.0.1",
             spec=sigstore_rekor_types.HashedrekordV001Schema(
-                signature=sigstore_rekor_types.Signature(
+                signature=sigstore_rekor_types.Signature1(
                     content=b64_artifact_signature,
                     publicKey=sigstore_rekor_types.PublicKey(content=b64_cert.decode()),
                 ),
