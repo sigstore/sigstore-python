@@ -18,7 +18,6 @@ Client implementation for interacting with Rekor.
 
 from __future__ import annotations
 
-import base64
 import logging
 from abc import ABC
 from dataclasses import dataclass
@@ -27,12 +26,10 @@ from urllib.parse import urljoin
 
 import requests
 import sigstore_rekor_types
-from cryptography.x509 import Certificate
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import Keyring
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import B64Str, base64_encode_pem_cert
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -173,9 +170,7 @@ class RekorEntriesRetrieve(_Endpoint):
 
     def post(
         self,
-        signature: bytes,
-        artifact_hash: str,
-        certificate: Certificate,
+        expected_entry: sigstore_rekor_types.Hashedrekord,
     ) -> Optional[LogEntry]:
         """
         Retrieves an extant Rekor entry, identified by its artifact signature,
@@ -184,28 +179,7 @@ class RekorEntriesRetrieve(_Endpoint):
         Returns None if Rekor has no entry corresponding to the signing
         materials.
         """
-        data = {
-            "entries": [
-                {
-                    "kind": "hashedrekord",
-                    "apiVersion": "0.0.1",
-                    "spec": {
-                        "signature": {
-                            "content": B64Str(base64.b64encode(signature).decode()),
-                            "publicKey": {
-                                "content": B64Str(base64_encode_pem_cert(certificate)),
-                            },
-                        },
-                        "data": {
-                            "hash": {
-                                "algorithm": "sha256",
-                                "value": artifact_hash,
-                            }
-                        },
-                    },
-                }
-            ]
-        }
+        data = {"entries": [expected_entry.model_dump(mode="json", by_alias=True)]}
 
         resp: requests.Response = self.session.post(self.url, json=data)
         try:
