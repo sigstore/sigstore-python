@@ -217,7 +217,9 @@ class Signer:
             spec=sigstore_rekor_types.HashedrekordV001Schema(
                 signature=sigstore_rekor_types.Signature1(
                     content=b64_artifact_signature,
-                    publicKey=sigstore_rekor_types.PublicKey(content=b64_cert.decode()),
+                    publicKey=sigstore_rekor_types.PublicKey1(
+                        content=b64_cert.decode()
+                    ),
                 ),
                 data=sigstore_rekor_types.Data(
                     hash=sigstore_rekor_types.Hash(
