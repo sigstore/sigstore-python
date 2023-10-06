@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from textwrap import dedent
 from typing import IO
 
+import sigstore_rekor_types
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import (
     Certificate,
@@ -403,6 +404,28 @@ class VerificationMaterials:
             f"has_inclusion_promise={has_inclusion_promise}"
         )
 
+        # This "expected" entry is used both to retrieve the Rekor entry
+        # (if we don't have one) *and* to cross-check whatever response
+        # we receive. See below.
+        expected_entry = sigstore_rekor_types.Hashedrekord(
+            kind="hashedrekord",
+            api_version="0.0.1",
+            spec=sigstore_rekor_types.HashedrekordV001Schema(
+                signature=sigstore_rekor_types.Signature1(
+                    content=base64.b64encode(self.signature).decode(),
+                    public_key=sigstore_rekor_types.PublicKey1(
+                        content=base64_encode_pem_cert(self.certificate)
+                    ),
+                ),
+                data=sigstore_rekor_types.Data(
+                    hash=sigstore_rekor_types.Hash(
+                        algorithm=sigstore_rekor_types.Algorithm.SHA256,
+                        value=self.input_digest.hex(),
+                    ),
+                ),
+            ),
+        )
+
         entry: LogEntry | None = None
         if offline:
             logger.debug("offline mode; using offline log entry")
@@ -415,11 +438,7 @@ class VerificationMaterials:
             # entry doesn't have one, then we perform a lookup.
             if not has_inclusion_proof:
                 logger.debug("retrieving transparency log entry")
-                entry = client.log.entries.retrieve.post(
-                    self.signature,
-                    self.input_digest.hex(),
-                    self.certificate,
-                )
+                entry = client.log.entries.retrieve.post(expected_entry)
             else:
                 entry = self._rekor_entry
 
@@ -427,41 +446,14 @@ class VerificationMaterials:
         if entry is None:
             raise RekorEntryMissing
 
-        # To verify that an entry matches our other signing materials,
-        # we transform our signature, artifact hash, and certificate
-        # into a "hashedrekord" style payload and compare it against the
-        # entry's own body.
-        #
-        # This is done by:
-        #
-        # * Serializing the certificate as PEM, and then base64-encoding it;
-        # * base64-encoding the signature;
-        # * Packing the resulting cert, signature, and hash into the
-        #   hashedrekord body format;
-        # * Comparing that body against the entry's own body, which
-        #   is extracted from its base64(json(...)) encoding.
-
         logger.debug("Rekor entry: ensuring contents match signing materials")
 
-        expected_body = {
-            "kind": "hashedrekord",
-            "apiVersion": "0.0.1",
-            "spec": {
-                "signature": {
-                    "content": B64Str(base64.b64encode(self.signature).decode()),
-                    "publicKey": {
-                        "content": B64Str(base64_encode_pem_cert(self.certificate))
-                    },
-                },
-                "data": {
-                    "hash": {"algorithm": "sha256", "value": self.input_digest.hex()}
-                },
-            },
-        }
-
+        # To catch a potentially dishonest or compromised Rekor instance, we compare
+        # the expected entry (generated above) with the JSON structure returned
+        # by Rekor. If the two don't match, then we have an invalid entry
+        # and can't proceed.
         actual_body = json.loads(base64.b64decode(entry.body))
-
-        if expected_body != actual_body:
+        if actual_body != expected_entry.model_dump(mode="json", by_alias=True):
             raise InvalidRekorEntry
 
         return entry

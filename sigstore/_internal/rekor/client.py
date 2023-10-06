@@ -18,7 +18,6 @@ Client implementation for interacting with Rekor.
 
 from __future__ import annotations
 
-import base64
 import logging
 from abc import ABC
 from dataclasses import dataclass
@@ -26,12 +25,11 @@ from typing import Any, Dict, NewType, Optional
 from urllib.parse import urljoin
 
 import requests
-from cryptography.x509 import Certificate
+import sigstore_rekor_types
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import Keyring
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import B64Str, base64_encode_pem_cert
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -139,29 +137,15 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        b64_artifact_signature: B64Str,
-        sha256_artifact_hash: str,
-        b64_cert: B64Str,
+        proposed_entry: sigstore_rekor_types.Hashedrekord,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
-        # TODO(ww): Dedupe this payload construction with the retrieve endpoint below.
-        data = {
-            "kind": "hashedrekord",
-            "apiVersion": "0.0.1",
-            "spec": {
-                "signature": {
-                    "content": b64_artifact_signature,
-                    "publicKey": {"content": b64_cert},
-                },
-                "data": {
-                    "hash": {"algorithm": "sha256", "value": sha256_artifact_hash}
-                },
-            },
-        }
 
-        resp: requests.Response = self.session.post(self.url, json=data)
+        resp: requests.Response = self.session.post(
+            self.url, json=proposed_entry.model_dump(mode="json", by_alias=True)
+        )
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
@@ -186,9 +170,7 @@ class RekorEntriesRetrieve(_Endpoint):
 
     def post(
         self,
-        signature: bytes,
-        artifact_hash: str,
-        certificate: Certificate,
+        expected_entry: sigstore_rekor_types.Hashedrekord,
     ) -> Optional[LogEntry]:
         """
         Retrieves an extant Rekor entry, identified by its artifact signature,
@@ -197,28 +179,7 @@ class RekorEntriesRetrieve(_Endpoint):
         Returns None if Rekor has no entry corresponding to the signing
         materials.
         """
-        data = {
-            "entries": [
-                {
-                    "kind": "hashedrekord",
-                    "apiVersion": "0.0.1",
-                    "spec": {
-                        "signature": {
-                            "content": B64Str(base64.b64encode(signature).decode()),
-                            "publicKey": {
-                                "content": B64Str(base64_encode_pem_cert(certificate)),
-                            },
-                        },
-                        "data": {
-                            "hash": {
-                                "algorithm": "sha256",
-                                "value": artifact_hash,
-                            }
-                        },
-                    },
-                }
-            ]
-        }
+        data = {"entries": [expected_entry.model_dump(mode="json", by_alias=True)]}
 
         resp: requests.Response = self.session.post(self.url, json=data)
         try:

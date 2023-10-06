@@ -46,6 +46,7 @@ from datetime import datetime, timezone
 from typing import IO, Iterator, Optional
 
 import cryptography.x509 as x509
+import sigstore_rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
@@ -210,11 +211,25 @@ class Signer:
         )
 
         # Create the transparency log entry
-        entry = self._signing_ctx._rekor.log.entries.post(
-            b64_artifact_signature=B64Str(b64_artifact_signature),
-            sha256_artifact_hash=input_digest.hex(),
-            b64_cert=B64Str(b64_cert.decode()),
+        proposed_entry = sigstore_rekor_types.Hashedrekord(
+            kind="hashedrekord",
+            api_version="0.0.1",
+            spec=sigstore_rekor_types.HashedrekordV001Schema(
+                signature=sigstore_rekor_types.Signature1(
+                    content=b64_artifact_signature,
+                    public_key=sigstore_rekor_types.PublicKey1(
+                        content=b64_cert.decode()
+                    ),
+                ),
+                data=sigstore_rekor_types.Data(
+                    hash=sigstore_rekor_types.Hash(
+                        algorithm=sigstore_rekor_types.Algorithm.SHA256,
+                        value=input_digest.hex(),
+                    )
+                ),
+            ),
         )
+        entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
