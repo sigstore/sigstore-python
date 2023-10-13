@@ -175,6 +175,8 @@ class Signer:
     def sign(
         self,
         input_: IO[bytes],
+        *,
+        dsse=False,
     ) -> SigningResult:
         """Public API for signing blobs"""
         input_digest = sha256_streaming(input_)
@@ -188,8 +190,6 @@ class Signer:
         except ExpiredCertificate as e:
             raise e
 
-        # TODO(alex): Retrieve the public key via TUF
-        #
         # Verify the SCT
         sct = certificate_response.sct  # noqa
         cert = certificate_response.cert  # noqa
