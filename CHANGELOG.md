@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* CLI: Read the Fulcio certificate chain as `bytes` instead of `str`
+  as expected by `cryptography.x509.load_pem_x509_certificates`
+  when loading the chain in the `sigstore verify` subcommands.
+
 ## [2.0.0]
 
 ### Added
