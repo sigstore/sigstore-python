@@ -8,6 +8,11 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* CLI: When using `--certificate-chain`, read as `bytes` instead of `str`
+  as expected by the underlying API ([#796](https://github.com/sigstore/sigstore-python/pull/796))
+
 ## [2.0.0]
 
 ### Added
