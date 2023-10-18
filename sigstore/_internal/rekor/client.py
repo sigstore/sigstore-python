@@ -185,7 +185,7 @@ class RekorEntriesRetrieve(_Endpoint):
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
-            if http_error.response.status_code == 404:
+            if http_error.response and http_error.response.status_code == 404:
                 return None
             raise RekorClientError(resp.text) from http_error
 

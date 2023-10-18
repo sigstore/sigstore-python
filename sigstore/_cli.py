@@ -422,7 +422,7 @@ def _parser() -> argparse.ArgumentParser:
     instance_options.add_argument(
         "--certificate-chain",
         metavar="FILE",
-        type=argparse.FileType("r"),
+        type=argparse.FileType("rb"),
         help=(
             "Path to a list of CA certificates in PEM format which will be needed when building "
             "the certificate chain for the Fulcio signing certificate"
@@ -488,7 +488,7 @@ def _parser() -> argparse.ArgumentParser:
     instance_options.add_argument(
         "--certificate-chain",
         metavar="FILE",
-        type=argparse.FileType("r"),
+        type=argparse.FileType("rb"),
         help=(
             "Path to a list of CA certificates in PEM format which will be needed when building "
             "the certificate chain for the Fulcio signing certificate"

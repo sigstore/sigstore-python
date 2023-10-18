@@ -232,11 +232,12 @@ class FulcioSigningCert(_Endpoint):
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
-            try:
+            # See if we can optionally add a message
+            if http_error.response:
                 text = json.loads(http_error.response.text)
-                raise FulcioClientError(text["message"]) from http_error
-            except (AttributeError, KeyError):
-                raise FulcioClientError from http_error
+                if "message" in http_error.response.text:
+                    raise FulcioClientError(text["message"]) from http_error
+            raise FulcioClientError from http_error
 
         if resp.json().get("signedCertificateEmbeddedSct"):
             sct_embedded = True

@@ -20,14 +20,15 @@ jobs:
           - { py: "3.9", os: "ubuntu-latest" }
           - { py: "3.10", os: "ubuntu-latest" }
           - { py: "3.11", os: "ubuntu-latest" }
+          - { py: "3.12", os: "ubuntu-latest" }
           # NOTE: We only test Windows and macOS on the latest Python;
           # these primarily exist to ensure that we don't accidentally
           # introduce Linux-isms into the development tooling.
-          - { py: "3.11", os: "windows-latest" }
-          - { py: "3.11", os: "macos-latest" }
+          - { py: "3.12", os: "windows-latest" }
+          - { py: "3.12", os: "macos-latest" }
     runs-on: ${{ matrix.conf.os }}
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236
         with:
@@ -81,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v3.2.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v3.2.0
 
       - uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236
         with:
