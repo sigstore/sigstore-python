@@ -30,7 +30,7 @@ jobs:
       sigstore-pin-requirements-branch: ${{ steps.get-branch.outputs.sigstore-pin-requirements-branch }}
 
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v3.3.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v3.3.0
         with:
           ref: main
           # NOTE: Needed for `git describe` below.
@@ -115,7 +115,7 @@ jobs:
       SIGSTORE_PIN_REQUIREMENTS_BRANCH: ${{ needs.update-pinned-requirements.outputs.sigstore-pin-requirements-branch }}
 
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v3.3.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v3.3.0
         with:
           ref: ${{ env.SIGSTORE_PIN_REQUIREMENTS_BRANCH }}
 
