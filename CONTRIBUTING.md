@@ -43,7 +43,6 @@ make lint
 
 `sigstore` is automatically linted and formatted with a collection of tools:
 
-* [`isort`](https://github.com/PyCQA/isort): Import sorting, ordering
 * [`ruff`](https://github.com/charliermarsh/ruff): Code formatting, PEP-8 linting, style enforcement
 * [`mypy`](https://mypy.readthedocs.io/en/stable/): Static type checking
 * [`bandit`](https://github.com/PyCQA/bandit): Security issue scanning
