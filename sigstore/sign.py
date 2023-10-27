@@ -51,6 +51,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509.oid import NameOID
+from in_toto_attestation.v1.statement import Statement
 from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle,
@@ -174,9 +175,9 @@ class Signer:
 
     def sign(
         self,
-        input_: IO[bytes],
+        input_: IO[bytes] | Statement,
         *,
-        dsse=False,
+        dsse: bool = False,
     ) -> SigningResult:
         """Public API for signing blobs"""
         input_digest = sha256_streaming(input_)

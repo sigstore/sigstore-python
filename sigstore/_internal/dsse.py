@@ -17,12 +17,14 @@ Functionality for building and manipulating DSSE envelopes.
 """
 
 import base64
-from cryptography.hazmat.primitives.asymmetric import ec
+
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from in_toto_attestation.v1.statement import Statement
 from sigstore_protobuf_specs.io.intoto import Envelope, Signature
 
 
-def sign_intoto(key: ec.EllipticCurvePrivateKey, payload: bytes) -> Envelope:
+def sign_intoto(key: ec.EllipticCurvePrivateKey, payload: Statement) -> Envelope:
     """
     Create a DSSE envelope containing a signature over an in-toto formatted
     attestation.
@@ -36,9 +38,9 @@ def sign_intoto(key: ec.EllipticCurvePrivateKey, payload: bytes) -> Envelope:
     payload_b64 = base64.b64encode(payload).decode()
     pae = f"DSSEv1 {len(type_)} {type} {len(payload_b64)} {payload_b64}"
 
-    signature = key.sign(pae.encode(), ec.ECDSA(hashes.SHA256))
+    signature = key.sign(pae.encode(), ec.ECDSA(hashes.SHA256()))
     return Envelope(
         payload=payload,
         payload_type=type_,
-        signatures=Signature(sig=signature, keyid=None),
+        signatures=[Signature(sig=signature, keyid=None)],
     )
