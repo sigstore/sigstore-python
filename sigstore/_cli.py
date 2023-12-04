@@ -800,7 +800,7 @@ def _collect_verification_state(
             else:
                 # Don't allow the user to implicitly verify `{input}.sigstore.json` if
                 # `{input}.sigstore` is also present, since this implies user confusion.
-                if legacy_default_bundle.is_file():
+                if bundle != legacy_default_bundle and legacy_default_bundle.is_file():
                     _die(
                         args,
                         f"Conflicting inputs: {bundle} and {legacy_default_bundle}",
