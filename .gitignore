@@ -17,6 +17,7 @@ build
 *.pub
 *.rekor
 *.sigstore
+*.sigstore.json
 
 # Don't ignore these files when we intend to include them
 !sigstore/_store/*.crt
