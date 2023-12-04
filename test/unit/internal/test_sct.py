@@ -48,16 +48,19 @@ def test_pack_digitally_signed_precertificate(precert_bytes_len):
     _, l1, l2, l3 = struct.unpack("!4c", struct.pack("!I", len(precert_bytes)))
 
     data = sct._pack_digitally_signed(mock_sct, cert, issuer_key_hash)
-    assert data == (
-        b"\x00"  # version
-        b"\x00"  # signature type
-        b"\x00\x00\x00\x00\x00\x00\x04\xd2"  # timestamp
-        b"\x00\x01"  # entry type
-        b"iamapublickeyshatwofivesixdigest"  # issuer key hash
-        + l1
-        + l2
-        + l3  # tbs cert length
-        + precert_bytes  # tbs cert
-        + b"\x00\x00"  # extensions length
-        + b""  # extensions
+    assert (
+        data
+        == (
+            b"\x00"  # version
+            b"\x00"  # signature type
+            b"\x00\x00\x00\x00\x00\x00\x04\xd2"  # timestamp
+            b"\x00\x01"  # entry type
+            b"iamapublickeyshatwofivesixdigest"  # issuer key hash
+            + l1
+            + l2
+            + l3  # tbs cert length
+            + precert_bytes  # tbs cert
+            + b"\x00\x00"  # extensions length
+            + b""  # extensions
+        )
     )

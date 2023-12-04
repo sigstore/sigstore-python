@@ -63,8 +63,7 @@ run: $(VENV)/pyvenv.cfg
 .PHONY: lint
 lint: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
-		black --check $(ALL_PY_SRCS) && \
-		isort --check $(ALL_PY_SRCS) && \
+		ruff format --check $(ALL_PY_SRCS) && \
 		ruff $(ALL_PY_SRCS) && \
 		mypy $(PY_MODULE) && \
 		bandit -c pyproject.toml -r $(PY_MODULE) && \
@@ -74,8 +73,7 @@ lint: $(VENV)/pyvenv.cfg
 reformat: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
 		ruff --fix $(ALL_PY_SRCS) && \
-		black $(ALL_PY_SRCS) && \
-		isort $(ALL_PY_SRCS)
+		ruff format $(ALL_PY_SRCS)
 
 .PHONY: test
 test: $(VENV)/pyvenv.cfg
