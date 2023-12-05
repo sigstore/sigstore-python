@@ -194,7 +194,7 @@ def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
 
 
 def _add_shared_oidc_options(
-    group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
+    group: Union[argparse._ArgumentGroup, argparse.ArgumentParser],
 ) -> None:
     """
     Common OIDC options, shared between `sigstore sign` and `sigstore get-identity-token`.
@@ -765,7 +765,26 @@ def _collect_verification_state(
         if cert is None:
             cert = file.parent / f"{file.name}.crt"
         if bundle is None:
+            # NOTE(ww): If the user hasn't specified a bundle via `--bundle` and
+            # `{input}.sigstore.json` doesn't exist, then we try `{input}.sigstore`
+            # for backwards compatibility.
+            legacy_default_bundle = file.parent / f"{file.name}.sigstore"
             bundle = file.parent / f"{file.name}.sigstore.json"
+
+            if not bundle.is_file() and legacy_default_bundle.is_file():
+                logger.warning(
+                    f"{file}: {legacy_default_bundle} should be named {bundle}. "
+                    "Support for discovering 'bare' .sigstore inputs will be deprecated in "
+                    "a future release."
+                )
+                bundle = legacy_default_bundle
+            elif bundle.is_file() and legacy_default_bundle.is_file():
+                # Don't allow the user to implicitly verify `{input}.sigstore.json` if
+                # `{input}.sigstore` is also present, since this implies user confusion.
+                _die(
+                    args,
+                    f"Conflicting inputs: {bundle} and {legacy_default_bundle}",
+                )
 
         missing = []
         if args.signature or args.certificate:
@@ -775,36 +794,11 @@ def _collect_verification_state(
                 missing.append(str(cert))
             input_map[file] = {"cert": cert, "sig": sig}
         else:
-            # NOTE(ww): If the user hasn't specified a bundle via `--bundle` and
-            # `{input}.sigstore.json` doesn't exist, then we try `{input}.sigstore`
-            # for backwards compatibility.
-            legacy_default_bundle = file.parent / f"{file.name}.sigstore"
-
             # If a user hasn't explicitly supplied `--signature`, `--certificate` or
             # `--rekor-bundle`, we expect a bundle either supplied via `--bundle` or with the
-            # default `{input}.sigstore` name.
+            # default `{input}.sigstore(.json)?` name.
             if not bundle.is_file():
-                if legacy_default_bundle.is_file():
-                    logger.warning(
-                        f"{file}: {legacy_default_bundle} should be named {bundle}. "
-                        "Support for discovering 'bare' .sigstore inputs will be deprecated in "
-                        "a future release."
-                    )
-                    bundle = legacy_default_bundle
-                else:
-                    # NOTE: Logically `{input}.sigstore` is what's missing here, but
-                    # we only fail this check if the the `--bundle` or `{input}.sigstore.json`
-                    # forms are *also* missing. So we use the former in the missing set,
-                    # since it'll result in a more useful error message.
-                    missing.append(str(bundle))
-            else:
-                # Don't allow the user to implicitly verify `{input}.sigstore.json` if
-                # `{input}.sigstore` is also present, since this implies user confusion.
-                if bundle != legacy_default_bundle and legacy_default_bundle.is_file():
-                    _die(
-                        args,
-                        f"Conflicting inputs: {bundle} and {legacy_default_bundle}",
-                    )
+                missing.append(str(bundle))
 
             input_map[file] = {"bundle": bundle}
 
