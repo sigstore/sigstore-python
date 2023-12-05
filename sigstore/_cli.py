@@ -194,7 +194,7 @@ def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
 
 
 def _add_shared_oidc_options(
-    group: Union[argparse._ArgumentGroup, argparse.ArgumentParser]
+    group: Union[argparse._ArgumentGroup, argparse.ArgumentParser],
 ) -> None:
     """
     Common OIDC options, shared between `sigstore sign` and `sigstore get-identity-token`.
