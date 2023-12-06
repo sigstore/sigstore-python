@@ -34,6 +34,7 @@ dependencies = [
   "pyjwt >= 2.1",
   "pyOpenSSL >= 23.0.0",
   "requests",
+  "rich ~= 13.0",
   "securesystemslib",
   "sigstore-protobuf-specs ~= 0.2.2",
   "sigstore-rekor-types >= 0.0.11",
