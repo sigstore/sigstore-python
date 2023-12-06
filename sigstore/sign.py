@@ -73,6 +73,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     TransparencyLogEntry,
 )
 
+from sigstore._internal import dsse
 from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioCertificateSigningResponse,
@@ -176,11 +177,8 @@ class Signer:
     def sign(
         self,
         input_: IO[bytes] | Statement,
-        *,
-        dsse: bool = False,
     ) -> SigningResult:
         """Public API for signing blobs"""
-        input_digest = sha256_streaming(input_)
         private_key = self._private_key
 
         if not self._identity_token.in_validity_period():
@@ -200,36 +198,55 @@ class Signer:
 
         logger.debug("Successfully verified SCT...")
 
-        # Sign artifact
-        artifact_signature = private_key.sign(
-            input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
-        )
-        b64_artifact_signature = B64Str(base64.b64encode(artifact_signature).decode())
-
         # Prepare inputs
         b64_cert = base64.b64encode(
             cert.public_bytes(encoding=serialization.Encoding.PEM)
         )
 
-        # Create the transparency log entry
-        proposed_entry = sigstore_rekor_types.Hashedrekord(
-            kind="hashedrekord",
-            api_version="0.0.1",
-            spec=sigstore_rekor_types.HashedrekordV001Schema(
-                signature=sigstore_rekor_types.Signature1(
-                    content=b64_artifact_signature,
-                    public_key=sigstore_rekor_types.PublicKey1(
-                        content=b64_cert.decode()
-                    ),
-                ),
-                data=sigstore_rekor_types.Data(
-                    hash=sigstore_rekor_types.Hash(
-                        algorithm=sigstore_rekor_types.Algorithm.SHA256,
-                        value=input_digest.hex(),
+        # Sign artifact
+        proposed_entry: sigstore_rekor_types.Hashedrekord | sigstore_rekor_types.Dsse
+        if isinstance(input_, Statement):
+            envelope = dsse.sign_intoto(private_key, input_)
+
+            proposed_entry = sigstore_rekor_types.Dsse(
+                kind="dsse",
+                api_version="0.0.1",
+                spec=sigstore_rekor_types.DsseV001Schema(
+                    proposed_content=sigstore_rekor_types.ProposedContent(
+                        envelope=envelope.to_json(),
+                        verifiers=[b64_cert.decode()],
                     )
                 ),
-            ),
-        )
+            )
+        else:
+            input_digest = sha256_streaming(input_)
+
+            artifact_signature = private_key.sign(
+                input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
+            )
+            b64_artifact_signature = B64Str(
+                base64.b64encode(artifact_signature).decode()
+            )
+
+            # Create the transparency log entry
+            proposed_entry = sigstore_rekor_types.Hashedrekord(
+                kind="hashedrekord",
+                api_version="0.0.1",
+                spec=sigstore_rekor_types.HashedrekordV001Schema(
+                    signature=sigstore_rekor_types.Signature1(
+                        content=b64_artifact_signature,
+                        public_key=sigstore_rekor_types.PublicKey1(
+                            content=b64_cert.decode()
+                        ),
+                    ),
+                    data=sigstore_rekor_types.Data(
+                        hash=sigstore_rekor_types.Hash(
+                            algorithm=sigstore_rekor_types.Algorithm.SHA256,
+                            value=input_digest.hex(),
+                        )
+                    ),
+                ),
+            )
         entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")

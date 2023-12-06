@@ -20,6 +20,7 @@ import base64
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
+from google.protobuf.json_format import MessageToJson
 from in_toto_attestation.v1.statement import Statement
 from sigstore_protobuf_specs.io.intoto import Envelope, Signature
 
@@ -35,12 +36,12 @@ def sign_intoto(key: ec.EllipticCurvePrivateKey, payload: Statement) -> Envelope
     # https://github.com/in-toto/attestation/blob/v1.0/spec/v1.0/envelope.md
 
     type_ = "application/vnd.in-toto+json"
-    payload_b64 = base64.b64encode(payload).decode()
+    payload_b64 = base64.b64encode(MessageToJson(payload.pb).encode()).decode()
     pae = f"DSSEv1 {len(type_)} {type} {len(payload_b64)} {payload_b64}"
 
     signature = key.sign(pae.encode(), ec.ECDSA(hashes.SHA256()))
     return Envelope(
-        payload=payload,
+        payload=payload_b64.encode(),
         payload_type=type_,
         signatures=[Signature(sig=signature, keyid=None)],
     )
