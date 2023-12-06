@@ -36,12 +36,12 @@ def sign_intoto(key: ec.EllipticCurvePrivateKey, payload: Statement) -> Envelope
     # https://github.com/in-toto/attestation/blob/v1.0/spec/v1.0/envelope.md
 
     type_ = "application/vnd.in-toto+json"
-    payload_b64 = base64.b64encode(MessageToJson(payload.pb).encode()).decode()
-    pae = f"DSSEv1 {len(type_)} {type} {len(payload_b64)} {payload_b64}"
+    payload_encoded = MessageToJson(payload.pb).encode()
+    pae = f"DSSEv1 {len(type_)} {type_} {len(payload_encoded)} {payload_encoded}"
 
     signature = key.sign(pae.encode(), ec.ECDSA(hashes.SHA256()))
     return Envelope(
-        payload=payload_b64.encode(),
+        payload=base64.b64encode(payload_encoded),
         payload_type=type_,
         signatures=[Signature(sig=signature, keyid=None)],
     )

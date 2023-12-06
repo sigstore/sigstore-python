@@ -40,6 +40,7 @@ with artifact.open("rb") as file:
 from __future__ import annotations
 
 import base64
+import hashlib
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -215,7 +216,7 @@ class Signer:
                     proposed_content=sigstore_rekor_types.ProposedContent(
                         envelope=envelope.to_json(),
                         verifiers=[b64_cert.decode()],
-                    )
+                    ),
                 ),
             )
         else:

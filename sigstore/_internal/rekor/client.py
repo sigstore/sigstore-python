@@ -143,12 +143,14 @@ class RekorEntries(_Endpoint):
         Submit a new entry for inclusion in the Rekor log.
         """
 
-        resp: requests.Response = self.session.post(
-            self.url, json=proposed_entry.model_dump(mode="json", by_alias=True)
-        )
+        payload = proposed_entry.model_dump(mode="json", by_alias=True)
+        logger.debug(payload)
+
+        resp: requests.Response = self.session.post(self.url, json=payload)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
+            logger.debug(http_error.response.content)
             raise RekorClientError from http_error
 
         return LogEntry._from_response(resp.json())
