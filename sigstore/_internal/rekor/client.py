@@ -18,6 +18,7 @@ Client implementation for interacting with Rekor.
 
 from __future__ import annotations
 
+import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
@@ -144,7 +145,7 @@ class RekorEntries(_Endpoint):
         """
 
         payload = proposed_entry.model_dump(mode="json", by_alias=True)
-        logger.debug(payload)
+        logger.debug(json.dumps(payload))
 
         resp: requests.Response = self.session.post(self.url, json=payload)
         try:
