@@ -24,6 +24,7 @@ from textwrap import dedent
 from typing import NoReturn, Optional, TextIO, Union, cast
 
 from cryptography.x509 import load_pem_x509_certificates
+from rich.logging import RichHandler
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
@@ -61,7 +62,7 @@ from sigstore.verify import (
 )
 from sigstore.verify.models import VerificationFailure
 
-logging.basicConfig()
+logging.basicConfig(format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
 logger = logging.getLogger(__name__)
 
 # NOTE: We configure the top package logger, rather than the root logger,
