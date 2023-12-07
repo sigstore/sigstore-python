@@ -209,6 +209,7 @@ class Signer:
         if isinstance(input_, Statement):
             envelope = dsse.sign_intoto(private_key, input_)
 
+            # Create the proposed DSSE entry
             proposed_entry = sigstore_rekor_types.Dsse(
                 kind="dsse",
                 api_version="0.0.1",
@@ -229,7 +230,7 @@ class Signer:
                 base64.b64encode(artifact_signature).decode()
             )
 
-            # Create the transparency log entry
+            # Create the proposed hashedrekord entry
             proposed_entry = sigstore_rekor_types.Hashedrekord(
                 kind="hashedrekord",
                 api_version="0.0.1",
@@ -248,6 +249,8 @@ class Signer:
                     ),
                 ),
             )
+
+        # Submit the proposed entry to the transparency log
         entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")

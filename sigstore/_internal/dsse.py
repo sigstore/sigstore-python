@@ -35,6 +35,8 @@ def sign_intoto(key: ec.EllipticCurvePrivateKey, payload: Statement) -> Envelope
 
     type_ = "application/vnd.in-toto+json"
     payload_encoded = MessageToJson(payload.pb, sort_keys=True).encode()
+    # NOTE: `payload_encoded.decode()` to avoid printing `repr(bytes)`, which would
+    # add `b'...'` around the formatted payload.
     pae = (
         f"DSSEv1 {len(type_)} {type_} {len(payload_encoded)} {payload_encoded.decode()}"
     )
