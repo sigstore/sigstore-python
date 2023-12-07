@@ -42,6 +42,7 @@ from __future__ import annotations
 import base64
 import logging
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import IO, Iterator, Optional
 
@@ -52,7 +53,6 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509.oid import NameOID
 from in_toto_attestation.v1.statement import Statement
-from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle,
     VerificationMaterial,
@@ -72,6 +72,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     KindVersion,
     TransparencyLogEntry,
 )
+from sigstore_protobuf_specs.io.intoto import Envelope
 
 from sigstore._internal import dsse
 from sigstore._internal.fulcio import (
@@ -82,7 +83,7 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.tuf import TrustUpdater
-from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
+from sigstore._utils import B64Str, PEMCert, sha256_streaming
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
@@ -204,9 +205,10 @@ class Signer:
         )
 
         # Sign artifact
+        content: MessageSignature | Envelope
         proposed_entry: sigstore_rekor_types.Hashedrekord | sigstore_rekor_types.Dsse
         if isinstance(input_, Statement):
-            envelope = dsse.sign_intoto(private_key, input_)
+            content = dsse.sign_intoto(private_key, input_)
 
             # Create the proposed DSSE entry
             proposed_entry = sigstore_rekor_types.Dsse(
@@ -214,7 +216,7 @@ class Signer:
                 api_version="0.0.1",
                 spec=sigstore_rekor_types.DsseV001Schema(
                     proposed_content=sigstore_rekor_types.ProposedContent(
-                        envelope=envelope.to_json(),
+                        envelope=content.to_json(),
                         verifiers=[b64_cert.decode()],
                     ),
                 ),
@@ -225,8 +227,13 @@ class Signer:
             artifact_signature = private_key.sign(
                 input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
             )
-            b64_artifact_signature = B64Str(
-                base64.b64encode(artifact_signature).decode()
+
+            content = MessageSignature(
+                message_digest=HashOutput(
+                    algorithm=HashAlgorithm.SHA2_256,
+                    digest=input_digest,
+                ),
+                signature=artifact_signature,
             )
 
             # Create the proposed hashedrekord entry
@@ -235,7 +242,7 @@ class Signer:
                 api_version="0.0.1",
                 spec=sigstore_rekor_types.HashedrekordV001Schema(
                     signature=sigstore_rekor_types.Signature1(
-                        content=b64_artifact_signature,
+                        content=base64.b64encode(artifact_signature).decode(),
                         public_key=sigstore_rekor_types.PublicKey1(
                             content=b64_cert.decode()
                         ),
@@ -255,11 +262,10 @@ class Signer:
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         return SigningResult(
-            input_digest=HexStr(input_digest.hex()),
+            content=content,
             cert_pem=PEMCert(
                 cert.public_bytes(encoding=serialization.Encoding.PEM).decode()
             ),
-            b64_signature=B64Str(b64_artifact_signature),
             log_entry=entry,
         )
 
@@ -329,14 +335,16 @@ class SigningContext:
         yield Signer(identity_token, self, cache)
 
 
-class SigningResult(BaseModel):
+@dataclass(kw_only=True)
+class SigningResult:
     """
     Represents the artifacts of a signing operation.
     """
 
-    input_digest: HexStr
+    content: MessageSignature | Envelope
     """
-    The hex-encoded SHA256 digest of the input that was signed for.
+    The signed-over content, either signature-and-digest pair or
+    as a DSSE envelope.
     """
 
     cert_pem: PEMCert
@@ -344,15 +352,20 @@ class SigningResult(BaseModel):
     The PEM-encoded public half of the certificate used for signing.
     """
 
-    b64_signature: B64Str
-    """
-    The base64-encoded signature.
-    """
-
     log_entry: LogEntry
     """
     A record of the Rekor log entry for the signing operation.
     """
+
+    @property
+    def b64_signature(self) -> B64Str:
+        """
+        Returns the base64-encoded signature in this `SigningResult`.
+        """
+        if isinstance(self.content, MessageSignature):
+            return B64Str(base64.b64encode(self.content.signature).decode())
+        else:
+            return B64Str(base64.b64encode(self.content.signatures[0].sig).decode())
 
     def to_bundle(self) -> Bundle:
         """
@@ -406,13 +419,13 @@ class SigningResult(BaseModel):
         bundle = Bundle(
             media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
             verification_material=material,
-            message_signature=MessageSignature(
-                message_digest=HashOutput(
-                    algorithm=HashAlgorithm.SHA2_256,
-                    digest=bytes.fromhex(self.input_digest),
-                ),
-                signature=base64.b64decode(self.b64_signature),
-            ),
         )
+
+        if isinstance(self.content, MessageSignature):
+            bundle.message_signature = self.content
+        elif isinstance(self.content, Envelope):
+            bundle.dsse_envelope = self.content
+        else:
+            raise ValueError
 
         return bundle
