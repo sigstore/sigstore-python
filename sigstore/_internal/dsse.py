@@ -16,8 +16,6 @@
 Functionality for building and manipulating DSSE envelopes.
 """
 
-import base64
-
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from google.protobuf.json_format import MessageToJson
@@ -41,7 +39,7 @@ def sign_intoto(key: ec.EllipticCurvePrivateKey, payload: Statement) -> Envelope
 
     signature = key.sign(pae.encode(), ec.ECDSA(hashes.SHA256()))
     return Envelope(
-        payload=base64.b64encode(payload_encoded),
+        payload=payload_encoded,
         payload_type=type_,
         signatures=[Signature(sig=signature, keyid=None)],
     )
