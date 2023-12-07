@@ -423,9 +423,7 @@ class SigningResult:
 
         if isinstance(self.content, MessageSignature):
             bundle.message_signature = self.content
-        elif isinstance(self.content, Envelope):
-            bundle.dsse_envelope = self.content
         else:
-            raise ValueError
+            bundle.dsse_envelope = self.content
 
         return bundle
