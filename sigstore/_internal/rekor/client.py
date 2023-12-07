@@ -74,13 +74,16 @@ class RekorClientError(Exception):
     """
 
     def __init__(self, http_error: requests.HTTPError):
-        try:
-            error = rekor_types.Error.model_validate_json(http_error.response.text)
-            super().__init__(f"{error.code}: {error.message}")
-        except Exception:
-            super().__init__(
-                f"Rekor returned an unknown error with HTTP {http_error.response.status_code}"
-            )
+        if http_error.response:
+            try:
+                error = rekor_types.Error.model_validate_json(http_error.response.text)
+                super().__init__(f"{error.code}: {error.message}")
+            except Exception:
+                super().__init__(
+                    f"Rekor returned an unknown error with HTTP {http_error.response.status_code}"
+                )
+        else:
+            super().__init__(f"Unexpected Rekor error: {http_error}")
 
 
 class _Endpoint(ABC):

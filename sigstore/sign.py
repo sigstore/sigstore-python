@@ -40,7 +40,6 @@ with artifact.open("rb") as file:
 from __future__ import annotations
 
 import base64
-import hashlib
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -191,8 +190,8 @@ class Signer:
             raise e
 
         # Verify the SCT
-        sct = certificate_response.sct  # noqa
-        cert = certificate_response.cert  # noqa
+        sct = certificate_response.sct
+        cert = certificate_response.cert
         chain = certificate_response.chain
 
         verify_sct(sct, cert, chain, self._signing_ctx._rekor._ct_keyring)
