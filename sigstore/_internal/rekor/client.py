@@ -74,6 +74,9 @@ class RekorClientError(Exception):
     """
 
     def __init__(self, http_error: requests.HTTPError):
+        """
+        Create a new `RekorClientError` from the given `requests.HTTPError`.
+        """
         if http_error.response:
             try:
                 error = rekor_types.Error.model_validate_json(http_error.response.text)
@@ -155,7 +158,7 @@ class RekorEntries(_Endpoint):
         """
 
         payload = proposed_entry.model_dump(mode="json", by_alias=True)
-        logger.debug(f"PROPOSED ENTRY: {json.dumps(payload)}")
+        logger.debug(f"proposed: {json.dumps(payload)}")
 
         resp: requests.Response = self.session.post(self.url, json=payload)
         try:
@@ -163,7 +166,9 @@ class RekorEntries(_Endpoint):
         except requests.HTTPError as http_error:
             raise RekorClientError(http_error)
 
-        return LogEntry._from_response(resp.json())
+        integrated_entry = resp.json()
+        logger.debug(f"integrated: {integrated_entry}")
+        return LogEntry._from_response(integrated_entry)
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:
