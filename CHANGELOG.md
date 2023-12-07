@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* CLI: `sigstore verify`'s subcommands now discover `{input}.sigstore.json`
+  by default, in addition to the previous `{input}.sigstore`. The former now
+  takes precedence over the latter, and supplying both results in an error
+  ([#820](https://github.com/sigstore/sigstore-python/pull/820))
+
 ## [2.0.1]
 
 ### Fixed
