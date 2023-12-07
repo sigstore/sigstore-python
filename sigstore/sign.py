@@ -335,7 +335,7 @@ class SigningContext:
         yield Signer(identity_token, self, cache)
 
 
-@dataclass(kw_only=True)
+@dataclass
 class SigningResult:
     """
     Represents the artifacts of a signing operation.
