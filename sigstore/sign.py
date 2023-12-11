@@ -358,6 +358,14 @@ class SigningResult:
     """
 
     @property
+    def _kind_version(self) -> KindVersion:
+        # TODO: This is kind of a hack.
+        if isinstance(self.content, MessageSignature):
+            return KindVersion(kind="hashedrekord", version="0.0.1")
+        else:
+            return KindVersion(kind="dsse", version="0.0.1")
+
+    @property
     def b64_signature(self) -> B64Str:
         """
         Returns the base64-encoded signature in this `SigningResult`.
@@ -398,7 +406,7 @@ class SigningResult:
         tlog_entry = TransparencyLogEntry(
             log_index=self.log_entry.log_index,
             log_id=LogId(key_id=bytes.fromhex(self.log_entry.log_id)),
-            kind_version=KindVersion(kind="hashedrekord", version="0.0.1"),
+            kind_version=self._kind_version,
             integrated_time=self.log_entry.integrated_time,
             inclusion_promise=InclusionPromise(
                 signed_entry_timestamp=base64.b64decode(

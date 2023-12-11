@@ -29,7 +29,7 @@ dependencies = [
   "cryptography >= 39",
   "id >= 1.1.0",
   "importlib_resources ~= 5.7; python_version < '3.11'",
-  "in-toto-attestation ~= 0.9",
+  "in-toto-attestation == 0.9.2",
   "pydantic >= 2,< 3",
   "pyjwt >= 2.1",
   "pyOpenSSL >= 23.0.0",
