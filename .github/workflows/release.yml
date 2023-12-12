@@ -107,9 +107,8 @@ jobs:
     # https://github.com/slsa-framework/slsa-github-generator#verification-of-provenance
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.9.0
     with:
-      attestation-name: provenance-sigstore-${{ github.event.release.tag_name }}.intoto.jsonl
+      provenance-name: provenance-sigstore-${{ github.event.release.tag_name }}.intoto.jsonl
       base64-subjects: "${{ needs.build.outputs.hashes }}"
-      compile-generator: true # Workaround for https://github.com/slsa-framework/slsa-github-generator/issues/1163
       upload-assets: true
 
   release-pypi:
