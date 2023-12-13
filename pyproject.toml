@@ -36,8 +36,7 @@ dependencies = [
   "rich ~= 13.0",
   "securesystemslib",
   "sigstore-protobuf-specs ~= 0.2.2",
-  # NOTE(ww): Under active development, so strictly pinned.
-  "sigstore-rekor-types == 0.0.11",
+  "sigstore-rekor-types == 0.0.12",
   "tuf >= 2.1,< 4.0",
 ]
 requires-python = ">=3.8"
