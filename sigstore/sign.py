@@ -47,7 +47,7 @@ from datetime import datetime, timezone
 from typing import IO, Iterator, Optional
 
 import cryptography.x509 as x509
-import sigstore_rekor_types
+import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
@@ -206,16 +206,14 @@ class Signer:
 
         # Sign artifact
         content: MessageSignature | Envelope
-        proposed_entry: sigstore_rekor_types.Hashedrekord | sigstore_rekor_types.Dsse
+        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse
         if isinstance(input_, Statement):
             content = dsse.sign_intoto(private_key, input_)
 
             # Create the proposed DSSE entry
-            proposed_entry = sigstore_rekor_types.Dsse(
-                kind="dsse",
-                api_version="0.0.1",
-                spec=sigstore_rekor_types.DsseV001Schema(
-                    proposed_content=sigstore_rekor_types.ProposedContent(
+            proposed_entry = rekor_types.Dsse(
+                spec=rekor_types.dsse.DsseV001Schema(
+                    proposed_content=rekor_types.dsse.ProposedContent(
                         envelope=content.to_json(),
                         verifiers=[b64_cert.decode()],
                     ),
@@ -237,19 +235,17 @@ class Signer:
             )
 
             # Create the proposed hashedrekord entry
-            proposed_entry = sigstore_rekor_types.Hashedrekord(
-                kind="hashedrekord",
-                api_version="0.0.1",
-                spec=sigstore_rekor_types.HashedrekordV001Schema(
-                    signature=sigstore_rekor_types.Signature1(
+            proposed_entry = rekor_types.Hashedrekord(
+                spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                    signature=rekor_types.hashedrekord.Signature(
                         content=base64.b64encode(artifact_signature).decode(),
-                        public_key=sigstore_rekor_types.PublicKey1(
+                        public_key=rekor_types.hashedrekord.PublicKey(
                             content=b64_cert.decode()
                         ),
                     ),
-                    data=sigstore_rekor_types.Data(
-                        hash=sigstore_rekor_types.Hash(
-                            algorithm=sigstore_rekor_types.Algorithm.SHA256,
+                    data=rekor_types.hashedrekord.Data(
+                        hash=rekor_types.hashedrekord.Hash(
+                            algorithm=rekor_types.hashedrekord.Algorithm.SHA256,
                             value=input_digest.hex(),
                         )
                     ),

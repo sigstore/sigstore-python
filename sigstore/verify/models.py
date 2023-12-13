@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from textwrap import dedent
 from typing import IO
 
-import sigstore_rekor_types
+import rekor_types
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import (
     Certificate,
@@ -406,19 +406,17 @@ class VerificationMaterials:
         # This "expected" entry is used both to retrieve the Rekor entry
         # (if we don't have one) *and* to cross-check whatever response
         # we receive. See below.
-        expected_entry = sigstore_rekor_types.Hashedrekord(
-            kind="hashedrekord",
-            api_version="0.0.1",
-            spec=sigstore_rekor_types.HashedrekordV001Schema(
-                signature=sigstore_rekor_types.Signature1(
+        expected_entry = rekor_types.Hashedrekord(
+            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                signature=rekor_types.hashedrekord.Signature(
                     content=base64.b64encode(self.signature).decode(),
-                    public_key=sigstore_rekor_types.PublicKey1(
+                    public_key=rekor_types.hashedrekord.PublicKey(
                         content=base64_encode_pem_cert(self.certificate)
                     ),
                 ),
-                data=sigstore_rekor_types.Data(
-                    hash=sigstore_rekor_types.Hash(
-                        algorithm=sigstore_rekor_types.Algorithm.SHA256,
+                data=rekor_types.hashedrekord.Data(
+                    hash=rekor_types.hashedrekord.Hash(
+                        algorithm=rekor_types.hashedrekord.Algorithm.SHA256,
                         value=self.input_digest.hex(),
                     ),
                 ),

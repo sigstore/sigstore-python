@@ -25,8 +25,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, NewType, Optional
 from urllib.parse import urljoin
 
+import rekor_types
 import requests
-import sigstore_rekor_types as rekor_types
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import Keyring
