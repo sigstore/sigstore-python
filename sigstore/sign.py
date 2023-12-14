@@ -79,7 +79,7 @@ from sigstore._internal.fulcio import (
 )
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
-from sigstore._internal.tuf import TrustUpdater
+from sigstore._internal.trustroot import CustomTrustedRoot
 from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
@@ -271,8 +271,8 @@ class SigningContext:
         """
         Return a `SigningContext` instance configured against Sigstore's production-level services.
         """
-        updater = TrustUpdater.production()
-        rekor = RekorClient.production(updater)
+        trust_root = CustomTrustedRoot.production()
+        rekor = RekorClient.production(trust_root)
         return cls(
             fulcio=FulcioClient.production(),
             rekor=rekor,
@@ -283,8 +283,8 @@ class SigningContext:
         """
         Return a `SignerContext` instance configured against Sigstore's staging-level services.
         """
-        updater = TrustUpdater.staging()
-        rekor = RekorClient.staging(updater)
+        trust_root = CustomTrustedRoot.staging()
+        rekor = RekorClient.staging(trust_root)
         return cls(
             fulcio=FulcioClient.staging(),
             rekor=rekor,

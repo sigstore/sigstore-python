@@ -40,7 +40,7 @@ from sigstore._internal.rekor.client import (
     RekorClient,
     RekorKeyring,
 )
-from sigstore._internal.tuf import TrustUpdater
+from sigstore._internal.trustroot import CustomTrustedRoot
 from sigstore._utils import PEMCert
 from sigstore.errors import Error
 from sigstore.oidc import (
@@ -650,16 +650,16 @@ def _sign(args: argparse.Namespace) -> None:
     elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
         signing_ctx = SigningContext.production()
     else:
-        # Assume "production" keys if none are given as arguments
-        updater = TrustUpdater.production()
+        # Assume "production" trust root if no keys are given as arguments
+        trusted_root = CustomTrustedRoot.production()
         if args.ctfe_pem is not None:
             ctfe_keys = [args.ctfe_pem.read()]
         else:
-            ctfe_keys = updater.get_ctfe_keys()
+            ctfe_keys = trusted_root.get_ctfe_keys()
         if args.rekor_root_pubkey is not None:
             rekor_keys = [args.rekor_root_pubkey.read()]
         else:
-            rekor_keys = updater.get_rekor_keys()
+            rekor_keys = trusted_root.get_rekor_keys()
 
         ct_keyring = CTKeyring(Keyring(ctfe_keys))
         rekor_keyring = RekorKeyring(Keyring(rekor_keys))
@@ -828,8 +828,8 @@ def _collect_verification_state(
         if args.rekor_root_pubkey is not None:
             rekor_keys = [args.rekor_root_pubkey.read()]
         else:
-            updater = TrustUpdater.production()
-            rekor_keys = updater.get_rekor_keys()
+            trusted_root = CustomTrustedRoot.production()
+            rekor_keys = trusted_root.get_rekor_keys()
 
         verifier = Verifier(
             rekor=RekorClient(

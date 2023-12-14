@@ -16,71 +16,84 @@
 import os
 from datetime import datetime, timedelta, timezone
 
-import pretend
 import pytest
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
-from sigstore._internal.tuf import TrustUpdater, _is_timerange_valid
+from sigstore._internal.trustroot import CustomTrustedRoot, _is_timerange_valid
 from sigstore._utils import load_der_public_key, load_pem_public_key
 from sigstore.errors import RootError
 
 
-def test_updater_staging_caches_and_requests(mock_staging_tuf, tuf_dirs):
+def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # start with empty target cache, empty local metadata dir
     data_dir, cache_dir = tuf_dirs
 
-    # keep track of successful and failed requests TrustUpdater makes
+    # keep track of requests the TrustUpdater in CustomTrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
 
-    updater = TrustUpdater.staging()
-    # Expect root.json bootstrapped from _store
-    assert sorted(os.listdir(data_dir)) == ["root.json"]
-    # Expect no requests happened
-    assert reqs == {}
-    assert fail_reqs == {}
-
-    updater.get_ctfe_keys()
-    # Expect local metadata to now contain all top-level metadata files
+    trust_root = CustomTrustedRoot.staging()
+    # metadata was "downloaded" from staging
     expected = ["root.json", "snapshot.json", "targets.json", "timestamp.json"]
     assert sorted(os.listdir(data_dir)) == expected
-    # Expect requests of top-level metadata, and the ctfe targets
+
+    # Expect requests of top-level metadata (and 404 for the next root version)
+    # Don't expect trusted_root.json request as it's cached already
     expected_requests = {
         "2.root.json": 1,
         "2.snapshot.json": 1,
         "2.targets.json": 1,
         "timestamp.json": 1,
-        # trusted_root.json should not be requested, as it is cached locally
     }
     expected_fail_reqs = {"3.root.json": 1}
-
-    assert reqs == expected_requests
-    # Expect 404 from the next root version
-    assert fail_reqs == expected_fail_reqs
-
-    updater.get_rekor_keys()
-    # Expect no requests, as the `get_ctfe_keys` should have populated the bundled trust root
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
-    # New Updater instance, same cache dirs
-    updater = TrustUpdater.staging()
-    # Expect no requests happened
+    trust_root.get_ctfe_keys()
+    trust_root.get_rekor_keys()
+
+    # no new requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
-    updater.get_ctfe_keys()
+    # New trust root (and TrustUpdater instance), same cache dirs
+    trust_root = CustomTrustedRoot.staging()
+
     # Expect new timestamp and root requests
     expected_requests["timestamp.json"] += 1
     expected_fail_reqs["3.root.json"] += 1
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
-    updater.get_rekor_keys()
+    trust_root.get_ctfe_keys()
+    trust_root.get_rekor_keys()
     # Expect no requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
+
+
+def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
+    # start with empty target cache, empty local metadata dir
+    data_dir, cache_dir = tuf_dirs
+
+    # keep track of requests the TrustUpdater in CustomTrustedRoot makes
+    reqs, fail_reqs = mock_staging_tuf
+
+    trust_root = CustomTrustedRoot.staging(offline=True)
+
+    # Only the embedded root is in local TUF metadata, nothing is downloaded
+    expected = ["root.json"]
+    assert sorted(os.listdir(data_dir)) == expected
+    assert reqs == {}
+    assert fail_reqs == {}
+
+    trust_root.get_ctfe_keys()
+    trust_root.get_rekor_keys()
+
+    # Still no requests
+    assert reqs == {}
+    assert fail_reqs == {}
 
 
 def test_is_timerange_valid():
@@ -112,7 +125,7 @@ def test_is_timerange_valid():
     )  # Valid: 1 ago, 1 ago
 
 
-def test_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
+def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     # We don't strictly need to re-encode these keys as they are already DER,
     # but by doing so we are also validating the keys structurally.
     def _der_keys(keys):
@@ -131,19 +144,15 @@ def test_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
             for k in keys
         ]
 
-    updater = TrustUpdater.staging()
-
-    assert _der_keys(updater.get_ctfe_keys()) == _pem_keys(
+    ctfe_keys = _pem_keys(
         [
             tuf_asset.target("ctfe.pub"),
             tuf_asset.target("ctfe_2022.pub"),
             tuf_asset.target("ctfe_2022_2.pub"),
         ]
     )
-    assert _der_keys(updater.get_rekor_keys()) == _pem_keys(
-        [tuf_asset.target("rekor.pub")]
-    )
-    assert updater.get_fulcio_certs() == [
+    rekor_keys = _pem_keys([tuf_asset.target("rekor.pub")])
+    fulcio_certs = [
         load_pem_x509_certificate(c)
         for c in [
             tuf_asset.target("fulcio.crt.pem"),
@@ -151,25 +160,42 @@ def test_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
         ]
     ]
 
+    # Assert that trust root from TUF contains the expected keys/certs
+    trust_root = CustomTrustedRoot.staging()
+    assert _der_keys(trust_root.get_ctfe_keys()) == ctfe_keys
+    assert _der_keys(trust_root.get_rekor_keys()) == rekor_keys
+    assert trust_root.get_fulcio_certs() == fulcio_certs
 
-def test_updater_instance_error():
+    # Assert that trust root from offline TUF contains the expected keys/certs
+    trust_root = CustomTrustedRoot.staging(offline=True)
+    assert _der_keys(trust_root.get_ctfe_keys()) == ctfe_keys
+    assert _der_keys(trust_root.get_rekor_keys()) == rekor_keys
+    assert trust_root.get_fulcio_certs() == fulcio_certs
+
+    # Assert that trust root from file contains the expected keys/certs
+    path = tuf_asset.target_path("trusted_root.json")
+    trust_root = CustomTrustedRoot.from_file(path)
+    assert _der_keys(trust_root.get_ctfe_keys()) == ctfe_keys
+    assert _der_keys(trust_root.get_rekor_keys()) == rekor_keys
+    assert trust_root.get_fulcio_certs() == fulcio_certs
+
+
+def test_trust_root_tuf_instance_error():
     with pytest.raises(RootError):
-        TrustUpdater("foo.bar")
+        CustomTrustedRoot.from_tuf("foo.bar")
 
 
-def test_updater_ctfe_keys_error(monkeypatch):
-    updater = TrustUpdater.staging()
-    trusted_root = pretend.stub(ctlogs=[])
-    monkeypatch.setattr(updater, "_get_trusted_root", lambda: trusted_root)
-    with pytest.raises(Exception, match="CTFE keys not found in TUF metadata"):
-        updater.get_ctfe_keys()
+def test_trust_root_tuf_ctfe_keys_error(monkeypatch):
+    trust_root = CustomTrustedRoot.staging(offline=True)
+    monkeypatch.setattr(trust_root, "ctlogs", [])
+    with pytest.raises(Exception, match="Active CTFE keys not found in trusted root"):
+        trust_root.get_ctfe_keys()
 
 
-def test_updater_fulcio_certs_error(tuf_asset, monkeypatch):
-    updater = TrustUpdater.staging()
-    trusted_root = pretend.stub(certificate_authorities=[])
-    monkeypatch.setattr(updater, "_get_trusted_root", lambda: trusted_root)
+def test_trust_root_fulcio_certs_error(tuf_asset, monkeypatch):
+    trust_root = CustomTrustedRoot.staging(offline=True)
+    monkeypatch.setattr(trust_root, "certificate_authorities", [])
     with pytest.raises(
-        Exception, match="Fulcio certificates not found in TUF metadata"
+        Exception, match="Fulcio certificates not found in trusted root"
     ):
-        updater.get_fulcio_certs()
+        trust_root.get_fulcio_certs()
