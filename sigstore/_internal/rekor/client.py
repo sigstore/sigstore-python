@@ -24,8 +24,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, NewType, Optional
 from urllib.parse import urljoin
 
+import rekor_types
 import requests
-import sigstore_rekor_types
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import Keyring
@@ -137,7 +137,7 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        proposed_entry: sigstore_rekor_types.Hashedrekord,
+        proposed_entry: rekor_types.Hashedrekord,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
@@ -170,7 +170,7 @@ class RekorEntriesRetrieve(_Endpoint):
 
     def post(
         self,
-        expected_entry: sigstore_rekor_types.Hashedrekord,
+        expected_entry: rekor_types.Hashedrekord,
     ) -> Optional[LogEntry]:
         """
         Retrieves an extant Rekor entry, identified by its artifact signature,

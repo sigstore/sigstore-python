@@ -46,7 +46,7 @@ from datetime import datetime, timezone
 from typing import IO, Iterator, Optional
 
 import cryptography.x509 as x509
-import sigstore_rekor_types
+import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
@@ -211,19 +211,19 @@ class Signer:
         )
 
         # Create the transparency log entry
-        proposed_entry = sigstore_rekor_types.Hashedrekord(
+        proposed_entry = rekor_types.Hashedrekord(
             kind="hashedrekord",
             api_version="0.0.1",
-            spec=sigstore_rekor_types.HashedrekordV001Schema(
-                signature=sigstore_rekor_types.Signature1(
+            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                signature=rekor_types.hashedrekord.Signature(
                     content=b64_artifact_signature,
-                    public_key=sigstore_rekor_types.PublicKey1(
+                    public_key=rekor_types.hashedrekord.PublicKey(
                         content=b64_cert.decode()
                     ),
                 ),
-                data=sigstore_rekor_types.Data(
-                    hash=sigstore_rekor_types.Hash(
-                        algorithm=sigstore_rekor_types.Algorithm.SHA256,
+                data=rekor_types.hashedrekord.Data(
+                    hash=rekor_types.hashedrekord.Hash(
+                        algorithm=rekor_types.hashedrekord.Algorithm.SHA256,
                         value=input_digest.hex(),
                     )
                 ),
