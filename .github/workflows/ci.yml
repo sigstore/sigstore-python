@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c
+      - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: ${{ matrix.conf.py }}
           cache: "pip"
@@ -82,23 +82,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v3.2.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c
+      - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
           python-version: '3.x'
 
       - run: pip install coverage[toml]
 
       - name: download coverage data
-        uses: actions/download-artifact@v3.0.2
+        uses: actions/download-artifact@7a1cd3216ca9260cd8022db641d960b1db4d1be4 # v4.0.0
         with:
-          name: coverage-data
+          path: all-artifacts/
 
       - name: combine coverage data
         id: combinecoverage
         run: |
           set +e
-          python -m coverage combine
+          python -m coverage combine all-artifacts/coverage-data-*
           echo "## python coverage" >> $GITHUB_STEP_SUMMARY
           python -m coverage report -m --format=markdown >> $GITHUB_STEP_SUMMARY

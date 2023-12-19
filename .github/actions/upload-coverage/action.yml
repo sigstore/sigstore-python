@@ -20,9 +20,9 @@ runs:
         fi
       id: coverage-uuid
       shell: bash
-    - uses: actions/upload-artifact@v3.1.0
+    - uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4.0.0
       with:
-        name: coverage-data
+        name: coverage-data-${{ steps.coverage-uuid.outputs.COVERAGE_UUID }}
         path: |
           .coverage.*
           *.lcov
