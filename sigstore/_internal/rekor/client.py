@@ -29,7 +29,7 @@ import requests
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import Keyring
-from sigstore._internal.trustroot import CustomTrustedRoot
+from sigstore._internal.trustroot import TrustedRoot
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
@@ -232,11 +232,11 @@ class RekorClient:
         self.session.close()
 
     @classmethod
-    def production(cls, trust_root: CustomTrustedRoot) -> RekorClient:
+    def production(cls, trust_root: TrustedRoot) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor production instance.
 
-        trust_root must be a `CustomTrustedRoot` for the production TUF repository.
+        trust_root must be a `TrustedRoot` for the production TUF repository.
         """
         rekor_keys = trust_root.get_rekor_keys()
         ctfe_keys = trust_root.get_ctfe_keys()
@@ -248,11 +248,11 @@ class RekorClient:
         )
 
     @classmethod
-    def staging(cls, trust_root: CustomTrustedRoot) -> RekorClient:
+    def staging(cls, trust_root: TrustedRoot) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor staging instance.
 
-        trust_root must be a `CustomTrustedRoot` for the staging TUF repository.
+        trust_root must be a `TrustedRoot` for the staging TUF repository.
         """
         rekor_keys = trust_root.get_rekor_keys()
         ctfe_keys = trust_root.get_ctfe_keys()

@@ -40,7 +40,7 @@ from sigstore._internal.rekor.client import (
     RekorClient,
     RekorKeyring,
 )
-from sigstore._internal.trustroot import CustomTrustedRoot
+from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import PEMCert
 from sigstore.errors import Error
 from sigstore.oidc import (
@@ -651,7 +651,7 @@ def _sign(args: argparse.Namespace) -> None:
         signing_ctx = SigningContext.production()
     else:
         # Assume "production" trust root if no keys are given as arguments
-        trusted_root = CustomTrustedRoot.production()
+        trusted_root = TrustedRoot.production()
         if args.ctfe_pem is not None:
             ctfe_keys = [args.ctfe_pem.read()]
         else:
@@ -828,7 +828,7 @@ def _collect_verification_state(
         if args.rekor_root_pubkey is not None:
             rekor_keys = [args.rekor_root_pubkey.read()]
         else:
-            trusted_root = CustomTrustedRoot.production()
+            trusted_root = TrustedRoot.production()
             rekor_keys = trusted_root.get_rekor_keys()
 
         verifier = Verifier(

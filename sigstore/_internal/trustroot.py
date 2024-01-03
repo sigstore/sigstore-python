@@ -27,7 +27,9 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     CertificateAuthority,
     TransparencyLogInstance,
-    TrustedRoot,
+)
+from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    TrustedRoot as _TrustedRoot,
 )
 
 from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
@@ -56,17 +58,17 @@ def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> boo
     return allow_expired or (period.end is None or now <= period.end)
 
 
-class CustomTrustedRoot(TrustedRoot):
+class TrustedRoot(_TrustedRoot):
     """Complete set of trusted entities for a Sigstore client"""
 
     @classmethod
-    def from_file(cls, path: str) -> "CustomTrustedRoot":
+    def from_file(cls, path: str) -> "TrustedRoot":
         """Create a new trust root from file"""
-        tr: CustomTrustedRoot = cls().from_json(Path(path).read_bytes())
+        tr: TrustedRoot = cls().from_json(Path(path).read_bytes())
         return tr
 
     @classmethod
-    def from_tuf(cls, url: str, offline: bool = False) -> "CustomTrustedRoot":
+    def from_tuf(cls, url: str, offline: bool = False) -> "TrustedRoot":
         """Create a new trust root from a TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
@@ -76,7 +78,7 @@ class CustomTrustedRoot(TrustedRoot):
         return cls.from_file(path)
 
     @classmethod
-    def production(cls, offline: bool = False) -> "CustomTrustedRoot":
+    def production(cls, offline: bool = False) -> "TrustedRoot":
         """Create new trust root from Sigstore production TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
@@ -85,7 +87,7 @@ class CustomTrustedRoot(TrustedRoot):
         return cls.from_tuf(DEFAULT_TUF_URL, offline)
 
     @classmethod
-    def staging(cls, offline: bool = False) -> "CustomTrustedRoot":
+    def staging(cls, offline: bool = False) -> "TrustedRoot":
         """Create new trust root from Sigstore staging TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
