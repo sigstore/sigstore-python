@@ -124,6 +124,10 @@ def tuf_asset():
             return (_TUF_ASSETS / name).read_bytes()
 
         def target(self, name: str):
+            path = self.target_path(name)
+            return path.read_bytes() if path else None
+
+        def target_path(self, name: str) -> Path:
             # Since TUF contains both sha256 and sha512 prefixed targets, filter
             # out the sha512 ones.
             matches = filter(
@@ -137,7 +141,7 @@ def tuf_asset():
                 raise Exception(f"Unable to match {name} in targets/") from e
 
             if next(matches, None) is None:
-                return path.read_bytes()
+                return path
             return None
 
     return TUFAsset()

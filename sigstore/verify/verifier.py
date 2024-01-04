@@ -47,7 +47,7 @@ from sigstore._internal.rekor.checkpoint import (
 )
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSETError, verify_set
-from sigstore._internal.tuf import TrustUpdater
+from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import B64Str, HexStr
 from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore.verify.models import RekorEntryMissing as RekorEntryMissingError
@@ -126,10 +126,10 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's production-level services.
         """
-        updater = TrustUpdater.production()
+        trust_root = TrustedRoot.production()
         return cls(
-            rekor=RekorClient.production(updater),
-            fulcio_certificate_chain=updater.get_fulcio_certs(),
+            rekor=RekorClient.production(trust_root),
+            fulcio_certificate_chain=trust_root.get_fulcio_certs(),
         )
 
     @classmethod
@@ -137,10 +137,10 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's staging-level services.
         """
-        updater = TrustUpdater.staging()
+        trust_root = TrustedRoot.staging()
         return cls(
-            rekor=RekorClient.staging(updater),
-            fulcio_certificate_chain=updater.get_fulcio_certs(),
+            rekor=RekorClient.staging(trust_root),
+            fulcio_certificate_chain=trust_root.get_fulcio_certs(),
         )
 
     def verify(
