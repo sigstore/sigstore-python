@@ -174,6 +174,9 @@ class Signer:
 
             return certificate_response
 
+    # https://github.com/pyca/cryptography/blob/00f8304a3dfe7a2aab6f3150a3c620e87d848044/src/cryptography/hazmat/primitives/hashes.py
+    # https://github.com/pyca/cryptography/blob/00f8304a3dfe7a2aab6f3150a3c620e87d848044/src/cryptography/hazmat/primitives/asymmetric/utils.py#L14
+    # https://github.com/pyca/cryptography/blob/main/src/cryptography/hazmat/primitives/asymmetric/rsa.py#L42
     def sign(
         self,
         input_: IO[bytes] | Statement,

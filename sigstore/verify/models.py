@@ -27,6 +27,7 @@ from typing import IO
 
 import rekor_types
 from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
@@ -61,7 +62,7 @@ from sigstore._utils import (
     base64_encode_pem_cert,
     cert_is_leaf,
     cert_is_root_ca,
-    sha256_streaming,
+    get_digest,
 )
 from sigstore.errors import Error
 from sigstore.transparency import LogEntry, LogInclusionProof
@@ -179,10 +180,16 @@ class VerificationMaterials:
     Represents the materials needed to perform a Sigstore verification.
     """
 
+    digest_algorithm: bytes
+    """
+    The digest algorithm to use for the hash.
+    """
+    
     input_digest: bytes
     """
-    The SHA256 hash of the verification input, as raw bytes.
+    The 'digest_algorithm' hash of the verification input, as raw bytes.
     """
+
 
     certificate: Certificate
     """
@@ -232,6 +239,7 @@ class VerificationMaterials:
         signature: bytes,
         offline: bool = False,
         rekor_entry: LogEntry | None,
+        algorithm_: Prehashed = None
     ):
         """
         Create a new `VerificationMaterials` from the given materials.
@@ -246,7 +254,7 @@ class VerificationMaterials:
         Effect: `input_` is consumed as part of construction.
         """
 
-        self.input_digest = sha256_streaming(input_)
+        self.input_digest, self.digest_algorithm = get_digest(input_, algorithm_)
         self.certificate = load_pem_x509_certificate(cert_pem.encode())
         self.signature = signature
 
@@ -416,7 +424,8 @@ class VerificationMaterials:
                 ),
                 data=rekor_types.hashedrekord.Data(
                     hash=rekor_types.hashedrekord.Hash(
-                        algorithm=rekor_types.hashedrekord.Algorithm.SHA256,
+                        #algorithm=sigstore_rekor_types.Algorithm.SHA256,
+                        algorithm=self.digest_algorithm,
                         value=self.input_digest.hex(),
                     ),
                 ),

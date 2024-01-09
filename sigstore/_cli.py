@@ -688,7 +688,21 @@ def _sign(args: argparse.Namespace) -> None:
             logger.debug(f"signing for {file.name}")
             with file.open(mode="rb", buffering=0) as io:
                 try:
-                    result = signer.sign(input_=io)
+                    # NOTE: This is where signin is performed.
+                    import hashlib, io
+                    from cryptography.hazmat.primitives import hashes
+                    from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
+                    class DIRHASH_SHARD1G_SHA256(hashes.HashAlgorithm):
+                        name = "dirhash_shard1G_sha256"
+                        digest_size = 32
+                        block_size = -1
+
+                    hash = hashlib.sha256()
+                    hash.update(iof.read())
+                    content = hash.digest()
+                    contentio = io.BytesIO(content)
+                    result = signer.sign(contentio, Prehashed(DIRHASH_SHARD1G_SHA256()))
+                    #result = signer.sign(input_=iof)
                 except ExpiredIdentity as exp_identity:
                     print("Signature failed: identity token has expired")
                     raise exp_identity
