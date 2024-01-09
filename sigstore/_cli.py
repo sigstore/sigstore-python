@@ -688,7 +688,7 @@ def _sign(args: argparse.Namespace) -> None:
             logger.debug(f"signing for {file.name}")
             with file.open(mode="rb", buffering=0) as io:
                 try:
-                    result = signer.sign(input_=iof)
+                    result = signer.sign(input_=io)
                 except ExpiredIdentity as exp_identity:
                     print("Signature failed: identity token has expired")
                     raise exp_identity
