@@ -16,7 +16,7 @@ import pretend
 import pytest
 
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.tuf import TrustUpdater
+from sigstore._internal.trustroot import TrustedRoot
 from sigstore.verify.models import (
     InvalidMaterials,
     InvalidRekorEntry,
@@ -45,8 +45,8 @@ class TestVerificationMaterials:
         materials = signing_materials("a.txt")
         assert materials._rekor_entry is None
 
-        tuf = TrustUpdater.staging()
-        client = RekorClient.staging(tuf)
+        trust_root = TrustedRoot.staging()
+        client = RekorClient.staging(trust_root)
         entry = materials.rekor_entry(client)
         assert entry is not None
 
