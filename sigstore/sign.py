@@ -82,7 +82,11 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.trustroot import TrustedRoot
+<<<<<<< HEAD
 from sigstore._utils import PEMCert, sha256_streaming
+=======
+from sigstore._utils import B64Str, HexStr, PEMCert, get_digest
+>>>>>>> 442469b (backup)
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 

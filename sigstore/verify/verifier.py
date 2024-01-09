@@ -226,7 +226,8 @@ class Verifier:
             signing_key.verify(
                 materials.signature,
                 materials.input_digest,
-                ec.ECDSA(Prehashed(hashes.SHA256())),
+                ec.ECDSA(materials.digest_algorithm),
+                #ec.ECDSA(Prehashed(hashes.SHA256())),
             )
         except InvalidSignature:
             return VerificationFailure(reason="Signature is invalid for input")

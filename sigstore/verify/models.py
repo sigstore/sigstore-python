@@ -180,7 +180,7 @@ class VerificationMaterials:
     Represents the materials needed to perform a Sigstore verification.
     """
 
-    digest_algorithm: bytes
+    digest_algorithm: Prehashed
     """
     The digest algorithm to use for the hash.
     """
@@ -425,7 +425,7 @@ class VerificationMaterials:
                 data=rekor_types.hashedrekord.Data(
                     hash=rekor_types.hashedrekord.Hash(
                         #algorithm=sigstore_rekor_types.Algorithm.SHA256,
-                        algorithm=self.digest_algorithm,
+                        algorithm=self.digest_algorithm._algorithm.name,
                         value=self.input_digest.hex(),
                     ),
                 ),
