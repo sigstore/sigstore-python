@@ -23,8 +23,7 @@ import hashlib
 import sys
 from typing import IO, NewType, Union
 
-import rekor_types
-from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509 import (
@@ -162,7 +161,7 @@ def key_id(key: PublicKey) -> KeyID:
 def get_digest(
         input_: IO[bytes],
         algorithm_: Prehashed = None,
-    ) -> (bytes, Prehashed): 
+    ) -> (bytes, Prehashed):
     if algorithm_ is None:
         return sha256_streaming(input_), Prehashed(hashes.SHA256())
 
@@ -171,7 +170,7 @@ def get_digest(
         if algorithm_.digest_size != 32:
             return ValueError(f"invalid digest size ({algorithm_.digest_size()}), expected 32")
         return input_.getvalue(), algorithm_
-    
+
     raise ValueError("invalid arguments")
 
 def sha256_streaming(io: IO[bytes]) -> bytes:

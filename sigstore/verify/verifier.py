@@ -24,9 +24,7 @@ import logging
 from typing import List, cast
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509 import Certificate, ExtendedKeyUsage, KeyUsage
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import (
@@ -227,7 +225,6 @@ class Verifier:
                 materials.signature,
                 materials.input_digest,
                 ec.ECDSA(materials.digest_algorithm),
-                #ec.ECDSA(Prehashed(hashes.SHA256())),
             )
         except InvalidSignature:
             return VerificationFailure(reason="Signature is invalid for input")

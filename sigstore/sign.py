@@ -57,7 +57,6 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     VerificationMaterial,
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
-    HashAlgorithm,
     HashOutput,
     LogId,
     MessageSignature,
@@ -82,11 +81,7 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.trustroot import TrustedRoot
-<<<<<<< HEAD
-from sigstore._utils import PEMCert, sha256_streaming
-=======
-from sigstore._utils import B64Str, HexStr, PEMCert, get_digest
->>>>>>> 442469b (backup)
+from sigstore._utils import PEMCert, get_digest, sha256_streaming
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
@@ -178,10 +173,6 @@ class Signer:
 
             return certificate_response
 
-    # https://github.com/sigstore/rekor/issues/1299
-    # https://github.com/pyca/cryptography/blob/00f8304a3dfe7a2aab6f3150a3c620e87d848044/src/cryptography/hazmat/primitives/hashes.py
-    # https://github.com/pyca/cryptography/blob/00f8304a3dfe7a2aab6f3150a3c620e87d848044/src/cryptography/hazmat/primitives/asymmetric/utils.py#L14
-    # https://github.com/pyca/cryptography/blob/main/src/cryptography/hazmat/primitives/asymmetric/rsa.py#L42
     def sign(
         self,
         input_: IO[bytes] | Statement,

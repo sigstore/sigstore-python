@@ -26,8 +26,8 @@ from textwrap import dedent
 from typing import IO
 
 import rekor_types
-from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
+from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
@@ -184,7 +184,7 @@ class VerificationMaterials:
     """
     The digest algorithm to use for the hash.
     """
-    
+
     input_digest: bytes
     """
     The 'digest_algorithm' hash of the verification input, as raw bytes.
@@ -424,7 +424,6 @@ class VerificationMaterials:
                 ),
                 data=rekor_types.hashedrekord.Data(
                     hash=rekor_types.hashedrekord.Hash(
-                        #algorithm=sigstore_rekor_types.Algorithm.SHA256,
                         algorithm=self.digest_algorithm._algorithm.name,
                         value=self.input_digest.hex(),
                     ),
