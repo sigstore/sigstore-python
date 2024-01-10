@@ -35,6 +35,7 @@ from cryptography.x509 import (
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
 
 from sigstore.errors import Error
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 if sys.version_info < (3, 11):
     import importlib_resources as resources
@@ -157,6 +158,12 @@ def key_id(key: PublicKey) -> KeyID:
     )
 
     return KeyID(hashlib.sha256(public_bytes).digest())
+
+def hazmat_digest_to_bundle(algo: str):
+    lookup = {"sha256": HashAlgorithm.SHA2_256}
+    if algo in lookup:
+        return lookup[algo]
+    return algo
 
 def get_digest(
         input_: IO[bytes],

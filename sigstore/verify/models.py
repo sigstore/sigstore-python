@@ -63,6 +63,7 @@ from sigstore._utils import (
     cert_is_leaf,
     cert_is_root_ca,
     get_digest,
+    hazmat_digest_to_bundle,
 )
 from sigstore.errors import Error
 from sigstore.transparency import LogEntry, LogInclusionProof
@@ -518,7 +519,7 @@ class VerificationMaterials:
             ),
             message_signature=MessageSignature(
                 message_digest=HashOutput(
-                    algorithm=HashAlgorithm.SHA2_256,
+                    algorithm=hazmat_digest_to_bundle(self.digest_algorithm._algorithm.name),
                     digest=self.input_digest,
                 ),
                 signature=self.signature,
