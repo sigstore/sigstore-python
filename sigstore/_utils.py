@@ -33,9 +33,9 @@ from cryptography.x509 import (
     load_der_x509_certificate,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 from sigstore.errors import Error
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 if sys.version_info < (3, 11):
     import importlib_resources as resources

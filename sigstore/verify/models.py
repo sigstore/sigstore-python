@@ -39,7 +39,6 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     VerificationMaterial,
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
-    HashAlgorithm,
     HashOutput,
     LogId,
     MessageSignature,
