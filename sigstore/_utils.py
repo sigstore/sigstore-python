@@ -159,11 +159,11 @@ def key_id(key: PublicKey) -> KeyID:
 
     return KeyID(hashlib.sha256(public_bytes).digest())
 
-def hazmat_digest_to_bundle(algo: str):
-    lookup = {"sha256": HashAlgorithm.SHA2_256}
+def hazmat_digest_to_bundle(algo: str) -> HashAlgorithm:
+    lookup = {hashes.SHA256().name: HashAlgorithm.SHA2_256}
     if algo in lookup:
-        return lookup[algo]
-    return algo
+        return HashAlgorithm(lookup[algo])
+    return ValueError(f"unknown digest algorithm {algo}")
 
 def get_digest(
         input_: IO[bytes],
