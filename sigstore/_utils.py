@@ -175,7 +175,7 @@ def get_digest(
     if isinstance(algorithm_, Prehashed):
         # Check we have a 256-bit digest size for compatibility with secp256r1.
         if algorithm_.digest_size != 32:
-            return ValueError(f"invalid digest size ({algorithm_.digest_size()}), expected 32")
+            return ValueError(f"invalid digest size ({algorithm_.digest_size}), expected 32")
         return input_.getvalue(), algorithm_
 
     raise ValueError("invalid arguments")
