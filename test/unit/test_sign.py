@@ -52,7 +52,7 @@ def test_sign_rekor_entry_consistent(id_config):
 
     assert expected_entry.canonicalized_body == base64.b64decode(actual_entry.body)
     assert expected_entry.integrated_time == actual_entry.integrated_time
-    assert expected_entry.log_id == actual_entry.log_id
+    assert expected_entry.log_id.key_id == bytes.fromhex(actual_entry.log_id)
     assert expected_entry.log_index == actual_entry.log_index
 
 
@@ -114,5 +114,5 @@ def test_identity_proof_claim_lookup(id_config, monkeypatch):
 
     assert expected_entry.canonicalized_body == base64.b64decode(actual_entry.body)
     assert expected_entry.integrated_time == actual_entry.integrated_time
-    assert expected_entry.log_id == actual_entry.log_id
+    assert expected_entry.log_id.key_id == bytes.fromhex(actual_entry.log_id)
     assert expected_entry.log_index == actual_entry.log_index
