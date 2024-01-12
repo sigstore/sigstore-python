@@ -29,7 +29,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509 import Certificate, ExtendedKeyUsage, KeyUsage
 from cryptography.x509.oid import ExtendedKeyUsageOID
-from OpenSSL.crypto import (  # type: ignore[import-untyped]
+from OpenSSL.crypto import (
     X509,
     X509Store,
     X509StoreContext,

@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Changed
+
+* **BREAKING API CHANGE**: `sigstore.sign.SigningResult` has been removed.
+* **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `Bundle`,
+  instead of a `SigningResult`.
+
 ## [2.1.0]
 
 ### Added
