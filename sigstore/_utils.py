@@ -164,13 +164,15 @@ def key_id(key: PublicKey) -> KeyID:
 
     return KeyID(hashlib.sha256(public_bytes).digest())
 
+
 def get_digest(input_: IO[bytes] | sigstore_hashes.Hashed) -> sigstore_hashes.Hashed:
     if isinstance(input_, sigstore_hashes.Hashed):
         return input_
 
-    # NOTE: Not able to check for the type `TypeError: Subscripted generics cannot be used with class and instance checks`
-    # when calling isinstance(_input, IO[bytes])
-    return sigstore_hashes.Hashed(digest=sha256_streaming(input_), algorithm=HashAlgorithm.SHA2_256)
+    return sigstore_hashes.Hashed(
+        digest=sha256_streaming(input_), algorithm=HashAlgorithm.SHA2_256
+    )
+
 
 def sha256_streaming(io: IO[bytes]) -> bytes:
     """
