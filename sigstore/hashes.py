@@ -19,11 +19,6 @@ from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 
-class DIRSHA256_P1(hashes.HashAlgorithm):
-    name = "dirsha256-p1"
-    digest_size = 32
-    block_size = -1
-
 class Hashed(BaseModel):
     """
     Represents hashed value.
@@ -45,6 +40,5 @@ class Hashed(BaseModel):
     def hazmat_algorithm(self) -> hashes.HashAlgorithm:
         if self.algorithm == HashAlgorithm.SHA2_256:
             return hashes.SHA256()
-        if self.algorithm == HashAlgorithm.HASH_ALGORITHM_UNSPECIFIED:
-            return DIRSHA256_P1()
+        # Add more hashes here.
         raise ValueError(f"unknown hash algorithm: {self.algorithm}")
