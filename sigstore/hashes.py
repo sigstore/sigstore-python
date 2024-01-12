@@ -21,7 +21,7 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 class Hashed(BaseModel):
     """
-    Represents hashed value.
+    Represents a hashed value.
     """
 
     algorithm: HashAlgorithm
