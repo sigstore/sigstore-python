@@ -83,14 +83,14 @@ jobs:
           echo "hashes=$(sha256sum ./dist/* | base64 -w0)" >> $GITHUB_OUTPUT
 
       - name: Upload built packages
-        uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4.0.0
+        uses: actions/upload-artifact@1eb3cb2b3e0f29609092a73eb033bb759a334595 # v4.1.0
         with:
           name: built-packages
           path: ./dist/
           if-no-files-found: warn
 
       - name: Upload smoketest-artifacts
-        uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4.0.0
+        uses: actions/upload-artifact@1eb3cb2b3e0f29609092a73eb033bb759a334595 # v4.1.0
         with:
           name: smoketest-artifacts
           path: smoketest-artifacts/
