@@ -45,7 +45,7 @@ def test_sign_rekor_entry_consistent(id_config):
 
     payload = io.BytesIO(secrets.token_bytes(32))
     with ctx.signer(identity) as signer:
-        expected_entry = signer.sign(payload).log_entry
+        expected_entry = signer.sign(payload).verification_material.tlog_entries[0]
 
     actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
@@ -109,7 +109,7 @@ def test_identity_proof_claim_lookup(id_config, monkeypatch):
     payload = io.BytesIO(secrets.token_bytes(32))
 
     with ctx.signer(identity) as signer:
-        expected_entry = signer.sign(payload).log_entry
+        expected_entry = signer.sign(payload).verification_material.tlog_entries[0]
     actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
     assert expected_entry.uuid == actual_entry.uuid
