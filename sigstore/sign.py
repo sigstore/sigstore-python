@@ -49,7 +49,6 @@ import cryptography.x509 as x509
 import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509.oid import NameOID
 from in_toto_attestation.v1.statement import Statement
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
@@ -57,6 +56,7 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     VerificationMaterial,
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
+    HashAlgorithm,
     HashOutput,
     LogId,
     MessageSignature,
@@ -73,6 +73,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
 from sigstore_protobuf_specs.io.intoto import Envelope
 
 from sigstore._internal import dsse
+from sigstore import hashes as sigstore_hashes
 from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioCertificateSigningResponse,

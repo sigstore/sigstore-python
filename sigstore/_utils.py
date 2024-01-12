@@ -23,8 +23,9 @@ import hashlib
 import sys
 from typing import IO, NewType, Union
 
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
+<<<<<<< HEAD
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509 import (
     Certificate,
@@ -32,9 +33,13 @@ from cryptography.x509 import (
     Version,
     load_der_x509_certificate,
 )
+=======
+from cryptography.x509 import Certificate, ExtensionNotFound, Version
+>>>>>>> f67b019 (Change API)
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
+from sigstore import hashes as sigstore_hashes
 from sigstore.errors import Error
 
 if sys.version_info < (3, 11):
@@ -159,26 +164,13 @@ def key_id(key: PublicKey) -> KeyID:
 
     return KeyID(hashlib.sha256(public_bytes).digest())
 
-def hazmat_digest_to_bundle(algo: str) -> HashAlgorithm:
-    lookup = {hashes.SHA256().name: HashAlgorithm.SHA2_256}
-    if algo in lookup:
-        return HashAlgorithm(lookup[algo])
-    return ValueError(f"unknown digest algorithm {algo}")
+def get_digest(input_: IO[bytes] | sigstore_hashes.Hashed) -> sigstore_hashes.Hashed:
+    if isinstance(input_, sigstore_hashes.Hashed):
+        return input_
 
-def get_digest(
-        input_: IO[bytes],
-        algorithm_: Prehashed = None,
-    ) -> (bytes, Prehashed):
-    if algorithm_ is None:
-        return sha256_streaming(input_), Prehashed(hashes.SHA256())
-
-    if isinstance(algorithm_, Prehashed):
-        # Check we have a 256-bit digest size for compatibility with secp256r1.
-        if algorithm_.digest_size != 32:
-            return ValueError(f"invalid digest size ({algorithm_.digest_size}), expected 32")
-        return input_.getvalue(), algorithm_
-
-    raise ValueError("invalid arguments")
+    # NOTE: Not able to check for the type `TypeError: Subscripted generics cannot be used with class and instance checks`
+    # when calling isinstance(_input, IO[bytes])
+    return sigstore_hashes.Hashed(digest=sha256_streaming(input_), algorithm=HashAlgorithm.SHA2_256)
 
 def sha256_streaming(io: IO[bytes]) -> bytes:
     """

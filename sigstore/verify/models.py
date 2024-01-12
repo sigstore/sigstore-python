@@ -26,7 +26,6 @@ from textwrap import dedent
 from typing import IO
 
 import rekor_types
-from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import (
     Certificate,
@@ -54,6 +53,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     TransparencyLogEntry,
 )
 
+from sigstore import hashes as sigstore_hashes
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import (
     B64Str,
@@ -62,7 +62,6 @@ from sigstore._utils import (
     cert_is_leaf,
     cert_is_root_ca,
     get_digest,
-    hazmat_digest_to_bundle,
 )
 from sigstore.errors import Error
 from sigstore.transparency import LogEntry, LogInclusionProof
@@ -180,16 +179,10 @@ class VerificationMaterials:
     Represents the materials needed to perform a Sigstore verification.
     """
 
-    digest_algorithm: Prehashed
+    hashed_input: sigstore_hashes.Hashed
     """
-    The digest algorithm to use for the hash.
+    The hash of the verification input.
     """
-
-    input_digest: bytes
-    """
-    The 'digest_algorithm' hash of the verification input, as raw bytes.
-    """
-
 
     certificate: Certificate
     """
@@ -234,12 +227,11 @@ class VerificationMaterials:
     def __init__(
         self,
         *,
-        input_: IO[bytes],
+        input_: IO[bytes] | sigstore_hashes.Hashed,
         cert_pem: PEMCert,
         signature: bytes,
         offline: bool = False,
         rekor_entry: LogEntry | None,
-        algorithm_: Prehashed = None
     ):
         """
         Create a new `VerificationMaterials` from the given materials.
@@ -254,7 +246,7 @@ class VerificationMaterials:
         Effect: `input_` is consumed as part of construction.
         """
 
-        self.input_digest, self.digest_algorithm = get_digest(input_, algorithm_)
+        self.hashed_input = get_digest(input_)
         self.certificate = load_pem_x509_certificate(cert_pem.encode())
         self.signature = signature
 
@@ -424,8 +416,8 @@ class VerificationMaterials:
                 ),
                 data=rekor_types.hashedrekord.Data(
                     hash=rekor_types.hashedrekord.Hash(
-                        algorithm=self.digest_algorithm._algorithm.name,
-                        value=self.input_digest.hex(),
+                        algorithm=self.hashed_input.hazmat_algorithm().name,
+                        value=self.hashed_input.digest.hex(),
                     ),
                 ),
             ),
@@ -518,8 +510,8 @@ class VerificationMaterials:
             ),
             message_signature=MessageSignature(
                 message_digest=HashOutput(
-                    algorithm=hazmat_digest_to_bundle(self.digest_algorithm._algorithm.name),
-                    digest=self.input_digest,
+                    algorithm=self.hashed_input.algorithm,
+                    digest=self.hashed_input.digest,
                 ),
                 signature=self.signature,
             ),

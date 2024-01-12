@@ -223,8 +223,8 @@ class Verifier:
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
             signing_key.verify(
                 materials.signature,
-                materials.input_digest,
-                ec.ECDSA(materials.digest_algorithm),
+                materials.hashed_input.digest,
+                ec.ECDSA(materials.hashed_input.as_prehashed()),
             )
         except InvalidSignature:
             return VerificationFailure(reason="Signature is invalid for input")
@@ -239,7 +239,7 @@ class Verifier:
         except RekorEntryMissingError:
             return LogEntryMissing(
                 signature=B64Str(base64.b64encode(materials.signature).decode()),
-                artifact_hash=HexStr(materials.input_digest.hex()),
+                artifact_hash=HexStr(materials.hashed_input.digest.hex()),
             )
         except InvalidRekorEntryError:
             return VerificationFailure(
