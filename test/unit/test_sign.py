@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import io
 import secrets
 
@@ -49,7 +50,7 @@ def test_sign_rekor_entry_consistent(id_config):
 
     actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
-    assert expected_entry.canonicalized_body == actual_entry.body
+    assert expected_entry.canonicalized_body == base64.b64decode(actual_entry.body)
     assert expected_entry.integrated_time == actual_entry.integrated_time
     assert expected_entry.log_id == actual_entry.log_id
     assert expected_entry.log_index == actual_entry.log_index
@@ -111,7 +112,7 @@ def test_identity_proof_claim_lookup(id_config, monkeypatch):
         expected_entry = signer.sign(payload).verification_material.tlog_entries[0]
     actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
-    assert expected_entry.canonicalized_body == actual_entry.body
+    assert expected_entry.canonicalized_body == base64.b64decode(actual_entry.body)
     assert expected_entry.integrated_time == actual_entry.integrated_time
     assert expected_entry.log_id == actual_entry.log_id
     assert expected_entry.log_index == actual_entry.log_index
