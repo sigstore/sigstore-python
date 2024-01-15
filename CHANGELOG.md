@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Changed
+
+* **BREAKING API CHANGE**: `sigstore.sign.SigningResult` has been removed
+  ([#862](https://github.com/sigstore/sigstore-python/pull/862))
+* **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `Bundle`,
+  instead of a `SigningResult` ([#862](https://github.com/sigstore/sigstore-python/pull/862))
+
 ## [2.1.0]
 
 ### Added

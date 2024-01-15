@@ -51,7 +51,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509.oid import NameOID
-from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle,
     VerificationMaterial,
@@ -175,7 +174,7 @@ class Signer:
     def sign(
         self,
         input_: IO[bytes],
-    ) -> SigningResult:
+    ) -> Bundle:
         """Public API for signing blobs"""
         input_digest = sha256_streaming(input_)
         private_key = self._private_key
@@ -233,7 +232,7 @@ class Signer:
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
-        return SigningResult(
+        return _make_bundle(
             input_digest=HexStr(input_digest.hex()),
             cert_pem=PEMCert(
                 cert.public_bytes(encoding=serialization.Encoding.PEM).decode()
@@ -308,90 +307,60 @@ class SigningContext:
         yield Signer(identity_token, self, cache)
 
 
-class SigningResult(BaseModel):
+def _make_bundle(
+    input_digest: HexStr, cert_pem: PEMCert, b64_signature: B64Str, log_entry: LogEntry
+) -> Bundle:
     """
-    Represents the artifacts of a signing operation.
-    """
-
-    input_digest: HexStr
-    """
-    The hex-encoded SHA256 digest of the input that was signed for.
+    Convert the raw results of a Sigstore signing operation into a Sigstore bundle.
     """
 
-    cert_pem: PEMCert
-    """
-    The PEM-encoded public half of the certificate used for signing.
-    """
+    # NOTE: We explicitly only include the leaf certificate in the bundle's "chain"
+    # here: the specs explicitly forbid the inclusion of the root certificate,
+    # and discourage inclusion of any intermediates (since they're in the root of
+    # trust already).
+    cert = x509.load_pem_x509_certificate(cert_pem.encode())
+    cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
+    chain = X509CertificateChain(certificates=[X509Certificate(raw_bytes=cert_der)])
 
-    b64_signature: B64Str
-    """
-    The base64-encoded signature.
-    """
-
-    log_entry: LogEntry
-    """
-    A record of the Rekor log entry for the signing operation.
-    """
-
-    def to_bundle(self) -> Bundle:
-        """
-        Creates a Sigstore bundle (as defined by Sigstore's protobuf specs)
-        from this `SigningResult`.
-        """
-
-        # NOTE: We explicitly only include the leaf certificate in the bundle's "chain"
-        # here: the specs explicitly forbid the inclusion of the root certificate,
-        # and discourage inclusion of any intermediates (since they're in the root of
-        # trust already).
-        cert = x509.load_pem_x509_certificate(self.cert_pem.encode())
-        cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
-        chain = X509CertificateChain(certificates=[X509Certificate(raw_bytes=cert_der)])
-
-        inclusion_proof: InclusionProof | None = None
-        if self.log_entry.inclusion_proof is not None:
-            inclusion_proof = InclusionProof(
-                log_index=self.log_entry.inclusion_proof.log_index,
-                root_hash=bytes.fromhex(self.log_entry.inclusion_proof.root_hash),
-                tree_size=self.log_entry.inclusion_proof.tree_size,
-                hashes=[
-                    bytes.fromhex(h) for h in self.log_entry.inclusion_proof.hashes
-                ],
-                checkpoint=Checkpoint(
-                    envelope=self.log_entry.inclusion_proof.checkpoint
-                ),
-            )
-
-        tlog_entry = TransparencyLogEntry(
-            log_index=self.log_entry.log_index,
-            log_id=LogId(key_id=bytes.fromhex(self.log_entry.log_id)),
-            kind_version=KindVersion(kind="hashedrekord", version="0.0.1"),
-            integrated_time=self.log_entry.integrated_time,
-            inclusion_promise=InclusionPromise(
-                signed_entry_timestamp=base64.b64decode(
-                    self.log_entry.inclusion_promise
-                )
-            )
-            if self.log_entry.inclusion_promise
-            else None,
-            inclusion_proof=inclusion_proof,
-            canonicalized_body=base64.b64decode(self.log_entry.body),
+    inclusion_proof: InclusionProof | None = None
+    if log_entry.inclusion_proof is not None:
+        inclusion_proof = InclusionProof(
+            log_index=log_entry.inclusion_proof.log_index,
+            root_hash=bytes.fromhex(log_entry.inclusion_proof.root_hash),
+            tree_size=log_entry.inclusion_proof.tree_size,
+            hashes=[bytes.fromhex(h) for h in log_entry.inclusion_proof.hashes],
+            checkpoint=Checkpoint(envelope=log_entry.inclusion_proof.checkpoint),
         )
 
-        material = VerificationMaterial(
-            x509_certificate_chain=chain,
-            tlog_entries=[tlog_entry],
+    tlog_entry = TransparencyLogEntry(
+        log_index=log_entry.log_index,
+        log_id=LogId(key_id=bytes.fromhex(log_entry.log_id)),
+        kind_version=KindVersion(kind="hashedrekord", version="0.0.1"),
+        integrated_time=log_entry.integrated_time,
+        inclusion_promise=InclusionPromise(
+            signed_entry_timestamp=base64.b64decode(log_entry.inclusion_promise)
         )
+        if log_entry.inclusion_promise
+        else None,
+        inclusion_proof=inclusion_proof,
+        canonicalized_body=base64.b64decode(log_entry.body),
+    )
 
-        bundle = Bundle(
-            media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
-            verification_material=material,
-            message_signature=MessageSignature(
-                message_digest=HashOutput(
-                    algorithm=HashAlgorithm.SHA2_256,
-                    digest=bytes.fromhex(self.input_digest),
-                ),
-                signature=base64.b64decode(self.b64_signature),
+    material = VerificationMaterial(
+        x509_certificate_chain=chain,
+        tlog_entries=[tlog_entry],
+    )
+
+    bundle = Bundle(
+        media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
+        verification_material=material,
+        message_signature=MessageSignature(
+            message_digest=HashOutput(
+                algorithm=HashAlgorithm.SHA2_256,
+                digest=bytes.fromhex(input_digest),
             ),
-        )
+            signature=base64.b64decode(b64_signature),
+        ),
+    )
 
-        return bundle
+    return bundle

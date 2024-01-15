@@ -25,7 +25,12 @@ from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from cryptography.x509 import Certificate, ExtensionNotFound, Version
+from cryptography.x509 import (
+    Certificate,
+    ExtensionNotFound,
+    Version,
+    load_der_x509_certificate,
+)
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
 
 from sigstore.errors import Error
@@ -124,6 +129,19 @@ def base64_encode_pem_cert(cert: Certificate) -> B64Str:
     return B64Str(
         base64.b64encode(cert.public_bytes(serialization.Encoding.PEM)).decode()
     )
+
+
+def cert_der_to_pem(der: bytes) -> str:
+    """
+    Converts a DER-encoded X.509 certificate into its PEM encoding.
+
+    Returns a string containing a PEM-encoded X.509 certificate.
+    """
+
+    # NOTE: Technically we don't have to round-trip like this, since
+    # the DER-to-PEM transformation is entirely mechanical.
+    cert = load_der_x509_certificate(der)
+    return cert.public_bytes(serialization.Encoding.PEM).decode()
 
 
 def key_id(key: PublicKey) -> KeyID:
