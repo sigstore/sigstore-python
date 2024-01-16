@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import base64
 import os
 import re
@@ -238,7 +240,7 @@ def tuf_dirs(monkeypatch, tmp_path):
     ],
     ids=["production", "staging"],
 )
-def id_config(request):
+def id_config(request) -> tuple[SigningContext, IdentityToken]:
     env, signer = request.param
     # Detect env variable for local interactive tests.
     token = os.getenv(f"SIGSTORE_IDENTITY_TOKEN_{env}")

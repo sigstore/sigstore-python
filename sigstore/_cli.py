@@ -41,7 +41,7 @@ from sigstore._internal.rekor.client import (
     RekorKeyring,
 )
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import PEMCert
+from sigstore._utils import PEMCert, cert_der_to_pem
 from sigstore.errors import Error
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
@@ -698,10 +698,12 @@ def _sign(args: argparse.Namespace) -> None:
                     raise exp_certificate
 
             print("Using ephemeral certificate:")
-            print(result.cert_pem)
+            cert = result.verification_material.x509_certificate_chain.certificates[0]
+            cert_pem = cert_der_to_pem(cert.raw_bytes)
+            print(cert_pem)
 
             print(
-                f"Transparency log entry created at index: {result.log_entry.log_index}"
+                f"Transparency log entry created at index: {result.verification_material.tlog_entries[0].log_index}"
             )
 
             sig_output: TextIO
@@ -710,18 +712,19 @@ def _sign(args: argparse.Namespace) -> None:
             else:
                 sig_output = sys.stdout
 
-            print(result.b64_signature, file=sig_output)
+            signature = base64.b64encode(result.message_signature.signature).decode()
+            print(signature, file=sig_output)
             if outputs["sig"] is not None:
                 print(f"Signature written to {outputs['sig']}")
 
             if outputs["cert"] is not None:
                 with outputs["cert"].open(mode="w") as io:
-                    print(result.cert_pem, file=io)
+                    print(cert_pem, file=io)
                 print(f"Certificate written to {outputs['cert']}")
 
             if outputs["bundle"] is not None:
                 with outputs["bundle"].open(mode="w") as io:
-                    print(result.to_bundle().to_json(), file=io)
+                    print(result.to_json(), file=io)
                 print(f"Sigstore bundle written to {outputs['bundle']}")
 
 
