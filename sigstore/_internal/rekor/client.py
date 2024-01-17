@@ -18,6 +18,7 @@ Client implementation for interacting with Rekor.
 
 from __future__ import annotations
 
+import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
@@ -72,7 +73,20 @@ class RekorClientError(Exception):
     A generic error in the Rekor client.
     """
 
-    pass
+    def __init__(self, http_error: requests.HTTPError):
+        """
+        Create a new `RekorClientError` from the given `requests.HTTPError`.
+        """
+        if http_error.response:
+            try:
+                error = rekor_types.Error.model_validate_json(http_error.response.text)
+                super().__init__(f"{error.code}: {error.message}")
+            except Exception:
+                super().__init__(
+                    f"Rekor returned an unknown error with HTTP {http_error.response.status_code}"
+                )
+        else:
+            super().__init__(f"Unexpected Rekor error: {http_error}")
 
 
 class _Endpoint(ABC):
@@ -94,7 +108,7 @@ class RekorLog(_Endpoint):
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
-            raise RekorClientError from http_error
+            raise RekorClientError(http_error)
         return RekorLogInfo.from_response(resp.json())
 
     @property
@@ -120,7 +134,7 @@ class RekorEntries(_Endpoint):
         Either `uuid` or `log_index` must be present, but not both.
         """
         if not (bool(uuid) ^ bool(log_index)):
-            raise RekorClientError("uuid or log_index required, but not both")
+            raise ValueError("uuid or log_index required, but not both")
 
         resp: requests.Response
 
@@ -132,26 +146,29 @@ class RekorEntries(_Endpoint):
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
-            raise RekorClientError from http_error
+            raise RekorClientError(http_error)
         return LogEntry._from_response(resp.json())
 
     def post(
         self,
-        proposed_entry: rekor_types.Hashedrekord,
+        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
 
-        resp: requests.Response = self.session.post(
-            self.url, json=proposed_entry.model_dump(mode="json", by_alias=True)
-        )
+        payload = proposed_entry.model_dump(mode="json", by_alias=True)
+        logger.debug(f"proposed: {json.dumps(payload)}")
+
+        resp: requests.Response = self.session.post(self.url, json=payload)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
-            raise RekorClientError from http_error
+            raise RekorClientError(http_error)
 
-        return LogEntry._from_response(resp.json())
+        integrated_entry = resp.json()
+        logger.debug(f"integrated: {integrated_entry}")
+        return LogEntry._from_response(integrated_entry)
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:
@@ -170,7 +187,7 @@ class RekorEntriesRetrieve(_Endpoint):
 
     def post(
         self,
-        expected_entry: rekor_types.Hashedrekord,
+        expected_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
     ) -> Optional[LogEntry]:
         """
         Retrieves an extant Rekor entry, identified by its artifact signature,
@@ -187,7 +204,7 @@ class RekorEntriesRetrieve(_Endpoint):
         except requests.HTTPError as http_error:
             if http_error.response and http_error.response.status_code == 404:
                 return None
-            raise RekorClientError(resp.text) from http_error
+            raise RekorClientError(http_error)
 
         results = resp.json()
 

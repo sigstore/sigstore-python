@@ -407,8 +407,6 @@ class VerificationMaterials:
         # (if we don't have one) *and* to cross-check whatever response
         # we receive. See below.
         expected_entry = rekor_types.Hashedrekord(
-            kind="hashedrekord",
-            api_version="0.0.1",
             spec=rekor_types.hashedrekord.HashedrekordV001Schema(
                 signature=rekor_types.hashedrekord.Signature(
                     content=base64.b64encode(self.signature).decode(),

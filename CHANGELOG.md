@@ -8,6 +8,25 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* API: `Signer.sign()` can now take an in-toto `Statement` as an input,
+  producing a DSSE-formatted signature rather than a "bare" signature
+  ([#804](https://github.com/sigstore/sigstore-python/pull/804))
+
+
+* API: `SigningResult.content` has been added, representing either the
+  `hashedrekord` entry's message signature or the `dsse` entry's envelope
+  ([#804](https://github.com/sigstore/sigstore-python/pull/804))
+
+
+### Removed
+
+* API: `SigningResult.input_digest` has been removed; users who expect
+  to access the input digest may do so by inspecting the `hashedrekord`
+  or `dsse`-specific `SigningResult.content`
+  ([#804](https://github.com/sigstore/sigstore-python/pull/804))
+
 ### Changed
 
 * **BREAKING API CHANGE**: `sigstore.sign.SigningResult` has been removed

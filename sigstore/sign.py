@@ -51,6 +51,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509.oid import NameOID
+from in_toto_attestation.v1.statement import Statement
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle,
     VerificationMaterial,
@@ -70,7 +71,9 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     KindVersion,
     TransparencyLogEntry,
 )
+from sigstore_protobuf_specs.io.intoto import Envelope
 
+from sigstore._internal import dsse
 from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioCertificateSigningResponse,
@@ -79,7 +82,7 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import B64Str, HexStr, PEMCert, sha256_streaming
+from sigstore._utils import PEMCert, sha256_streaming
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
@@ -173,10 +176,9 @@ class Signer:
 
     def sign(
         self,
-        input_: IO[bytes],
+        input_: IO[bytes] | Statement,
     ) -> Bundle:
         """Public API for signing blobs"""
-        input_digest = sha256_streaming(input_)
         private_key = self._private_key
 
         if not self._identity_token.in_validity_period():
@@ -187,57 +189,78 @@ class Signer:
         except ExpiredCertificate as e:
             raise e
 
-        # TODO(alex): Retrieve the public key via TUF
-        #
         # Verify the SCT
-        sct = certificate_response.sct  # noqa
-        cert = certificate_response.cert  # noqa
+        sct = certificate_response.sct
+        cert = certificate_response.cert
         chain = certificate_response.chain
 
         verify_sct(sct, cert, chain, self._signing_ctx._rekor._ct_keyring)
 
         logger.debug("Successfully verified SCT...")
 
-        # Sign artifact
-        artifact_signature = private_key.sign(
-            input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
-        )
-        b64_artifact_signature = B64Str(base64.b64encode(artifact_signature).decode())
-
         # Prepare inputs
         b64_cert = base64.b64encode(
             cert.public_bytes(encoding=serialization.Encoding.PEM)
         )
 
-        # Create the transparency log entry
-        proposed_entry = rekor_types.Hashedrekord(
-            kind="hashedrekord",
-            api_version="0.0.1",
-            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                signature=rekor_types.hashedrekord.Signature(
-                    content=b64_artifact_signature,
-                    public_key=rekor_types.hashedrekord.PublicKey(
-                        content=b64_cert.decode()
+        # Sign artifact
+        content: MessageSignature | Envelope
+        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse
+        if isinstance(input_, Statement):
+            content = dsse.sign_intoto(private_key, input_)
+
+            # Create the proposed DSSE entry
+            proposed_entry = rekor_types.Dsse(
+                spec=rekor_types.dsse.DsseV001Schema(
+                    proposed_content=rekor_types.dsse.ProposedContent(
+                        envelope=content.to_json(),
+                        verifiers=[b64_cert.decode()],
                     ),
                 ),
-                data=rekor_types.hashedrekord.Data(
-                    hash=rekor_types.hashedrekord.Hash(
-                        algorithm=rekor_types.hashedrekord.Algorithm.SHA256,
-                        value=input_digest.hex(),
-                    )
+            )
+        else:
+            input_digest = sha256_streaming(input_)
+
+            artifact_signature = private_key.sign(
+                input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
+            )
+
+            content = MessageSignature(
+                message_digest=HashOutput(
+                    algorithm=HashAlgorithm.SHA2_256,
+                    digest=input_digest,
                 ),
-            ),
-        )
+                signature=artifact_signature,
+            )
+
+            # Create the proposed hashedrekord entry
+            proposed_entry = rekor_types.Hashedrekord(
+                spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                    signature=rekor_types.hashedrekord.Signature(
+                        content=base64.b64encode(artifact_signature).decode(),
+                        public_key=rekor_types.hashedrekord.PublicKey(
+                            content=b64_cert.decode()
+                        ),
+                    ),
+                    data=rekor_types.hashedrekord.Data(
+                        hash=rekor_types.hashedrekord.Hash(
+                            algorithm=rekor_types.hashedrekord.Algorithm.SHA256,
+                            value=input_digest.hex(),
+                        )
+                    ),
+                ),
+            )
+
+        # Submit the proposed entry to the transparency log
         entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
 
         logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         return _make_bundle(
-            input_digest=HexStr(input_digest.hex()),
+            content=content,
             cert_pem=PEMCert(
                 cert.public_bytes(encoding=serialization.Encoding.PEM).decode()
             ),
-            b64_signature=B64Str(b64_artifact_signature),
             log_entry=entry,
         )
 
@@ -308,7 +331,9 @@ class SigningContext:
 
 
 def _make_bundle(
-    input_digest: HexStr, cert_pem: PEMCert, b64_signature: B64Str, log_entry: LogEntry
+    content: MessageSignature | Envelope,
+    cert_pem: PEMCert,
+    log_entry: LogEntry,
 ) -> Bundle:
     """
     Convert the raw results of a Sigstore signing operation into a Sigstore bundle.
@@ -332,10 +357,16 @@ def _make_bundle(
             checkpoint=Checkpoint(envelope=log_entry.inclusion_proof.checkpoint),
         )
 
+    # TODO: This is a bit of a hack.
+    if isinstance(content, MessageSignature):
+        kind_version = KindVersion(kind="hashedrekord", version="0.0.1")
+    else:
+        kind_version = KindVersion(kind="dsse", version="0.0.1")
+
     tlog_entry = TransparencyLogEntry(
         log_index=log_entry.log_index,
         log_id=LogId(key_id=bytes.fromhex(log_entry.log_id)),
-        kind_version=KindVersion(kind="hashedrekord", version="0.0.1"),
+        kind_version=kind_version,
         integrated_time=log_entry.integrated_time,
         inclusion_promise=InclusionPromise(
             signed_entry_timestamp=base64.b64decode(log_entry.inclusion_promise)
@@ -354,13 +385,11 @@ def _make_bundle(
     bundle = Bundle(
         media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
         verification_material=material,
-        message_signature=MessageSignature(
-            message_digest=HashOutput(
-                algorithm=HashAlgorithm.SHA2_256,
-                digest=bytes.fromhex(input_digest),
-            ),
-            signature=base64.b64decode(b64_signature),
-        ),
     )
+
+    if isinstance(content, MessageSignature):
+        bundle.message_signature = content
+    else:
+        bundle.dsse_envelope = content
 
     return bundle
