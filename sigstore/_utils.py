@@ -25,17 +25,12 @@ from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-<<<<<<< HEAD
-from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509 import (
     Certificate,
     ExtensionNotFound,
     Version,
     load_der_x509_certificate,
 )
-=======
-from cryptography.x509 import Certificate, ExtensionNotFound, Version
->>>>>>> f67b019 (Change API)
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 

@@ -15,6 +15,7 @@
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from pydantic import BaseModel
+import rekor_types
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 
@@ -33,11 +34,13 @@ class Hashed(BaseModel):
     The digest representing the hash value.
     """
 
-    def as_prehashed(self) -> Prehashed:
-        return Prehashed(self.hazmat_algorithm())
-
-    def hazmat_algorithm(self) -> hashes.HashAlgorithm:
+    def as_hashedrekord_algorithm(self) -> rekor_types.hashedrekord.Algorithm:
         if self.algorithm == HashAlgorithm.SHA2_256:
-            return hashes.SHA256()
-        # Add more hashes here.
+            return rekor_types.hashedrekord.Algorithm.SHA256
         raise ValueError(f"unknown hash algorithm: {self.algorithm}")
+
+    def as_prehashed(self) -> Prehashed:
+        if self.algorithm == HashAlgorithm.SHA2_256:
+            return Prehashed(hashes.SHA256())
+        raise ValueError(f"unknown hash algorithm: {self.algorithm}")
+
