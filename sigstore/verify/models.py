@@ -511,7 +511,7 @@ class VerificationMaterials:
             message_signature=MessageSignature(
                 message_digest=HashOutput(
                     algorithm=self.hashed_input.algorithm,
-                    digest=self.hashed_input.digest.hex(),
+                    digest=self.hashed_input.digest,
                 ),
                 signature=self.signature,
             ),
