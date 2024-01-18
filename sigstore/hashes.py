@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import rekor_types
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from pydantic import BaseModel
-import rekor_types
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 
@@ -43,4 +43,3 @@ class Hashed(BaseModel):
         if self.algorithm == HashAlgorithm.SHA2_256:
             return Prehashed(hashes.SHA256())
         raise ValueError(f"unknown hash algorithm: {self.algorithm}")
-
