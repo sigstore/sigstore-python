@@ -227,7 +227,7 @@ class Signer:
             content = MessageSignature(
                 message_digest=HashOutput(
                     algorithm=hashed_input.algorithm,
-                    digest=hashed_input.digest.hex(),
+                    digest=hashed_input.digest,
                 ),
                 signature=artifact_signature,
             )
