@@ -10,10 +10,13 @@ All versions prior to 0.9.0 are untracked.
 
 ### Added
 
+* API: `Signer.sign()` can now take a `Hashed` as an input,
+  performing a signature on a pre-computed hash value
+  ([#860](https://github.com/sigstore/sigstore-python/pull/860))
+
 * API: `Signer.sign()` can now take an in-toto `Statement` as an input,
   producing a DSSE-formatted signature rather than a "bare" signature
   ([#804](https://github.com/sigstore/sigstore-python/pull/804))
-
 
 * API: `SigningResult.content` has been added, representing either the
   `hashedrekord` entry's message signature or the `dsse` entry's envelope
