@@ -161,6 +161,10 @@ def key_id(key: PublicKey) -> KeyID:
 
 
 def get_digest(input_: IO[bytes] | sigstore_hashes.Hashed) -> sigstore_hashes.Hashed:
+    """
+    Compute the SHA256 digest of an input stream or, if given a `Hashed`,
+    return it directly.
+    """
     if isinstance(input_, sigstore_hashes.Hashed):
         return input_
 

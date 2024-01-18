@@ -35,11 +35,17 @@ class Hashed(BaseModel):
     """
 
     def _as_hashedrekord_algorithm(self) -> rekor_types.hashedrekord.Algorithm:
+        """
+        Returns an appropriate `hashedrekord.Algorithm` for this `Hashed`.
+        """
         if self.algorithm == HashAlgorithm.SHA2_256:
             return rekor_types.hashedrekord.Algorithm.SHA256
         raise ValueError(f"unknown hash algorithm: {self.algorithm}")
 
     def _as_prehashed(self) -> Prehashed:
+        """
+        Returns an appropriate Cryptography `Prehashed` for this `Hashed`.
+        """
         if self.algorithm == HashAlgorithm.SHA2_256:
             return Prehashed(hashes.SHA256())
         raise ValueError(f"unknown hash algorithm: {self.algorithm}")
