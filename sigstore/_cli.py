@@ -686,21 +686,9 @@ def _sign(args: argparse.Namespace) -> None:
     with signing_ctx.signer(identity) as signer:
         for file, outputs in output_map.items():
             logger.debug(f"signing for {file.name}")
-            with file.open(mode="rb", buffering=0) as iof:
+            with file.open(mode="rb", buffering=0) as io:
                 try:
-                    import hashlib
-                    import io
-                    from sigstore import hashes as sigstore_hashes
-                    from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
-
-                    hash = hashlib.sha256()
-                    hash.update(iof.read())
-                    digest = hash.digest()
-                    print(digest.hex())
-                    hashed = sigstore_hashes.Hashed(digest=digest, algorithm=HashAlgorithm.SHA2_256)
-                    result = signer.sign(hashed)
-
-                    #result = signer.sign(input_=io)
+                    result = signer.sign(input_=io)
                 except ExpiredIdentity as exp_identity:
                     print("Signature failed: identity token has expired")
                     raise exp_identity
