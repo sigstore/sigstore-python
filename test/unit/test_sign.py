@@ -18,11 +18,17 @@ import secrets
 
 import pretend
 import pytest
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 import sigstore.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
+from sigstore._utils import sha256_streaming
+from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
+from sigstore.verify.models import VerificationMaterials
+from sigstore.verify.policy import UnsafeNoOp
+from sigstore.verify.verifier import Verifier
 
 
 class TestSigningContext:
@@ -36,8 +42,8 @@ class TestSigningContext:
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-def test_sign_rekor_entry_consistent(id_config):
-    ctx, identity = id_config
+def test_sign_rekor_entry_consistent(signer_and_ident):
+    ctx, identity = signer_and_ident
 
     # NOTE: The actual signer instance is produced lazily, so that parameter
     # expansion doesn't fail in offline tests.
@@ -58,8 +64,8 @@ def test_sign_rekor_entry_consistent(id_config):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-def test_sct_verify_keyring_lookup_error(id_config, monkeypatch):
-    ctx, identity = id_config
+def test_sct_verify_keyring_lookup_error(signer_and_ident, monkeypatch):
+    ctx, identity = signer_and_ident
 
     # a signer whose keyring always fails to lookup a given key.
     ctx: SigningContext = ctx()
@@ -80,8 +86,8 @@ def test_sct_verify_keyring_lookup_error(id_config, monkeypatch):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-def test_sct_verify_keyring_error(id_config, monkeypatch):
-    ctx, identity = id_config
+def test_sct_verify_keyring_error(signer_and_ident, monkeypatch):
+    ctx, identity = signer_and_ident
 
     # a signer whose keyring throws an internal error.
     ctx: SigningContext = ctx()
@@ -97,8 +103,8 @@ def test_sct_verify_keyring_error(id_config, monkeypatch):
 
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-def test_identity_proof_claim_lookup(id_config, monkeypatch):
-    ctx, identity = id_config
+def test_identity_proof_claim_lookup(signer_and_ident, monkeypatch):
+    ctx, identity = signer_and_ident
 
     ctx: SigningContext = ctx()
     assert identity is not None
@@ -116,3 +122,27 @@ def test_identity_proof_claim_lookup(id_config, monkeypatch):
     assert expected_entry.integrated_time == actual_entry.integrated_time
     assert expected_entry.log_id.key_id == bytes.fromhex(actual_entry.log_id)
     assert expected_entry.log_index == actual_entry.log_index
+
+
+@pytest.mark.online
+@pytest.mark.ambient_oidc
+def test_sign_prehashed(staging):
+    sign_ctx, verifier, identity = staging
+
+    sign_ctx: SigningContext = sign_ctx()
+    verifier: Verifier = verifier()
+
+    input_ = io.BytesIO(secrets.token_bytes(32))
+    hashed = Hashed(digest=sha256_streaming(input_), algorithm=HashAlgorithm.SHA2_256)
+
+    with sign_ctx.signer(identity) as signer:
+        bundle = signer.sign(hashed)
+
+    assert bundle.message_signature.message_digest.algorithm == hashed.algorithm
+    assert bundle.message_signature.message_digest.digest == hashed.digest
+
+    input_.seek(0)
+    materials = VerificationMaterials.from_bundle(
+        input_=input_, bundle=bundle, offline=False
+    )
+    verifier.verify(materials=materials, policy=UnsafeNoOp())

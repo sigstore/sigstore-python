@@ -40,6 +40,7 @@ from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
 from sigstore.sign import SigningContext
 from sigstore.verify import VerificationMaterials
 from sigstore.verify.policy import VerificationSuccess
+from sigstore.verify.verifier import Verifier
 
 _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
@@ -50,7 +51,9 @@ assert _TUF_ASSETS.is_dir()
 
 def _has_oidc_id():
     # If there are tokens manually defined for us in the environment, use them.
-    if os.getenv("SIGSTORE_IDENTITY_TOKEN_production") is not None:
+    if os.getenv("SIGSTORE_IDENTITY_TOKEN_production") or os.getenv(
+        "SIGSTORE_IDENTITY_TOKEN_staging"
+    ):
         return True
 
     try:
@@ -240,7 +243,7 @@ def tuf_dirs(monkeypatch, tmp_path):
     ],
     ids=["production", "staging"],
 )
-def id_config(request) -> tuple[SigningContext, IdentityToken]:
+def signer_and_ident(request) -> tuple[type[SigningContext], type[IdentityToken]]:
     env, signer = request.param
     # Detect env variable for local interactive tests.
     token = os.getenv(f"SIGSTORE_IDENTITY_TOKEN_{env}")
@@ -249,6 +252,20 @@ def id_config(request) -> tuple[SigningContext, IdentityToken]:
         token = detect_credential(_DEFAULT_AUDIENCE)
 
     return signer, IdentityToken(token)
+
+
+@pytest.fixture
+def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
+    signer = SigningContext.staging
+    verifier = Verifier.staging
+
+    # Detect env variable for local interactive tests.
+    token = os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")
+    if not token:
+        # If the variable is not defined, try getting an ambient token.
+        token = detect_credential(_DEFAULT_AUDIENCE)
+
+    return signer, verifier, IdentityToken(token)
 
 
 @pytest.fixture
