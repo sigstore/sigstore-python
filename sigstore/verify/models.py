@@ -416,7 +416,7 @@ class VerificationMaterials:
                 ),
                 data=rekor_types.hashedrekord.Data(
                     hash=rekor_types.hashedrekord.Hash(
-                        algorithm=self.hashed_input.as_hashedrekord_algorithm(),
+                        algorithm=self.hashed_input._as_hashedrekord_algorithm(),
                         value=self.hashed_input.digest.hex(),
                     ),
                 ),

@@ -34,12 +34,12 @@ class Hashed(BaseModel):
     The digest representing the hash value.
     """
 
-    def as_hashedrekord_algorithm(self) -> rekor_types.hashedrekord.Algorithm:
+    def _as_hashedrekord_algorithm(self) -> rekor_types.hashedrekord.Algorithm:
         if self.algorithm == HashAlgorithm.SHA2_256:
             return rekor_types.hashedrekord.Algorithm.SHA256
         raise ValueError(f"unknown hash algorithm: {self.algorithm}")
 
-    def as_prehashed(self) -> Prehashed:
+    def _as_prehashed(self) -> Prehashed:
         if self.algorithm == HashAlgorithm.SHA2_256:
             return Prehashed(hashes.SHA256())
         raise ValueError(f"unknown hash algorithm: {self.algorithm}")

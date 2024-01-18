@@ -221,7 +221,7 @@ class Signer:
             hashed_input = get_digest(input_)
 
             artifact_signature = private_key.sign(
-                hashed_input.digest, ec.ECDSA(hashed_input.as_prehashed())
+                hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())
             )
 
             content = MessageSignature(
@@ -243,7 +243,7 @@ class Signer:
                     ),
                     data=rekor_types.hashedrekord.Data(
                         hash=rekor_types.hashedrekord.Hash(
-                            algorithm=hashed_input.as_hashedrekord_algorithm(),
+                            algorithm=hashed_input._as_hashedrekord_algorithm(),
                             value=hashed_input.digest.hex(),
                         )
                     ),
