@@ -49,7 +49,6 @@ import cryptography.x509 as x509
 import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from cryptography.x509.oid import NameOID
 from in_toto_attestation.v1.statement import Statement
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
@@ -57,7 +56,6 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     VerificationMaterial,
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
-    HashAlgorithm,
     HashOutput,
     LogId,
     MessageSignature,
@@ -73,6 +71,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
 )
 from sigstore_protobuf_specs.io.intoto import Envelope
 
+from sigstore import hashes as sigstore_hashes
 from sigstore._internal import dsse
 from sigstore._internal.fulcio import (
     ExpiredCertificate,
@@ -82,7 +81,7 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import PEMCert, sha256_streaming
+from sigstore._utils import PEMCert, get_digest
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
@@ -176,7 +175,7 @@ class Signer:
 
     def sign(
         self,
-        input_: IO[bytes] | Statement,
+        input_: IO[bytes] | Statement | sigstore_hashes.Hashed,
     ) -> Bundle:
         """Public API for signing blobs"""
         private_key = self._private_key
@@ -219,16 +218,16 @@ class Signer:
                 ),
             )
         else:
-            input_digest = sha256_streaming(input_)
+            hashed_input = get_digest(input_)
 
             artifact_signature = private_key.sign(
-                input_digest, ec.ECDSA(Prehashed(hashes.SHA256()))
+                hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())
             )
 
             content = MessageSignature(
                 message_digest=HashOutput(
-                    algorithm=HashAlgorithm.SHA2_256,
-                    digest=input_digest,
+                    algorithm=hashed_input.algorithm,
+                    digest=hashed_input.digest,
                 ),
                 signature=artifact_signature,
             )
@@ -244,8 +243,8 @@ class Signer:
                     ),
                     data=rekor_types.hashedrekord.Data(
                         hash=rekor_types.hashedrekord.Hash(
-                            algorithm=rekor_types.hashedrekord.Algorithm.SHA256,
-                            value=input_digest.hex(),
+                            algorithm=hashed_input._as_hashedrekord_algorithm(),
+                            value=hashed_input.digest.hex(),
                         )
                     ),
                 ),

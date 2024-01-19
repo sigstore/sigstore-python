@@ -32,7 +32,9 @@ from cryptography.x509 import (
     load_der_x509_certificate,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
+from sigstore import hashes as sigstore_hashes
 from sigstore.errors import Error
 
 if sys.version_info < (3, 11):
@@ -156,6 +158,19 @@ def key_id(key: PublicKey) -> KeyID:
     )
 
     return KeyID(hashlib.sha256(public_bytes).digest())
+
+
+def get_digest(input_: IO[bytes] | sigstore_hashes.Hashed) -> sigstore_hashes.Hashed:
+    """
+    Compute the SHA256 digest of an input stream or, if given a `Hashed`,
+    return it directly.
+    """
+    if isinstance(input_, sigstore_hashes.Hashed):
+        return input_
+
+    return sigstore_hashes.Hashed(
+        digest=sha256_streaming(input_), algorithm=HashAlgorithm.SHA2_256
+    )
 
 
 def sha256_streaming(io: IO[bytes]) -> bytes:
