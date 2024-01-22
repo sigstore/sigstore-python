@@ -60,7 +60,7 @@ lint = [
   "mypy ~= 1.1",
   # NOTE(ww): ruff is under active development, so we pin conservatively here
   # and let Dependabot periodically perform this update.
-  "ruff < 0.1.14",
+  "ruff < 0.1.15",
   "types-requests",
   "types-protobuf",
   "types-pyOpenSSL",
