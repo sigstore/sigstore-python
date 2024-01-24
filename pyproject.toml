@@ -128,4 +128,3 @@ ignore = ["E501"]
 # TODO: Enable "UP" here once Pydantic allows us to:
 # See: https://github.com/pydantic/pydantic/issues/4146
 select = ["E", "F", "I", "W"]
-target-version = "py38"

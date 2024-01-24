@@ -12,10 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      # NOTE: We intentionally lint against our minimum supported Python.
       - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
-          python-version: "3.8"
+          python-version: "3.x"
           cache: "pip"
           cache-dependency-path: pyproject.toml
 
