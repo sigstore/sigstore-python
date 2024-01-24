@@ -56,6 +56,9 @@ Documentation = "https://sigstore.github.io/sigstore-python/"
 test = ["pytest", "pytest-cov", "pretend", "coverage[toml]"]
 lint = [
   "bandit",
+  # HACK(ww): interrogate needs setuptools to provide `pkg_resources` on Python 3.12+;
+  # remove this when https://github.com/econchick/interrogate/issues/164 is resolved.
+  "setuptools",
   "interrogate",
   "mypy ~= 1.1",
   # NOTE(ww): ruff is under active development, so we pin conservatively here
