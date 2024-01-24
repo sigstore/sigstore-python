@@ -41,7 +41,7 @@ from sigstore._internal.rekor.client import (
     RekorKeyring,
 )
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import PEMCert, cert_der_to_pem
+from sigstore._utils import cert_der_to_pem
 from sigstore.errors import Error
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
@@ -52,7 +52,6 @@ from sigstore.oidc import (
     detect_credential,
 )
 from sigstore.sign import SigningContext
-from sigstore.transparency import LogEntry
 from sigstore.verify import (
     CertificateVerificationFailure,
     LogEntryMissing,
@@ -146,21 +145,6 @@ def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
     """
     Common input options, shared between all `sigstore verify` subcommands.
     """
-    group.add_argument(
-        "--certificate",
-        "--cert",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_CERTIFICATE"),
-        help="The PEM-encoded certificate to verify against; not used with multiple inputs",
-    )
-    group.add_argument(
-        "--signature",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_SIGNATURE"),
-        help="The signature to verify against; not used with multiple inputs",
-    )
     group.add_argument(
         "--bundle",
         metavar="FILE",
@@ -739,18 +723,12 @@ def _collect_verification_state(
     purposes) and `materials` is the `VerificationMaterials` to verify with.
     """
 
-    # Fail if --certificate, --signature, or --bundle is specified and we
-    # have more than one input.
-    if (args.certificate or args.signature or args.bundle) and len(args.files) > 1:
+    # Fail if --bundle is specified and we have more than one input.
+    if args.bundle and len(args.files) > 1:
         _die(
             args,
-            "--certificate, --signature, or --bundle can only be used "
-            "with a single input file",
+            "--bundle can only be used with a single input file",
         )
-
-    # Fail if `--certificate` or `--signature` is used with `--bundle`.
-    if args.bundle and (args.certificate or args.signature):
-        _die(args, "--bundle cannot be used with --certificate or --signature")
 
     # The converse of `sign`: we build up an expected input map and check
     # that we have everything so that we can fail early.
@@ -759,15 +737,7 @@ def _collect_verification_state(
         if not file.is_file():
             _die(args, f"Input must be a file: {file}")
 
-        sig, cert, bundle = (
-            args.signature,
-            args.certificate,
-            args.bundle,
-        )
-        if sig is None:
-            sig = file.parent / f"{file.name}.sig"
-        if cert is None:
-            cert = file.parent / f"{file.name}.crt"
+        bundle = args.bundle
         if bundle is None:
             # NOTE(ww): If the user hasn't specified a bundle via `--bundle` and
             # `{input}.sigstore.json` doesn't exist, then we try `{input}.sigstore`
@@ -790,27 +760,15 @@ def _collect_verification_state(
                     f"Conflicting inputs: {bundle} and {legacy_default_bundle}",
                 )
 
-        missing = []
-        if args.signature or args.certificate:
-            if not sig.is_file():
-                missing.append(str(sig))
-            if not cert.is_file():
-                missing.append(str(cert))
-            input_map[file] = {"cert": cert, "sig": sig}
-        else:
-            # If a user hasn't explicitly supplied `--signature`, `--certificate` or
-            # `--rekor-bundle`, we expect a bundle either supplied via `--bundle` or with the
-            # default `{input}.sigstore(.json)?` name.
-            if not bundle.is_file():
-                missing.append(str(bundle))
-
-            input_map[file] = {"bundle": bundle}
-
-        if missing:
+        # We expect a bundle either supplied via `--bundle` or with the
+        # default `{input}.sigstore(.json)?` name.
+        if not bundle.is_file():
             _die(
                 args,
-                f"Missing verification materials for {(file)}: {', '.join(missing)}",
+                f"Missing verification materials for {(file)}: {bundle}",
             )
+
+        input_map[file] = {"bundle": bundle}
 
     if args.staging:
         logger.debug("verify: staging instances requested")
@@ -846,38 +804,16 @@ def _collect_verification_state(
 
     all_materials = []
     for file, inputs in input_map.items():
-        cert_pem: str
-        signature: bytes
-        entry: LogEntry | None = None
-        if "bundle" in inputs:
-            # Load the bundle
-            logger.debug(f"Using bundle from: {inputs['bundle']}")
+        # Load the bundle
+        logger.debug(f"Using bundle from: {inputs['bundle']}")
 
-            bundle_bytes = inputs["bundle"].read_bytes()
-            bundle = Bundle().from_json(bundle_bytes)
+        bundle_bytes = inputs["bundle"].read_bytes()
+        bundle = Bundle().from_json(bundle_bytes)
 
-            with file.open(mode="rb", buffering=0) as io:
-                materials = VerificationMaterials.from_bundle(
-                    input_=io, bundle=bundle, offline=args.offline
-                )
-        else:
-            # Load the signing certificate
-            logger.debug(f"Using certificate from: {inputs['cert']}")
-            cert_pem = inputs["cert"].read_text()
-
-            # Load the signature
-            logger.debug(f"Using signature from: {inputs['sig']}")
-            b64_signature = inputs["sig"].read_text()
-            signature = base64.b64decode(b64_signature)
-
-            with file.open(mode="rb", buffering=0) as io:
-                materials = VerificationMaterials(
-                    input_=io,
-                    cert_pem=PEMCert(cert_pem),
-                    signature=signature,
-                    rekor_entry=entry,
-                    offline=args.offline,
-                )
+        with file.open(mode="rb", buffering=0) as io:
+            materials = VerificationMaterials.from_bundle(
+                input_=io, bundle=bundle, offline=args.offline
+            )
 
         logger.debug(f"Verifying contents from: {file}")
 
