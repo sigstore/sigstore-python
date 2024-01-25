@@ -21,13 +21,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import cast
-
-try:
-    from typing import Protocol
-except ImportError:  # pragma: no cover
-    # TODO(ww): Remove when our minimum Python is 3.8.
-    from typing_extensions import Protocol  # type: ignore[assignment]
+from typing import Protocol, cast
 
 from cryptography.x509 import (
     Certificate,
