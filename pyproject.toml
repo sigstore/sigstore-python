@@ -26,7 +26,7 @@ classifiers = [
 ]
 dependencies = [
   "appdirs ~= 1.4",
-  "cryptography >= 39",
+  "cryptography >= 42",
   "id >= 1.1.0",
   "importlib_resources ~= 5.7; python_version < '3.11'",
   "in-toto-attestation == 0.9.3",
