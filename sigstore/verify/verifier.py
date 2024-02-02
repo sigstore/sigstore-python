@@ -19,8 +19,8 @@ Verification API machinery.
 from __future__ import annotations
 
 import base64
-import datetime
 import logging
+from datetime import datetime, timezone
 from typing import List, cast
 
 from cryptography.exceptions import InvalidSignature
@@ -182,7 +182,7 @@ class Verifier:
 
         # 1) Verify that the signing certificate is signed by the root certificate and that the
         #    signing certificate was valid at the time of signing.
-        sign_date = materials.certificate.not_valid_before
+        sign_date = materials.certificate.not_valid_before_utc
         cert_ossl = X509.from_cryptography(materials.certificate)
 
         store.set_time(sign_date)
@@ -289,11 +289,11 @@ class Verifier:
                 )
 
         # 7) Verify that the signing certificate was valid at the time of signing
-        integrated_time = datetime.datetime.utcfromtimestamp(entry.integrated_time)
+        integrated_time = datetime.fromtimestamp(entry.integrated_time, tz=timezone.utc)
         if not (
-            materials.certificate.not_valid_before
+            materials.certificate.not_valid_before_utc
             <= integrated_time
-            <= materials.certificate.not_valid_after
+            <= materials.certificate.not_valid_after_utc
         ):
             return VerificationFailure(
                 reason="invalid signing cert: expired at time of Rekor entry"
