@@ -58,7 +58,7 @@ class LogCheckpoint(BaseModel):
     - an origin, e.g. "rekor.sigstage.dev - 8050909264565447525"
     - the size of the log,
     - the hash of the log,
-    - and any ancillary contants, e.g. "Timestamp: 1679349379012118479"
+    - and any optional ancillary contants, e.g. "Timestamp: 1679349379012118479"
 
     See: <https://github.com/transparency-dev/formats/blob/main/log/README.md>
     """
@@ -75,7 +75,7 @@ class LogCheckpoint(BaseModel):
         """
 
         lines = text.strip().split("\n")
-        if len(lines) < 4:
+        if len(lines) < 3:
             raise CheckpointError("Malformed LogCheckpoint: too few items in header!")
 
         origin = lines[0]
@@ -99,12 +99,7 @@ class LogCheckpoint(BaseModel):
         See class definition for a prose description of the format.
         """
         return "\n".join(
-            [
-                self.origin,
-                str(self.log_size),
-                self.log_hash,
-            ]
-            + self.other_content
+            [self.origin, str(self.log_size), self.log_hash, *self.other_content]
         )
 
 
