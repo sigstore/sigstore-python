@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [2.1.1]
+
+### Fixed
+
+* Fixed an incorrect assumption about Rekor checkpoints that future releases
+  of Rekor will not uphold ([#891](https://github.com/sigstore/sigstore-python/pull/891))
+
 ## [2.1.0]
 
 ### Added
