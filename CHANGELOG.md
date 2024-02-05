@@ -37,6 +37,17 @@ All versions prior to 0.9.0 are untracked.
 * **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `Bundle`,
   instead of a `SigningResult` ([#862](https://github.com/sigstore/sigstore-python/pull/862))
 
+## [2.1.2]
+
+This is a corrective release for [2.1.1].
+
+## [2.1.1]
+
+### Fixed
+
+* Fixed an incorrect assumption about Rekor checkpoints that future releases
+  of Rekor will not uphold ([#891](https://github.com/sigstore/sigstore-python/pull/891))
+
 ## [2.1.0]
 
 ### Added
@@ -326,7 +337,9 @@ All versions prior to 0.9.0 are untracked.
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v2.1.2...HEAD
+[2.1.2]: https://github.com/sigstore/sigstore-python/compare/v2.1.1...v2.1.2
+[2.1.1]: https://github.com/sigstore/sigstore-python/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/sigstore/sigstore-python/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/sigstore/sigstore-python/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/sigstore/sigstore-python/compare/v1.1.2...v2.0.0
