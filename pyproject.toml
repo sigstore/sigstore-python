@@ -25,7 +25,6 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
-  "appdirs ~= 1.4",
   "cryptography >= 42",
   "id >= 1.1.0",
   "importlib_resources ~= 5.7; python_version < '3.11'",
@@ -40,6 +39,7 @@ dependencies = [
   # NOTE(ww): Under active development, so strictly pinned.
   "sigstore-rekor-types == 0.0.12",
   "tuf >= 2.1,< 4.0",
+  "platformdirs ~= 4.2"
 ]
 requires-python = ">=3.8"
 
