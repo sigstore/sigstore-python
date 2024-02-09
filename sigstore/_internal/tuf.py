@@ -23,7 +23,7 @@ from functools import lru_cache
 from pathlib import Path
 from urllib import parse
 
-import appdirs
+import platformdirs
 from tuf.api import exceptions as TUFExceptions
 from tuf.ngclient import RequestsFetcher, Updater
 
@@ -55,11 +55,13 @@ def _get_dirs(url: str) -> tuple[Path, Path]:
     These directories are not guaranteed to already exist.
     """
 
-    builder = appdirs.AppDirs("sigstore-python", "sigstore")
+    app_name = "sigstore-python"
+    app_author = "sigstore"
+
     repo_base = parse.quote(url, safe="")
 
-    tuf_data_dir = Path(builder.user_data_dir) / "tuf"
-    tuf_cache_dir = Path(builder.user_cache_dir) / "tuf"
+    tuf_data_dir = Path(platformdirs.user_data_dir(app_name, app_author)) / "tuf"
+    tuf_cache_dir = Path(platformdirs.user_cache_dir(app_name, app_author)) / "tuf"
 
     return (tuf_data_dir / repo_base), (tuf_cache_dir / repo_base)
 
