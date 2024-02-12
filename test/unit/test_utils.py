@@ -187,7 +187,6 @@ def test_cert_is_leaf_invalid_version(helper):
 
 class TestKnownBundleTypes:
     def test_str(self):
-        for type_ in utils.KnownBundleTypes:
+        for type_ in utils.KnownBundleType:
             assert str(type_) == type_.value
-            assert type_ in utils.KnownBundleTypes
-            assert str(type_) in utils.KnownBundleTypes
+            assert type_ in utils.KnownBundleType
