@@ -485,7 +485,7 @@ class VerificationMaterials:
             )
 
         bundle = Bundle(
-            media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
+            media_type=KnownBundleTypes.BUNDLE_0_2,
             verification_material=VerificationMaterial(
                 public_key=PublicKeyIdentifier(),
                 x509_certificate_chain=X509CertificateChain(

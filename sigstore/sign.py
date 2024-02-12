@@ -81,7 +81,7 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import PEMCert, get_digest
+from sigstore._utils import KnownBundleTypes, PEMCert, get_digest
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
@@ -381,7 +381,7 @@ def _make_bundle(
     )
 
     bundle = Bundle(
-        media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
+        media_type=KnownBundleTypes.BUNDLE_0_2,
         verification_material=material,
     )
 
