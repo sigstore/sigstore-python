@@ -23,7 +23,6 @@ import json
 import logging
 from dataclasses import dataclass
 from textwrap import dedent
-from typing import IO
 
 import rekor_types
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -38,7 +37,6 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     VerificationMaterial,
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
-    HashOutput,
     LogId,
     MessageSignature,
     PublicKeyIdentifier,
@@ -53,7 +51,6 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     TransparencyLogEntry,
 )
 
-from sigstore import hashes as sigstore_hashes
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import (
     B64Str,
@@ -61,9 +58,9 @@ from sigstore._utils import (
     base64_encode_pem_cert,
     cert_is_leaf,
     cert_is_root_ca,
-    get_digest,
 )
 from sigstore.errors import Error
+from sigstore.hashes import Hashed
 from sigstore.transparency import LogEntry, LogInclusionProof
 
 logger = logging.getLogger(__name__)
@@ -179,11 +176,6 @@ class VerificationMaterials:
     Represents the materials needed to perform a Sigstore verification.
     """
 
-    hashed_input: sigstore_hashes.Hashed
-    """
-    The hash of the verification input.
-    """
-
     certificate: Certificate
     """
     The certificate that attests to and contains the public signing key.
@@ -227,7 +219,6 @@ class VerificationMaterials:
     def __init__(
         self,
         *,
-        input_: IO[bytes] | sigstore_hashes.Hashed,
         cert_pem: PEMCert,
         signature: bytes,
         offline: bool = False,
@@ -242,11 +233,8 @@ class VerificationMaterials:
         its proof of inclusion will not be checked. This is a slightly weaker
         verification mode, as it demonstrates that an entry has been signed by
         the log but not necessarily included in it.
-
-        Effect: `input_` is consumed as part of construction.
         """
 
-        self.hashed_input = get_digest(input_)
         self.certificate = load_pem_x509_certificate(cert_pem.encode())
         self.signature = signature
 
@@ -260,12 +248,10 @@ class VerificationMaterials:
 
     @classmethod
     def from_bundle(
-        cls, *, input_: IO[bytes], bundle: Bundle, offline: bool = False
+        cls, *, bundle: Bundle, offline: bool = False
     ) -> VerificationMaterials:
         """
         Create a new `VerificationMaterials` from the given Sigstore bundle.
-
-        Effect: `input_` is consumed as part of construction.
         """
         if bundle.media_type not in _KNOWN_BUNDLE_TYPES:
             raise InvalidMaterials(f"unsupported bundle format: {bundle.media_type}")
@@ -366,7 +352,6 @@ class VerificationMaterials:
         )
 
         return cls(
-            input_=input_,
             cert_pem=PEMCert(leaf_cert.public_bytes(Encoding.PEM).decode()),
             signature=signature,
             offline=offline,
@@ -383,9 +368,10 @@ class VerificationMaterials:
         """
         return self._rekor_entry is not None
 
-    def rekor_entry(self, client: RekorClient) -> LogEntry:
+    def rekor_entry(self, hashed_input: Hashed, client: RekorClient) -> LogEntry:
         """
-        Returns a `LogEntry` for the current signing materials.
+        Returns a `LogEntry` for the current signing materials and the given
+        hashed input.
         """
 
         offline = self._offline
@@ -416,8 +402,8 @@ class VerificationMaterials:
                 ),
                 data=rekor_types.hashedrekord.Data(
                     hash=rekor_types.hashedrekord.Hash(
-                        algorithm=self.hashed_input._as_hashedrekord_algorithm(),
-                        value=self.hashed_input.digest.hex(),
+                        algorithm=hashed_input._as_hashedrekord_algorithm(),
+                        value=hashed_input.digest.hex(),
                     ),
                 ),
             ),
@@ -509,10 +495,6 @@ class VerificationMaterials:
                 ],
             ),
             message_signature=MessageSignature(
-                message_digest=HashOutput(
-                    algorithm=self.hashed_input.algorithm,
-                    digest=self.hashed_input.digest,
-                ),
                 signature=self.signature,
             ),
         )

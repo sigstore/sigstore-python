@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import logging
 from datetime import datetime, timezone
-from typing import List, cast
+from typing import IO, List, cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -46,7 +46,7 @@ from sigstore._internal.rekor.checkpoint import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import B64Str, HexStr
+from sigstore._utils import B64Str, HexStr, get_digest
 from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore.verify.models import RekorEntryMissing as RekorEntryMissingError
 from sigstore.verify.models import (
@@ -143,6 +143,7 @@ class Verifier:
 
     def verify(
         self,
+        input_: IO[bytes],
         materials: VerificationMaterials,
         policy: VerificationPolicy,
     ) -> VerificationResult:
@@ -155,6 +156,8 @@ class Verifier:
         Returns a `VerificationResult` which will be truthy or falsey depending on
         success.
         """
+
+        hashed_input = get_digest(input_)
 
         # NOTE: The `X509Store` object currently cannot have its time reset once the `set_time`
         # method been called on it. To get around this, we construct a new one for every `verify`
@@ -223,8 +226,8 @@ class Verifier:
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
             signing_key.verify(
                 materials.signature,
-                materials.hashed_input.digest,
-                ec.ECDSA(materials.hashed_input._as_prehashed()),
+                hashed_input.digest,
+                ec.ECDSA(hashed_input._as_prehashed()),
             )
         except InvalidSignature:
             return VerificationFailure(reason="Signature is invalid for input")
@@ -235,11 +238,11 @@ class Verifier:
         # an offline entry), confirming its consistency with the other
         # artifacts in the process.
         try:
-            entry = materials.rekor_entry(self._rekor)
+            entry = materials.rekor_entry(hashed_input, self._rekor)
         except RekorEntryMissingError:
             return LogEntryMissing(
                 signature=B64Str(base64.b64encode(materials.signature).decode()),
-                artifact_hash=HexStr(materials.hashed_input.digest.hex()),
+                artifact_hash=HexStr(hashed_input.digest.hex()),
             )
         except InvalidRekorEntryError:
             return VerificationFailure(
