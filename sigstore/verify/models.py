@@ -333,7 +333,7 @@ class VerificationMaterials:
                 logger.debug(
                     "0.1 bundle contains inclusion proof without checkpoint; ignoring"
                 )
-        elif media_type == KnownBundleType.BUNDLE_0_2:
+        else:
             if not inclusion_proof:
                 raise InvalidMaterials("bundle must contain an inclusion proof")
             if not inclusion_proof.checkpoint.envelope:
