@@ -57,7 +57,7 @@ from sigstore import hashes as sigstore_hashes
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import (
     B64Str,
-    KnownBundleType,
+    BundleType,
     PEMCert,
     base64_encode_pem_cert,
     cert_is_leaf,
@@ -262,11 +262,11 @@ class VerificationMaterials:
         Effect: `input_` is consumed as part of construction.
         """
         try:
-            media_type = KnownBundleType(bundle.media_type)
+            media_type = BundleType(bundle.media_type)
         except ValueError:
             raise InvalidMaterials(f"unsupported bundle format: {bundle.media_type}")
 
-        if media_type == KnownBundleType.BUNDLE_0_3:
+        if media_type == BundleType.BUNDLE_0_3:
             leaf_cert = load_der_x509_certificate(
                 bundle.verification_material.certificate.raw_bytes
             )
@@ -326,7 +326,7 @@ class VerificationMaterials:
 
         inclusion_promise: InclusionPromise | None = tlog_entry.inclusion_promise
         inclusion_proof: InclusionProof | None = tlog_entry.inclusion_proof
-        if media_type == KnownBundleType.BUNDLE_0_1:
+        if media_type == BundleType.BUNDLE_0_1:
             if not inclusion_promise:
                 raise InvalidMaterials("bundle must contain an inclusion promise")
             if inclusion_proof and not inclusion_proof.checkpoint.envelope:
@@ -487,7 +487,7 @@ class VerificationMaterials:
             )
 
         bundle = Bundle(
-            media_type=KnownBundleType.BUNDLE_0_2,
+            media_type=BundleType.BUNDLE_0_2,
             verification_material=VerificationMaterial(
                 public_key=PublicKeyIdentifier(),
                 x509_certificate_chain=X509CertificateChain(

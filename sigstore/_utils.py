@@ -68,7 +68,7 @@ A newtype for `bytes` objects that contain a key id.
 """
 
 
-class KnownBundleType(str, Enum):
+class BundleType(str, Enum):
     """
     Known Sigstore bundle media types.
     """
