@@ -22,6 +22,9 @@ All versions prior to 0.9.0 are untracked.
   `hashedrekord` entry's message signature or the `dsse` entry's envelope
   ([#804](https://github.com/sigstore/sigstore-python/pull/804))
 
+* API: "v3" Sigstore bundles are now supported during verification
+  ([#901](https://github.com/sigstore/sigstore-python/pull/901))
+
 
 ### Removed
 
