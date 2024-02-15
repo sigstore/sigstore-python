@@ -14,9 +14,12 @@
 
 import pretend
 import pytest
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.trustroot import TrustedRoot
+from sigstore._utils import sha256_streaming
+from sigstore.hashes import Hashed
 from sigstore.verify.models import (
     InvalidMaterials,
     InvalidRekorEntry,
@@ -29,8 +32,12 @@ class TestVerificationMaterials:
     def test_rekor_entry_inconsistent_cve_2022_36056(
         self, signing_materials, signing_bundle
     ):
-        a_materials = signing_materials("a.txt")
-        offline_rekor_materials = signing_bundle("bundle.txt")
+        (_, a_materials) = signing_materials("a.txt")
+        (file, offline_rekor_materials) = signing_bundle("bundle.txt")
+
+        with file.open(mode="rb", buffering=0) as input_:
+            digest = sha256_streaming(input_)
+            hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
 
         # Stuff a valid but incompatible Rekor entry into the verification
         # materials for "a.txt".
@@ -38,20 +45,30 @@ class TestVerificationMaterials:
         a_materials._offline = True
 
         with pytest.raises(InvalidRekorEntry):
-            a_materials.rekor_entry(pretend.stub())
+            a_materials.rekor_entry(hashed, pretend.stub())
 
     @pytest.mark.online
     def test_verification_materials_retrieves_rekor_entry(self, signing_materials):
-        materials = signing_materials("a.txt")
+        file, materials = signing_materials("a.txt")
         assert materials._rekor_entry is None
 
         trust_root = TrustedRoot.staging()
         client = RekorClient.staging(trust_root)
-        entry = materials.rekor_entry(client)
+
+        with file.open(mode="rb", buffering=0) as input_:
+            digest = sha256_streaming(input_)
+            hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
+
+        entry = materials.rekor_entry(hashed, client)
+
         assert entry is not None
 
     def test_rekor_entry_missing(self, signing_materials):
-        a_materials = signing_materials("a.txt")
+        file, a_materials = signing_materials("a.txt")
+
+        with file.open(mode="rb", buffering=0) as input_:
+            digest = sha256_streaming(input_)
+            hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
 
         # stub retriever post returning None RekorEntry
         a_materials._rekor_entry = None
@@ -62,7 +79,7 @@ class TestVerificationMaterials:
         )
 
         with pytest.raises(RekorEntryMissing):
-            a_materials.rekor_entry(client)
+            a_materials.rekor_entry(hashed, client)
 
     def test_verification_materials_offline_no_log_entry(self, signing_materials):
         with pytest.raises(
@@ -89,19 +106,18 @@ class TestVerificationMaterials:
             signing_bundle("bundle_no_checkpoint.txt", offline=True)
 
     def test_verification_materials_to_bundle_round_trip(self, asset, signing_bundle):
-        bundle = signing_bundle("bundle.txt").to_bundle()
+        bundle = signing_bundle("bundle.txt")[1].to_bundle()
 
-        with asset("bundle.txt").open(mode="rb", buffering=0) as io:
-            round_tripped_bundle = VerificationMaterials.from_bundle(
-                input_=io, bundle=bundle, offline=True
-            ).to_bundle()
+        round_tripped_bundle = VerificationMaterials.from_bundle(
+            bundle=bundle, offline=True
+        ).to_bundle()
 
         assert bundle == round_tripped_bundle
 
     def test_verification_materials_to_bundle_no_rekor_entry(
         self, asset, signing_materials
     ):
-        materials = signing_materials("bundle.txt")
+        _, materials = signing_materials("bundle.txt")
 
         with pytest.raises(
             InvalidMaterials,
