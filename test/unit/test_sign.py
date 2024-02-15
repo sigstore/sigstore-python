@@ -142,7 +142,5 @@ def test_sign_prehashed(staging):
     assert bundle.message_signature.message_digest.digest == hashed.digest
 
     input_.seek(0)
-    materials = VerificationMaterials.from_bundle(
-        input_=input_, bundle=bundle, offline=False
-    )
-    verifier.verify(materials=materials, policy=UnsafeNoOp())
+    materials = VerificationMaterials.from_bundle(bundle=bundle, offline=False)
+    verifier.verify(input_, materials=materials, policy=UnsafeNoOp())
