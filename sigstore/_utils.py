@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import sys
+from enum import Enum
 from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
@@ -65,6 +66,20 @@ KeyID = NewType("KeyID", bytes)
 """
 A newtype for `bytes` objects that contain a key id.
 """
+
+
+class BundleType(str, Enum):
+    """
+    Known Sigstore bundle media types.
+    """
+
+    BUNDLE_0_1 = "application/vnd.dev.sigstore.bundle+json;version=0.1"
+    BUNDLE_0_2 = "application/vnd.dev.sigstore.bundle+json;version=0.2"
+    BUNDLE_0_3 = "application/vnd.dev.sigstore.bundle+json;version=0.3"
+
+    def __str__(self) -> str:
+        """Returns the variant's string value."""
+        return self.value
 
 
 class InvalidKeyError(Error):
