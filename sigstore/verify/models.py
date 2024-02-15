@@ -54,6 +54,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
 from sigstore._internal.rekor import RekorClient
 from sigstore._utils import (
     B64Str,
+    BundleType,
     PEMCert,
     base64_encode_pem_cert,
     cert_is_leaf,
@@ -64,13 +65,6 @@ from sigstore.hashes import Hashed
 from sigstore.transparency import LogEntry, LogInclusionProof
 
 logger = logging.getLogger(__name__)
-
-_BUNDLE_0_1 = "application/vnd.dev.sigstore.bundle+json;version=0.1"
-_BUNDLE_0_2 = "application/vnd.dev.sigstore.bundle+json;version=0.2"
-_KNOWN_BUNDLE_TYPES = {
-    _BUNDLE_0_1,
-    _BUNDLE_0_2,
-}
 
 
 class VerificationResult(BaseModel):
@@ -253,37 +247,44 @@ class VerificationMaterials:
         """
         Create a new `VerificationMaterials` from the given Sigstore bundle.
         """
-        if bundle.media_type not in _KNOWN_BUNDLE_TYPES:
+        try:
+            media_type = BundleType(bundle.media_type)
+        except ValueError:
             raise InvalidMaterials(f"unsupported bundle format: {bundle.media_type}")
 
-        certs = bundle.verification_material.x509_certificate_chain.certificates
-
-        if len(certs) == 0:
-            raise InvalidMaterials("expected non-empty certificate chain in bundle")
-
-        # Per client policy in protobuf-specs: the first entry in the chain
-        # MUST be a leaf certificate, and the rest of the chain MUST NOT
-        # include a root CA or any intermediate CAs that appear in an
-        # independent root of trust.
-        #
-        # We expect some old bundles to violate the rules around root
-        # and intermediate CAs, so we issue warnings and not hard errors
-        # in those cases.
-        leaf_cert, *chain_certs = [
-            load_der_x509_certificate(cert.raw_bytes) for cert in certs
-        ]
-        if not cert_is_leaf(leaf_cert):
-            raise InvalidMaterials(
-                "bundle contains an invalid leaf or non-leaf certificate in the leaf position"
+        if media_type == BundleType.BUNDLE_0_3:
+            leaf_cert = load_der_x509_certificate(
+                bundle.verification_material.certificate.raw_bytes
             )
+        else:
+            certs = bundle.verification_material.x509_certificate_chain.certificates
 
-        for chain_cert in chain_certs:
-            # TODO: We should also retrieve the root of trust here and
-            # cross-check against it.
-            if cert_is_root_ca(chain_cert):
-                logger.warning(
-                    "this bundle contains a root CA, making it subject to misuse"
+            if len(certs) == 0:
+                raise InvalidMaterials("expected non-empty certificate chain in bundle")
+
+            # Per client policy in protobuf-specs: the first entry in the chain
+            # MUST be a leaf certificate, and the rest of the chain MUST NOT
+            # include a root CA or any intermediate CAs that appear in an
+            # independent root of trust.
+            #
+            # We expect some old bundles to violate the rules around root
+            # and intermediate CAs, so we issue warnings and not hard errors
+            # in those cases.
+            leaf_cert, *chain_certs = [
+                load_der_x509_certificate(cert.raw_bytes) for cert in certs
+            ]
+            if not cert_is_leaf(leaf_cert):
+                raise InvalidMaterials(
+                    "bundle contains an invalid leaf or non-leaf certificate in the leaf position"
                 )
+
+            for chain_cert in chain_certs:
+                # TODO: We should also retrieve the root of trust here and
+                # cross-check against it.
+                if cert_is_root_ca(chain_cert):
+                    logger.warning(
+                        "this bundle contains a root CA, making it subject to misuse"
+                    )
 
         signature = bundle.message_signature.signature
 
@@ -303,7 +304,7 @@ class VerificationMaterials:
         #   contain a checkpoint; in this case, we ignore it (since it's
         #   useless without one).
         #
-        # * For 0.2, an inclusion proof is required; the client MUST
+        # * For 0.2+, an inclusion proof is required; the client MUST
         #   verify the inclusion proof. The inclusion prof MUST contain
         #   a checkpoint.
         #   The inclusion promise is NOT required; if present, the client
@@ -311,14 +312,14 @@ class VerificationMaterials:
 
         inclusion_promise: InclusionPromise | None = tlog_entry.inclusion_promise
         inclusion_proof: InclusionProof | None = tlog_entry.inclusion_proof
-        if bundle.media_type == _BUNDLE_0_1:
+        if media_type == BundleType.BUNDLE_0_1:
             if not inclusion_promise:
                 raise InvalidMaterials("bundle must contain an inclusion promise")
             if inclusion_proof and not inclusion_proof.checkpoint.envelope:
                 logger.debug(
                     "0.1 bundle contains inclusion proof without checkpoint; ignoring"
                 )
-        elif bundle.media_type == _BUNDLE_0_2:
+        else:
             if not inclusion_proof:
                 raise InvalidMaterials("bundle must contain an inclusion proof")
             if not inclusion_proof.checkpoint.envelope:
@@ -472,7 +473,7 @@ class VerificationMaterials:
             )
 
         bundle = Bundle(
-            media_type="application/vnd.dev.sigstore.bundle+json;version=0.2",
+            media_type=BundleType.BUNDLE_0_2,
             verification_material=VerificationMaterial(
                 public_key=PublicKeyIdentifier(),
                 x509_certificate_chain=X509CertificateChain(

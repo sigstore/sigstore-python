@@ -183,3 +183,10 @@ def test_cert_is_leaf_invalid_version(helper):
 
     with pytest.raises(utils.InvalidCertError):
         helper(cert)
+
+
+class TestKnownBundleTypes:
+    def test_str(self):
+        for type_ in utils.BundleType:
+            assert str(type_) == type_.value
+            assert type_ in utils.BundleType
