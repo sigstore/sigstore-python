@@ -946,12 +946,11 @@ def _verify_identity(args: argparse.Namespace) -> None:
             issuer=args.cert_oidc_issuer,
         )
 
-        with file.open(mode="rb", buffering=0) as input_:
-            result = verifier.verify(
-                input_=input_,
-                materials=materials,
-                policy=policy_,
-            )
+        result = verifier.verify(
+            input_=file.read_bytes(),
+            materials=materials,
+            policy=policy_,
+        )
 
         if result:
             print(f"OK: {file}")
@@ -986,8 +985,9 @@ def _verify_github(args: argparse.Namespace) -> None:
 
     verifier, files_with_materials = _collect_verification_state(args)
     for file, materials in files_with_materials:
-        with file.open(mode="rb", buffering=0) as input_:
-            result = verifier.verify(input_=input_, materials=materials, policy=policy_)
+        result = verifier.verify(
+            input_=file.read_bytes(), materials=materials, policy=policy_
+        )
 
         if result:
             print(f"OK: {file}")

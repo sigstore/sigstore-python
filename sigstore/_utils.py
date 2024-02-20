@@ -175,13 +175,22 @@ def key_id(key: PublicKey) -> KeyID:
     return KeyID(hashlib.sha256(public_bytes).digest())
 
 
-def get_digest(input_: IO[bytes] | sigstore_hashes.Hashed) -> sigstore_hashes.Hashed:
+def get_digest(
+    input_: bytes | IO[bytes] | sigstore_hashes.Hashed
+) -> sigstore_hashes.Hashed:
     """
-    Compute the SHA256 digest of an input stream or, if given a `Hashed`,
-    return it directly.
+    Compute the SHA256 digest of an input stream or buffer or,
+    if given a `Hashed`, return it directly.
     """
     if isinstance(input_, sigstore_hashes.Hashed):
         return input_
+
+    # If the input is already buffered into memory, there's no point in
+    # going back through an I/O abstraction.
+    if isinstance(input_, bytes):
+        return sigstore_hashes.Hashed(
+            digest=hashlib.sha256(input_).digest(), algorithm=HashAlgorithm.SHA2_256
+        )
 
     return sigstore_hashes.Hashed(
         digest=sha256_streaming(input_), algorithm=HashAlgorithm.SHA2_256

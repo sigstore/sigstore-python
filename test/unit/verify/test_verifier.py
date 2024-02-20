@@ -44,8 +44,7 @@ def test_verifier_one_verification(signing_materials, null_policy):
     (file, materials) = signing_materials("a.txt")
 
     verifier = Verifier.staging()
-    with file.open(mode="rb", buffering=0) as input_:
-        assert verifier.verify(input_, materials, null_policy)
+    assert verifier.verify(file.read_bytes(), materials, null_policy)
 
 
 @pytest.mark.online
@@ -55,16 +54,14 @@ def test_verifier_multiple_verifications(signing_materials, null_policy):
 
     verifier = Verifier.staging()
     for file, materials in [a, b]:
-        with file.open(mode="rb", buffering=0) as input_:
-            assert verifier.verify(input_, materials, null_policy)
+        assert verifier.verify(file.read_bytes(), materials, null_policy)
 
 
 def test_verifier_offline(signing_bundle, null_policy, mock_staging_tuf):
     (file, materials) = signing_bundle("bundle.txt", offline=True)
 
     verifier = Verifier.staging()
-    with file.open(mode="rb", buffering=0) as input_:
-        assert verifier.verify(input_, materials, null_policy)
+    assert verifier.verify(file.read_bytes(), materials, null_policy)
 
 
 def test_verify_result_boolish():
@@ -82,12 +79,11 @@ def test_verifier_email_identity(signing_materials):
     )
 
     verifier = Verifier.staging()
-    with file.open(mode="rb", buffering=0) as input_:
-        assert verifier.verify(
-            input_,
-            materials,
-            policy_,
-        )
+    assert verifier.verify(
+        file.read_bytes(),
+        materials,
+        policy_,
+    )
 
 
 @pytest.mark.online
@@ -102,12 +98,11 @@ def test_verifier_uri_identity(signing_materials):
     )
 
     verifier = Verifier.staging()
-    with file.open(mode="rb", buffering=0) as input_:
-        assert verifier.verify(
-            input_,
-            materials,
-            policy_,
-        )
+    assert verifier.verify(
+        file.read_bytes(),
+        materials,
+        policy_,
+    )
 
 
 @pytest.mark.online
@@ -118,12 +113,11 @@ def test_verifier_policy_check(signing_materials):
     policy_ = pretend.stub(verify=lambda cert: False)
 
     verifier = Verifier.staging()
-    with file.open(mode="rb", buffering=0) as input_:
-        assert not verifier.verify(
-            input_,
-            materials,
-            policy_,
-        )
+    assert not verifier.verify(
+        file.read_bytes(),
+        materials,
+        policy_,
+    )
 
 
 @pytest.mark.online
@@ -131,8 +125,7 @@ def test_verifier_invalid_signature(signing_materials, null_policy):
     (file, materials) = signing_materials("bad.txt")
 
     verifier = Verifier.staging()
-    with file.open(mode="rb", buffering=0) as input_:
-        assert not verifier.verify(input_, materials, null_policy)
+    assert not verifier.verify(file.read_bytes(), materials, null_policy)
 
 
 @pytest.mark.online
@@ -157,8 +150,7 @@ def test_verifier_invalid_online_missing_inclusion_proof(
     materials._rekor_entry = entry
     monkeypatch.setattr(materials, "rekor_entry", lambda *a: entry)
 
-    with file.open(mode="rb", buffering=0) as input_:
-        result = verifier.verify(input_, materials, null_policy)
+    result = verifier.verify(file.read_bytes(), materials, null_policy)
     assert not result
     assert result == VerificationFailure(reason="missing Rekor inclusion proof")
 
@@ -183,5 +175,4 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
     entry = materials.rekor_entry(hashed, verifier._rekor)
     monkeypatch.setattr(entry, "integrated_time", datetime.MINYEAR)
 
-    with file.open(mode="rb", buffering=0) as input_:
-        assert not verifier.verify(input_, materials, null_policy)
+    assert not verifier.verify(file.read_bytes(), materials, null_policy)

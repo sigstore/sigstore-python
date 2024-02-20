@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import logging
 from datetime import datetime, timezone
-from typing import IO, List, cast
+from typing import List, cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -143,7 +143,7 @@ class Verifier:
 
     def verify(
         self,
-        input_: IO[bytes],
+        input_: bytes,
         materials: VerificationMaterials,
         policy: VerificationPolicy,
     ) -> VerificationResult:
