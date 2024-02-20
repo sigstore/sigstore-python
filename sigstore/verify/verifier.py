@@ -47,6 +47,7 @@ from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import B64Str, HexStr, get_digest
+from sigstore.hashes import Hashed
 from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore.verify.models import RekorEntryMissing as RekorEntryMissingError
 from sigstore.verify.models import (
@@ -143,11 +144,14 @@ class Verifier:
 
     def verify(
         self,
-        input_: bytes,
+        input_: bytes | Hashed,
         materials: VerificationMaterials,
         policy: VerificationPolicy,
     ) -> VerificationResult:
         """Public API for verifying.
+
+        `input_` is the input to verify, either as a buffer of contents or as
+        a prehashed `Hashed` object.
 
         `materials` are the `VerificationMaterials` to verify.
 

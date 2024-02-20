@@ -132,8 +132,10 @@ def test_sign_prehashed(staging):
     sign_ctx: SigningContext = sign_ctx()
     verifier: Verifier = verifier()
 
-    input_ = io.BytesIO(secrets.token_bytes(32))
-    hashed = Hashed(digest=sha256_streaming(input_), algorithm=HashAlgorithm.SHA2_256)
+    input_ = secrets.token_bytes(32)
+    hashed = Hashed(
+        digest=sha256_streaming(io.BytesIO(input_)), algorithm=HashAlgorithm.SHA2_256
+    )
 
     with sign_ctx.signer(identity) as signer:
         bundle = signer.sign(hashed)
@@ -141,6 +143,9 @@ def test_sign_prehashed(staging):
     assert bundle.message_signature.message_digest.algorithm == hashed.algorithm
     assert bundle.message_signature.message_digest.digest == hashed.digest
 
-    input_.seek(0)
     materials = VerificationMaterials.from_bundle(bundle=bundle, offline=False)
+
+    # verifying against the original input works
     verifier.verify(input_, materials=materials, policy=UnsafeNoOp())
+    # verifying against the prehash also works
+    verifier.verify(hashed, materials=materials, policy=UnsafeNoOp())
