@@ -22,7 +22,7 @@ import base64
 import hashlib
 import sys
 from enum import Enum
-from typing import IO, NewType, Union
+from typing import IO, List, NewType, Tuple, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -34,6 +34,9 @@ from cryptography.x509 import (
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
+
+from cryptography.x509.certificate_transparency import SignedCertificateTimestamp
+
 
 from sigstore import hashes as sigstore_hashes
 from sigstore.errors import Error

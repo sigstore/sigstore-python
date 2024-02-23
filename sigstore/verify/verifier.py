@@ -25,7 +25,7 @@ from typing import List, cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509 import Certificate, ExtendedKeyUsage, KeyUsage
+from cryptography.x509 import Certificate, ExtendedKeyUsage, KeyUsage, load_pem_x509_certificate
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import (
     X509,
@@ -34,6 +34,7 @@ from OpenSSL.crypto import (
     X509StoreContextError,
 )
 from pydantic import ConfigDict
+from sigstore._internal.fulcio.client import get_sct_from_certificate
 
 from sigstore._internal.merkle import (
     InvalidInclusionProofError,
@@ -43,7 +44,9 @@ from sigstore._internal.rekor.checkpoint import (
     CheckpointError,
     verify_checkpoint,
 )
+
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.sct import verify_sct
 from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import B64Str, HexStr
@@ -113,6 +116,7 @@ class Verifier:
         establishing the trust chain for the signing certificate and signature.
         """
         self._rekor = rekor
+        self.bbb = fulcio_certificate_chain
 
         self._fulcio_certificate_chain: List[X509] = []
         for parent_cert in fulcio_certificate_chain:
@@ -193,6 +197,15 @@ class Verifier:
             return CertificateVerificationFailure(
                 exception=store_ctx_error,
             )
+        
+        # step 2 todo update order
+        sct = get_sct_from_certificate(materials.certificate)
+        verify_sct(
+            sct,
+            materials.certificate,
+            self.bbb,
+            self._rekor._ct_keyring
+        )
 
         # 2) Check that the signing certificate contains the proof claim as the subject
         # Check usage is "digital signature"

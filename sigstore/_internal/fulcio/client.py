@@ -34,8 +34,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509 import (
     Certificate,
     CertificateSigningRequest,
-    PrecertificateSignedCertificateTimestamps,
     load_pem_x509_certificate,
+    PrecertificateSignedCertificateTimestamps
 )
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
@@ -208,6 +208,19 @@ def _serialize_cert_request(req: CertificateSigningRequest) -> str:
     }
     return json.dumps(data)
 
+def get_sct_from_certificate(certificate: Certificate) -> SignedCertificateTimestamp:
+    # Try to retrieve the embedded SCTs within the cert.
+    precert_scts_extension = certificate.extensions.get_extension_for_class(
+        PrecertificateSignedCertificateTimestamps
+    ).value
+
+    if len(precert_scts_extension) != 1:
+        raise FulcioClientError(
+            f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
+        )
+    sct = precert_scts_extension[0]
+    return sct
+
 
 class FulcioSigningCert(_Endpoint):
     """
@@ -266,16 +279,7 @@ class FulcioSigningCert(_Endpoint):
         chain = [load_pem_x509_certificate(c.encode()) for c in certificates[1:]]
 
         if sct_embedded:
-            # Try to retrieve the embedded SCTs within the cert.
-            precert_scts_extension = cert.extensions.get_extension_for_class(
-                PrecertificateSignedCertificateTimestamps
-            ).value
-
-            if len(precert_scts_extension) != 1:
-                raise FulcioClientError(
-                    f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
-                )
-            sct = precert_scts_extension[0]
+            sct = get_sct_from_certificate(cert)
         else:
             # If we don't have any embedded SCTs, then we might be dealing
             # with a Fulcio instance that provides detached SCTs.
