@@ -25,7 +25,11 @@ from typing import List, cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509 import Certificate, ExtendedKeyUsage, KeyUsage, load_pem_x509_certificate
+from cryptography.x509 import (
+    Certificate,
+    ExtendedKeyUsage,
+    KeyUsage,
+)
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import (
     X509,
@@ -34,7 +38,6 @@ from OpenSSL.crypto import (
     X509StoreContextError,
 )
 from pydantic import ConfigDict
-from sigstore._internal.fulcio.client import get_sct_from_certificate
 
 from sigstore._internal.merkle import (
     InvalidInclusionProofError,
@@ -44,9 +47,8 @@ from sigstore._internal.rekor.checkpoint import (
     CheckpointError,
     verify_checkpoint,
 )
-
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.sct import verify_sct
+from sigstore._internal.sct import get_sct_from_certificate, verify_sct
 from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import B64Str, HexStr
@@ -116,12 +118,11 @@ class Verifier:
         establishing the trust chain for the signing certificate and signature.
         """
         self._rekor = rekor
-        self.bbb = fulcio_certificate_chain
-
-        self._fulcio_certificate_chain: List[X509] = []
-        for parent_cert in fulcio_certificate_chain:
-            parent_cert_ossl = X509.from_cryptography(parent_cert)
-            self._fulcio_certificate_chain.append(parent_cert_ossl)
+        self._fulcio_X509_certificate_chain: List[X509] = [
+            X509.from_cryptography(parent_cert)
+            for parent_cert in fulcio_certificate_chain
+        ]
+        self._fulcio_certificate_chain: List[Certificate] = fulcio_certificate_chain
 
     @classmethod
     def production(cls) -> Verifier:
@@ -164,7 +165,7 @@ class Verifier:
         # method been called on it. To get around this, we construct a new one for every `verify`
         # call.
         store = X509Store()
-        for parent_cert_ossl in self._fulcio_certificate_chain:
+        for parent_cert_ossl in self._fulcio_X509_certificate_chain:
             store.add_cert(parent_cert_ossl)
 
         # In order to verify an artifact, we need to achieve the following:
@@ -172,16 +173,17 @@ class Verifier:
         # 1) Verify that the signing certificate is signed by the certificate
         #    chain and that the signing certificate was valid at the time
         #    of signing.
-        # 2) Verify that the signing certificate belongs to the signer.
-        # 3) Verify that the artifact signature was signed by the public key in the
+        # 2) Verify the certificate sct.
+        # 3) Verify that the signing certificate belongs to the signer.
+        # 4) Verify that the artifact signature was signed by the public key in the
         #    signing certificate.
-        # 4) Verify that the Rekor entry is consistent with the other signing
+        # 5) Verify that the Rekor entry is consistent with the other signing
         #    materials (preventing CVE-2022-36056)
-        # 5) Verify the inclusion proof supplied by Rekor for this artifact,
+        # 6) Verify the inclusion proof supplied by Rekor for this artifact,
         #    if we're doing online verification.
-        # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this
+        # 7) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this
         #    artifact.
-        # 7) Verify that the signing certificate was valid at the time of
+        # 8) Verify that the signing certificate was valid at the time of
         #    signing by comparing the expiry against the integrated timestamp.
 
         # 1) Verify that the signing certificate is signed by the root certificate and that the
@@ -197,17 +199,17 @@ class Verifier:
             return CertificateVerificationFailure(
                 exception=store_ctx_error,
             )
-        
-        # step 2 todo update order
+
+        # 2) Check that the signing certificate has a valid sct
         sct = get_sct_from_certificate(materials.certificate)
         verify_sct(
             sct,
             materials.certificate,
-            self.bbb,
-            self._rekor._ct_keyring
+            self._fulcio_certificate_chain,
+            self._rekor._ct_keyring,
         )
 
-        # 2) Check that the signing certificate contains the proof claim as the subject
+        # 3) Check that the signing certificate contains the proof claim as the subject
         # Check usage is "digital signature"
         usage_ext = materials.certificate.extensions.get_extension_for_class(KeyUsage)
         if not usage_ext.value.digital_signature:
@@ -230,7 +232,7 @@ class Verifier:
 
         logger.debug("Successfully verified signing certificate validity...")
 
-        # 3) Verify that the signature was signed by the public key in the signing certificate
+        # 4) Verify that the signature was signed by the public key in the signing certificate
         try:
             signing_key = materials.certificate.public_key()
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
@@ -244,7 +246,7 @@ class Verifier:
 
         logger.debug("Successfully verified signature...")
 
-        # 4) Retrieve the Rekor entry for this artifact (potentially from
+        # 5) Retrieve the Rekor entry for this artifact (potentially from
         # an offline entry), confirming its consistency with the other
         # artifacts in the process.
         try:
@@ -259,7 +261,7 @@ class Verifier:
                 reason="Rekor entry contents do not match other signing materials"
             )
 
-        # 5) Verify the inclusion proof supplied by Rekor for this artifact.
+        # 6) Verify the inclusion proof supplied by Rekor for this artifact.
         #
         # The inclusion proof should always be present in the online case. In
         # the offline case, if it is present, we verify it.
@@ -289,7 +291,7 @@ class Verifier:
                 "inclusion proof not present in bundle: skipping due to offline verification"
             )
 
-        # 6) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
+        # 7) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         if entry.inclusion_promise:
             try:
                 verify_set(self._rekor, entry)
@@ -301,7 +303,7 @@ class Verifier:
                     reason=f"invalid Rekor entry SET: {inval_set}"
                 )
 
-        # 7) Verify that the signing certificate was valid at the time of signing
+        # 8) Verify that the signing certificate was valid at the time of signing
         integrated_time = datetime.fromtimestamp(entry.integrated_time, tz=timezone.utc)
         if not (
             materials.certificate.not_valid_before_utc
