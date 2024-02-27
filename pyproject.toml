@@ -122,7 +122,7 @@ plugins = ["pydantic.mypy"]
 [tool.bandit]
 exclude_dirs = ["./test"]
 
-[tool.ruff]
+[tool.ruff.lint]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 # TODO: Enable "UP" here once Pydantic allows us to:
