@@ -1,0 +1,32 @@
+{
+	"signed": {
+		"_type": "snapshot",
+		"spec_version": "1.0",
+		"version": 4,
+		"expires": "2028-09-26T22:52:19Z",
+		"meta": {
+			"registry.npmjs.org.json": {
+				"length": 715,
+				"hashes": {
+					"sha256": "4dc55b2b468b0d1c9629c457c5cfce2cc1c330c59c5a7cf71cb7549f1ef76f1d",
+					"sha512": "278f4b6112db9d4bd9366e1717cf710ad7eacf44605fd4f894c3374fc5dff850a1a03c24c4a885d050a4ac1a86fa6929537fae12d8c2864c8e0c239b382d5556"
+				},
+				"version": 2
+			},
+			"targets.json": {
+				"length": 4120,
+				"hashes": {
+					"sha256": "83107aa29ad45bf40c198d370b299272df612e5f03db2c06c7f90fca1fb1af5e",
+					"sha512": "b32a2ce40ec74aa453c34a6458a06abd5a0d28ded1114db9b8d49cb26eb6cce81790c9d019d5c9d88359ac78bddafe335225285485fa5443283351217da73e5d"
+				},
+				"version": 4
+			}
+		}
+	},
+	"signatures": [
+		{
+			"keyid": "314ae73abd3012fc73bfcc3783e31d03852716597642b891d6a33155c4baf600",
+			"sig": "3046022100be9bafe7c1ce4efb9d39082a164eca2205103e701164512b6c9286909e4515e6022100caab046152056039b0e72a2246ce4e9af2576fff0c56272d76a9653bdb7e502e"
+		}
+	]
+}
