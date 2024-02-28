@@ -145,8 +145,6 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
 
     ctfe_keys = _pem_keys(
         [
-            tuf_asset.target("ctfe.pub"),
-            tuf_asset.target("ctfe_2022.pub"),
             tuf_asset.target("ctfe_2022_2.pub"),
         ]
     )
