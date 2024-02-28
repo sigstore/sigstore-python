@@ -48,7 +48,10 @@ from sigstore._internal.rekor.checkpoint import (
     verify_checkpoint,
 )
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.sct import get_sct_from_certificate, verify_sct
+from sigstore._internal.sct import (
+    _get_precertificate_signed_certificate_timestamps,
+    verify_sct,
+)
 from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import B64Str, HexStr
@@ -122,7 +125,6 @@ class Verifier:
             X509.from_cryptography(parent_cert)
             for parent_cert in fulcio_certificate_chain
         ]
-        self._fulcio_certificate_chain: List[Certificate] = fulcio_certificate_chain
 
     @classmethod
     def production(cls) -> Verifier:
@@ -194,18 +196,24 @@ class Verifier:
         store.set_time(sign_date)
         store_ctx = X509StoreContext(store, cert_ossl)
         try:
-            store_ctx.verify_certificate()
+            # get_verified_chain returns the full chain including the end-entity certificate
+            # and chain should contain only CA certificates
+            chain = store_ctx.get_verified_chain()[1:]
         except X509StoreContextError as store_ctx_error:
             return CertificateVerificationFailure(
                 exception=store_ctx_error,
             )
 
         # 2) Check that the signing certificate has a valid sct
-        sct = get_sct_from_certificate(materials.certificate)
+
+        # The SignedCertificateTimestamp should be acessed by the index 0
+        sct = _get_precertificate_signed_certificate_timestamps(materials.certificate)[
+            0
+        ]
         verify_sct(
             sct,
             materials.certificate,
-            self._fulcio_certificate_chain,
+            [parent_cert.to_cryptography() for parent_cert in chain],
             self._rekor._ct_keyring,
         )
 

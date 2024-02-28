@@ -159,20 +159,20 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
 
     # Assert that trust root from TUF contains the expected keys/certs
     trust_root = TrustedRoot.staging()
-    assert _der_keys(trust_root.get_ctfe_keys()) == ctfe_keys
+    assert ctfe_keys[0] in _der_keys(trust_root.get_ctfe_keys())
     assert _der_keys(trust_root.get_rekor_keys()) == rekor_keys
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from offline TUF contains the expected keys/certs
     trust_root = TrustedRoot.staging(offline=True)
-    assert _der_keys(trust_root.get_ctfe_keys()) == ctfe_keys
+    assert ctfe_keys[0] in _der_keys(trust_root.get_ctfe_keys())
     assert _der_keys(trust_root.get_rekor_keys()) == rekor_keys
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from file contains the expected keys/certs
     path = tuf_asset.target_path("trusted_root.json")
     trust_root = TrustedRoot.from_file(path)
-    assert _der_keys(trust_root.get_ctfe_keys()) == ctfe_keys
+    assert ctfe_keys[0] in _der_keys(trust_root.get_ctfe_keys())
     assert _der_keys(trust_root.get_rekor_keys()) == rekor_keys
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
@@ -185,7 +185,7 @@ def test_trust_root_tuf_instance_error():
 def test_trust_root_tuf_ctfe_keys_error(monkeypatch):
     trust_root = TrustedRoot.staging(offline=True)
     monkeypatch.setattr(trust_root, "ctlogs", [])
-    with pytest.raises(Exception, match="Active CTFE keys not found in trusted root"):
+    with pytest.raises(Exception, match="CTFE keys not found in trusted root"):
         trust_root.get_ctfe_keys()
 
 

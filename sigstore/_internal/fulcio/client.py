@@ -44,7 +44,10 @@ from cryptography.x509.certificate_transparency import (
 )
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from sigstore._internal.sct import UnexpectedSctCountException, get_sct_from_certificate
+from sigstore._internal.sct import (
+    UnexpectedSctCountException,
+    _get_precertificate_signed_certificate_timestamps,
+)
 from sigstore._utils import B64Str
 from sigstore.oidc import IdentityToken
 
@@ -267,7 +270,8 @@ class FulcioSigningCert(_Endpoint):
 
         if sct_embedded:
             try:
-                sct: SignedCertificateTimestamp = get_sct_from_certificate(cert)
+                # The SignedCertificateTimestamp should be acessed by the index 0
+                sct = _get_precertificate_signed_certificate_timestamps(cert)[0]
 
             except UnexpectedSctCountException as ex:
                 raise FulcioClientError(ex)

@@ -98,13 +98,7 @@ class TrustedRoot(_TrustedRoot):
     @staticmethod
     def _get_tlog_keys(tlogs: list[TransparencyLogInstance]) -> Iterable[bytes]:
         """Return public key contents given transparency log instances."""
-
-        for key in tlogs:
-            if not _is_timerange_valid(key.public_key.valid_for, allow_expired=False):
-                continue
-            key_bytes = key.public_key.raw_bytes
-            if key_bytes:
-                yield key_bytes
+        return [key.public_key.raw_bytes for key in tlogs]
 
     @staticmethod
     def _get_ca_keys(
@@ -119,10 +113,10 @@ class TrustedRoot(_TrustedRoot):
                 yield cert.raw_bytes
 
     def get_ctfe_keys(self) -> list[bytes]:
-        """Return the active CTFE public keys contents."""
+        """Return the CTFE public keys contents."""
         ctfes: list[bytes] = list(self._get_tlog_keys(self.ctlogs))
         if not ctfes:
-            raise MetadataError("Active CTFE keys not found in trusted root")
+            raise MetadataError("CTFE keys not found in trusted root")
         return ctfes
 
     def get_rekor_keys(self) -> list[bytes]:
@@ -130,7 +124,7 @@ class TrustedRoot(_TrustedRoot):
         keys: list[bytes] = list(self._get_tlog_keys(self.tlogs))
 
         if len(keys) != 1:
-            raise MetadataError("Did not find one active Rekor key in trusted root")
+            raise MetadataError("Did not find one Rekor key in trusted root")
         return keys
 
     def get_fulcio_certs(self) -> list[Certificate]:

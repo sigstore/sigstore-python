@@ -162,21 +162,24 @@ class UnexpectedSctCountException(Exception):
     pass
 
 
-def get_sct_from_certificate(certificate: Certificate) -> SignedCertificateTimestamp:
+def _get_precertificate_signed_certificate_timestamps(
+    certificate: Certificate,
+) -> PrecertificateSignedCertificateTimestamps:
     # Try to retrieve the embedded SCTs within the cert.
     try:
         precert_scts_extension = certificate.extensions.get_extension_for_class(
             PrecertificateSignedCertificateTimestamps
         ).value
-    except ExtensionNotFound as ex:
-        raise ValueError("No PrecertificateSignedCertificateTimestamps found for the certificate")
+    except ExtensionNotFound:
+        raise ValueError(
+            "No PrecertificateSignedCertificateTimestamps found for the certificate"
+        )
 
     if len(precert_scts_extension) != 1:
         raise UnexpectedSctCountException(
             f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
         )
-    sct: SignedCertificateTimestamp = precert_scts_extension[0]
-    return sct
+    return precert_scts_extension
 
 
 def _cert_is_ca(cert: Certificate) -> bool:
