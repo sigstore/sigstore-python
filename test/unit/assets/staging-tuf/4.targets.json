@@ -1,0 +1,135 @@
+{
+	"signed": {
+		"_type": "targets",
+		"spec_version": "1.0",
+		"version": 4,
+		"expires": "2029-03-05T22:50:21Z",
+		"targets": {
+			"ctfe.pub": {
+				"length": 775,
+				"hashes": {
+					"sha256": "bd7a6812a1f239dfddbbb19d36c7423d21510da56d466ba5018401959cd66037",
+					"sha512": "b861189e48df51186a39612230fba6b02af951f7b35ad9375e8ca182d0e085d470e26d69f7cd4d7450a0f223991e8e5a4ddf8f1968caa15255de8e37035af43a"
+				},
+				"custom": {
+					"sigstore": {
+						"status": "Active",
+						"uri": "https://ctfe.sigstage.dev/test",
+						"usage": "CTFE"
+					}
+				}
+			},
+			"ctfe_2022.pub": {
+				"length": 178,
+				"hashes": {
+					"sha256": "910d899c7763563095a0fe684c8477573fedc19a78586de6ecfbfd8f289f5423",
+					"sha512": "ab975a75600fc366a837536d0dcba841b755552d21bb114498ff8ac9d2403f76643f5b91269bce5d124a365514719a3edee9dcc2b046cb173f51af659911fcd3"
+				},
+				"custom": {
+					"sigstore": {
+						"status": "Active",
+						"uri": "https://ctfe.sigstage.dev/2022",
+						"usage": "CTFE"
+					}
+				}
+			},
+			"ctfe_2022_2.pub": {
+				"length": 178,
+				"hashes": {
+					"sha256": "7054b4f15f969daca1c242bb9e77527abaf0b9acf9818a2a35144e4b32b20dc6",
+					"sha512": "3d035f94e1b14ac84627a28afdbed9a34861fb84239f76d73aa1a99f52262bfd95c4fa0ee71f1fd7e3bfb998d89cd5e0f0eafcff9fa7fa87c6e23484fc1e0cec"
+				},
+				"custom": {
+					"sigstore": {
+						"status": "Active",
+						"uri": "https://ctfe.sigstage.dev/2022-2",
+						"usage": "CTFE"
+					}
+				}
+			},
+			"fulcio.crt.pem": {
+				"length": 741,
+				"hashes": {
+					"sha256": "0e6b0442485ad552bea5f62f11c29e2acfda35307d7538430b4cc1dbef49bff1",
+					"sha512": "c69ae618883a0c89c282c0943a1ad0c16b0a7788f74e47a1adefc631dac48a0c4449d8c3de7455ae7d772e43c4a87e341f180b0614a46a86006969f8a7b84532"
+				},
+				"custom": {
+					"sigstore": {
+						"status": "Active",
+						"uri": "https://fulcio.sigstage.dev",
+						"usage": "Fulcio"
+					}
+				}
+			},
+			"fulcio_intermediate.crt.pem": {
+				"length": 790,
+				"hashes": {
+					"sha256": "782868913fe13c385105ddf33e827191386f58da40a931f2075a7e27b1b6ac7b",
+					"sha512": "90659875a02f73d1026055427c6d857c556e410e23748ff88aeb493227610fd2f5fbdd95ef2a21565f91438dfb3e073f50c4c9dd06f9a601b5d9b064d5cb60b4"
+				},
+				"custom": {
+					"sigstore": {
+						"status": "Active",
+						"uri": "https://fulcio.sigstage.dev",
+						"usage": "Fulcio"
+					}
+				}
+			},
+			"rekor.pub": {
+				"length": 178,
+				"hashes": {
+					"sha256": "1d80b8f72505a43e65e6e125247cd508f61b459dc457c1d1bcb78d96e1760959",
+					"sha512": "09ab08698a67354a95d3b8897d9ce7eaef05f06f5ed5f0202d79c228579858ecc5816b7e1b7cc6786abe7d6aaa758e1fcb05900cb749235186c3bf9522d6d7ce"
+				},
+				"custom": {
+					"sigstore": {
+						"status": "Active",
+						"uri": "https://rekor.sigstage.dev",
+						"usage": "Rekor"
+					}
+				}
+			},
+			"trusted_root.json": {
+				"length": 7256,
+				"hashes": {
+					"sha256": "99f4f7728a889fa7db2fec893c387714a64aaf032fbe3035909fc8445effb857",
+					"sha512": "acf0438a71de70bbf1813c908545281e0c4a1e3aafa2ce36b82c1cc24a9cce5169e9dcfe85c31bb4f662e94fdd9a686fa54fbbfccff1888e51ebd73924c12495"
+				}
+			}
+		},
+		"delegations": {
+			"keys": {
+				"314ae73abd3012fc73bfcc3783e31d03852716597642b891d6a33155c4baf600": {
+					"keytype": "ecdsa-sha2-nistp256",
+					"scheme": "ecdsa-sha2-nistp256",
+					"keyid_hash_algorithms": [
+						"sha256",
+						"sha512"
+					],
+					"keyval": {
+						"public": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEXMZ7rD8tWDE4lK/+naJN7INMxNC7\nbMMANDqTQE7WpzyzffWOg59hc/MwbvJtvuxhO9mEu3GD3Cn0HffFlmVRiA==\n-----END PUBLIC KEY-----\n"
+					}
+				}
+			},
+			"roles": [
+				{
+					"name": "registry.npmjs.org",
+					"keyids": [
+						"314ae73abd3012fc73bfcc3783e31d03852716597642b891d6a33155c4baf600"
+					],
+					"threshold": 1,
+					"terminating": true,
+					"paths": [
+						"registry.npmjs.org/*"
+					]
+				}
+			]
+		}
+	},
+	"signatures": [
+		{
+			"keyid": "c8e09a68b5821b75462ae0df52151c81deb7f1838246dc1da8c34cc91ec12bda",
+			"sig": "3045022100f96ad83711dcf8766cea141c0726c48ebdd982116eb5e8a29447ae956d93cc050220315ac2124fb8a66e2bbea4810bd857da8ba1abca1360f9b287d16647bdfcd066"
+		}
+	]
+}

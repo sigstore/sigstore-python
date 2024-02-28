@@ -41,12 +41,11 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # Expect requests of top-level metadata (and 404 for the next root version)
     # Don't expect trusted_root.json request as it's cached already
     expected_requests = {
-        "2.root.json": 1,
-        "2.snapshot.json": 1,
-        "2.targets.json": 1,
         "timestamp.json": 1,
+        "4.snapshot.json": 1,
+        "4.targets.json": 1,
     }
-    expected_fail_reqs = {"3.root.json": 1}
+    expected_fail_reqs = {"5.root.json": 1}
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
@@ -62,7 +61,7 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
 
     # Expect new timestamp and root requests
     expected_requests["timestamp.json"] += 1
-    expected_fail_reqs["3.root.json"] += 1
+    expected_fail_reqs["5.root.json"] += 1
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
@@ -146,8 +145,6 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
 
     ctfe_keys = _pem_keys(
         [
-            tuf_asset.target("ctfe.pub"),
-            tuf_asset.target("ctfe_2022.pub"),
             tuf_asset.target("ctfe_2022_2.pub"),
         ]
     )
@@ -155,8 +152,8 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     fulcio_certs = [
         load_pem_x509_certificate(c)
         for c in [
-            tuf_asset.target("fulcio.crt.pem"),
             tuf_asset.target("fulcio_intermediate.crt.pem"),
+            tuf_asset.target("fulcio.crt.pem"),
         ]
     ]
 

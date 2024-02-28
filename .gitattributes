@@ -1,5 +1,5 @@
 # These directories contain TUF and other assets that are either digested
 # or sized-checked so CRLF normalization breaks them.
-sigstore/_store/** binary
-test/unit/assets/** binary
+sigstore/_store/** binary diff=text
+test/unit/assets/** binary diff=text
 test/unit/assets/x509/** -binary
