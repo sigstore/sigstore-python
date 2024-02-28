@@ -154,8 +154,8 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     fulcio_certs = [
         load_pem_x509_certificate(c)
         for c in [
-            tuf_asset.target("fulcio.crt.pem"),
             tuf_asset.target("fulcio_intermediate.crt.pem"),
+            tuf_asset.target("fulcio.crt.pem"),
         ]
     ]
 
