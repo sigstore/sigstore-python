@@ -601,7 +601,7 @@ def _sign(args: argparse.Namespace) -> None:
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
     # so that we can fail early if overwriting without `--overwrite`.
-    output_map = {}
+    output_map: dict[Path, dict[str, Path | None]] = {}
     for file in args.files:
         if not file.is_file():
             _die(args, f"Input must be a file: {file}")
@@ -686,16 +686,18 @@ def _sign(args: argparse.Namespace) -> None:
     with signing_ctx.signer(identity) as signer:
         for file, outputs in output_map.items():
             logger.debug(f"signing for {file.name}")
-            with file.open(mode="rb", buffering=0) as io:
-                try:
-                    result = signer.sign(input_=io)
-                except ExpiredIdentity as exp_identity:
-                    print("Signature failed: identity token has expired")
-                    raise exp_identity
+            # TODO: Stream and pre-hash here instead, to avoid buffering
+            # large inputs.
+            input_ = file.read_bytes()
+            try:
+                result = signer.sign(input_=input_)
+            except ExpiredIdentity as exp_identity:
+                print("Signature failed: identity token has expired")
+                raise exp_identity
 
-                except ExpiredCertificate as exp_certificate:
-                    print("Signature failed: Fulcio signing certificate has expired")
-                    raise exp_certificate
+            except ExpiredCertificate as exp_certificate:
+                print("Signature failed: Fulcio signing certificate has expired")
+                raise exp_certificate
 
             print("Using ephemeral certificate:")
             cert = result.verification_material.x509_certificate_chain.certificates[0]
