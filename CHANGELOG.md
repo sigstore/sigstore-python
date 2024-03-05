@@ -56,6 +56,10 @@ All versions prior to 0.9.0 are untracked.
   a `Hashed` parameter to convey the digest used for Rekor entry lookup
   ([#904](https://github.com/sigstore/sigstore-python/pull/904))
 
+* **BREAKING API CHANGE**: `Signer.sign(...)` now takes a `bytes` instead of
+  an `IO[bytes]` for input. Other input types (such as `Hashed` and
+  `Statement`) are unchanged ([#921](https://github.com/sigstore/sigstore-python/pull/921))
+
 ## [2.1.2]
 
 This is a corrective release for [2.1.1].
