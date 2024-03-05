@@ -833,13 +833,13 @@ def _collect_verification_state(
         else:
             trusted_root = TrustedRoot.production()
             rekor_keys = trusted_root.get_rekor_keys()
+            ct_keys = trusted_root.get_ctfe_keys()
 
         verifier = Verifier(
             rekor=RekorClient(
                 url=args.rekor_url,
                 rekor_keyring=RekorKeyring(Keyring(rekor_keys)),
-                # We don't use the CT keyring in verification so we can supply an empty keyring
-                ct_keyring=CTKeyring(Keyring()),
+                ct_keyring=CTKeyring(Keyring(ct_keys)),
             ),
             fulcio_certificate_chain=certificate_chain,
         )

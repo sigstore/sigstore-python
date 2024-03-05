@@ -34,7 +34,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509 import (
     Certificate,
     CertificateSigningRequest,
-    PrecertificateSignedCertificateTimestamps,
     load_pem_x509_certificate,
 )
 from cryptography.x509.certificate_transparency import (
@@ -45,6 +44,10 @@ from cryptography.x509.certificate_transparency import (
 )
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from sigstore._internal.sct import (
+    UnexpectedSctCountException,
+    _get_precertificate_signed_certificate_timestamps,
+)
 from sigstore._utils import B64Str
 from sigstore.oidc import IdentityToken
 
@@ -266,16 +269,13 @@ class FulcioSigningCert(_Endpoint):
         chain = [load_pem_x509_certificate(c.encode()) for c in certificates[1:]]
 
         if sct_embedded:
-            # Try to retrieve the embedded SCTs within the cert.
-            precert_scts_extension = cert.extensions.get_extension_for_class(
-                PrecertificateSignedCertificateTimestamps
-            ).value
+            try:
+                # The SignedCertificateTimestamp should be acessed by the index 0
+                sct = _get_precertificate_signed_certificate_timestamps(cert)[0]
 
-            if len(precert_scts_extension) != 1:
-                raise FulcioClientError(
-                    f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
-                )
-            sct = precert_scts_extension[0]
+            except UnexpectedSctCountException as ex:
+                raise FulcioClientError(ex)
+
         else:
             # If we don't have any embedded SCTs, then we might be dealing
             # with a Fulcio instance that provides detached SCTs.

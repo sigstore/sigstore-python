@@ -24,7 +24,12 @@ from typing import List, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from cryptography.x509 import Certificate, ExtendedKeyUsage, ExtensionNotFound
+from cryptography.x509 import (
+    Certificate,
+    ExtendedKeyUsage,
+    ExtensionNotFound,
+    PrecertificateSignedCertificateTimestamps,
+)
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
     SignedCertificateTimestamp,
@@ -147,6 +152,34 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
     if _is_preissuer(issuer):
         issuer = chain[1]
     return issuer
+
+
+class UnexpectedSctCountException(Exception):
+    """
+    Number of percerts scts is wrong
+    """
+
+    pass
+
+
+def _get_precertificate_signed_certificate_timestamps(
+    certificate: Certificate,
+) -> PrecertificateSignedCertificateTimestamps:
+    # Try to retrieve the embedded SCTs within the cert.
+    try:
+        precert_scts_extension = certificate.extensions.get_extension_for_class(
+            PrecertificateSignedCertificateTimestamps
+        ).value
+    except ExtensionNotFound:
+        raise ValueError(
+            "No PrecertificateSignedCertificateTimestamps found for the certificate"
+        )
+
+    if len(precert_scts_extension) != 1:
+        raise UnexpectedSctCountException(
+            f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
+        )
+    return precert_scts_extension
 
 
 def _cert_is_ca(cert: Certificate) -> bool:
