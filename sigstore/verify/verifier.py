@@ -74,9 +74,9 @@ class LogEntryMissing(VerificationFailure):
     with additional lookup context.
     """
 
-    reason: (
-        str
-    ) = "The transparency log has no entry for the given verification materials"
+    reason: str = (
+        "The transparency log has no entry for the given verification materials"
+    )
 
     signature: B64Str
     """
