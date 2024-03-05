@@ -20,7 +20,7 @@ import re
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator
 from urllib.parse import urlparse
 
 import jwt
@@ -153,39 +153,38 @@ def tuf_asset():
 
 
 @pytest.fixture
-def signing_materials():
-    def _signing_materials(name: str, offline: bool = False) -> VerificationMaterials:
+def signing_materials() -> Callable[[str, bool], tuple[Path, VerificationMaterials]]:
+    def _signing_materials(
+        name: str, offline: bool = False
+    ) -> tuple[Path, VerificationMaterials]:
         file = _ASSETS / name
         cert = _ASSETS / f"{name}.crt"
         sig = _ASSETS / f"{name}.sig"
 
-        with file.open(mode="rb", buffering=0) as io:
-            materials = VerificationMaterials(
-                input_=io,
-                cert_pem=cert.read_text(),
-                signature=base64.b64decode(sig.read_text()),
-                offline=offline,
-                rekor_entry=None,
-            )
+        materials = VerificationMaterials(
+            cert_pem=cert.read_text(),
+            signature=base64.b64decode(sig.read_text()),
+            offline=offline,
+            rekor_entry=None,
+        )
 
-        return materials
+        return (file, materials)
 
     return _signing_materials
 
 
 @pytest.fixture
 def signing_bundle():
-    def _signing_bundle(name: str, *, offline: bool = False) -> VerificationMaterials:
+    def _signing_bundle(
+        name: str, *, offline: bool = False
+    ) -> tuple[Path, VerificationMaterials]:
         file = _ASSETS / name
         bundle = _ASSETS / f"{name}.sigstore"
         bundle = Bundle().from_json(bundle.read_bytes())
 
-        with file.open(mode="rb", buffering=0) as io:
-            materials = VerificationMaterials.from_bundle(
-                input_=io, bundle=bundle, offline=offline
-            )
+        materials = VerificationMaterials.from_bundle(bundle=bundle, offline=offline)
 
-        return materials
+        return (file, materials)
 
     return _signing_bundle
 
