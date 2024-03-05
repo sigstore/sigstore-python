@@ -121,7 +121,7 @@ class Verifier:
         establishing the trust chain for the signing certificate and signature.
         """
         self._rekor = rekor
-        self._fulcio_X509_certificate_chain: List[X509] = [
+        self._fulcio_certificate_chain: List[X509] = [
             X509.from_cryptography(parent_cert)
             for parent_cert in fulcio_certificate_chain
         ]
@@ -167,7 +167,7 @@ class Verifier:
         # method been called on it. To get around this, we construct a new one for every `verify`
         # call.
         store = X509Store()
-        for parent_cert_ossl in self._fulcio_X509_certificate_chain:
+        for parent_cert_ossl in self._fulcio_certificate_chain:
             store.add_cert(parent_cert_ossl)
 
         # In order to verify an artifact, we need to achieve the following:
