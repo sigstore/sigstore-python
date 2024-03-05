@@ -17,7 +17,7 @@ import pretend
 import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
-from sigstore._utils import sha256_streaming
+from sigstore._utils import _sha256_streaming
 from sigstore.hashes import Hashed
 from sigstore.transparency import LogEntry
 from sigstore.verify import policy
@@ -137,7 +137,7 @@ def test_verifier_invalid_online_missing_inclusion_proof(
     (file, materials) = signing_materials("a.txt")
 
     with file.open(mode="rb", buffering=0) as input_:
-        digest = sha256_streaming(input_)
+        digest = _sha256_streaming(input_)
         hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
 
     # Retrieve the entry, strip its inclusion proof, stuff it back
@@ -169,7 +169,7 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
     (file, materials) = signing_materials("a.txt")
 
     with file.open(mode="rb", buffering=0) as input_:
-        digest = sha256_streaming(input_)
+        digest = _sha256_streaming(input_)
         hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
 
     entry = materials.rekor_entry(hashed, verifier._rekor)

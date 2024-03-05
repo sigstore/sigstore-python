@@ -81,7 +81,7 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import BundleType, PEMCert, get_digest
+from sigstore._utils import BundleType, PEMCert, sha256_digest
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
@@ -230,7 +230,7 @@ class Signer:
                 ),
             )
         else:
-            hashed_input = get_digest(input_)
+            hashed_input = sha256_digest(input_)
 
             artifact_signature = private_key.sign(
                 hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())

@@ -68,7 +68,7 @@ def test_sha256_streaming(size):
     buf = b"x" * size
 
     expected_digest = hashlib.sha256(buf).digest()
-    actual_digest = utils.sha256_streaming(io.BytesIO(buf))
+    actual_digest = utils._sha256_streaming(io.BytesIO(buf))
 
     assert expected_digest == actual_digest
 

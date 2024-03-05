@@ -41,7 +41,7 @@ from sigstore._internal.rekor.client import (
     RekorKeyring,
 )
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import PEMCert, cert_der_to_pem
+from sigstore._utils import PEMCert, cert_der_to_pem, sha256_digest
 from sigstore.errors import Error
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
@@ -686,11 +686,12 @@ def _sign(args: argparse.Namespace) -> None:
     with signing_ctx.signer(identity) as signer:
         for file, outputs in output_map.items():
             logger.debug(f"signing for {file.name}")
-            # TODO: Stream and pre-hash here instead, to avoid buffering
-            # large inputs.
-            input_ = file.read_bytes()
+            with file.open(mode="rb") as io:
+                # The input can be indefinitely large, so we perform a streaming
+                # digest and sign the prehash rather than buffering it fully.
+                digest = sha256_digest(io)
             try:
-                result = signer.sign(input_=input_)
+                result = signer.sign(input_=digest)
             except ExpiredIdentity as exp_identity:
                 print("Signature failed: identity token has expired")
                 raise exp_identity
