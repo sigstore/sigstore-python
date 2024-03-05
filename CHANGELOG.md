@@ -25,20 +25,36 @@ All versions prior to 0.9.0 are untracked.
 * API: "v3" Sigstore bundles are now supported during verification
   ([#901](https://github.com/sigstore/sigstore-python/pull/901))
 
+* API: `Verifier.verify(...)` can now take a `Hashed` as an input, performing
+  signature verification on a pre-computed hash value
+  ([#904](https://github.com/sigstore/sigstore-python/pull/904))
 
 ### Removed
 
-* API: `SigningResult.input_digest` has been removed; users who expect
-  to access the input digest may do so by inspecting the `hashedrekord`
-  or `dsse`-specific `SigningResult.content`
+* **BREAKING API CHANGE**: `SigningResult.input_digest` has been removed;
+  users who expect to access the input digest may do so by inspecting the
+  `hashedrekord` or `dsse`-specific `SigningResult.content`
   ([#804](https://github.com/sigstore/sigstore-python/pull/804))
+
+* **BREAKING API CHANGE**: `VerificationMaterials.hashed_input` has been removed
+  ([#904](https://github.com/sigstore/sigstore-python/pull/904))
 
 ### Changed
 
 * **BREAKING API CHANGE**: `sigstore.sign.SigningResult` has been removed
   ([#862](https://github.com/sigstore/sigstore-python/pull/862))
+
 * **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `Bundle`,
   instead of a `SigningResult` ([#862](https://github.com/sigstore/sigstore-python/pull/862))
+
+* **BREAKING API CHANGE**: `Verifier.verify(...)`  now takes a `bytes | Hashed`
+  as its verification input, rather than implicitly receiving the input through
+  the `VerificationMaterials` parameter
+  ([#904](https://github.com/sigstore/sigstore-python/pull/904))
+
+* **BREAKING API CHANGE**: `VerificationMaterials.rekor_entry(...)` now takes
+  a `Hashed` parameter to convey the digest used for Rekor entry lookup
+  ([#904](https://github.com/sigstore/sigstore-python/pull/904))
 
 ## [2.1.2]
 

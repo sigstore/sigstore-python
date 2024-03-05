@@ -856,10 +856,9 @@ def _collect_verification_state(
             bundle_bytes = inputs["bundle"].read_bytes()
             bundle = Bundle().from_json(bundle_bytes)
 
-            with file.open(mode="rb", buffering=0) as io:
-                materials = VerificationMaterials.from_bundle(
-                    input_=io, bundle=bundle, offline=args.offline
-                )
+            materials = VerificationMaterials.from_bundle(
+                bundle=bundle, offline=args.offline
+            )
         else:
             # Load the signing certificate
             logger.debug(f"Using certificate from: {inputs['cert']}")
@@ -870,19 +869,16 @@ def _collect_verification_state(
             b64_signature = inputs["sig"].read_text()
             signature = base64.b64decode(b64_signature)
 
-            with file.open(mode="rb", buffering=0) as io:
-                materials = VerificationMaterials(
-                    input_=io,
-                    cert_pem=PEMCert(cert_pem),
-                    signature=signature,
-                    rekor_entry=entry,
-                    offline=args.offline,
-                )
+            materials = VerificationMaterials(
+                cert_pem=PEMCert(cert_pem),
+                signature=signature,
+                rekor_entry=entry,
+                offline=args.offline,
+            )
 
         logger.debug(f"Verifying contents from: {file}")
 
-        with file.open(mode="rb", buffering=0) as io:
-            all_materials.append((file, materials))
+        all_materials.append((file, materials))
 
     return (verifier, all_materials)
 
@@ -951,6 +947,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
         )
 
         result = verifier.verify(
+            input_=file.read_bytes(),
             materials=materials,
             policy=policy_,
         )
@@ -988,7 +985,9 @@ def _verify_github(args: argparse.Namespace) -> None:
 
     verifier, files_with_materials = _collect_verification_state(args)
     for file, materials in files_with_materials:
-        result = verifier.verify(materials=materials, policy=policy_)
+        result = verifier.verify(
+            input_=file.read_bytes(), materials=materials, policy=policy_
+        )
 
         if result:
             print(f"OK: {file}")
