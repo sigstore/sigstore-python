@@ -16,7 +16,6 @@
 APIs for interacting with Fulcio.
 """
 
-
 from .client import (
     DetachedFulcioSCT,
     ExpiredCertificate,
