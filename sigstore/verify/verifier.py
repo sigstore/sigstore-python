@@ -36,6 +36,7 @@ from OpenSSL.crypto import (
     X509Store,
     X509StoreContext,
     X509StoreContextError,
+    X509StoreFlags,
 )
 from pydantic import ConfigDict
 
@@ -174,6 +175,12 @@ class Verifier:
         # method been called on it. To get around this, we construct a new one for every `verify`
         # call.
         store = X509Store()
+        # NOTE: By explicitly setting the flags here, we ensure that OpenSSL's
+        # PARTIAL_CHAIN default does not change on us. Enabling PARTIAL_CHAIN
+        # would be strictly more conformant of OpenSSL, but we currently
+        # *want* the "long" chain behavior of performing path validation
+        # down to a self-signed root.
+        store.set_flags(X509StoreFlags.X509_STRICT)
         for parent_cert_ossl in self._fulcio_certificate_chain:
             store.add_cert(parent_cert_ossl)
 
