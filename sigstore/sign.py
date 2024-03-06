@@ -43,7 +43,7 @@ import base64
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import IO, Iterator, Optional
+from typing import Iterator, Optional
 
 import cryptography.x509 as x509
 import rekor_types
@@ -81,7 +81,7 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import BundleType, PEMCert, get_digest
+from sigstore._utils import BundleType, PEMCert, sha256_digest
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
@@ -174,9 +174,22 @@ class Signer:
 
     def sign(
         self,
-        input_: IO[bytes] | Statement | sigstore_hashes.Hashed,
+        input_: bytes | Statement | sigstore_hashes.Hashed,
     ) -> Bundle:
-        """Public API for signing blobs"""
+        """
+        Sign an input, and return a `Bundle` corresponding to the signed result.
+
+        The input can be one of three forms:
+
+        1. A `bytes` buffer;
+        2. A `Hashed` object, containing a pre-hashed input (e.g., for inputs
+           that are too large to buffer into memory);
+        3. An in-toto `Statement` object.
+
+        In cases (1) and (2), the signing operation will produce a `hashedrekord`
+        entry within the bundle. In case (3), the signing operation will produce
+        a DSSE envelope and corresponding `dsse` entry within the bundle.
+        """
         private_key = self._private_key
 
         if not self._identity_token.in_validity_period():
@@ -217,7 +230,7 @@ class Signer:
                 ),
             )
         else:
-            hashed_input = get_digest(input_)
+            hashed_input = sha256_digest(input_)
 
             artifact_signature = private_key.sign(
                 hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())

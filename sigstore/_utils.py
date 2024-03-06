@@ -175,7 +175,7 @@ def key_id(key: PublicKey) -> KeyID:
     return KeyID(hashlib.sha256(public_bytes).digest())
 
 
-def get_digest(
+def sha256_digest(
     input_: bytes | IO[bytes] | sigstore_hashes.Hashed,
 ) -> sigstore_hashes.Hashed:
     """
@@ -193,11 +193,11 @@ def get_digest(
         )
 
     return sigstore_hashes.Hashed(
-        digest=sha256_streaming(input_), algorithm=HashAlgorithm.SHA2_256
+        digest=_sha256_streaming(input_), algorithm=HashAlgorithm.SHA2_256
     )
 
 
-def sha256_streaming(io: IO[bytes]) -> bytes:
+def _sha256_streaming(io: IO[bytes]) -> bytes:
     """
     Compute the SHA256 of a stream.
 

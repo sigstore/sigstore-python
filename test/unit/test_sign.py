@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import base64
-import io
+import hashlib
 import secrets
 
 import pretend
@@ -23,7 +23,6 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 import sigstore.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
-from sigstore._utils import sha256_streaming
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
 from sigstore.verify.models import VerificationMaterials
@@ -50,7 +49,7 @@ def test_sign_rekor_entry_consistent(signer_and_ident):
     ctx: SigningContext = ctx()
     assert identity is not None
 
-    payload = io.BytesIO(secrets.token_bytes(32))
+    payload = secrets.token_bytes(32)
     with ctx.signer(identity) as signer:
         expected_entry = signer.sign(payload).verification_material.tlog_entries[0]
 
@@ -72,7 +71,7 @@ def test_sct_verify_keyring_lookup_error(signer_and_ident, monkeypatch):
     ctx._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringLookupError))
     assert identity is not None
 
-    payload = io.BytesIO(secrets.token_bytes(32))
+    payload = secrets.token_bytes(32)
 
     with pytest.raises(
         InvalidSCTError,
@@ -94,7 +93,7 @@ def test_sct_verify_keyring_error(signer_and_ident, monkeypatch):
     ctx._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringError))
     assert identity is not None
 
-    payload = io.BytesIO(secrets.token_bytes(32))
+    payload = secrets.token_bytes(32)
 
     with pytest.raises(InvalidSCTError):
         with ctx.signer(identity) as signer:
@@ -112,7 +111,7 @@ def test_identity_proof_claim_lookup(signer_and_ident, monkeypatch):
     # clear out the known issuers, forcing the `Identity`'s  `proof_claim` to be looked up.
     monkeypatch.setattr(sigstore.oidc, "_KNOWN_OIDC_ISSUERS", {})
 
-    payload = io.BytesIO(secrets.token_bytes(32))
+    payload = secrets.token_bytes(32)
 
     with ctx.signer(identity) as signer:
         expected_entry = signer.sign(payload).verification_material.tlog_entries[0]
@@ -134,7 +133,7 @@ def test_sign_prehashed(staging):
 
     input_ = secrets.token_bytes(32)
     hashed = Hashed(
-        digest=sha256_streaming(io.BytesIO(input_)), algorithm=HashAlgorithm.SHA2_256
+        digest=hashlib.sha256(input_).digest(), algorithm=HashAlgorithm.SHA2_256
     )
 
     with sign_ctx.signer(identity) as signer:

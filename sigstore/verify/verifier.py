@@ -54,7 +54,7 @@ from sigstore._internal.sct import (
 )
 from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import B64Str, HexStr, get_digest
+from sigstore._utils import B64Str, HexStr, sha256_digest
 from sigstore.hashes import Hashed
 from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
 from sigstore.verify.models import RekorEntryMissing as RekorEntryMissingError
@@ -168,7 +168,7 @@ class Verifier:
         success.
         """
 
-        hashed_input = get_digest(input_)
+        hashed_input = sha256_digest(input_)
 
         # NOTE: The `X509Store` object currently cannot have its time reset once the `set_time`
         # method been called on it. To get around this, we construct a new one for every `verify`

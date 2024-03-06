@@ -18,7 +18,7 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import sha256_streaming
+from sigstore._utils import _sha256_streaming
 from sigstore.hashes import Hashed
 from sigstore.verify.models import (
     InvalidMaterials,
@@ -36,7 +36,7 @@ class TestVerificationMaterials:
         (file, offline_rekor_materials) = signing_bundle("bundle.txt")
 
         with file.open(mode="rb", buffering=0) as input_:
-            digest = sha256_streaming(input_)
+            digest = _sha256_streaming(input_)
             hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
 
         # Stuff a valid but incompatible Rekor entry into the verification
@@ -56,7 +56,7 @@ class TestVerificationMaterials:
         client = RekorClient.staging(trust_root)
 
         with file.open(mode="rb", buffering=0) as input_:
-            digest = sha256_streaming(input_)
+            digest = _sha256_streaming(input_)
             hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
 
         entry = materials.rekor_entry(hashed, client)
@@ -67,7 +67,7 @@ class TestVerificationMaterials:
         file, a_materials = signing_materials("a.txt")
 
         with file.open(mode="rb", buffering=0) as input_:
-            digest = sha256_streaming(input_)
+            digest = _sha256_streaming(input_)
             hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
 
         # stub retriever post returning None RekorEntry
