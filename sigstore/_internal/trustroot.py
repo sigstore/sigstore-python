@@ -98,7 +98,12 @@ class TrustedRoot(_TrustedRoot):
     @staticmethod
     def _get_tlog_keys(tlogs: list[TransparencyLogInstance]) -> Iterable[bytes]:
         """Return public key contents given transparency log instances."""
-        return [key.public_key.raw_bytes for key in tlogs]
+        for key in tlogs:
+            if not _is_timerange_valid(key.public_key.valid_for, allow_expired=True):
+                continue
+            key_bytes = key.public_key.raw_bytes
+            if key_bytes:
+                yield key_bytes
 
     @staticmethod
     def _get_ca_keys(
