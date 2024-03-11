@@ -217,7 +217,7 @@ class Signer:
         content: MessageSignature | Envelope
         proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse
         if isinstance(input_, dsse.Statement):
-            content = input_.sign(private_key)
+            content = dsse._sign(private_key, input_)
 
             # Create the proposed DSSE entry
             proposed_entry = rekor_types.Dsse(

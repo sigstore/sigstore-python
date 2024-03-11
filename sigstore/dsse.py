@@ -24,7 +24,8 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictStr, ValidationError
-from sigstore_protobuf_specs.io.intoto import Envelope, Signature
+from sigstore_protobuf_specs.io.intoto import Envelope as _Envelope
+from sigstore_protobuf_specs.io.intoto import Signature
 
 _logger = logging.getLogger(__name__)
 
@@ -83,8 +84,6 @@ class Statement:
     See: <https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md>
     """
 
-    _ENVELOPE_TYPE = "application/vnd.in-toto+json"
-
     def __init__(self, contents: bytes) -> None:
         """
         Construct a new Statement.
@@ -107,25 +106,9 @@ class Statement:
         # See:
         # https://github.com/secure-systems-lab/dsse/blob/v1.0.0/envelope.md
         # https://github.com/in-toto/attestation/blob/v1.0/spec/v1.0/envelope.md
-        pae = f"DSSEv1 {len(Statement._ENVELOPE_TYPE)} {Statement._ENVELOPE_TYPE} ".encode()
+        pae = f"DSSEv1 {len(Envelope._TYPE)} {Envelope._TYPE} ".encode()
         pae += b" ".join([str(len(self._contents)).encode(), self._contents])
         return pae
-
-    def sign(self, key: ec.EllipticCurvePrivateKey) -> Envelope:
-        """
-        Sign the statement, returning a DSSE envelope containing the statement's
-        signature.
-        """
-
-        pae = self._pae()
-        _logger.debug(f"DSSE PAE: {pae!r}")
-
-        signature = key.sign(pae, ec.ECDSA(hashes.SHA256()))
-        return Envelope(
-            payload=self._contents,
-            payload_type=Statement._ENVELOPE_TYPE,
-            signatures=[Signature(sig=signature, keyid=None)],
-        )
 
 
 class _StatementBuilder:
@@ -182,3 +165,47 @@ class _StatementBuilder:
             raise ValueError(f"invalid statement: {e}")
 
         return Statement(stmt.model_dump_json(by_alias=True).encode())
+
+
+class Envelope:
+    """
+    Represents a DSSE envelope.
+
+    This class cannot be constructed directly; you must use `sign`.
+
+    See: <https://github.com/secure-systems-lab/dsse/blob/v1.0.0/envelope.md>
+    """
+
+    _TYPE = "application/vnd.in-toto+json"
+
+    def __init__(self, inner: _Envelope) -> None:
+        """
+        @private
+        """
+
+        self._inner = inner
+
+    def to_json(self) -> str:
+        """
+        Return a JSON string with this DSSE envelope's contents.
+        """
+        # TODO: Unclear why mypy thinks this is returning `Any`.
+        return self._inner.to_json()  # type: ignore[no-any-return]
+
+
+def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
+    """
+    Sign for the given in-toto `Statement`, and encapsulate the resulting
+    signature in a DSSE `Envelope`.
+    """
+    pae = stmt._pae()
+    _logger.debug(f"DSSE PAE: {pae!r}")
+
+    signature = key.sign(pae, ec.ECDSA(hashes.SHA256()))
+    return Envelope(
+        _Envelope(
+            payload=stmt._contents,
+            payload_type=Envelope._TYPE,
+            signatures=[Signature(sig=signature, keyid=None)],
+        )
+    )
