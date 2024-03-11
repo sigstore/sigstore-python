@@ -50,7 +50,6 @@ import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
-from in_toto_attestation.v1.statement import Statement
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle,
     VerificationMaterial,
@@ -71,8 +70,8 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
 )
 from sigstore_protobuf_specs.io.intoto import Envelope
 
+from sigstore import dsse
 from sigstore import hashes as sigstore_hashes
-from sigstore._internal import dsse
 from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioCertificateSigningResponse,
@@ -174,7 +173,7 @@ class Signer:
 
     def sign(
         self,
-        input_: bytes | Statement | sigstore_hashes.Hashed,
+        input_: bytes | dsse.Statement | sigstore_hashes.Hashed,
     ) -> Bundle:
         """
         Sign an input, and return a `Bundle` corresponding to the signed result.
@@ -217,8 +216,8 @@ class Signer:
         # Sign artifact
         content: MessageSignature | Envelope
         proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse
-        if isinstance(input_, Statement):
-            content = dsse.sign_intoto(private_key, input_)
+        if isinstance(input_, dsse.Statement):
+            content = input_.sign(private_key)
 
             # Create the proposed DSSE entry
             proposed_entry = rekor_types.Dsse(

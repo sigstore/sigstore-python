@@ -28,7 +28,6 @@ dependencies = [
   "cryptography >= 42",
   "id >= 1.1.0",
   "importlib_resources ~= 5.7; python_version < '3.11'",
-  "in-toto-attestation == 0.9.3",
   "pydantic >= 2,< 3",
   "pyjwt >= 2.1",
   "pyOpenSSL >= 23.0.0",
@@ -65,7 +64,6 @@ lint = [
   # and let Dependabot periodically perform this update.
   "ruff < 0.3.2",
   "types-requests",
-  "types-protobuf",
   "types-pyOpenSSL",
 ]
 doc = ["pdoc"]
