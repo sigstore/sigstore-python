@@ -26,7 +26,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictStr, ValidationError
 from sigstore_protobuf_specs.io.intoto import Envelope, Signature
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 _Digest = Union[
     Literal["sha256"],
@@ -118,7 +118,7 @@ class Statement:
         """
 
         pae = self._pae()
-        logger.debug(f"DSSE PAE: {pae!r}")
+        _logger.debug(f"DSSE PAE: {pae!r}")
 
         signature = key.sign(pae, ec.ECDSA(hashes.SHA256()))
         return Envelope(

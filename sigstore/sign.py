@@ -84,7 +84,7 @@ from sigstore._utils import BundleType, PEMCert, sha256_digest
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class Signer:
@@ -118,16 +118,16 @@ class Signer:
             FulcioCertificateSigningResponse
         ] = None
         if cache:
-            logger.debug("Generating ephemeral keys...")
+            _logger.debug("Generating ephemeral keys...")
             self.__cached_private_key = ec.generate_private_key(ec.SECP256R1())
-            logger.debug("Requesting ephemeral certificate...")
+            _logger.debug("Requesting ephemeral certificate...")
             self.__cached_signing_certificate = self._signing_cert(self._private_key)
 
     @property
     def _private_key(self) -> ec.EllipticCurvePrivateKey:
         """Get or generate a signing key."""
         if self.__cached_private_key is None:
-            logger.debug("no cached key; generating ephemeral key")
+            _logger.debug("no cached key; generating ephemeral key")
             return ec.generate_private_key(ec.SECP256R1())
         return self.__cached_private_key
 
@@ -144,7 +144,7 @@ class Signer:
             return self.__cached_signing_certificate
 
         else:
-            logger.debug("Retrieving signed certificate...")
+            _logger.debug("Retrieving signed certificate...")
 
             # Build an X.509 Certificiate Signing Request
             builder = (
@@ -206,7 +206,7 @@ class Signer:
 
         verify_sct(sct, cert, chain, self._signing_ctx._rekor._ct_keyring)
 
-        logger.debug("Successfully verified SCT...")
+        _logger.debug("Successfully verified SCT...")
 
         # Prepare inputs
         b64_cert = base64.b64encode(
@@ -264,7 +264,7 @@ class Signer:
         # Submit the proposed entry to the transparency log
         entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
 
-        logger.debug(f"Transparency log entry created with index: {entry.log_index}")
+        _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         return _make_bundle(
             content=content,

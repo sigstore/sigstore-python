@@ -64,7 +64,7 @@ from sigstore.errors import Error
 from sigstore.hashes import Hashed
 from sigstore.transparency import LogEntry, LogInclusionProof
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class VerificationResult(BaseModel):
@@ -282,7 +282,7 @@ class VerificationMaterials:
                 # TODO: We should also retrieve the root of trust here and
                 # cross-check against it.
                 if cert_is_root_ca(chain_cert):
-                    logger.warning(
+                    _logger.warning(
                         "this bundle contains a root CA, making it subject to misuse"
                     )
 
@@ -316,7 +316,7 @@ class VerificationMaterials:
             if not inclusion_promise:
                 raise InvalidMaterials("bundle must contain an inclusion promise")
             if inclusion_proof and not inclusion_proof.checkpoint.envelope:
-                logger.debug(
+                _logger.debug(
                     "0.1 bundle contains inclusion proof without checkpoint; ignoring"
                 )
         else:
@@ -385,7 +385,7 @@ class VerificationMaterials:
             and self._rekor_entry.inclusion_proof.checkpoint  # type: ignore
         )
 
-        logger.debug(
+        _logger.debug(
             f"has_inclusion_proof={has_inclusion_proof} "
             f"has_inclusion_promise={has_inclusion_promise}"
         )
@@ -412,7 +412,7 @@ class VerificationMaterials:
 
         entry: LogEntry | None = None
         if offline:
-            logger.debug("offline mode; using offline log entry")
+            _logger.debug("offline mode; using offline log entry")
             # In offline mode, we require either an inclusion proof or an
             # inclusion promise. Every `LogEntry` has at least one as a
             # construction invariant, so no additional check is required here.
@@ -421,7 +421,7 @@ class VerificationMaterials:
             # In online mode, we require an inclusion proof. If our supplied log
             # entry doesn't have one, then we perform a lookup.
             if not has_inclusion_proof:
-                logger.debug("retrieving transparency log entry")
+                _logger.debug("retrieving transparency log entry")
                 entry = client.log.entries.retrieve.post(expected_entry)
             else:
                 entry = self._rekor_entry
@@ -430,7 +430,7 @@ class VerificationMaterials:
         if entry is None:
             raise RekorEntryMissing
 
-        logger.debug("Rekor entry: ensuring contents match signing materials")
+        _logger.debug("Rekor entry: ensuring contents match signing materials")
 
         # To catch a potentially dishonest or compromised Rekor instance, we compare
         # the expected entry (generated above) with the JSON structure returned
