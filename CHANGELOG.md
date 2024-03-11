@@ -29,6 +29,9 @@ All versions prior to 0.9.0 are untracked.
   signature verification on a pre-computed hash value
   ([#904](https://github.com/sigstore/sigstore-python/pull/904))
 
+* API: The `sigstore.dsse` module and `dsse.Statement` APIs have been added
+  ([#930](https://github.com/sigstore/sigstore-python/pull/930))
+
 ### Removed
 
 * **BREAKING API CHANGE**: `SigningResult.input_digest` has been removed;
