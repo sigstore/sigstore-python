@@ -44,19 +44,19 @@ SHA-2 and SHA-3 family that are at least as strong as SHA-256.
 See: <https://github.com/in-toto/attestation/blob/main/spec/v1/digest_set.md>
 """
 
-DigestSet = RootModel[dict[_Digest, str]]
+_DigestSet = RootModel[dict[_Digest, str]]
 """
 An internal validation model for in-toto subject digest sets.
 """
 
 
-class Subject(BaseModel):
+class _Subject(BaseModel):
     """
     A single in-toto statement subject.
     """
 
     name: StrictStr | None
-    digest: DigestSet = Field(...)
+    digest: _DigestSet = Field(...)
 
 
 class _Statement(BaseModel):
@@ -67,7 +67,7 @@ class _Statement(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     type_: Literal["https://in-toto.io/Statement/v1"] = Field(..., alias="_type")
-    subjects: list[Subject] = Field(..., min_length=1, alias="subject")
+    subjects: list[_Subject] = Field(..., min_length=1, alias="subject")
     predicate_type: StrictStr = Field(..., alias="predicateType")
     predicate: dict[str, Any] | None = Field(None, alias="predicate")
 
@@ -118,45 +118,67 @@ class Statement:
         """
 
         pae = self._pae()
-        logger.debug(f"DSSE PAE: {pae}")
+        logger.debug(f"DSSE PAE: {pae!r}")
 
         signature = key.sign(pae, ec.ECDSA(hashes.SHA256()))
         return Envelope(
-            payload=pae,
+            payload=self._contents,
             payload_type=Statement._ENVELOPE_TYPE,
             signatures=[Signature(sig=signature, keyid=None)],
         )
 
 
-class StatementBuilder:
+class _StatementBuilder:
+    """
+    A builder-style API for constructing in-toto Statements.
+    """
+
     def __init__(
         self,
-        subjects: list[Subject] | None = None,
+        subjects: list[_Subject] | None = None,
         predicate_type: str | None = None,
         predicate: dict[str, Any] | None = None,
     ):
+        """
+        Create a new `_StatementBuilder`.
+        """
         self._subjects = subjects or []
         self._predicate_type = predicate_type
         self._predicate = predicate
 
-    def subjects(self, subjects: list[Subject]) -> StatementBuilder:
+    def subjects(self, subjects: list[_Subject]) -> _StatementBuilder:
+        """
+        Configure the subjects for this builder.
+        """
         self._subjects = subjects
         return self
 
-    def predicate_type(self, predicate_type: str) -> StatementBuilder:
+    def predicate_type(self, predicate_type: str) -> _StatementBuilder:
+        """
+        Configure the predicate type for this builder.
+        """
         self._predicate_type = predicate_type
         return self
 
-    def predicate(self, predicate: dict[str, Any]) -> StatementBuilder:
+    def predicate(self, predicate: dict[str, Any]) -> _StatementBuilder:
+        """
+        Configure the predicate for this builder.
+        """
         self._predicate = predicate
         return self
 
     def build(self) -> Statement:
-        stmt = _Statement(
-            type_="https://in-toto.io/Statement/v1",
-            subjects=self._subjects,
-            predicate_type=self._predicate_type,
-            predicate=self._predicate,
-        )
+        """
+        Build a `Statement` from the builder's state.
+        """
+        try:
+            stmt = _Statement(
+                type_="https://in-toto.io/Statement/v1",
+                subjects=self._subjects,
+                predicate_type=self._predicate_type,
+                predicate=self._predicate,
+            )
+        except ValidationError as e:
+            raise ValueError(f"invalid statement: {e}")
 
         return Statement(stmt.model_dump_json(by_alias=True).encode())

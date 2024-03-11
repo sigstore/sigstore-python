@@ -23,7 +23,7 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 import sigstore.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
-from sigstore.dsse import StatementBuilder, Subject
+from sigstore.dsse import _StatementBuilder, _Subject
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
 from sigstore.verify.models import VerificationMaterials
@@ -158,9 +158,9 @@ def test_sign_dsse(staging):
 
     ctx = sign_ctx()
     stmt = (
-        StatementBuilder()
+        _StatementBuilder()
         .subjects(
-            [Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
+            [_Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
         )
         .predicate_type("https://cosign.sigstore.dev/attestation/v1")
         .predicate(
