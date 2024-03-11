@@ -19,7 +19,7 @@ Functionality for building and manipulating in-toto Statements and DSSE envelope
 from __future__ import annotations
 
 import logging
-from typing import Any, Literal, Union
+from typing import Any, Dict, Literal, Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -44,7 +44,7 @@ SHA-2 and SHA-3 family that are at least as strong as SHA-256.
 See: <https://github.com/in-toto/attestation/blob/main/spec/v1/digest_set.md>
 """
 
-_DigestSet = RootModel[dict[_Digest, str]]
+_DigestSet = RootModel[Dict[_Digest, str]]
 """
 An internal validation model for in-toto subject digest sets.
 """
