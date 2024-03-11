@@ -19,7 +19,7 @@ Functionality for building and manipulating in-toto Statements and DSSE envelope
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -67,9 +67,9 @@ class _Statement(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     type_: Literal["https://in-toto.io/Statement/v1"] = Field(..., alias="_type")
-    subjects: list[_Subject] = Field(..., min_length=1, alias="subject")
+    subjects: List[_Subject] = Field(..., min_length=1, alias="subject")
     predicate_type: StrictStr = Field(..., alias="predicateType")
-    predicate: Optional[dict[str, Any]] = Field(None, alias="predicate")
+    predicate: Optional[Dict[str, Any]] = Field(None, alias="predicate")
 
 
 class Statement:
@@ -135,9 +135,9 @@ class _StatementBuilder:
 
     def __init__(
         self,
-        subjects: Optional[list[_Subject]] = None,
+        subjects: Optional[List[_Subject]] = None,
         predicate_type: Optional[str] = None,
-        predicate: Optional[dict[str, Any]] = None,
+        predicate: Optional[Dict[str, Any]] = None,
     ):
         """
         Create a new `_StatementBuilder`.
