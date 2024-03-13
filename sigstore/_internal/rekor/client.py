@@ -77,7 +77,7 @@ class RekorClientError(Exception):
         """
         Create a new `RekorClientError` from the given `requests.HTTPError`.
         """
-        if http_error.response:
+        if http_error.response is not None:
             try:
                 error = rekor_types.Error.model_validate_json(http_error.response.text)
                 super().__init__(f"{error.code}: {error.message}")

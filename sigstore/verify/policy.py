@@ -39,7 +39,7 @@ from sigstore.verify.models import (
     VerificationSuccess,
 )
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # From: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
 _OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
@@ -249,7 +249,7 @@ class UnsafeNoOp:
         Verify `cert` against the policy.
         """
 
-        logger.warning(
+        _logger.warning(
             "unsafe (no-op) verification policy used! no verification performed!"
         )
         return VerificationSuccess()

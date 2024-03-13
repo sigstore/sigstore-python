@@ -23,6 +23,7 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 import sigstore.oidc
 from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
+from sigstore.dsse import _StatementBuilder, _Subject
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
 from sigstore.verify.models import VerificationMaterials
@@ -148,3 +149,27 @@ def test_sign_prehashed(staging):
     verifier.verify(input_, materials=materials, policy=UnsafeNoOp())
     # verifying against the prehash also works
     verifier.verify(hashed, materials=materials, policy=UnsafeNoOp())
+
+
+@pytest.mark.online
+@pytest.mark.ambient_oidc
+def test_sign_dsse(staging):
+    sign_ctx, _, identity = staging
+
+    ctx = sign_ctx()
+    stmt = (
+        _StatementBuilder()
+        .subjects(
+            [_Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
+        )
+        .predicate_type("https://cosign.sigstore.dev/attestation/v1")
+        .predicate(
+            {
+                "Data": "",
+                "Timestamp": "2023-12-07T00:37:58Z",
+            }
+        )
+    ).build()
+
+    with ctx.signer(identity) as signer:
+        signer.sign(stmt)
