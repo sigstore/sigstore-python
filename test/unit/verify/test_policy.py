@@ -29,7 +29,7 @@ class TestVerificationPolicy:
 class TestUnsafeNoOp:
     def test_succeeds(self, monkeypatch):
         logger = pretend.stub(warning=pretend.call_recorder(lambda s: None))
-        monkeypatch.setattr(policy, "logger", logger)
+        monkeypatch.setattr(policy, "_logger", logger)
 
         policy_ = policy.UnsafeNoOp()
         assert policy_.verify(pretend.stub())

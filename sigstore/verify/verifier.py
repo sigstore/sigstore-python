@@ -67,7 +67,7 @@ from sigstore.verify.models import (
 )
 from sigstore.verify.policy import VerificationPolicy
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class LogEntryMissing(VerificationFailure):
@@ -252,7 +252,7 @@ class Verifier:
         if not policy_check:
             return policy_check
 
-        logger.debug("Successfully verified signing certificate validity...")
+        _logger.debug("Successfully verified signing certificate validity...")
 
         # 4) Verify that the signature was signed by the public key in the signing certificate
         try:
@@ -266,7 +266,7 @@ class Verifier:
         except InvalidSignature:
             return VerificationFailure(reason="Signature is invalid for input")
 
-        logger.debug("Successfully verified signature...")
+        _logger.debug("Successfully verified signature...")
 
         # 5) Retrieve the Rekor entry for this artifact (potentially from
         # an offline entry), confirming its consistency with the other
@@ -300,7 +300,7 @@ class Verifier:
             except CheckpointError as exc:
                 return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
-            logger.debug(
+            _logger.debug(
                 f"successfully verified inclusion proof: index={entry.log_index}"
             )
         elif not materials._offline:
@@ -309,7 +309,7 @@ class Verifier:
             # then we've somehow entered an invalid state, so fail.
             return VerificationFailure(reason="missing Rekor inclusion proof")
         else:
-            logger.warning(
+            _logger.warning(
                 "inclusion proof not present in bundle: skipping due to offline verification"
             )
 
@@ -317,7 +317,7 @@ class Verifier:
         if entry.inclusion_promise:
             try:
                 verify_set(self._rekor, entry)
-                logger.debug(
+                _logger.debug(
                     f"successfully verified inclusion promise: index={entry.log_index}"
                 )
             except InvalidSETError as inval_set:
