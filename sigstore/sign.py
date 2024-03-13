@@ -68,7 +68,6 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     KindVersion,
     TransparencyLogEntry,
 )
-from sigstore_protobuf_specs.io.intoto import Envelope
 
 from sigstore import dsse
 from sigstore import hashes as sigstore_hashes
@@ -214,7 +213,7 @@ class Signer:
         )
 
         # Sign artifact
-        content: MessageSignature | Envelope
+        content: MessageSignature | dsse.Envelope
         proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse
         if isinstance(input_, dsse.Statement):
             content = dsse._sign(private_key, input_)
@@ -341,7 +340,7 @@ class SigningContext:
 
 
 def _make_bundle(
-    content: MessageSignature | Envelope,
+    content: MessageSignature | dsse.Envelope,
     cert_pem: PEMCert,
     log_entry: LogEntry,
 ) -> Bundle:
@@ -400,6 +399,6 @@ def _make_bundle(
     if isinstance(content, MessageSignature):
         bundle.message_signature = content
     else:
-        bundle.dsse_envelope = content
+        bundle.dsse_envelope = content._inner
 
     return bundle
