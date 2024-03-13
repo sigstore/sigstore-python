@@ -17,7 +17,7 @@ jobs:
     outputs:
       hashes: ${{ steps.hash.outputs.hashes }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
 
       - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5.0.0
         with:
@@ -140,7 +140,7 @@ jobs:
         # Confusingly, this action also supports updating releases, not
         # just creating them. This is what we want here, since we've manually
         # created the release that triggered the action.
-        uses: softprops/action-gh-release@3198ee18f814cdf787321b4a32a26ddbf37acc52 # v0.1.15
+        uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # v0.1.15
         with:
           # smoketest-artifacts/ contains the signatures and certificates.
           files: |
