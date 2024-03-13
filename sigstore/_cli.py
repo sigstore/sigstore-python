@@ -23,7 +23,6 @@ from pathlib import Path
 from textwrap import dedent
 from typing import NoReturn, Optional, TextIO, Union, cast
 
-from cryptography.x509 import load_pem_x509_certificates
 from rich.logging import RichHandler
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
@@ -38,9 +37,8 @@ from sigstore._internal.keyring import Keyring
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
-    RekorKeyring,
 )
-from sigstore._internal.trustroot import TrustedRoot
+from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import PEMCert, cert_der_to_pem, sha256_digest
 from sigstore.errors import Error
 from sigstore.oidc import (
@@ -651,22 +649,20 @@ def _sign(args: argparse.Namespace) -> None:
         signing_ctx = SigningContext.production()
     else:
         # Assume "production" trust root if no keys are given as arguments
-        trusted_root = TrustedRoot.production()
+        trusted_root = TrustedRoot.production(args=args, purpose=KeyringPurpose.SIGN)
         if args.ctfe_pem is not None:
             ctfe_keys = [args.ctfe_pem.read()]
         else:
             ctfe_keys = trusted_root.get_ctfe_keys()
-        if args.rekor_root_pubkey is not None:
-            rekor_keys = [args.rekor_root_pubkey.read()]
-        else:
-            rekor_keys = trusted_root.get_rekor_keys()
+
+        rekor_keyring = trusted_root.rekor_keyring()
 
         ct_keyring = CTKeyring(Keyring(ctfe_keys))
-        rekor_keyring = RekorKeyring(Keyring(rekor_keys))
 
         signing_ctx = SigningContext(
             fulcio=FulcioClient(args.fulcio_url),
             rekor=RekorClient(args.rekor_url, rekor_keyring, ct_keyring),
+            trusted_root=trusted_root,
         )
 
     # The order of precedence for identities is as follows:
@@ -814,7 +810,6 @@ def _collect_verification_state(
                 args,
                 f"Missing verification materials for {(file)}: {', '.join(missing)}",
             )
-
     if args.staging:
         logger.debug("verify: staging instances requested")
         verifier = Verifier.staging()
@@ -824,27 +819,16 @@ def _collect_verification_state(
         if not args.certificate_chain:
             _die(args, "Custom Rekor URL used without specifying --certificate-chain")
 
-        try:
-            certificate_chain = load_pem_x509_certificates(
-                args.certificate_chain.read()
-            )
-        except ValueError as error:
-            _die(args, f"Invalid certificate chain: {error}")
-
-        if args.rekor_root_pubkey is not None:
-            rekor_keys = [args.rekor_root_pubkey.read()]
-        else:
-            trusted_root = TrustedRoot.production()
-            rekor_keys = trusted_root.get_rekor_keys()
-            ct_keys = trusted_root.get_ctfe_keys()
+        trusted_root = TrustedRoot.production(args=args, purpose=KeyringPurpose.VERIFY)
+        ct_keys = trusted_root.get_ctfe_keys()
 
         verifier = Verifier(
             rekor=RekorClient(
                 url=args.rekor_url,
-                rekor_keyring=RekorKeyring(Keyring(rekor_keys)),
+                rekor_keyring=trusted_root.rekor_keyring(),
                 ct_keyring=CTKeyring(Keyring(ct_keys)),
             ),
-            fulcio_certificate_chain=certificate_chain,
+            trusted_root=trusted_root,
         )
 
     all_materials = []

@@ -22,7 +22,7 @@ import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Dict, NewType, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
 import rekor_types
@@ -30,16 +30,13 @@ import requests
 
 from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.keyring import Keyring
-from sigstore._internal.trustroot import TrustedRoot
+from sigstore._internal.trustroot import RekorKeyring, TrustedRoot
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
-
-
-RekorKeyring = NewType("RekorKeyring", Keyring)
 
 
 @dataclass(frozen=True)
@@ -255,12 +252,12 @@ class RekorClient:
 
         trust_root must be a `TrustedRoot` for the production TUF repository.
         """
-        rekor_keys = trust_root.get_rekor_keys()
+        rekor_keyring = trust_root.rekor_keyring()
         ctfe_keys = trust_root.get_ctfe_keys()
 
         return cls(
             DEFAULT_REKOR_URL,
-            RekorKeyring(Keyring(rekor_keys)),
+            rekor_keyring,
             CTKeyring(Keyring(ctfe_keys)),
         )
 
@@ -271,12 +268,12 @@ class RekorClient:
 
         trust_root must be a `TrustedRoot` for the staging TUF repository.
         """
-        rekor_keys = trust_root.get_rekor_keys()
+        rekor_keyring = trust_root.rekor_keyring()
         ctfe_keys = trust_root.get_ctfe_keys()
 
         return cls(
             STAGING_REKOR_URL,
-            RekorKeyring(Keyring(rekor_keys)),
+            rekor_keyring,
             CTKeyring(Keyring(ctfe_keys)),
         )
 

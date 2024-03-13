@@ -18,11 +18,17 @@ Trust root management for sigstore-python.
 
 from __future__ import annotations
 
+from argparse import Namespace
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, NewType, Optional
 
-from cryptography.x509 import Certificate, load_der_x509_certificate
+from cryptography.x509 import (
+    Certificate,
+    load_der_x509_certificate,
+    load_pem_x509_certificates,
+)
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     CertificateAuthority,
@@ -32,8 +38,11 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     TrustedRoot as _TrustedRoot,
 )
 
+from sigstore._internal.keyring import Keyring
 from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
 from sigstore.errors import MetadataError
+
+RekorKeyring = NewType("RekorKeyring", Keyring)
 
 
 def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
@@ -58,48 +67,101 @@ def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> boo
     return allow_expired or (period.end is None or now <= period.end)
 
 
+class KeyringPurpose(str, Enum):
+    """
+    Keyring purpose typing
+    """
+
+    SIGN = "sign"
+    VERIFY = "verify"
+
+    def __str__(self) -> str:
+        """Returns the purpose string value."""
+        return self.value
+
+
 class TrustedRoot(_TrustedRoot):
     """Complete set of trusted entities for a Sigstore client"""
 
-    @classmethod
-    def from_file(cls, path: str) -> "TrustedRoot":
-        """Create a new trust root from file"""
-        tr: TrustedRoot = cls().from_json(Path(path).read_bytes())
-        return tr
+    args: Optional[Namespace] = None
+    purpose: KeyringPurpose
 
     @classmethod
-    def from_tuf(cls, url: str, offline: bool = False) -> "TrustedRoot":
+    def from_file(
+        cls,
+        path: str,
+        args: Optional[Namespace] = None,
+        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
+    ) -> "TrustedRoot":
+        """Create a new trust root from file"""
+        trusted_root: TrustedRoot = cls().from_json(Path(path).read_bytes())
+        trusted_root.args = args
+        trusted_root.purpose = purpose
+        return trusted_root
+
+    @classmethod
+    def from_tuf(
+        cls,
+        url: str,
+        offline: bool = False,
+        args: Optional[Namespace] = None,
+        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
+    ) -> "TrustedRoot":
         """Create a new trust root from a TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
         path = TrustUpdater(url, offline).get_trusted_root_path()
-        return cls.from_file(path)
+        trusted_root = cls.from_file(path)
+        trusted_root.args = args
+        trusted_root.purpose = purpose
+        return trusted_root
 
     @classmethod
-    def production(cls, offline: bool = False) -> "TrustedRoot":
+    def production(
+        cls,
+        offline: bool = False,
+        args: Optional[Namespace] = None,
+        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
+    ) -> "TrustedRoot":
         """Create new trust root from Sigstore production TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
-        return cls.from_tuf(DEFAULT_TUF_URL, offline)
+        trusted_root = cls.from_tuf(DEFAULT_TUF_URL, offline)
+        trusted_root.args = args
+        trusted_root.purpose = purpose
+        return trusted_root
 
     @classmethod
-    def staging(cls, offline: bool = False) -> "TrustedRoot":
+    def staging(
+        cls,
+        offline: bool = False,
+        args: Optional[Namespace] = None,
+        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
+    ) -> "TrustedRoot":
         """Create new trust root from Sigstore staging TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
-        return cls.from_tuf(STAGING_TUF_URL, offline)
+        trusted_root = cls.from_tuf(STAGING_TUF_URL, offline)
+        trusted_root.args = args
+        trusted_root.purpose = purpose
+        return trusted_root
 
     @staticmethod
-    def _get_tlog_keys(tlogs: list[TransparencyLogInstance]) -> Iterable[bytes]:
+    def _get_tlog_keys(
+        tlogs: list[TransparencyLogInstance], purpose: KeyringPurpose
+    ) -> Iterable[bytes]:
         """Return public key contents given transparency log instances."""
+        allow_expired = purpose is KeyringPurpose.VERIFY
         for key in tlogs:
-            if not _is_timerange_valid(key.public_key.valid_for, allow_expired=True):
+            if not _is_timerange_valid(
+                key.public_key.valid_for, allow_expired=allow_expired
+            ):
                 continue
             key_bytes = key.public_key.raw_bytes
             if key_bytes:
@@ -117,20 +179,30 @@ class TrustedRoot(_TrustedRoot):
             for cert in ca.cert_chain.certificates:
                 yield cert.raw_bytes
 
+    def rekor_keyring(self) -> RekorKeyring:
+        """Return public key contents given certificate authorities."""
+
+        return RekorKeyring(self._get_rekor_keys())
+
     def get_ctfe_keys(self) -> list[bytes]:
         """Return the CTFE public keys contents."""
-        ctfes: list[bytes] = list(self._get_tlog_keys(self.ctlogs))
+        # TODO: get purpose as argument
+        purpose = KeyringPurpose.VERIFY
+        ctfes: list[bytes] = list(self._get_tlog_keys(self.ctlogs, purpose))
         if not ctfes:
             raise MetadataError("CTFE keys not found in trusted root")
         return ctfes
 
-    def get_rekor_keys(self) -> list[bytes]:
+    def _get_rekor_keys(self) -> Keyring:
         """Return the rekor public key content."""
-        keys: list[bytes] = list(self._get_tlog_keys(self.tlogs))
-
+        keys: list[bytes]
+        if self.args and self.args.rekor_root_pubkey:
+            keys = self.args.rekor_root_pubkey.read()
+        else:
+            keys = list(self._get_tlog_keys(self.tlogs, self.purpose))
         if len(keys) != 1:
             raise MetadataError("Did not find one Rekor key in trusted root")
-        return keys
+        return Keyring(keys)
 
     def get_fulcio_certs(self) -> list[Certificate]:
         """Return the Fulcio certificates."""
@@ -139,11 +211,20 @@ class TrustedRoot(_TrustedRoot):
 
         # Return expired certificates too: they are expired now but may have
         # been active when the certificate was used to sign.
-        certs = [
-            load_der_x509_certificate(c)
-            for c in self._get_ca_keys(self.certificate_authorities, allow_expired=True)
-        ]
 
+        if self.args:
+            try:
+                certs = load_pem_x509_certificates(self.args.certificate_chain.read())
+            except ValueError as error:
+                self.args._parser.error(f"Invalid certificate chain: {error}")
+                raise ValueError("unreachable")
+        else:
+            certs = [
+                load_der_x509_certificate(c)
+                for c in self._get_ca_keys(
+                    self.certificate_authorities, allow_expired=True
+                )
+            ]
         if not certs:
             raise MetadataError("Fulcio certificates not found in trusted root")
         return certs

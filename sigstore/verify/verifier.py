@@ -26,7 +26,6 @@ from typing import List, cast
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
-    Certificate,
     ExtendedKeyUsage,
     KeyUsage,
 )
@@ -54,7 +53,7 @@ from sigstore._internal.sct import (
     verify_sct,
 )
 from sigstore._internal.set import InvalidSETError, verify_set
-from sigstore._internal.trustroot import TrustedRoot
+from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import B64Str, HexStr, sha256_digest
 from sigstore.hashes import Hashed
 from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
@@ -110,9 +109,7 @@ class Verifier:
     The primary API for verification operations.
     """
 
-    def __init__(
-        self, *, rekor: RekorClient, fulcio_certificate_chain: List[Certificate]
-    ):
+    def __init__(self, *, rekor: RekorClient, trusted_root: TrustedRoot):
         """
         Create a new `Verifier`.
 
@@ -125,7 +122,7 @@ class Verifier:
         self._rekor = rekor
         self._fulcio_certificate_chain: List[X509] = [
             X509.from_cryptography(parent_cert)
-            for parent_cert in fulcio_certificate_chain
+            for parent_cert in trusted_root.get_fulcio_certs()
         ]
 
     @classmethod
@@ -133,10 +130,10 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's production-level services.
         """
-        trust_root = TrustedRoot.production()
+        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.VERIFY)
         return cls(
-            rekor=RekorClient.production(trust_root),
-            fulcio_certificate_chain=trust_root.get_fulcio_certs(),
+            rekor=RekorClient.production(trusted_root),
+            trusted_root=trusted_root,
         )
 
     @classmethod
@@ -144,10 +141,10 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's staging-level services.
         """
-        trust_root = TrustedRoot.staging()
+        trusted_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
         return cls(
-            rekor=RekorClient.staging(trust_root),
-            fulcio_certificate_chain=trust_root.get_fulcio_certs(),
+            rekor=RekorClient.staging(trusted_root),
+            trusted_root=trusted_root,
         )
 
     def verify(

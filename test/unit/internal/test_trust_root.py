@@ -21,7 +21,11 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
-from sigstore._internal.trustroot import TrustedRoot, _is_timerange_valid
+from sigstore._internal.trustroot import (
+    KeyringPurpose,
+    TrustedRoot,
+    _is_timerange_valid,
+)
 from sigstore._utils import load_der_public_key, load_pem_public_key
 from sigstore.errors import RootError
 
@@ -33,7 +37,7 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
 
-    trust_root = TrustedRoot.staging()
+    trust_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
     # metadata was "downloaded" from staging
     expected = ["root.json", "snapshot.json", "targets.json", "timestamp.json"]
     assert sorted(os.listdir(data_dir)) == expected
@@ -50,14 +54,14 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     assert fail_reqs == expected_fail_reqs
 
     trust_root.get_ctfe_keys()
-    trust_root.get_rekor_keys()
+    trust_root.rekor_keyring()
 
     # no new requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
     # New trust root (and TrustUpdater instance), same cache dirs
-    trust_root = TrustedRoot.staging()
+    trust_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
 
     # Expect new timestamp and root requests
     expected_requests["timestamp.json"] += 1
@@ -66,7 +70,7 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     assert fail_reqs == expected_fail_reqs
 
     trust_root.get_ctfe_keys()
-    trust_root.get_rekor_keys()
+    trust_root.rekor_keyring()
     # Expect no requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
@@ -79,7 +83,7 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
 
-    trust_root = TrustedRoot.staging(offline=True)
+    trust_root = TrustedRoot.staging(offline=True, purpose=KeyringPurpose.VERIFY)
 
     # Only the embedded root is in local TUF metadata, nothing is downloaded
     expected = ["root.json"]
@@ -88,7 +92,7 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     assert fail_reqs == {}
 
     trust_root.get_ctfe_keys()
-    trust_root.get_rekor_keys()
+    trust_root.rekor_keyring()
 
     # Still no requests
     assert reqs == {}
@@ -125,23 +129,19 @@ def test_is_timerange_valid():
 
 
 def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
-    # We don't strictly need to re-encode these keys as they are already DER,
-    # but by doing so we are also validating the keys structurally.
-    def _der_keys(keys):
+    def get_public_bytes(keys):
         return [
-            load_der_public_key(k).public_bytes(
-                Encoding.DER, PublicFormat.SubjectPublicKeyInfo
-            )
+            k.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
             for k in keys
         ]
 
+    # We don't strictly need to re-encode these keys as they are already DER,
+    # but by doing so we are also validating the keys structurally.
+    def _der_keys(keys):
+        return get_public_bytes([load_der_public_key(k) for k in keys])
+
     def _pem_keys(keys):
-        return [
-            load_pem_public_key(k).public_bytes(
-                Encoding.DER, PublicFormat.SubjectPublicKeyInfo
-            )
-            for k in keys
-        ]
+        return get_public_bytes([load_pem_public_key(k) for k in keys])
 
     ctfe_keys = _pem_keys(
         [
@@ -158,22 +158,22 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     ]
 
     # Assert that trust root from TUF contains the expected keys/certs
-    trust_root = TrustedRoot.staging()
+    trust_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
     assert ctfe_keys[0] in _der_keys(trust_root.get_ctfe_keys())
-    assert _der_keys(trust_root.get_rekor_keys()) == rekor_keys
+    assert get_public_bytes(trust_root.rekor_keyring()._keyring.values()) == rekor_keys
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from offline TUF contains the expected keys/certs
-    trust_root = TrustedRoot.staging(offline=True)
+    trust_root = TrustedRoot.staging(offline=True, purpose=KeyringPurpose.VERIFY)
     assert ctfe_keys[0] in _der_keys(trust_root.get_ctfe_keys())
-    assert _der_keys(trust_root.get_rekor_keys()) == rekor_keys
+    assert get_public_bytes(trust_root.rekor_keyring()._keyring.values()) == rekor_keys
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from file contains the expected keys/certs
     path = tuf_asset.target_path("trusted_root.json")
     trust_root = TrustedRoot.from_file(path)
     assert ctfe_keys[0] in _der_keys(trust_root.get_ctfe_keys())
-    assert _der_keys(trust_root.get_rekor_keys()) == rekor_keys
+    assert get_public_bytes(trust_root.rekor_keyring()._keyring.values()) == rekor_keys
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
 
