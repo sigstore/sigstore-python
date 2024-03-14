@@ -25,7 +25,6 @@ from typing import NoReturn, Optional, TextIO, Union, cast
 
 from cryptography.x509 import load_pem_x509_certificates
 from rich.logging import RichHandler
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
 from sigstore._internal.ctfe import CTKeyring
@@ -60,7 +59,7 @@ from sigstore.verify import (
     Verifier,
     policy,
 )
-from sigstore.verify.models import VerificationFailure
+from sigstore.verify.models import Bundle, VerificationFailure
 
 logging.basicConfig(format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
 logger = logging.getLogger(__name__)
@@ -733,13 +732,13 @@ def _sign(args: argparse.Namespace) -> None:
 
 def _collect_verification_state(
     args: argparse.Namespace,
-) -> tuple[Verifier, list[tuple[Path, VerificationMaterials]]]:
+) -> tuple[Verifier, list[tuple[Path, Bundle]]]:
     """
     Performs CLI functionality common across all `sigstore verify` subcommands.
 
-    Returns a tuple of the active verifier instance and a list of `(file, materials)`
+    Returns a tuple of the active verifier instance and a list of `(file, bundle)`
     tuples, where `file` is the path to the file being verified (for display
-    purposes) and `materials` is the `VerificationMaterials` to verify with.
+    purposes) and `bundle` is the `Bundle` to verify with.
     """
 
     # Fail if --certificate, --signature, or --bundle is specified and we

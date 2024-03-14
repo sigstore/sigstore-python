@@ -19,49 +19,29 @@ Common (base) models for the verification APIs.
 from __future__ import annotations
 
 import base64
-import json
 import logging
-from dataclasses import dataclass
 from textwrap import dedent
 
-import rekor_types
-from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
-    load_pem_x509_certificate,
 )
 from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
-    Bundle,
-    VerificationMaterial,
-)
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
-    LogId,
-    MessageSignature,
-    PublicKeyIdentifier,
-    X509Certificate,
-    X509CertificateChain,
+    Bundle as _Bundle,
 )
 from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
-    Checkpoint,
     InclusionPromise,
     InclusionProof,
-    KindVersion,
-    TransparencyLogEntry,
 )
 
-from sigstore._internal.rekor import RekorClient
 from sigstore._utils import (
     B64Str,
     BundleType,
-    PEMCert,
-    base64_encode_pem_cert,
     cert_is_leaf,
     cert_is_root_ca,
 )
 from sigstore.errors import Error
-from sigstore.hashes import Hashed
 from sigstore.transparency import LogEntry, LogInclusionProof
 
 _logger = logging.getLogger(__name__)
@@ -117,9 +97,9 @@ class VerificationFailure(VerificationResult):
     """
 
 
-class InvalidMaterials(Error):
+class InvalidBundle(Error):
     """
-    Raised when the associated `VerificationMaterials` are invalid in some way.
+    Raised when the associated `Bundle` is invalid in some way.
     """
 
     def diagnostics(self) -> str:
@@ -127,10 +107,9 @@ class InvalidMaterials(Error):
 
         return dedent(
             f"""\
-        An issue occurred while parsing the verification materials.
+        An issue occurred while parsing the Sigstore bundle.
 
-        The provided verification materials are malformed and may have been
-        modified maliciously.
+        The provided bundle is malformed and may have been modified maliciously.
 
         Additional context:
 
@@ -150,7 +129,7 @@ class RekorEntryMissing(Exception):
     pass
 
 
-class InvalidRekorEntry(InvalidMaterials):
+class InvalidRekorEntry(InvalidBundle):
     """
     Raised if the effective Rekor entry in `VerificationMaterials.rekor_entry()`
     does not match the other materials in `VerificationMaterials`.
@@ -164,103 +143,44 @@ class InvalidRekorEntry(InvalidMaterials):
     pass
 
 
-@dataclass(init=False)
-class VerificationMaterials:
+class Bundle:
     """
-    Represents the materials needed to perform a Sigstore verification.
-    """
-
-    certificate: Certificate
-    """
-    The certificate that attests to and contains the public signing key.
+    Represents a Sigstore bundle.
     """
 
-    signature: bytes
-    """
-    The raw signature.
-    """
-
-    _offline: bool
-    """
-    Whether to do offline Rekor entry verification.
-
-    NOTE: This is intentionally not a public field, since it's slightly
-    mismatched against the other members of `VerificationMaterials` -- it's
-    more of an option than a piece of verification material.
-    """
-
-    _rekor_entry: LogEntry | None
-    """
-    An optional Rekor entry.
-
-    If a Rekor entry is supplied **and** `offline` is set to `True`,
-    verification will be done against this entry rather than the against the
-    online transparency log. If not provided **or** `offline` is `False` (the
-    default), then the online transparency log will be used.
-
-    NOTE: This is **intentionally not a public field**. The `rekor_entry()`
-    method should be used to access a Rekor log entry for these materials,
-    as it performs the online lookup if an offline entry is not provided
-    and, **critically**, validates that the entry's contents match the other
-    signing materials. Without this check an adversary could present a
-    **valid but unrelated** Rekor entry during verification, similar
-    to CVE-2022-36056 in cosign.
-
-    TODO: Support multiple entries here, with verification contingent on
-    all being valid.
-    """
-
-    def __init__(
-        self,
-        *,
-        cert_pem: PEMCert,
-        signature: bytes,
-        offline: bool = False,
-        rekor_entry: LogEntry | None,
-    ):
+    def __init__(self, inner: _Bundle) -> None:
         """
-        Create a new `VerificationMaterials` from the given materials.
+        Creates a new bundle. This is not a public API; use
+        `from_json` instead.
 
-        `offline` controls the behavior of any subsequent verification over
-        these materials: if `True`, the supplied Rekor entry (which must
-        be supplied) will be verified via its Signed Entry Timestamp, but
-        its proof of inclusion will not be checked. This is a slightly weaker
-        verification mode, as it demonstrates that an entry has been signed by
-        the log but not necessarily included in it.
+        @private
         """
+        self._inner = inner
+        self._verify_bundle()
 
-        self.certificate = load_pem_x509_certificate(cert_pem.encode())
-        self.signature = signature
-
-        # Invariant: requesting offline verification means that a Rekor entry
-        # *must* be provided.
-        if offline and not rekor_entry:
-            raise InvalidMaterials("offline verification requires a Rekor entry")
-
-        self._offline = offline
-        self._rekor_entry = rekor_entry
-
-    @classmethod
-    def from_bundle(
-        cls, *, bundle: Bundle, offline: bool = False
-    ) -> VerificationMaterials:
-        """
-        Create a new `VerificationMaterials` from the given Sigstore bundle.
-        """
+    def _verify_bundle(self) -> None:
+        # The bundle must have a recognized media type.
         try:
-            media_type = BundleType(bundle.media_type)
+            media_type = BundleType(self._inner.media_type)
         except ValueError:
-            raise InvalidMaterials(f"unsupported bundle format: {bundle.media_type}")
+            raise InvalidBundle(f"unsupported bundle format: {self._inner.media_type}")
 
+        # Extract the signing certificate.
         if media_type == BundleType.BUNDLE_0_3:
+            # For "v3" bundles, the signing certificate is the only one present.
             leaf_cert = load_der_x509_certificate(
-                bundle.verification_material.certificate.raw_bytes
+                self._inner.verification_material.certificate.raw_bytes
             )
         else:
-            certs = bundle.verification_material.x509_certificate_chain.certificates
+            # In older bundles, there is an entire pool (misleadingly called
+            # a chain) of certificates, the first of which is the signing
+            # certificate.
+            certs = (
+                self._inner.verification_material.x509_certificate_chain.certificates
+            )
 
             if len(certs) == 0:
-                raise InvalidMaterials("expected non-empty certificate chain in bundle")
+                raise InvalidBundle("expected non-empty certificate chain in bundle")
 
             # Per client policy in protobuf-specs: the first entry in the chain
             # MUST be a leaf certificate, and the rest of the chain MUST NOT
@@ -274,7 +194,7 @@ class VerificationMaterials:
                 load_der_x509_certificate(cert.raw_bytes) for cert in certs
             ]
             if not cert_is_leaf(leaf_cert):
-                raise InvalidMaterials(
+                raise InvalidBundle(
                     "bundle contains an invalid leaf or non-leaf certificate in the leaf position"
                 )
 
@@ -286,14 +206,14 @@ class VerificationMaterials:
                         "this bundle contains a root CA, making it subject to misuse"
                     )
 
-        signature = bundle.message_signature.signature
+        self._signing_certificate = leaf_cert
 
-        tlog_entries = bundle.verification_material.tlog_entries
-        if len(tlog_entries) != 1:
-            raise InvalidMaterials(
-                f"expected exactly one log entry, got {len(tlog_entries)}"
-            )
-        tlog_entry = tlog_entries[0]
+        # Extract the log entry. For the time being, we expect
+        # bundles to only contain a single log entry.
+        try:
+            tlog_entry = next(self._inner.verification_material.tlog_entries)
+        except StopIteration:
+            raise InvalidBundle("expected exactly one log entry in bundle")
 
         # Handling of inclusion promises and proofs varies between bundle
         # format versions:
@@ -309,21 +229,22 @@ class VerificationMaterials:
         #   a checkpoint.
         #   The inclusion promise is NOT required; if present, the client
         #   SHOULD verify it.
-
+        #
+        # Beneath all of this, we require that the inclusion proof be present.
         inclusion_promise: InclusionPromise | None = tlog_entry.inclusion_promise
         inclusion_proof: InclusionProof | None = tlog_entry.inclusion_proof
         if media_type == BundleType.BUNDLE_0_1:
             if not inclusion_promise:
-                raise InvalidMaterials("bundle must contain an inclusion promise")
+                raise InvalidBundle("bundle must contain an inclusion promise")
             if inclusion_proof and not inclusion_proof.checkpoint.envelope:
                 _logger.debug(
                     "0.1 bundle contains inclusion proof without checkpoint; ignoring"
                 )
         else:
             if not inclusion_proof:
-                raise InvalidMaterials("bundle must contain an inclusion proof")
+                raise InvalidBundle("bundle must contain an inclusion proof")
             if not inclusion_proof.checkpoint.envelope:
-                raise InvalidMaterials("expected checkpoint in inclusion proof")
+                raise InvalidBundle("expected checkpoint in inclusion proof")
 
         parsed_inclusion_proof: InclusionProof | None = None
         if (
@@ -338,7 +259,14 @@ class VerificationMaterials:
                 tree_size=inclusion_proof.tree_size,
             )
 
-        entry = LogEntry(
+        # Sanity: the only way we can hit this is with a v1 bundle without
+        # an inclusion proof. Putting this check here rather than above makes
+        # it clear that this check is required by us as the client, not the
+        # protobuf-specs themselves.
+        if parsed_inclusion_proof is None:
+            raise InvalidBundle("bundle must contain inclusion proof")
+
+        log_entry = LogEntry(
             uuid=None,
             body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
             integrated_time=tlog_entry.integrated_time,
@@ -352,151 +280,25 @@ class VerificationMaterials:
             ),
         )
 
-        return cls(
-            cert_pem=PEMCert(leaf_cert.public_bytes(Encoding.PEM).decode()),
-            signature=signature,
-            offline=offline,
-            rekor_entry=entry,
-        )
+        self._log_entry = log_entry
 
     @property
-    def has_rekor_entry(self) -> bool:
+    def signing_certificate(self) -> Certificate:
+        """Returns the bundle's contained signing (i.e. leaf) certificate."""
+        return self._leaf_cert
+
+    @property
+    def log_entry(self) -> LogEntry:
         """
-        Returns whether or not these `VerificationMaterials` contain a Rekor
-        entry.
-
-        If false, `VerificationMaterials.rekor_entry()` performs an online lookup.
+        Returns the bundle's log entry, containing an inclusion proof
+        (with checkpoint) and an inclusion promise (if the latter is present).
         """
-        return self._rekor_entry is not None
+        return self._log_entry
 
-    def rekor_entry(self, hashed_input: Hashed, client: RekorClient) -> LogEntry:
+    @classmethod
+    def from_json(cls, raw: bytes | str) -> Bundle:
         """
-        Returns a `LogEntry` for the current signing materials and the given
-        hashed input.
+        Deserialize the given Sigstore bundle.
         """
-
-        offline = self._offline
-        has_inclusion_promise = (
-            self.has_rekor_entry and self._rekor_entry.inclusion_promise is not None  # type: ignore
-        )
-        has_inclusion_proof = (
-            self.has_rekor_entry
-            and self._rekor_entry.inclusion_proof is not None  # type: ignore
-            and self._rekor_entry.inclusion_proof.checkpoint  # type: ignore
-        )
-
-        _logger.debug(
-            f"has_inclusion_proof={has_inclusion_proof} "
-            f"has_inclusion_promise={has_inclusion_promise}"
-        )
-
-        # This "expected" entry is used both to retrieve the Rekor entry
-        # (if we don't have one) *and* to cross-check whatever response
-        # we receive. See below.
-        expected_entry = rekor_types.Hashedrekord(
-            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                signature=rekor_types.hashedrekord.Signature(
-                    content=base64.b64encode(self.signature).decode(),
-                    public_key=rekor_types.hashedrekord.PublicKey(
-                        content=base64_encode_pem_cert(self.certificate)
-                    ),
-                ),
-                data=rekor_types.hashedrekord.Data(
-                    hash=rekor_types.hashedrekord.Hash(
-                        algorithm=hashed_input._as_hashedrekord_algorithm(),
-                        value=hashed_input.digest.hex(),
-                    ),
-                ),
-            ),
-        )
-
-        entry: LogEntry | None = None
-        if offline:
-            _logger.debug("offline mode; using offline log entry")
-            # In offline mode, we require either an inclusion proof or an
-            # inclusion promise. Every `LogEntry` has at least one as a
-            # construction invariant, so no additional check is required here.
-            entry = self._rekor_entry
-        else:
-            # In online mode, we require an inclusion proof. If our supplied log
-            # entry doesn't have one, then we perform a lookup.
-            if not has_inclusion_proof:
-                _logger.debug("retrieving transparency log entry")
-                entry = client.log.entries.retrieve.post(expected_entry)
-            else:
-                entry = self._rekor_entry
-
-        # No matter what we do above, we must end up with a Rekor entry.
-        if entry is None:
-            raise RekorEntryMissing
-
-        _logger.debug("Rekor entry: ensuring contents match signing materials")
-
-        # To catch a potentially dishonest or compromised Rekor instance, we compare
-        # the expected entry (generated above) with the JSON structure returned
-        # by Rekor. If the two don't match, then we have an invalid entry
-        # and can't proceed.
-        actual_body = json.loads(base64.b64decode(entry.body))
-        if actual_body != expected_entry.model_dump(mode="json", by_alias=True):
-            raise InvalidRekorEntry
-
-        return entry
-
-    def to_bundle(self) -> Bundle:
-        """Converts VerificationMaterials into a Bundle. Requires that
-        the VerificationMaterials have a Rekor entry loaded. This is
-        the reverse operation of VerificationMaterials.from_bundle()
-        """
-        if not self.has_rekor_entry:
-            raise InvalidMaterials(
-                "Must have Rekor entry before converting to a Bundle"
-            )
-        rekor_entry: LogEntry = self._rekor_entry  # type: ignore[assignment]
-
-        inclusion_proof: InclusionProof | None = None
-        if rekor_entry.inclusion_proof is not None:
-            inclusion_proof = InclusionProof(
-                log_index=rekor_entry.inclusion_proof.log_index,
-                root_hash=bytes.fromhex(rekor_entry.inclusion_proof.root_hash),
-                tree_size=rekor_entry.inclusion_proof.tree_size,
-                hashes=[
-                    bytes.fromhex(hash_hex)
-                    for hash_hex in rekor_entry.inclusion_proof.hashes
-                ],
-                checkpoint=Checkpoint(envelope=rekor_entry.inclusion_proof.checkpoint),
-            )
-
-        inclusion_promise: InclusionPromise | None = None
-        if rekor_entry.inclusion_promise:
-            inclusion_promise = InclusionPromise(
-                signed_entry_timestamp=base64.b64decode(rekor_entry.inclusion_promise)
-            )
-
-        bundle = Bundle(
-            media_type=BundleType.BUNDLE_0_2,
-            verification_material=VerificationMaterial(
-                public_key=PublicKeyIdentifier(),
-                x509_certificate_chain=X509CertificateChain(
-                    certificates=[
-                        X509Certificate(
-                            raw_bytes=self.certificate.public_bytes(Encoding.DER)
-                        )
-                    ]
-                ),
-                tlog_entries=[
-                    TransparencyLogEntry(
-                        log_index=rekor_entry.log_index,
-                        log_id=LogId(key_id=bytes.fromhex(rekor_entry.log_id)),
-                        kind_version=KindVersion(kind="hashedrekord", version="0.0.1"),
-                        integrated_time=rekor_entry.integrated_time,
-                        inclusion_promise=inclusion_promise,
-                        inclusion_proof=inclusion_proof,
-                        canonicalized_body=base64.b64decode(rekor_entry.body),
-                    )
-                ],
-            ),
-            message_signature=MessageSignature(
-                signature=self.signature,
-            ),
-        )
-        return bundle
+        inner = _Bundle().from_json(raw)
+        return cls(inner)

@@ -21,7 +21,7 @@ from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import _sha256_streaming
 from sigstore.hashes import Hashed
 from sigstore.verify.models import (
-    InvalidMaterials,
+    InvalidBundle,
     InvalidRekorEntry,
     RekorEntryMissing,
     VerificationMaterials,
@@ -83,25 +83,25 @@ class TestVerificationMaterials:
 
     def test_verification_materials_offline_no_log_entry(self, signing_materials):
         with pytest.raises(
-            InvalidMaterials, match="offline verification requires a Rekor entry"
+            InvalidBundle, match="offline verification requires a Rekor entry"
         ):
             signing_materials("a.txt", offline=True)
 
     def test_verification_materials_bundle_no_cert(self, signing_bundle):
         with pytest.raises(
-            InvalidMaterials, match="expected non-empty certificate chain in bundle"
+            InvalidBundle, match="expected non-empty certificate chain in bundle"
         ):
             signing_bundle("bundle_no_cert.txt")
 
     def test_verification_materials_bundle_no_log_entry(self, signing_bundle):
         with pytest.raises(
-            InvalidMaterials, match="expected exactly one log entry, got 0"
+            InvalidBundle, match="expected exactly one log entry, got 0"
         ):
             signing_bundle("bundle_no_log_entry.txt")
 
     def test_verification_materials_offline_no_checkpoint(self, signing_bundle):
         with pytest.raises(
-            InvalidMaterials, match="expected checkpoint in inclusion proof"
+            InvalidBundle, match="expected checkpoint in inclusion proof"
         ):
             signing_bundle("bundle_no_checkpoint.txt", offline=True)
 
@@ -120,7 +120,7 @@ class TestVerificationMaterials:
         _, materials = signing_materials("bundle.txt")
 
         with pytest.raises(
-            InvalidMaterials,
+            InvalidBundle,
             match="Must have Rekor entry before converting to a Bundle",
         ):
             materials.to_bundle()
