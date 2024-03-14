@@ -856,11 +856,7 @@ def _collect_verification_state(
             logger.debug(f"Using bundle from: {inputs['bundle']}")
 
             bundle_bytes = inputs["bundle"].read_bytes()
-            bundle = Bundle().from_json(bundle_bytes)
-
-            materials = VerificationMaterials.from_bundle(
-                bundle=bundle, offline=args.offline
-            )
+            bundle = Bundle.from_json(bundle_bytes)
         else:
             # Load the signing certificate
             logger.debug(f"Using certificate from: {inputs['cert']}")
