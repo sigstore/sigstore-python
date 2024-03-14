@@ -852,7 +852,7 @@ def _collect_verification_state(
 
     all_materials = []
     for file, inputs in input_map.items():
-        with file.open() as io:
+        with file.open(mode="rb") as io:
             hashed = sha256_digest(io)
 
         if "bundle" in inputs:
