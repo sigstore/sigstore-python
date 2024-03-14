@@ -39,6 +39,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     InclusionProof,
 )
 
+from sigstore import dsse
 from sigstore._utils import (
     B64Str,
     BundleType,
@@ -335,6 +336,20 @@ class Bundle:
         constituent parts.
         """
 
+        return cls._from_parts(
+            cert, common_v1.MessageSignature(signature=sig), log_entry
+        )
+
+    @classmethod
+    def _from_parts(
+        cls,
+        cert: Certificate,
+        content: common_v1.MessageSignature | dsse.Envelope,
+        log_entry: LogEntry,
+    ) -> Bundle:
+        """
+        @private
+        """
         inclusion_promise: rekor_v1.InclusionPromise | None = None
         if log_entry.inclusion_promise:
             inclusion_promise = rekor_v1.InclusionPromise(
@@ -369,7 +384,12 @@ class Bundle:
                     )
                 ],
             ),
-            message_signature=common_v1.MessageSignature(signature=sig),
         )
+
+        # Fill in the appropriate variant.
+        if isinstance(content, common_v1.MessageSignature):
+            inner.message_signature = content
+        else:
+            inner.dsse_envelope = content._inner
 
         return cls(inner)
