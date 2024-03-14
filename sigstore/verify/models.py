@@ -322,6 +322,9 @@ class Bundle:
         return cls(inner)
 
     def to_json(self) -> str:
+        """
+        Return a JSON encoding of this bundle.
+        """
         # TODO: Unclear why mypy doesn't like this.
         return self._inner.to_json()  # type: ignore[no-any-return]
 
