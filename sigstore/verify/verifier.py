@@ -18,7 +18,6 @@ Verification API machinery.
 
 from __future__ import annotations
 
-import base64
 import logging
 from datetime import datetime, timezone
 from typing import List, cast
@@ -57,11 +56,9 @@ from sigstore._internal.set import InvalidSETError, verify_set
 from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import B64Str, HexStr, sha256_digest
 from sigstore.hashes import Hashed
-from sigstore.verify.models import InvalidRekorEntry as InvalidRekorEntryError
-from sigstore.verify.models import RekorEntryMissing as RekorEntryMissingError
 from sigstore.verify.models import (
+    Bundle,
     VerificationFailure,
-    VerificationMaterials,
     VerificationResult,
     VerificationSuccess,
 )
@@ -153,7 +150,7 @@ class Verifier:
     def verify(
         self,
         input_: bytes | Hashed,
-        materials: VerificationMaterials,
+        bundle: Bundle,
         policy: VerificationPolicy,
     ) -> VerificationResult:
         """Public API for verifying.
@@ -161,7 +158,7 @@ class Verifier:
         `input_` is the input to verify, either as a buffer of contents or as
         a prehashed `Hashed` object.
 
-        `materials` are the `VerificationMaterials` to verify.
+        `bundle` is the Sigstore `Bundle` to verify against.
 
         `policy` is the `VerificationPolicy` to verify against.
 
@@ -204,8 +201,8 @@ class Verifier:
 
         # 1) Verify that the signing certificate is signed by the root certificate and that the
         #    signing certificate was valid at the time of signing.
-        sign_date = materials.certificate.not_valid_before_utc
-        cert_ossl = X509.from_cryptography(materials.certificate)
+        sign_date = bundle.signing_certificate.not_valid_before_utc
+        cert_ossl = X509.from_cryptography(bundle.signing_certificate)
 
         store.set_time(sign_date)
         store_ctx = X509StoreContext(store, cert_ossl)
@@ -221,34 +218,38 @@ class Verifier:
         # 2) Check that the signing certificate has a valid sct
 
         # The SignedCertificateTimestamp should be acessed by the index 0
-        sct = _get_precertificate_signed_certificate_timestamps(materials.certificate)[
-            0
-        ]
+        sct = _get_precertificate_signed_certificate_timestamps(
+            bundle.signing_certificate
+        )[0]
         verify_sct(
             sct,
-            materials.certificate,
+            bundle.signing_certificate,
             [parent_cert.to_cryptography() for parent_cert in chain],
             self._rekor._ct_keyring,
         )
 
         # 3) Check that the signing certificate contains the proof claim as the subject
         # Check usage is "digital signature"
-        usage_ext = materials.certificate.extensions.get_extension_for_class(KeyUsage)
+        usage_ext = bundle.signing_certificate.extensions.get_extension_for_class(
+            KeyUsage
+        )
         if not usage_ext.value.digital_signature:
             return VerificationFailure(
                 reason="Key usage is not of type `digital signature`"
             )
 
         # Check that extended usage contains "code signing"
-        extended_usage_ext = materials.certificate.extensions.get_extension_for_class(
-            ExtendedKeyUsage
+        extended_usage_ext = (
+            bundle.signing_certificate.extensions.get_extension_for_class(
+                ExtendedKeyUsage
+            )
         )
         if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
             return VerificationFailure(
                 reason="Extended usage does not contain `code signing`"
             )
 
-        policy_check = policy.verify(materials.certificate)
+        policy_check = policy.verify(bundle.signing_certificate)
         if not policy_check:
             return policy_check
 
@@ -256,10 +257,10 @@ class Verifier:
 
         # 4) Verify that the signature was signed by the public key in the signing certificate
         try:
-            signing_key = materials.certificate.public_key()
+            signing_key = bundle.signing_certificate.public_key()
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
             signing_key.verify(
-                materials.signature,
+                bundle._inner.message_signature.signature,
                 hashed_input.digest,
                 ec.ECDSA(hashed_input._as_prehashed()),
             )
@@ -271,47 +272,32 @@ class Verifier:
         # 5) Retrieve the Rekor entry for this artifact (potentially from
         # an offline entry), confirming its consistency with the other
         # artifacts in the process.
-        try:
-            entry = materials.rekor_entry(hashed_input, self._rekor)
-        except RekorEntryMissingError:
-            return LogEntryMissing(
-                signature=B64Str(base64.b64encode(materials.signature).decode()),
-                artifact_hash=HexStr(hashed_input.digest.hex()),
-            )
-        except InvalidRekorEntryError:
-            return VerificationFailure(
-                reason="Rekor entry contents do not match other signing materials"
-            )
+        entry = bundle.log_entry
+        # TODO: consistency check here.
+        # try:
+        #     entry = materials.rekor_entry(hashed_input, self._rekor)
+        # except RekorEntryMissingError:
+        #     return LogEntryMissing(
+        #         signature=B64Str(base64.b64encode(materials.signature).decode()),
+        #         artifact_hash=HexStr(hashed_input.digest.hex()),
+        #     )
+        # except InvalidRekorEntryError:
+        #     return VerificationFailure(
+        #         reason="Rekor entry contents do not match other signing materials"
+        #     )
 
         # 6) Verify the inclusion proof supplied by Rekor for this artifact.
-        #
-        # The inclusion proof should always be present in the online case. In
-        # the offline case, if it is present, we verify it.
-        if entry.inclusion_proof and entry.inclusion_proof.checkpoint:
-            try:
-                verify_merkle_inclusion(entry)
-            except InvalidInclusionProofError as exc:
-                return VerificationFailure(
-                    reason=f"invalid Rekor inclusion proof: {exc}"
-                )
+        try:
+            verify_merkle_inclusion(entry)
+        except InvalidInclusionProofError as exc:
+            return VerificationFailure(reason=f"invalid Rekor inclusion proof: {exc}")
 
-            try:
-                verify_checkpoint(self._rekor, entry)
-            except CheckpointError as exc:
-                return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
+        try:
+            verify_checkpoint(self._rekor, entry)
+        except CheckpointError as exc:
+            return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
-            _logger.debug(
-                f"successfully verified inclusion proof: index={entry.log_index}"
-            )
-        elif not materials._offline:
-            # Paranoia: if we weren't given an inclusion proof, then
-            # this *must* have been offline verification. If it was online
-            # then we've somehow entered an invalid state, so fail.
-            return VerificationFailure(reason="missing Rekor inclusion proof")
-        else:
-            _logger.warning(
-                "inclusion proof not present in bundle: skipping due to offline verification"
-            )
+        _logger.debug(f"successfully verified inclusion proof: index={entry.log_index}")
 
         # 7) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         if entry.inclusion_promise:
@@ -328,9 +314,9 @@ class Verifier:
         # 8) Verify that the signing certificate was valid at the time of signing
         integrated_time = datetime.fromtimestamp(entry.integrated_time, tz=timezone.utc)
         if not (
-            materials.certificate.not_valid_before_utc
+            bundle.signing_certificate.not_valid_before_utc
             <= integrated_time
-            <= materials.certificate.not_valid_after_utc
+            <= bundle.signing_certificate.not_valid_after_utc
         ):
             return VerificationFailure(
                 reason="invalid signing cert: expired at time of Rekor entry"

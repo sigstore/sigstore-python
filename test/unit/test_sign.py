@@ -26,9 +26,7 @@ from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
 from sigstore.dsse import _StatementBuilder, _Subject
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
-from sigstore.verify.models import VerificationMaterials
 from sigstore.verify.policy import UnsafeNoOp
-from sigstore.verify.verifier import Verifier
 
 
 class TestSigningContext:
@@ -127,10 +125,10 @@ def test_identity_proof_claim_lookup(signer_and_ident, monkeypatch):
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_sign_prehashed(staging):
-    sign_ctx, verifier, identity = staging
+    sign_ctx_cls, verifier_cls, identity = staging
 
-    sign_ctx: SigningContext = sign_ctx()
-    verifier: Verifier = verifier()
+    sign_ctx = sign_ctx_cls()
+    verifier = verifier_cls()
 
     input_ = secrets.token_bytes(32)
     hashed = Hashed(
@@ -143,12 +141,10 @@ def test_sign_prehashed(staging):
     assert bundle.message_signature.message_digest.algorithm == hashed.algorithm
     assert bundle.message_signature.message_digest.digest == hashed.digest
 
-    materials = VerificationMaterials.from_bundle(bundle=bundle, offline=False)
-
     # verifying against the original input works
-    verifier.verify(input_, materials=materials, policy=UnsafeNoOp())
+    verifier.verify(input_, bundle=bundle, policy=UnsafeNoOp())
     # verifying against the prehash also works
-    verifier.verify(hashed, materials=materials, policy=UnsafeNoOp())
+    verifier.verify(hashed, bundle=bundle, policy=UnsafeNoOp())
 
 
 @pytest.mark.online

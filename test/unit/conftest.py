@@ -31,14 +31,14 @@ from id import (
     GitHubOidcPermissionCredentialError,
     detect_credential,
 )
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle as _Bundle
 from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface
 
 from sigstore._internal import tuf
 from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
 from sigstore.sign import SigningContext
-from sigstore.verify import VerificationMaterials
+from sigstore.verify.models import Bundle
 from sigstore.verify.policy import VerificationSuccess
 from sigstore.verify.verifier import Verifier
 
@@ -153,38 +153,30 @@ def tuf_asset():
 
 
 @pytest.fixture
-def signing_materials() -> Callable[[str, bool], tuple[Path, VerificationMaterials]]:
-    def _signing_materials(
-        name: str, offline: bool = False
-    ) -> tuple[Path, VerificationMaterials]:
+def signing_materials() -> Callable[[str, bool], tuple[Path, Bundle]]:
+    def _signing_materials(name: str) -> tuple[Path, Bundle]:
         file = _ASSETS / name
-        cert = _ASSETS / f"{name}.crt"
-        sig = _ASSETS / f"{name}.sig"
+        cert_path = _ASSETS / f"{name}.crt"
+        sig_path = _ASSETS / f"{name}.sig"
 
-        materials = VerificationMaterials(
-            cert_pem=cert.read_text(),
-            signature=base64.b64decode(sig.read_text()),
-            offline=offline,
-            rekor_entry=None,
-        )
+        cert = load_pem_x509_certificate(cert_path.read_bytes())
+        sig = base64.b64decode(sig_path.read_text())
 
-        return (file, materials)
+        bundle = Bundle.from_parts(cert, sig, ...)
+
+        return (file, bundle)
 
     return _signing_materials
 
 
 @pytest.fixture
 def signing_bundle():
-    def _signing_bundle(
-        name: str, *, offline: bool = False
-    ) -> tuple[Path, VerificationMaterials]:
+    def _signing_bundle(name: str) -> tuple[Path, Bundle]:
         file = _ASSETS / name
-        bundle = _ASSETS / f"{name}.sigstore"
-        bundle = Bundle().from_json(bundle.read_bytes())
+        bundle_path = _ASSETS / f"{name}.sigstore"
+        bundle = Bundle.from_json(bundle_path.read_bytes())
 
-        materials = VerificationMaterials.from_bundle(bundle=bundle, offline=offline)
-
-        return (file, materials)
+        return (file, bundle)
 
     return _signing_bundle
 

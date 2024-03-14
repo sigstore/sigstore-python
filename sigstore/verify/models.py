@@ -303,7 +303,7 @@ class Bundle:
     @property
     def signing_certificate(self) -> Certificate:
         """Returns the bundle's contained signing (i.e. leaf) certificate."""
-        return self._leaf_cert
+        return self._signing_certificate
 
     @property
     def log_entry(self) -> LogEntry:

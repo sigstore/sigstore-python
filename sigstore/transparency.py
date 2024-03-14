@@ -115,9 +115,9 @@ class LogEntry:
     The index of this entry within the log.
     """
 
-    inclusion_proof: Optional[LogInclusionProof]
+    inclusion_proof: LogInclusionProof
     """
-    An inclusion proof for this log entry, if present.
+    An inclusion proof for this log entry.
     """
 
     inclusion_promise: Optional[B64Str]
@@ -135,11 +135,8 @@ class LogEntry:
 
         # An inclusion proof isn't considered present unless its checkpoint
         # is also present.
-        has_inclusion_proof = (
-            self.inclusion_proof is not None and self.inclusion_proof.checkpoint
-        )
-        if not has_inclusion_proof and self.inclusion_promise is None:
-            raise ValueError("Log entry must have either inclusion proof or promise")
+        if self.inclusion_proof.checkpoint is None:
+            raise ValueError("Log entry inclusion proof must include checkpoint")
 
     @classmethod
     def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:

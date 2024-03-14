@@ -53,7 +53,6 @@ with artifact.open("rb") as a, cert.open("r") as c, signature.open("rb") as s:
 
 from sigstore.verify.models import (
     VerificationFailure,
-    VerificationMaterials,
     VerificationResult,
     VerificationSuccess,
 )
@@ -70,7 +69,6 @@ __all__ = [
     "VerificationResult",
     "VerificationSuccess",
     "VerificationFailure",
-    "VerificationMaterials",
     "policy",
     "models",
     "verifier",

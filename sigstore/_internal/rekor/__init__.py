@@ -16,7 +16,35 @@
 APIs for interacting with Rekor.
 """
 
+import rekor_types
+from cryptography.x509 import Certificate
+
+from sigstore._utils import base64_encode_pem_cert
+from sigstore.hashes import Hashed
+
 from .checkpoint import SignedCheckpoint
 from .client import RekorClient
 
 __all__ = ["RekorClient", "SignedCheckpoint"]
+
+
+# TODO: This should probably live somewhere better.
+def _hashedrekord_from_parts(
+    cert: Certificate, sig: bytes, hashed: Hashed
+) -> rekor_types.Hashedrekord:
+    return rekor_types.Hashedrekord(
+        spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+            signature=rekor_types.hashedrekord.Signature(
+                content=sig.decode(),
+                public_key=rekor_types.hashedrekord.PublicKey(
+                    content=base64_encode_pem_cert(cert),
+                ),
+            ),
+            data=rekor_types.hashedrekord.Data(
+                hash=rekor_types.hashedrekord.Hash(
+                    algorithm=hashed._as_hashedrekord_algorithm(),
+                    value=hashed.digest.hex(),
+                )
+            ),
+        )
+    )
