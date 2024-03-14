@@ -22,14 +22,18 @@ import base64
 import logging
 from textwrap import dedent
 
+from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
 )
 from pydantic import BaseModel
+from sigstore_protobuf_specs.dev.sigstore.bundle import v1 as bundle_v1
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle as _Bundle,
 )
+from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
+from sigstore_protobuf_specs.dev.sigstore.rekor import v1 as rekor_v1
 from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     InclusionPromise,
     InclusionProof,
@@ -301,4 +305,40 @@ class Bundle:
         Deserialize the given Sigstore bundle.
         """
         inner = _Bundle().from_json(raw)
+        return cls(inner)
+
+    @classmethod
+    def from_parts(cls, cert: Certificate, sig: bytes, log_entry: LogEntry) -> Bundle:
+        """
+        Construct a Sigstore bundle (of `hashedrekord` type) from its
+        constituent parts.
+        """
+
+        inclusion_promise: rekor_v1.InclusionPromise | None = None
+        if log_entry.inclusion_promise:
+            inclusion_promise = rekor_v1.InclusionPromise()
+
+        inclusion_proof = rekor_v1.InclusionProof(
+            log_index=log_entry.inclusion_proof.log_index,
+            root_hash=log_entry.inclusion_proof.root_hash,
+        )
+
+        inner = _Bundle(
+            media_type=BundleType.BUNDLE_0_3.value,
+            verification_material=bundle_v1.VerificationMaterial(
+                certificate=common_v1.X509Certificate(cert.public_bytes(Encoding.DER)),
+                tlog_entries=[
+                    rekor_v1.TransparencyLogEntry(
+                        log_index=log_entry.log_index,
+                        log_id=log_entry.log_id,
+                        kind_version=...,
+                        integrated_time=log_entry.integrated_time,
+                        inclusion_promise=inclusion_promise,
+                        inclusion_proof=inclusion_proof,
+                    )
+                ],
+            ),
+            message_signature=(),
+        )
+
         return cls(inner)
