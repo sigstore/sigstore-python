@@ -881,7 +881,7 @@ def _collect_verification_state(
             # entry from the online log.
             # TODO: This should be abstracted somewhere much better.
             log_entry = verifier._rekor.log.entries.retrieve.post(
-                _hashedrekord_from_parts(cert, sig, hashed)
+                _hashedrekord_from_parts(cert, signature, hashed)
             )
             if log_entry is None:
                 _die(args, f"No matching log entry for {file}'s verification materials")
