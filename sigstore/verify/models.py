@@ -229,8 +229,8 @@ class Bundle:
         # Extract the log entry. For the time being, we expect
         # bundles to only contain a single log entry.
         try:
-            tlog_entry = next(self._inner.verification_material.tlog_entries)
-        except StopIteration:
+            tlog_entry = self._inner.verification_material.tlog_entries[0]
+        except IndexError:
             raise InvalidBundle("expected exactly one log entry in bundle")
 
         # Handling of inclusion promises and proofs varies between bundle
@@ -351,7 +351,7 @@ class Bundle:
                 tlog_entries=[
                     rekor_v1.TransparencyLogEntry(
                         log_index=log_entry.log_index,
-                        log_id=log_entry.log_id,
+                        log_id=common_v1.LogId(key_id=bytes.fromhex(log_entry.log_id)),
                         kind_version=rekor_v1.KindVersion(
                             kind="hashedrekord", version="0.0.1"
                         ),

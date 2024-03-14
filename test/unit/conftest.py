@@ -31,11 +31,13 @@ from id import (
     GitHubOidcPermissionCredentialError,
     detect_credential,
 )
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle as _Bundle
 from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface
 
 from sigstore._internal import tuf
+from sigstore._internal.rekor import _hashedrekord_from_parts
+from sigstore._internal.rekor.client import RekorClient
+from sigstore._utils import sha256_digest
 from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
 from sigstore.sign import SigningContext
 from sigstore.verify.models import Bundle
@@ -153,16 +155,24 @@ def tuf_asset():
 
 
 @pytest.fixture
-def signing_materials() -> Callable[[str, bool], tuple[Path, Bundle]]:
-    def _signing_materials(name: str) -> tuple[Path, Bundle]:
+def signing_materials() -> Callable[[str, RekorClient], tuple[Path, Bundle]]:
+    # NOTE: Unlike `signing_bundle`, `signing_materials` requires a
+    # Rekor client to retrieve its entry with.
+    def _signing_materials(name: str, client: RekorClient) -> tuple[Path, Bundle]:
         file = _ASSETS / name
         cert_path = _ASSETS / f"{name}.crt"
         sig_path = _ASSETS / f"{name}.sig"
 
         cert = load_pem_x509_certificate(cert_path.read_bytes())
         sig = base64.b64decode(sig_path.read_text())
+        with file.open(mode="rb") as io:
+            hashed = sha256_digest(io)
 
-        bundle = Bundle.from_parts(cert, sig, ...)
+        entry = client.log.entries.retrieve.post(
+            _hashedrekord_from_parts(cert, sig, hashed)
+        )
+
+        bundle = Bundle.from_parts(cert, sig, entry)
 
         return (file, bundle)
 

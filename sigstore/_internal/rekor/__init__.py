@@ -16,6 +16,8 @@
 APIs for interacting with Rekor.
 """
 
+import base64
+
 import rekor_types
 from cryptography.x509 import Certificate
 
@@ -35,7 +37,7 @@ def _hashedrekord_from_parts(
     return rekor_types.Hashedrekord(
         spec=rekor_types.hashedrekord.HashedrekordV001Schema(
             signature=rekor_types.hashedrekord.Signature(
-                content=sig.decode(),
+                content=base64.b64encode(sig).decode(),
                 public_key=rekor_types.hashedrekord.PublicKey(
                     content=base64_encode_pem_cert(cert),
                 ),

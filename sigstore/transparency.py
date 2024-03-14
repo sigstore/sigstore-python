@@ -128,16 +128,6 @@ class LogEntry:
     log entry.
     """
 
-    def __post_init__(self) -> None:
-        """
-        Invariant preservation.
-        """
-
-        # An inclusion proof isn't considered present unless its checkpoint
-        # is also present.
-        if self.inclusion_proof.checkpoint is None:
-            raise ValueError("Log entry inclusion proof must include checkpoint")
-
     @classmethod
     def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:
         """
