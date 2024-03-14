@@ -163,6 +163,20 @@ class Bundle:
         self._verify_bundle()
 
     def _verify_bundle(self) -> None:
+        """
+        Performs various feats of heroism to ensure the bundle is well-formed
+        and upholds invariants, including:
+
+        * The "leaf" (signing) certificate is present;
+        * There is a inclusion proof present, even if the Bundle's version
+           predates a mandatory inclusion proof.
+
+        Notably, this method does **not** check for consistency between
+        the bundle's log entry and other materials, since doing so requires
+        access to the input's digest. That step is performed during
+        verification.
+        """
+
         # The bundle must have a recognized media type.
         try:
             media_type = BundleType(self._inner.media_type)
@@ -316,11 +330,18 @@ class Bundle:
 
         inclusion_promise: rekor_v1.InclusionPromise | None = None
         if log_entry.inclusion_promise:
-            inclusion_promise = rekor_v1.InclusionPromise()
+            inclusion_promise = rekor_v1.InclusionPromise(
+                signed_entry_timestamp=base64.b64decode(log_entry.inclusion_promise)
+            )
 
         inclusion_proof = rekor_v1.InclusionProof(
             log_index=log_entry.inclusion_proof.log_index,
-            root_hash=log_entry.inclusion_proof.root_hash,
+            root_hash=bytes.fromhex(log_entry.inclusion_proof.root_hash),
+            tree_size=log_entry.inclusion_proof.tree_size,
+            hashes=[bytes.fromhex(hash_) for hash_ in log_entry.inclusion_proof.hashes],
+            checkpoint=rekor_v1.Checkpoint(
+                envelope=log_entry.inclusion_proof.checkpoint
+            ),
         )
 
         inner = _Bundle(
@@ -331,14 +352,17 @@ class Bundle:
                     rekor_v1.TransparencyLogEntry(
                         log_index=log_entry.log_index,
                         log_id=log_entry.log_id,
-                        kind_version=...,
+                        kind_version=rekor_v1.KindVersion(
+                            kind="hashedrekord", version="0.0.1"
+                        ),
                         integrated_time=log_entry.integrated_time,
                         inclusion_promise=inclusion_promise,
                         inclusion_proof=inclusion_proof,
+                        canonicalized_body=base64.b64decode(log_entry.body),
                     )
                 ],
             ),
-            message_signature=(),
+            message_signature=common_v1.MessageSignature(signature=sig),
         )
 
         return cls(inner)
