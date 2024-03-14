@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import hashlib
 import secrets
 
@@ -41,22 +40,22 @@ class TestSigningContext:
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_sign_rekor_entry_consistent(signer_and_ident):
-    ctx, identity = signer_and_ident
+    ctx_cls, identity = signer_and_ident
 
     # NOTE: The actual signer instance is produced lazily, so that parameter
     # expansion doesn't fail in offline tests.
-    ctx: SigningContext = ctx()
+    ctx: SigningContext = ctx_cls()
     assert identity is not None
 
     payload = secrets.token_bytes(32)
     with ctx.signer(identity) as signer:
-        expected_entry = signer.sign(payload).verification_material.tlog_entries[0]
+        expected_entry = signer.sign(payload).log_entry
 
     actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
-    assert expected_entry.canonicalized_body == base64.b64decode(actual_entry.body)
+    assert expected_entry.body == actual_entry.body
     assert expected_entry.integrated_time == actual_entry.integrated_time
-    assert expected_entry.log_id.key_id == bytes.fromhex(actual_entry.log_id)
+    assert expected_entry.log_id == actual_entry.log_id
     assert expected_entry.log_index == actual_entry.log_index
 
 
@@ -102,9 +101,9 @@ def test_sct_verify_keyring_error(signer_and_ident, monkeypatch):
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_identity_proof_claim_lookup(signer_and_ident, monkeypatch):
-    ctx, identity = signer_and_ident
+    ctx_cls, identity = signer_and_ident
 
-    ctx: SigningContext = ctx()
+    ctx: SigningContext = ctx_cls()
     assert identity is not None
 
     # clear out the known issuers, forcing the `Identity`'s  `proof_claim` to be looked up.
@@ -113,12 +112,12 @@ def test_identity_proof_claim_lookup(signer_and_ident, monkeypatch):
     payload = secrets.token_bytes(32)
 
     with ctx.signer(identity) as signer:
-        expected_entry = signer.sign(payload).verification_material.tlog_entries[0]
+        expected_entry = signer.sign(payload).log_entry
     actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
-    assert expected_entry.canonicalized_body == base64.b64decode(actual_entry.body)
+    assert expected_entry.body == actual_entry.body
     assert expected_entry.integrated_time == actual_entry.integrated_time
-    assert expected_entry.log_id.key_id == bytes.fromhex(actual_entry.log_id)
+    assert expected_entry.log_id == actual_entry.log_id
     assert expected_entry.log_index == actual_entry.log_index
 
 
@@ -138,8 +137,8 @@ def test_sign_prehashed(staging):
     with sign_ctx.signer(identity) as signer:
         bundle = signer.sign(hashed)
 
-    assert bundle.message_signature.message_digest.algorithm == hashed.algorithm
-    assert bundle.message_signature.message_digest.digest == hashed.digest
+    assert bundle._inner.message_signature.message_digest.algorithm == hashed.algorithm
+    assert bundle._inner.message_signature.message_digest.digest == hashed.digest
 
     # verifying against the original input works
     verifier.verify(input_, bundle=bundle, policy=UnsafeNoOp())
