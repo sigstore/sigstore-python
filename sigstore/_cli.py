@@ -700,12 +700,16 @@ def _sign(args: argparse.Namespace) -> None:
                 raise exp_certificate
 
             print("Using ephemeral certificate:")
-            cert = result.verification_material.x509_certificate_chain.certificates[0]
+            cert = (
+                result._inner.verification_material.x509_certificate_chain.certificates[
+                    0
+                ]
+            )
             cert_pem = cert_der_to_pem(cert.raw_bytes)
             print(cert_pem)
 
             print(
-                f"Transparency log entry created at index: {result.verification_material.tlog_entries[0].log_index}"
+                f"Transparency log entry created at index: {result._inner.verification_material.tlog_entries[0].log_index}"
             )
 
             sig_output: TextIO
@@ -714,7 +718,9 @@ def _sign(args: argparse.Namespace) -> None:
             else:
                 sig_output = sys.stdout
 
-            signature = base64.b64encode(result.message_signature.signature).decode()
+            signature = base64.b64encode(
+                result._inner.message_signature.signature
+            ).decode()
             print(signature, file=sig_output)
             if outputs["sig"] is not None:
                 print(f"Signature written to {outputs['sig']}")

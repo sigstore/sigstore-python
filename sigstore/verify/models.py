@@ -321,6 +321,10 @@ class Bundle:
         inner = _Bundle().from_json(raw)
         return cls(inner)
 
+    def to_json(self) -> str:
+        # TODO: Unclear why mypy doesn't like this.
+        return self._inner.to_json()  # type: ignore[no-any-return]
+
     @classmethod
     def from_parts(cls, cert: Certificate, sig: bytes, log_entry: LogEntry) -> Bundle:
         """

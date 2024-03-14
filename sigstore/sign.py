@@ -51,7 +51,9 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
-    Bundle,
+    Bundle as _Bundle,
+)
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     VerificationMaterial,
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
@@ -82,6 +84,7 @@ from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import BundleType, PEMCert, sha256_digest
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
+from sigstore.verify.models import Bundle
 
 _logger = logging.getLogger(__name__)
 
@@ -391,7 +394,7 @@ def _make_bundle(
         tlog_entries=[tlog_entry],
     )
 
-    bundle = Bundle(
+    bundle = _Bundle(
         media_type=BundleType.BUNDLE_0_2,
         verification_material=material,
     )
@@ -401,4 +404,4 @@ def _make_bundle(
     else:
         bundle.dsse_envelope = content._inner
 
-    return bundle
+    return Bundle(bundle)
