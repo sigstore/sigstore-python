@@ -366,30 +366,32 @@ class Bundle:
             ),
         )
 
+        tlog_entry = rekor_v1.TransparencyLogEntry(
+            log_index=log_entry.log_index,
+            log_id=common_v1.LogId(key_id=bytes.fromhex(log_entry.log_id)),
+            integrated_time=log_entry.integrated_time,
+            inclusion_promise=inclusion_promise,
+            inclusion_proof=inclusion_proof,
+            canonicalized_body=base64.b64decode(log_entry.body),
+        )
+
         inner = _Bundle(
             media_type=BundleType.BUNDLE_0_3.value,
             verification_material=bundle_v1.VerificationMaterial(
                 certificate=common_v1.X509Certificate(cert.public_bytes(Encoding.DER)),
-                tlog_entries=[
-                    rekor_v1.TransparencyLogEntry(
-                        log_index=log_entry.log_index,
-                        log_id=common_v1.LogId(key_id=bytes.fromhex(log_entry.log_id)),
-                        kind_version=rekor_v1.KindVersion(
-                            kind="hashedrekord", version="0.0.1"
-                        ),
-                        integrated_time=log_entry.integrated_time,
-                        inclusion_promise=inclusion_promise,
-                        inclusion_proof=inclusion_proof,
-                        canonicalized_body=base64.b64decode(log_entry.body),
-                    )
-                ],
             ),
         )
 
-        # Fill in the appropriate variant.
+        # Fill in the appropriate variants.
         if isinstance(content, common_v1.MessageSignature):
             inner.message_signature = content
+            tlog_entry.kind_version = rekor_v1.KindVersion(
+                kind="hashedrekord", version="0.0.1"
+            )
         else:
             inner.dsse_envelope = content._inner
+            tlog_entry.kind_version = rekor_v1.KindVersion(kind="dsse", version="0.0.1")
+
+        inner.verification_material.tlog_entries = [tlog_entry]
 
         return cls(inner)
