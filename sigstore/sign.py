@@ -27,13 +27,12 @@ issuer = Issuer.production()
 identity = issuer.identity_token()
 
 # The artifact to sign
-artifact = Path("foo.txt")
+artifact = Path("foo.txt").read_bytes()
 
-with artifact.open("rb") as file:
-    signing_ctx = SigningContext.production()
-    with signing_ctx.signer(identity, cache=True) as signer:
-        result = signer.sign(file)
-        print(result)
+signing_ctx = SigningContext.production()
+with signing_ctx.signer(identity, cache=True) as signer:
+    result = signer.sign(artifact)
+    print(result)
 ```
 """
 
