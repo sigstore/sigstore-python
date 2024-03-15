@@ -20,34 +20,25 @@ Example:
 import base64
 from pathlib import Path
 
-from sigstore.verify import Verifier, VerificationMaterials
+from sigstore.verify import Bundle, Verifier
 from sigstore.verify.policy import Identity
 
-# The artifact to verify
-artifact = Path("foo.txt")
+# The input to verify
+input_ = Path("foo.txt").read_bytes()
 
-# The signing certificate
-cert = Path("foo.txt.crt")
+# The bundle to verify with
+bundle = Bundle.from_json(Path("foo.txt.sigstore.json").read_bytes())
 
-# The signature to verify
-signature = Path("foo.txt.sig")
-
-with artifact.open("rb") as a, cert.open("r") as c, signature.open("rb") as s:
-    materials = VerificationMaterials(
-        input_=a,
-        cert_pem=c.read(),
-        signature=base64.b64decode(s.read()),
-        rekor_entry=None,
-    )
-    verifier = Verifier.production()
-    result = verifier.verify(
-        materials,
-        Identity(
-            identity="foo@bar.com",
-            issuer="https://accounts.google.com",
-        ),
-    )
-    print(result)
+verifier = Verifier.production()
+result = verifier.verify(
+    input_,
+    bundle,
+    Identity(
+        identity="foo@bar.com",
+        issuer="https://accounts.google.com",
+    ),
+)
+print(result)
 ```
 """
 
