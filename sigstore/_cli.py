@@ -702,7 +702,7 @@ def _sign(args: argparse.Namespace) -> None:
 
             print("Using ephemeral certificate:")
             cert = result.signing_certificate
-            cert_pem = cert.public_bytes(Encoding.PEM)
+            cert_pem = cert.public_bytes(Encoding.PEM).decode()
             print(cert_pem)
 
             print(
