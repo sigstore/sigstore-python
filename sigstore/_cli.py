@@ -23,6 +23,7 @@ from pathlib import Path
 from textwrap import dedent
 from typing import NoReturn, Optional, TextIO, Union, cast
 
+from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate, load_pem_x509_certificates
 from rich.logging import RichHandler
 
@@ -700,16 +701,12 @@ def _sign(args: argparse.Namespace) -> None:
                 raise exp_certificate
 
             print("Using ephemeral certificate:")
-            cert = (
-                result._inner.verification_material.x509_certificate_chain.certificates[
-                    0
-                ]
-            )
-            cert_pem = cert_der_to_pem(cert.raw_bytes)
+            cert = result.signing_certificate
+            cert_pem = cert.public_bytes(Encoding.PEM)
             print(cert_pem)
 
             print(
-                f"Transparency log entry created at index: {result._inner.verification_material.tlog_entries[0].log_index}"
+                f"Transparency log entry created at index: {result.log_entry.log_index}"
             )
 
             sig_output: TextIO
