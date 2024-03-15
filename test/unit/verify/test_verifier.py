@@ -45,6 +45,18 @@ def test_verifier_one_verification(signing_materials, null_policy):
     assert verifier.verify(file.read_bytes(), bundle, null_policy)
 
 
+def test_verifier_inconsistent_log_entry(signing_bundle, null_policy, mock_staging_tuf):
+    (file, bundle) = signing_bundle("bundle_cve_2022_36056.txt")
+
+    verifier = Verifier.staging()
+    result = verifier.verify(file.read_bytes(), bundle, null_policy)
+
+    assert not result
+    assert (
+        result.reason == "transparency log entry is inconsistent with other materials"
+    )
+
+
 @pytest.mark.online
 def test_verifier_multiple_verifications(signing_materials, null_policy):
     verifier = Verifier.staging()
