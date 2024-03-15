@@ -18,10 +18,12 @@ Verification API machinery.
 
 from __future__ import annotations
 
+import base64
 import logging
 from datetime import datetime, timezone
 from typing import List, cast
 
+import rekor_types
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
@@ -41,18 +43,17 @@ from pydantic import ConfigDict
 
 from sigstore._internal.merkle import (
     InvalidInclusionProofError,
-    verify_merkle_inclusion,
 )
+from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.checkpoint import (
     CheckpointError,
-    verify_checkpoint,
 )
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
     _get_precertificate_signed_certificate_timestamps,
     verify_sct,
 )
-from sigstore._internal.set import InvalidSETError, verify_set
+from sigstore._internal.set import InvalidSETError
 from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import B64Str, HexStr, sha256_digest
 from sigstore.hashes import Hashed
@@ -190,8 +191,8 @@ class Verifier:
         # 3) Verify that the signing certificate belongs to the signer.
         # 4) Verify that the artifact signature was signed by the public key in the
         #    signing certificate.
-        # 5) Verify that the Rekor entry is consistent with the other signing
-        #    materials (preventing CVE-2022-36056)
+        # 5) Verify that the log entry is consistent with the other verification
+        #    materials, to prevent variants of CVE-2022-36056.
         # 6) Verify the inclusion proof supplied by Rekor for this artifact,
         #    if we're doing online verification.
         # 7) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this
@@ -269,49 +270,37 @@ class Verifier:
 
         _logger.debug("Successfully verified signature...")
 
-        # 5) Retrieve the Rekor entry for this artifact (potentially from
-        # an offline entry), confirming its consistency with the other
-        # artifacts in the process.
+        # 5) Verify the consistency of the log entry's body against
+        #    the other bundle materials (and input being verified).
         entry = bundle.log_entry
-        # TODO: consistency check here.
-        # try:
-        #     entry = materials.rekor_entry(hashed_input, self._rekor)
-        # except RekorEntryMissingError:
-        #     return LogEntryMissing(
-        #         signature=B64Str(base64.b64encode(materials.signature).decode()),
-        #         artifact_hash=HexStr(hashed_input.digest.hex()),
-        #     )
-        # except InvalidRekorEntryError:
-        #     return VerificationFailure(
-        #         reason="Rekor entry contents do not match other signing materials"
-        #     )
 
-        # 6) Verify the inclusion proof supplied by Rekor for this artifact.
+        expected_body = _hashedrekord_from_parts(
+            bundle.signing_certificate,
+            bundle._inner.message_signature.signature,
+            hashed_input,
+        )
+        actual_body = rekor_types.Hashedrekord.model_validate_json(
+            base64.b64decode(entry.body)
+        )
+        if expected_body != actual_body:
+            return VerificationFailure(
+                reason="transparency log entry is inconsistent with other materials"
+            )
+
+        # 6) Verify the inclusion proof for this artifact, including its checkpoint.
+        # 7) Verify the optional inclusion promise (SET) for this artifact
         try:
-            verify_merkle_inclusion(entry)
+            entry._verify(self._rekor._rekor_keyring)
         except InvalidInclusionProofError as exc:
-            return VerificationFailure(reason=f"invalid Rekor inclusion proof: {exc}")
-
-        try:
-            verify_checkpoint(self._rekor, entry)
+            return VerificationFailure(reason=f"invalid inclusion proof: {exc}")
         except CheckpointError as exc:
-            return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
+            return VerificationFailure(
+                reason=f"invalid inclusion proof checkpoint: {exc}"
+            )
+        except InvalidSETError as inval_set:
+            return VerificationFailure(reason=f"invalid inclusion promise: {inval_set}")
 
-        _logger.debug(f"successfully verified inclusion proof: index={entry.log_index}")
-
-        # 7) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
-        if entry.inclusion_promise:
-            try:
-                verify_set(self._rekor, entry)
-                _logger.debug(
-                    f"successfully verified inclusion promise: index={entry.log_index}"
-                )
-            except InvalidSETError as inval_set:
-                return VerificationFailure(
-                    reason=f"invalid Rekor entry SET: {inval_set}"
-                )
-
-        # 8) Verify that the signing certificate was valid at the time of signing
+        # 7) Verify that the signing certificate was valid at the time of signing
         integrated_time = datetime.fromtimestamp(entry.integrated_time, tz=timezone.utc)
         if not (
             bundle.signing_certificate.not_valid_before_utc

@@ -16,13 +16,18 @@
 Utilities for verifying Signed Entry Timestamps.
 """
 
+from __future__ import annotations
+
 import base64
+import typing
 
 from cryptography.exceptions import InvalidSignature
 
-from sigstore._internal.rekor import RekorClient
 from sigstore._utils import KeyID
-from sigstore.transparency import LogEntry
+
+if typing.TYPE_CHECKING:
+    from sigstore._internal.rekor.client import RekorKeyring
+    from sigstore.transparency import LogEntry
 
 
 class InvalidSETError(Exception):
@@ -33,10 +38,10 @@ class InvalidSETError(Exception):
     pass
 
 
-def verify_set(client: RekorClient, entry: LogEntry) -> None:
+def verify_set(keyring: RekorKeyring, entry: LogEntry) -> None:
     """
     Verify the inclusion promise (Signed Entry Timestamp) for a given transparency log
-    `entry` using the given `client`.
+    `entry` using the given `keyring`.
 
     Fails if the given log entry does not contain an inclusion promise.
     """
@@ -46,7 +51,7 @@ def verify_set(client: RekorClient, entry: LogEntry) -> None:
     signed_entry_ts = base64.b64decode(entry.inclusion_promise)
 
     try:
-        client._rekor_keyring.verify(
+        keyring.verify(
             key_id=KeyID(bytes.fromhex(entry.log_id)),
             signature=signed_entry_ts,
             data=entry.encode_canonical(),

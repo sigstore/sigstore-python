@@ -171,11 +171,6 @@ class Bundle:
         * The "leaf" (signing) certificate is present;
         * There is a inclusion proof present, even if the Bundle's version
            predates a mandatory inclusion proof.
-
-        Notably, this method does **not** check for consistency between
-        the bundle's log entry and other materials, since doing so requires
-        access to the input's digest. That step is performed during
-        verification.
         """
 
         # The bundle must have a recognized media type.

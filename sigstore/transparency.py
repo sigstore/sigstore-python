@@ -18,6 +18,8 @@ Transparency log data structures.
 
 from __future__ import annotations
 
+import logging
+import typing
 from typing import Any, List, Optional
 
 from pydantic import (
@@ -32,7 +34,16 @@ from pydantic import (
 from pydantic.dataclasses import dataclass
 from securesystemslib.formats import encode_canonical
 
+from sigstore._internal.merkle import verify_merkle_inclusion
+from sigstore._internal.rekor.checkpoint import verify_checkpoint
+from sigstore._internal.set import verify_set
 from sigstore._utils import B64Str
+
+if typing.TYPE_CHECKING:
+    from sigstore._internal.rekor.client import RekorKeyring
+
+
+_logger = logging.getLogger(__name__)
 
 
 class LogInclusionProof(BaseModel):
@@ -167,3 +178,26 @@ class LogEntry:
         }
 
         return encode_canonical(payload).encode()  # type: ignore
+
+    def _verify(self, keyring: RekorKeyring) -> None:
+        """
+        Verifies this log entry.
+
+        This method performs steps (5), (6), and optionally (7) in
+        the top-level verify API:
+
+        * Verifies the consistency of the entry with the given bundle;
+        * Verifies the Merkle inclusion proof and its signed checkpoint;
+        * Verifies the inclusion promise, if present.
+        """
+
+        verify_merkle_inclusion(self)
+        verify_checkpoint(keyring, self)
+
+        _logger.debug(f"successfully verified inclusion proof: index={self.log_index}")
+
+        if self.inclusion_promise:
+            verify_set(keyring, self)
+            _logger.debug(
+                f"successfully verified inclusion promise: index={self.log_index}"
+            )
