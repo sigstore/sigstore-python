@@ -18,10 +18,12 @@ Transparency log data structures.
 
 from __future__ import annotations
 
+import base64
 import logging
 import typing
 from typing import Any, List, Optional
 
+from cryptography.exceptions import InvalidSignature
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -36,14 +38,20 @@ from securesystemslib.formats import encode_canonical
 
 from sigstore._internal.merkle import verify_merkle_inclusion
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
-from sigstore._internal.set import verify_set
-from sigstore._utils import B64Str
+from sigstore._utils import B64Str, KeyID
+from sigstore.errors import Error
 
 if typing.TYPE_CHECKING:
     from sigstore._internal.rekor.client import RekorKeyring
 
 
 _logger = logging.getLogger(__name__)
+
+
+class InvalidLogEntry(Error):
+    """
+    The transparency log entry is invalid in some way.
+    """
 
 
 class LogInclusionProof(BaseModel):
@@ -179,6 +187,30 @@ class LogEntry:
 
         return encode_canonical(payload).encode()  # type: ignore
 
+    def _verify_set(self, keyring: RekorKeyring) -> None:
+        """
+        Verify the inclusion promise (Signed Entry Timestamp) for a given transparency log
+        `entry` using the given `keyring`.
+
+        Fails if the given log entry does not contain an inclusion promise.
+        """
+
+        if self.inclusion_promise is None:
+            raise InvalidLogEntry("invalid inclusion promise: missing")
+
+        signed_entry_ts = base64.b64decode(self.inclusion_promise)
+
+        try:
+            keyring.verify(
+                key_id=KeyID(bytes.fromhex(self.log_id)),
+                signature=signed_entry_ts,
+                data=self.encode_canonical(),
+            )
+        except InvalidSignature as inval_sig:
+            raise InvalidLogEntry(
+                "invalid inclusion promise: invalid signature"
+            ) from inval_sig
+
     def _verify(self, keyring: RekorKeyring) -> None:
         """
         Verifies this log entry.
@@ -197,7 +229,7 @@ class LogEntry:
         _logger.debug(f"successfully verified inclusion proof: index={self.log_index}")
 
         if self.inclusion_promise:
-            verify_set(keyring, self)
+            self._verify_set(keyring)
             _logger.debug(
                 f"successfully verified inclusion promise: index={self.log_index}"
             )

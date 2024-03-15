@@ -53,10 +53,10 @@ from sigstore._internal.sct import (
     _get_precertificate_signed_certificate_timestamps,
     verify_sct,
 )
-from sigstore._internal.set import InvalidSETError
 from sigstore._internal.trustroot import TrustedRoot
 from sigstore._utils import B64Str, HexStr, sha256_digest
 from sigstore.hashes import Hashed
+from sigstore.transparency import InvalidLogEntry
 from sigstore.verify.models import (
     Bundle,
     VerificationFailure,
@@ -297,8 +297,8 @@ class Verifier:
             return VerificationFailure(
                 reason=f"invalid inclusion proof checkpoint: {exc}"
             )
-        except InvalidSETError as inval_set:
-            return VerificationFailure(reason=f"invalid inclusion promise: {inval_set}")
+        except InvalidLogEntry as exc:
+            return VerificationFailure(reason=str(exc))
 
         # 7) Verify that the signing certificate was valid at the time of signing
         integrated_time = datetime.fromtimestamp(entry.integrated_time, tz=timezone.utc)
