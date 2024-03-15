@@ -42,7 +42,7 @@ from sigstore._internal.rekor.client import (
     RekorKeyring,
 )
 from sigstore._internal.trustroot import TrustedRoot
-from sigstore._utils import cert_der_to_pem, sha256_digest
+from sigstore._utils import sha256_digest
 from sigstore.errors import Error
 from sigstore.hashes import Hashed
 from sigstore.oidc import (
