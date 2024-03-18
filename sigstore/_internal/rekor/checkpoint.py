@@ -26,8 +26,8 @@ from typing import List
 
 from pydantic import BaseModel, Field, StrictStr
 
-from sigstore._internal.keyring import KeyringSignatureError
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.trustroot import KeyringSignatureError
 from sigstore._utils import KeyID
 from sigstore.transparency import LogEntry
 

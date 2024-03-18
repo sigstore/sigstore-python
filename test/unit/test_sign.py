@@ -21,8 +21,8 @@ import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 import sigstore.oidc
-from sigstore._internal.keyring import KeyringError, KeyringLookupError
 from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
+from sigstore._internal.trustroot import KeyringError, KeyringLookupError
 from sigstore.dsse import _StatementBuilder, _Subject
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext

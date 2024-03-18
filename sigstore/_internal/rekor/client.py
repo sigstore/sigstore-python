@@ -29,8 +29,7 @@ import rekor_types
 import requests
 
 from sigstore._internal.ctfe import CTKeyring
-from sigstore._internal.keyring import Keyring
-from sigstore._internal.trustroot import RekorKeyring, TrustedRoot
+from sigstore._internal.trustroot import Keyring, RekorKeyring, TrustedRoot
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)

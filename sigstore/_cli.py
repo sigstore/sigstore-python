@@ -33,12 +33,11 @@ from sigstore._internal.fulcio.client import (
     ExpiredCertificate,
     FulcioClient,
 )
-from sigstore._internal.keyring import Keyring
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
 )
-from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
+from sigstore._internal.trustroot import Keyring, KeyringPurpose, TrustedRoot
 from sigstore._utils import PEMCert, cert_der_to_pem, sha256_digest
 from sigstore.errors import Error
 from sigstore.oidc import (

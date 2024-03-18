@@ -37,7 +37,7 @@ from cryptography.x509.certificate_transparency import (
 from cryptography.x509.oid import ExtendedKeyUsageOID
 
 from sigstore._internal.ctfe import CTKeyring
-from sigstore._internal.keyring import (
+from sigstore._internal.trustroot import (
     KeyringError,
     KeyringLookupError,
     KeyringSignatureError,
