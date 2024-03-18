@@ -27,7 +27,6 @@ from rich.logging import RichHandler
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
-from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import (
     DEFAULT_FULCIO_URL,
     ExpiredCertificate,
@@ -37,7 +36,7 @@ from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
 )
-from sigstore._internal.trustroot import Keyring, KeyringPurpose, TrustedRoot
+from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import PEMCert, cert_der_to_pem, sha256_digest
 from sigstore.errors import Error
 from sigstore.oidc import (
@@ -649,14 +648,9 @@ def _sign(args: argparse.Namespace) -> None:
     else:
         # Assume "production" trust root if no keys are given as arguments
         trusted_root = TrustedRoot.production(args=args, purpose=KeyringPurpose.SIGN)
-        if args.ctfe_pem is not None:
-            ctfe_keys = [args.ctfe_pem.read()]
-        else:
-            ctfe_keys = trusted_root.get_ctfe_keys()
 
+        ct_keyring = trusted_root.ct_keyring()
         rekor_keyring = trusted_root.rekor_keyring()
-
-        ct_keyring = CTKeyring(Keyring(ctfe_keys))
 
         signing_ctx = SigningContext(
             fulcio=FulcioClient(args.fulcio_url),
@@ -819,13 +813,12 @@ def _collect_verification_state(
             _die(args, "Custom Rekor URL used without specifying --certificate-chain")
 
         trusted_root = TrustedRoot.production(args=args, purpose=KeyringPurpose.VERIFY)
-        ct_keys = trusted_root.get_ctfe_keys()
 
         verifier = Verifier(
             rekor=RekorClient(
                 url=args.rekor_url,
                 rekor_keyring=trusted_root.rekor_keyring(),
-                ct_keyring=CTKeyring(Keyring(ct_keys)),
+                ct_keyring=trusted_root.ct_keyring(),
             ),
             trusted_root=trusted_root,
         )

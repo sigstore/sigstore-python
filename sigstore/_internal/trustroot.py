@@ -173,6 +173,7 @@ class Keyring:
 
 
 RekorKeyring = NewType("RekorKeyring", Keyring)
+CTKeyring = NewType("CTKeyring", Keyring)
 
 
 class KeyringPurpose(str, Enum):
@@ -292,14 +293,17 @@ class TrustedRoot(_TrustedRoot):
 
         return RekorKeyring(self._get_rekor_keys())
 
-    def get_ctfe_keys(self) -> list[bytes]:
+    def ct_keyring(self) -> CTKeyring:
+        """Return public key contents given certificate authorities."""
+
+        return CTKeyring(self._get_ctfe_keys())
+
+    def _get_ctfe_keys(self) -> Keyring:
         """Return the CTFE public keys contents."""
-        # TODO: get purpose as argument
-        purpose = KeyringPurpose.VERIFY
-        ctfes: list[bytes] = list(self._get_tlog_keys(self.ctlogs, purpose))
+        ctfes: list[bytes] = list(self._get_tlog_keys(self.ctlogs, self.purpose))
         if not ctfes:
             raise MetadataError("CTFE keys not found in trusted root")
-        return ctfes
+        return Keyring(ctfes)
 
     def _get_rekor_keys(self) -> Keyring:
         """Return the rekor public key content."""

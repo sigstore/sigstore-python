@@ -15,8 +15,7 @@
 import pretend
 import pytest
 
-from sigstore._internal.ctfe import CTKeyring
-from sigstore._internal.trustroot import Keyring, KeyringLookupError
+from sigstore._internal.trustroot import CTKeyring, Keyring, KeyringLookupError
 
 
 class TestCTKeyring:
