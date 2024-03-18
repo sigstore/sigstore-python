@@ -300,7 +300,10 @@ class TrustedRoot(_TrustedRoot):
 
     def _get_ctfe_keys(self) -> Keyring:
         """Return the CTFE public keys contents."""
-        ctfes: list[bytes] = list(self._get_tlog_keys(self.ctlogs, self.purpose))
+        if self.args and self.args.ctfe_pem:
+            ctfes = [self.args.ctfe_pem.read()]
+        else:
+            ctfes = list(self._get_tlog_keys(self.ctlogs, self.purpose))
         if not ctfes:
             raise MetadataError("CTFE keys not found in trusted root")
         return Keyring(ctfes)
