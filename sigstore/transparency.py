@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import Any, List, Optional
 
+import rfc8785
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -30,7 +31,6 @@ from pydantic import (
     field_validator,
 )
 from pydantic.dataclasses import dataclass
-from securesystemslib.formats import encode_canonical
 
 from sigstore._utils import B64Str
 
@@ -179,4 +179,5 @@ class LogEntry:
             "logIndex": self.log_index,
         }
 
-        return encode_canonical(payload).encode()  # type: ignore
+        # TODO: Unclear why mypy doesn't understand this.
+        return rfc8785.dumps(payload)  # type: ignore[no-any-return]
