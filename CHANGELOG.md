@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## Fixed
+
+* Loosened a version constraint on the `sigstore-protobuf-specs` dependency,
+  to ease use in testing environments
+  ([#943](https://github.com/sigstore/sigstore-python/pull/943))
+
 ## [2.1.2]
 
 This is a corrective release for [2.1.1].
