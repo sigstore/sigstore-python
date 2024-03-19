@@ -172,12 +172,11 @@ class LogEntry:
         This encoded representation is suitable for verification against
         the Signed Entry Timestamp.
         """
-        payload = {
+        payload: dict[str, int | str] = {
             "body": self.body,
             "integratedTime": self.integrated_time,
             "logID": self.log_id,
             "logIndex": self.log_index,
         }
 
-        # TODO: Unclear why mypy doesn't understand this.
-        return rfc8785.dumps(payload)  # type: ignore[no-any-return]
+        return rfc8785.dumps(payload)
