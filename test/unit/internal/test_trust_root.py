@@ -171,7 +171,7 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
 
     # Assert that trust root from file contains the expected keys/certs
     path = tuf_asset.target_path("trusted_root.json")
-    trust_root = TrustedRoot.from_file(path)
+    trust_root = TrustedRoot.from_file(path, purpose=KeyringPurpose.VERIFY)
     assert ctfe_keys[0] in get_public_bytes(trust_root.ct_keyring()._keyring.values())
     assert get_public_bytes(trust_root.rekor_keyring()._keyring.values()) == rekor_keys
     assert trust_root.get_fulcio_certs() == fulcio_certs

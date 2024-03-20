@@ -222,10 +222,7 @@ class TrustedRoot(_TrustedRoot):
         update the trust root from remote TUF repository.
         """
         path = TrustUpdater(url, offline).get_trusted_root_path()
-        trusted_root = cls.from_file(path)
-        trusted_root.args = args
-        trusted_root.purpose = purpose
-        return trusted_root
+        return cls.from_file(path, args, purpose)
 
     @classmethod
     def production(
@@ -239,10 +236,7 @@ class TrustedRoot(_TrustedRoot):
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
-        trusted_root = cls.from_tuf(DEFAULT_TUF_URL, offline)
-        trusted_root.args = args
-        trusted_root.purpose = purpose
-        return trusted_root
+        return cls.from_tuf(DEFAULT_TUF_URL, offline, args, purpose)
 
     @classmethod
     def staging(
@@ -256,10 +250,7 @@ class TrustedRoot(_TrustedRoot):
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
-        trusted_root = cls.from_tuf(STAGING_TUF_URL, offline)
-        trusted_root.args = args
-        trusted_root.purpose = purpose
-        return trusted_root
+        return cls.from_tuf(STAGING_TUF_URL, offline, args, purpose)
 
     @staticmethod
     def _get_tlog_keys(
@@ -289,27 +280,8 @@ class TrustedRoot(_TrustedRoot):
                 yield cert.raw_bytes
 
     def rekor_keyring(self) -> RekorKeyring:
-        """Return public key contents given certificate authorities."""
+        """Return keyring with keys for Rekor."""
 
-        return RekorKeyring(self._get_rekor_keys())
-
-    def ct_keyring(self) -> CTKeyring:
-        """Return public key contents given certificate authorities."""
-
-        return CTKeyring(self._get_ctfe_keys())
-
-    def _get_ctfe_keys(self) -> Keyring:
-        """Return the CTFE public keys contents."""
-        if self.args and self.args.ctfe_pem:
-            ctfes = [self.args.ctfe_pem.read()]
-        else:
-            ctfes = list(self._get_tlog_keys(self.ctlogs, self.purpose))
-        if not ctfes:
-            raise MetadataError("CTFE keys not found in trusted root")
-        return Keyring(ctfes)
-
-    def _get_rekor_keys(self) -> Keyring:
-        """Return the rekor public key content."""
         keys: list[bytes]
         if self.args and self.args.rekor_root_pubkey:
             keys = self.args.rekor_root_pubkey.read()
@@ -317,7 +289,17 @@ class TrustedRoot(_TrustedRoot):
             keys = list(self._get_tlog_keys(self.tlogs, self.purpose))
         if len(keys) != 1:
             raise MetadataError("Did not find one Rekor key in trusted root")
-        return Keyring(keys)
+        return RekorKeyring(Keyring(keys))
+
+    def ct_keyring(self) -> CTKeyring:
+        """Return keyring with key for CTFE."""
+        if self.args and self.args.ctfe_pem:
+            ctfes = [self.args.ctfe_pem.read()]
+        else:
+            ctfes = list(self._get_tlog_keys(self.ctlogs, self.purpose))
+        if not ctfes:
+            raise MetadataError("CTFE keys not found in trusted root")
+        return CTKeyring(Keyring(ctfes))
 
     def get_fulcio_certs(self) -> list[Certificate]:
         """Return the Fulcio certificates."""
