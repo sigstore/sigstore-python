@@ -124,18 +124,6 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
             "in a future release."
         ),
     )
-    group.add_argument(
-        "--rekor-root-pubkey",
-        dest="__deprecated_rekor_root_pubkey",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        default=None,
-        help=(
-            "A PEM-encoded root public key for Rekor itself (conflicts with --staging). "
-            "This option will be deprecated in favor of the global `--rekor-root-pubkey` option "
-            "in a future release."
-        ),
-    )
 
 
 def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
@@ -265,13 +253,6 @@ def _parser() -> argparse.ArgumentParser:
         type=str,
         default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
         help="The Rekor instance to use (conflicts with --staging)",
-    )
-    global_instance_options.add_argument(
-        "--rekor-root-pubkey",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY"),
     )
 
     subcommands = parser.add_subparsers(
@@ -416,15 +397,6 @@ def _parser() -> argparse.ArgumentParser:
 
     instance_options = verify_identity.add_argument_group("Sigstore instance options")
     _add_shared_instance_options(instance_options)
-    instance_options.add_argument(
-        "--certificate-chain",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help=(
-            "Path to a list of CA certificates in PEM format which will be needed when building "
-            "the certificate chain for the Fulcio signing certificate"
-        ),
-    )
 
     # `sigstore verify github`
     verify_github = verify_subcommand.add_parser(
@@ -482,15 +454,6 @@ def _parser() -> argparse.ArgumentParser:
 
     instance_options = verify_github.add_argument_group("Sigstore instance options")
     _add_shared_instance_options(instance_options)
-    instance_options.add_argument(
-        "--certificate-chain",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help=(
-            "Path to a list of CA certificates in PEM format which will be needed when building "
-            "the certificate chain for the Fulcio signing certificate"
-        ),
-    )
 
     # `sigstore get-identity-token`
     get_identity_token = subcommands.add_parser(
@@ -532,13 +495,6 @@ def main() -> None:
             "Passing `--rekor-url` as a subcommand option will be deprecated in a future release."
         )
         args.rekor_url = args.__deprecated_rekor_url
-    if getattr(args, "__deprecated_rekor_root_pubkey", None):
-        logger.warning(
-            "`--rekor-root-pubkey` should be used as a global option, rather than a "
-            "subcommand option. Passing `--rekor-root-pubkey` as a subcommand option will be "
-            "deprecated in a future release."
-        )
-        args.rekor_root_pubkey = args.__deprecated_rekor_root_pubkey
 
     # Stuff the parser back into our namespace, so that we can use it for
     # error handling later.
@@ -647,7 +603,7 @@ def _sign(args: argparse.Namespace) -> None:
         signing_ctx = SigningContext.production()
     else:
         # Assume "production" trust root if no keys are given as arguments
-        trusted_root = TrustedRoot.production(args=args, purpose=KeyringPurpose.SIGN)
+        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.SIGN)
 
         signing_ctx = SigningContext(
             fulcio=FulcioClient(args.fulcio_url),
@@ -806,11 +762,7 @@ def _collect_verification_state(
     elif args.rekor_url == DEFAULT_REKOR_URL:
         verifier = Verifier.production()
     else:
-        if not args.certificate_chain:
-            _die(args, "Custom Rekor URL used without specifying --certificate-chain")
-
-        trusted_root = TrustedRoot.production(args=args, purpose=KeyringPurpose.VERIFY)
-
+        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.VERIFY)
         verifier = Verifier(
             rekor=RekorClient(
                 url=args.rekor_url,

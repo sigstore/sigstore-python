@@ -96,9 +96,7 @@ Top-level:
 
 <!-- @begin-sigstore-help@ -->
 ```
-usage: sigstore [-h] [-v] [-V] [--staging] [--rekor-url URL]
-                [--rekor-root-pubkey FILE]
-                COMMAND ...
+usage: sigstore [-h] [-v] [-V] [--staging] [--rekor-url URL] COMMAND ...
 
 a tool for signing and verifying Python package distributions
 
@@ -120,9 +118,6 @@ Sigstore instance options:
                         default production instances (default: False)
   --rekor-url URL       The Rekor instance to use (conflicts with --staging)
                         (default: https://rekor.sigstore.dev)
-  --rekor-root-pubkey FILE
-                        A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging) (default: None)
 ```
 <!-- @end-sigstore-help@ -->
 
@@ -137,7 +132,7 @@ usage: sigstore sign [-h] [-v] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oauth-force-oob] [--no-default-files]
                      [--signature FILE] [--certificate FILE] [--bundle FILE]
                      [--output-directory DIR] [--overwrite] [--staging]
-                     [--rekor-url URL] [--rekor-root-pubkey FILE]
+                     [--rekor-url URL]
                      [--fulcio-url URL] [--ctfe FILE]
                      FILE [FILE ...]
 
@@ -193,11 +188,6 @@ Sigstore instance options:
                         This option will be deprecated in favor of the global
                         `--rekor-url` option in a future release. (default:
                         None)
-  --rekor-root-pubkey FILE
-                        A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging). This option will be
-                        deprecated in favor of the global `--rekor-root-
-                        pubkey` option in a future release. (default: None)
   --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
                         (default: https://fulcio.sigstore.dev)
   --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
@@ -220,8 +210,7 @@ usage: sigstore verify identity [-h] [-v] [--certificate FILE]
                                 [--signature FILE] [--bundle FILE]
                                 --cert-identity IDENTITY [--offline]
                                 --cert-oidc-issuer URL [--staging]
-                                [--rekor-url URL] [--rekor-root-pubkey FILE]
-                                [--certificate-chain FILE]
+                                [--rekor-url URL]
                                 FILE [FILE ...]
 
 optional arguments:
@@ -258,15 +247,6 @@ Sigstore instance options:
                         This option will be deprecated in favor of the global
                         `--rekor-url` option in a future release. (default:
                         None)
-  --rekor-root-pubkey FILE
-                        A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging). This option will be
-                        deprecated in favor of the global `--rekor-root-
-                        pubkey` option in a future release. (default: None)
-  --certificate-chain FILE
-                        Path to a list of CA certificates in PEM format which
-                        will be needed when building the certificate chain for
-                        the Fulcio signing certificate (default: None)
 ```
 <!-- @end-sigstore-verify-identity-help@ -->
 
@@ -284,8 +264,7 @@ usage: sigstore verify github [-h] [-v] [--certificate FILE]
                               --cert-identity IDENTITY [--offline]
                               [--trigger EVENT] [--sha SHA] [--name NAME]
                               [--repository REPO] [--ref REF] [--staging]
-                              [--rekor-url URL] [--rekor-root-pubkey FILE]
-                              [--certificate-chain FILE]
+                              [--rekor-url URL]
                               FILE [FILE ...]
 
 optional arguments:
@@ -329,15 +308,6 @@ Sigstore instance options:
                         This option will be deprecated in favor of the global
                         `--rekor-url` option in a future release. (default:
                         None)
-  --rekor-root-pubkey FILE
-                        A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging). This option will be
-                        deprecated in favor of the global `--rekor-root-
-                        pubkey` option in a future release. (default: None)
-  --certificate-chain FILE
-                        Path to a list of CA certificates in PEM format which
-                        will be needed when building the certificate chain for
-                        the Fulcio signing certificate (default: None)
 ```
 <!-- @end-sigstore-verify-github-help@ -->
 
