@@ -69,11 +69,13 @@ def test_sct_verify_keyring_lookup_error(signer_and_ident, monkeypatch):
 
     # a signer whose keyring always fails to lookup a given key.
     ctx: SigningContext = ctx()
-    ctx._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringLookupError))
+    mock = pretend.stub(
+        ct_keyring=lambda: pretend.stub(verify=pretend.raiser(KeyringLookupError))
+    )
+    ctx._trusted_root = mock
     assert identity is not None
 
     payload = secrets.token_bytes(32)
-
     with pytest.raises(
         InvalidSCTError,
     ) as excinfo:
@@ -91,6 +93,10 @@ def test_sct_verify_keyring_error(signer_and_ident, monkeypatch):
 
     # a signer whose keyring throws an internal error.
     ctx: SigningContext = ctx()
+    mock = pretend.stub(
+        ct_keyring=lambda: pretend.stub(verify=pretend.raiser(KeyringLookupError))
+    )
+    ctx._trusted_root = mock
     ctx._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringError))
     assert identity is not None
 
@@ -132,6 +138,8 @@ def test_sign_prehashed(staging):
     sign_ctx: SigningContext = sign_ctx()
     verifier: Verifier = verifier()
 
+    # mock = pretend.stub(ct_keyring=lambda: pretend.stub(verify=pretend.raiser(KeyringLookupError)))
+    # sign_ctx._trusted_root = mock
     input_ = secrets.token_bytes(32)
     hashed = Hashed(
         digest=hashlib.sha256(input_).digest(), algorithm=HashAlgorithm.SHA2_256

@@ -649,12 +649,9 @@ def _sign(args: argparse.Namespace) -> None:
         # Assume "production" trust root if no keys are given as arguments
         trusted_root = TrustedRoot.production(args=args, purpose=KeyringPurpose.SIGN)
 
-        ct_keyring = trusted_root.ct_keyring()
-        rekor_keyring = trusted_root.rekor_keyring()
-
         signing_ctx = SigningContext(
             fulcio=FulcioClient(args.fulcio_url),
-            rekor=RekorClient(args.rekor_url, rekor_keyring, ct_keyring),
+            rekor=RekorClient(args.rekor_url),
             trusted_root=trusted_root,
         )
 
@@ -817,8 +814,6 @@ def _collect_verification_state(
         verifier = Verifier(
             rekor=RekorClient(
                 url=args.rekor_url,
-                rekor_keyring=trusted_root.rekor_keyring(),
-                ct_keyring=trusted_root.ct_keyring(),
             ),
             trusted_root=trusted_root,
         )

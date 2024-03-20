@@ -17,7 +17,6 @@ import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import _sha256_streaming
 from sigstore.hashes import Hashed
 from sigstore.verify.models import (
@@ -52,8 +51,7 @@ class TestVerificationMaterials:
         file, materials = signing_materials("a.txt")
         assert materials._rekor_entry is None
 
-        trust_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
-        client = RekorClient.staging(trust_root)
+        client = RekorClient.staging()
 
         with file.open(mode="rb", buffering=0) as input_:
             digest = _sha256_streaming(input_)

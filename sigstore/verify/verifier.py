@@ -124,6 +124,7 @@ class Verifier:
             X509.from_cryptography(parent_cert)
             for parent_cert in trusted_root.get_fulcio_certs()
         ]
+        self.trusted_root = trusted_root
 
     @classmethod
     def production(cls) -> Verifier:
@@ -132,7 +133,7 @@ class Verifier:
         """
         trusted_root = TrustedRoot.production(purpose=KeyringPurpose.VERIFY)
         return cls(
-            rekor=RekorClient.production(trusted_root),
+            rekor=RekorClient.production(),
             trusted_root=trusted_root,
         )
 
@@ -143,7 +144,7 @@ class Verifier:
         """
         trusted_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
         return cls(
-            rekor=RekorClient.staging(trusted_root),
+            rekor=RekorClient.staging(),
             trusted_root=trusted_root,
         )
 
@@ -225,7 +226,7 @@ class Verifier:
             sct,
             materials.certificate,
             [parent_cert.to_cryptography() for parent_cert in chain],
-            self._rekor._ct_keyring,
+            self.trusted_root.ct_keyring(),
         )
 
         # 3) Check that the signing certificate contains the proof claim as the subject
@@ -293,7 +294,7 @@ class Verifier:
                 )
 
             try:
-                verify_checkpoint(self._rekor, entry)
+                verify_checkpoint(self.trusted_root.rekor_keyring(), entry)
             except CheckpointError as exc:
                 return VerificationFailure(reason=f"invalid Rekor root hash: {exc}")
 
@@ -313,7 +314,7 @@ class Verifier:
         # 7) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this artifact
         if entry.inclusion_promise:
             try:
-                verify_set(self._rekor, entry)
+                verify_set(self.trusted_root.rekor_keyring(), entry)
                 _logger.debug(
                     f"successfully verified inclusion promise: index={entry.log_index}"
                 )
