@@ -363,7 +363,7 @@ This is a corrective release for [2.1.1].
   replacing the material that was previously baked into `sigstore._store`
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
-### Changed
+### Removed
 * `sigstore verify and sign` doesn't support `--certificate-chain` and `--rekor-root-pubkey`
   during verification anymore.
 
