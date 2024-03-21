@@ -101,23 +101,24 @@ usage: sigstore [-h] [-v] [-V] [--staging] [--rekor-url URL] COMMAND ...
 a tool for signing and verifying Python package distributions
 
 positional arguments:
-  COMMAND               the operation to perform
-    sign                sign one or more inputs
-    verify              verify one or more inputs
-    get-identity-token  retrieve and return a Sigstore-compatible OpenID
-                        Connect token
+  COMMAND             the operation to perform
+    sign              sign one or more inputs
+    verify            verify one or more inputs
+    get-identity-token
+                      retrieve and return a Sigstore-compatible OpenID Connect
+                      token
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -v, --verbose         run with additional debug logging; supply multiple
-                        times to increase verbosity
-  -V, --version         show program's version number and exit
+  -h, --help          show this help message and exit
+  -v, --verbose       run with additional debug logging; supply multiple times
+                      to increase verbosity
+  -V, --version       show program's version number and exit
 
 Sigstore instance options:
-  --staging             Use sigstore's staging instances, instead of the
-                        default production instances (default: False)
-  --rekor-url URL       The Rekor instance to use (conflicts with --staging)
-                        (default: https://rekor.sigstore.dev)
+  --staging           Use sigstore's staging instances, instead of the default
+                      production instances (default: False)
+  --rekor-url URL     The Rekor instance to use (conflicts with --staging)
+                      (default: https://rekor.sigstore.dev)
 ```
 <!-- @end-sigstore-help@ -->
 
