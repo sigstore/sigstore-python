@@ -343,14 +343,6 @@ def _parser() -> argparse.ArgumentParser:
         default=os.getenv("SIGSTORE_FULCIO_URL", DEFAULT_FULCIO_URL),
         help="The Fulcio instance to use (conflicts with --staging)",
     )
-    instance_options.add_argument(
-        "--ctfe",
-        dest="ctfe_pem",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help="A PEM-encoded public key for the CT log (conflicts with --staging)",
-        default=os.getenv("SIGSTORE_CTFE"),
-    )
 
     sign.add_argument(
         "files",

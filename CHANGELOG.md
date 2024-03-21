@@ -364,8 +364,7 @@ This is a corrective release for [2.1.1].
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
 ### Removed
-* CLI: The `--certificate-chain` and `--rekor-root-pubkey` flags have been entirely removed ([#936](https://github.com/sigstore/sigstore-python/pull/936))
-  during verification anymore.
+* CLI: The `--certificate-chain`, `--rekor-root-pubkey` and `-ctfe` flags have been entirely removed ([#936](https://github.com/sigstore/sigstore-python/pull/936))
 
 
 <!--Release URLs -->

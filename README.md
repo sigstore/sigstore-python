@@ -132,8 +132,7 @@ usage: sigstore sign [-h] [-v] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oauth-force-oob] [--no-default-files]
                      [--signature FILE] [--certificate FILE] [--bundle FILE]
                      [--output-directory DIR] [--overwrite] [--staging]
-                     [--rekor-url URL]
-                     [--fulcio-url URL] [--ctfe FILE]
+                     [--rekor-url URL] [--fulcio-url URL]
                      FILE [FILE ...]
 
 positional arguments:
@@ -190,8 +189,6 @@ Sigstore instance options:
                         None)
   --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
                         (default: https://fulcio.sigstore.dev)
-  --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
-                        with --staging) (default: None)
 ```
 <!-- @end-sigstore-sign-help@ -->
 
