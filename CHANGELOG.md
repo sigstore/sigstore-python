@@ -364,7 +364,7 @@ This is a corrective release for [2.1.1].
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
 ### Removed
-* `sigstore verify and sign` doesn't support `--certificate-chain` and `--rekor-root-pubkey`
+* CLI: The `--certificate-chain` and `--rekor-root-pubkey` flags have been entirely removed ([#936](https://github.com/sigstore/sigstore-python/pull/936))
   during verification anymore.
 
 
