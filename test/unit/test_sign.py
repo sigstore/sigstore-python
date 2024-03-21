@@ -138,8 +138,6 @@ def test_sign_prehashed(staging):
     sign_ctx: SigningContext = sign_ctx()
     verifier: Verifier = verifier()
 
-    # mock = pretend.stub(ct_keyring=lambda: pretend.stub(verify=pretend.raiser(KeyringLookupError)))
-    # sign_ctx._trusted_root = mock
     input_ = secrets.token_bytes(32)
     hashed = Hashed(
         digest=hashlib.sha256(input_).digest(), algorithm=HashAlgorithm.SHA2_256
