@@ -26,8 +26,7 @@ from typing import List
 
 from pydantic import BaseModel, Field, StrictStr
 
-from sigstore._internal.keyring import KeyringSignatureError
-from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.trustroot import KeyringSignatureError, RekorKeyring
 from sigstore._utils import KeyID
 from sigstore.transparency import LogEntry
 
@@ -163,7 +162,7 @@ class SignedNote:
 
         return cls(note=header, signatures=signatures)
 
-    def verify(self, client: RekorClient, key_id: KeyID) -> None:
+    def verify(self, rekor_keyring: RekorKeyring, key_id: KeyID) -> None:
         """
         Verify the `SignedNote` with using the given RekorClient by verifying each contained signature.
         """
@@ -175,7 +174,7 @@ class SignedNote:
                 raise CheckpointError("sig_hash hint does not match expected key_id")
 
             try:
-                client._rekor_keyring.verify(
+                rekor_keyring.verify(
                     key_id=key_id, signature=base64.b64decode(sig.signature), data=note
                 )
             except KeyringSignatureError as sig_err:
@@ -202,7 +201,7 @@ class SignedCheckpoint:
         return cls(signed_note=signed_note, checkpoint=checkpoint)
 
 
-def verify_checkpoint(client: RekorClient, entry: LogEntry) -> None:
+def verify_checkpoint(rekor_keyring: RekorKeyring, entry: LogEntry) -> None:
     """
     Verify the inclusion proof's checkpoint.
     """
@@ -215,7 +214,9 @@ def verify_checkpoint(client: RekorClient, entry: LogEntry) -> None:
     # 1) verify the signature on the checkpoint
     # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
     signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
-    signed_checkpoint.signed_note.verify(client, KeyID(bytes.fromhex(entry.log_id)))
+    signed_checkpoint.signed_note.verify(
+        rekor_keyring, KeyID(bytes.fromhex(entry.log_id))
+    )
 
     checkpoint_hash = signed_checkpoint.checkpoint.log_hash
     root_hash = inclusion_proof.root_hash
