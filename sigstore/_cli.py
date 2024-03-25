@@ -23,24 +23,20 @@ from pathlib import Path
 from textwrap import dedent
 from typing import NoReturn, Optional, TextIO, Union, cast
 
-from cryptography.x509 import load_pem_x509_certificates
 from rich.logging import RichHandler
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
-from sigstore._internal.ctfe import CTKeyring
 from sigstore._internal.fulcio.client import (
     DEFAULT_FULCIO_URL,
     ExpiredCertificate,
     FulcioClient,
 )
-from sigstore._internal.keyring import Keyring
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
-    RekorKeyring,
 )
-from sigstore._internal.trustroot import TrustedRoot
+from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import PEMCert, cert_der_to_pem, sha256_digest
 from sigstore.errors import Error
 from sigstore.oidc import (
@@ -125,18 +121,6 @@ def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
         help=(
             "The Rekor instance to use (conflicts with --staging). "
             "This option will be deprecated in favor of the global `--rekor-url` option "
-            "in a future release."
-        ),
-    )
-    group.add_argument(
-        "--rekor-root-pubkey",
-        dest="__deprecated_rekor_root_pubkey",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        default=None,
-        help=(
-            "A PEM-encoded root public key for Rekor itself (conflicts with --staging). "
-            "This option will be deprecated in favor of the global `--rekor-root-pubkey` option "
             "in a future release."
         ),
     )
@@ -270,13 +254,6 @@ def _parser() -> argparse.ArgumentParser:
         default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
         help="The Rekor instance to use (conflicts with --staging)",
     )
-    global_instance_options.add_argument(
-        "--rekor-root-pubkey",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help="A PEM-encoded root public key for Rekor itself (conflicts with --staging)",
-        default=os.getenv("SIGSTORE_REKOR_ROOT_PUBKEY"),
-    )
 
     subcommands = parser.add_subparsers(
         required=True,
@@ -366,14 +343,6 @@ def _parser() -> argparse.ArgumentParser:
         default=os.getenv("SIGSTORE_FULCIO_URL", DEFAULT_FULCIO_URL),
         help="The Fulcio instance to use (conflicts with --staging)",
     )
-    instance_options.add_argument(
-        "--ctfe",
-        dest="ctfe_pem",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help="A PEM-encoded public key for the CT log (conflicts with --staging)",
-        default=os.getenv("SIGSTORE_CTFE"),
-    )
 
     sign.add_argument(
         "files",
@@ -420,15 +389,6 @@ def _parser() -> argparse.ArgumentParser:
 
     instance_options = verify_identity.add_argument_group("Sigstore instance options")
     _add_shared_instance_options(instance_options)
-    instance_options.add_argument(
-        "--certificate-chain",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help=(
-            "Path to a list of CA certificates in PEM format which will be needed when building "
-            "the certificate chain for the Fulcio signing certificate"
-        ),
-    )
 
     # `sigstore verify github`
     verify_github = verify_subcommand.add_parser(
@@ -486,15 +446,6 @@ def _parser() -> argparse.ArgumentParser:
 
     instance_options = verify_github.add_argument_group("Sigstore instance options")
     _add_shared_instance_options(instance_options)
-    instance_options.add_argument(
-        "--certificate-chain",
-        metavar="FILE",
-        type=argparse.FileType("rb"),
-        help=(
-            "Path to a list of CA certificates in PEM format which will be needed when building "
-            "the certificate chain for the Fulcio signing certificate"
-        ),
-    )
 
     # `sigstore get-identity-token`
     get_identity_token = subcommands.add_parser(
@@ -536,13 +487,6 @@ def main() -> None:
             "Passing `--rekor-url` as a subcommand option will be deprecated in a future release."
         )
         args.rekor_url = args.__deprecated_rekor_url
-    if getattr(args, "__deprecated_rekor_root_pubkey", None):
-        logger.warning(
-            "`--rekor-root-pubkey` should be used as a global option, rather than a "
-            "subcommand option. Passing `--rekor-root-pubkey` as a subcommand option will be "
-            "deprecated in a future release."
-        )
-        args.rekor_root_pubkey = args.__deprecated_rekor_root_pubkey
 
     # Stuff the parser back into our namespace, so that we can use it for
     # error handling later.
@@ -651,22 +595,12 @@ def _sign(args: argparse.Namespace) -> None:
         signing_ctx = SigningContext.production()
     else:
         # Assume "production" trust root if no keys are given as arguments
-        trusted_root = TrustedRoot.production()
-        if args.ctfe_pem is not None:
-            ctfe_keys = [args.ctfe_pem.read()]
-        else:
-            ctfe_keys = trusted_root.get_ctfe_keys()
-        if args.rekor_root_pubkey is not None:
-            rekor_keys = [args.rekor_root_pubkey.read()]
-        else:
-            rekor_keys = trusted_root.get_rekor_keys()
-
-        ct_keyring = CTKeyring(Keyring(ctfe_keys))
-        rekor_keyring = RekorKeyring(Keyring(rekor_keys))
+        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.SIGN)
 
         signing_ctx = SigningContext(
             fulcio=FulcioClient(args.fulcio_url),
-            rekor=RekorClient(args.rekor_url, rekor_keyring, ct_keyring),
+            rekor=RekorClient(args.rekor_url),
+            trusted_root=trusted_root,
         )
 
     # The order of precedence for identities is as follows:
@@ -814,37 +748,18 @@ def _collect_verification_state(
                 args,
                 f"Missing verification materials for {(file)}: {', '.join(missing)}",
             )
-
     if args.staging:
         logger.debug("verify: staging instances requested")
         verifier = Verifier.staging()
     elif args.rekor_url == DEFAULT_REKOR_URL:
         verifier = Verifier.production()
     else:
-        if not args.certificate_chain:
-            _die(args, "Custom Rekor URL used without specifying --certificate-chain")
-
-        try:
-            certificate_chain = load_pem_x509_certificates(
-                args.certificate_chain.read()
-            )
-        except ValueError as error:
-            _die(args, f"Invalid certificate chain: {error}")
-
-        if args.rekor_root_pubkey is not None:
-            rekor_keys = [args.rekor_root_pubkey.read()]
-        else:
-            trusted_root = TrustedRoot.production()
-            rekor_keys = trusted_root.get_rekor_keys()
-            ct_keys = trusted_root.get_ctfe_keys()
-
+        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.VERIFY)
         verifier = Verifier(
             rekor=RekorClient(
                 url=args.rekor_url,
-                rekor_keyring=RekorKeyring(Keyring(rekor_keys)),
-                ct_keyring=CTKeyring(Keyring(ct_keys)),
             ),
-            fulcio_certificate_chain=certificate_chain,
+            trusted_root=trusted_root,
         )
 
     all_materials = []

@@ -363,6 +363,10 @@ This is a corrective release for [2.1.1].
   replacing the material that was previously baked into `sigstore._store`
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
+### Removed
+* CLI: The `--certificate-chain`, `--rekor-root-pubkey` and `-ctfe` flags have been entirely removed ([#936](https://github.com/sigstore/sigstore-python/pull/936))
+
+
 <!--Release URLs -->
 [Unreleased]: https://github.com/sigstore/sigstore-python/compare/v2.1.2...HEAD
 [2.1.2]: https://github.com/sigstore/sigstore-python/compare/v2.1.1...v2.1.2

@@ -96,33 +96,29 @@ Top-level:
 
 <!-- @begin-sigstore-help@ -->
 ```
-usage: sigstore [-h] [-v] [-V] [--staging] [--rekor-url URL]
-                [--rekor-root-pubkey FILE]
-                COMMAND ...
+usage: sigstore [-h] [-v] [-V] [--staging] [--rekor-url URL] COMMAND ...
 
 a tool for signing and verifying Python package distributions
 
 positional arguments:
-  COMMAND               the operation to perform
-    sign                sign one or more inputs
-    verify              verify one or more inputs
-    get-identity-token  retrieve and return a Sigstore-compatible OpenID
-                        Connect token
+  COMMAND             the operation to perform
+    sign              sign one or more inputs
+    verify            verify one or more inputs
+    get-identity-token
+                      retrieve and return a Sigstore-compatible OpenID Connect
+                      token
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -v, --verbose         run with additional debug logging; supply multiple
-                        times to increase verbosity
-  -V, --version         show program's version number and exit
+  -h, --help          show this help message and exit
+  -v, --verbose       run with additional debug logging; supply multiple times
+                      to increase verbosity
+  -V, --version       show program's version number and exit
 
 Sigstore instance options:
-  --staging             Use sigstore's staging instances, instead of the
-                        default production instances (default: False)
-  --rekor-url URL       The Rekor instance to use (conflicts with --staging)
-                        (default: https://rekor.sigstore.dev)
-  --rekor-root-pubkey FILE
-                        A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging) (default: None)
+  --staging           Use sigstore's staging instances, instead of the default
+                      production instances (default: False)
+  --rekor-url URL     The Rekor instance to use (conflicts with --staging)
+                      (default: https://rekor.sigstore.dev)
 ```
 <!-- @end-sigstore-help@ -->
 
@@ -137,8 +133,7 @@ usage: sigstore sign [-h] [-v] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oauth-force-oob] [--no-default-files]
                      [--signature FILE] [--certificate FILE] [--bundle FILE]
                      [--output-directory DIR] [--overwrite] [--staging]
-                     [--rekor-url URL] [--rekor-root-pubkey FILE]
-                     [--fulcio-url URL] [--ctfe FILE]
+                     [--rekor-url URL] [--fulcio-url URL]
                      FILE [FILE ...]
 
 positional arguments:
@@ -193,15 +188,8 @@ Sigstore instance options:
                         This option will be deprecated in favor of the global
                         `--rekor-url` option in a future release. (default:
                         None)
-  --rekor-root-pubkey FILE
-                        A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging). This option will be
-                        deprecated in favor of the global `--rekor-root-
-                        pubkey` option in a future release. (default: None)
   --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
                         (default: https://fulcio.sigstore.dev)
-  --ctfe FILE           A PEM-encoded public key for the CT log (conflicts
-                        with --staging) (default: None)
 ```
 <!-- @end-sigstore-sign-help@ -->
 
@@ -220,8 +208,7 @@ usage: sigstore verify identity [-h] [-v] [--certificate FILE]
                                 [--signature FILE] [--bundle FILE]
                                 --cert-identity IDENTITY [--offline]
                                 --cert-oidc-issuer URL [--staging]
-                                [--rekor-url URL] [--rekor-root-pubkey FILE]
-                                [--certificate-chain FILE]
+                                [--rekor-url URL]
                                 FILE [FILE ...]
 
 optional arguments:
@@ -258,15 +245,6 @@ Sigstore instance options:
                         This option will be deprecated in favor of the global
                         `--rekor-url` option in a future release. (default:
                         None)
-  --rekor-root-pubkey FILE
-                        A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging). This option will be
-                        deprecated in favor of the global `--rekor-root-
-                        pubkey` option in a future release. (default: None)
-  --certificate-chain FILE
-                        Path to a list of CA certificates in PEM format which
-                        will be needed when building the certificate chain for
-                        the Fulcio signing certificate (default: None)
 ```
 <!-- @end-sigstore-verify-identity-help@ -->
 
@@ -284,8 +262,7 @@ usage: sigstore verify github [-h] [-v] [--certificate FILE]
                               --cert-identity IDENTITY [--offline]
                               [--trigger EVENT] [--sha SHA] [--name NAME]
                               [--repository REPO] [--ref REF] [--staging]
-                              [--rekor-url URL] [--rekor-root-pubkey FILE]
-                              [--certificate-chain FILE]
+                              [--rekor-url URL]
                               FILE [FILE ...]
 
 optional arguments:
@@ -329,15 +306,6 @@ Sigstore instance options:
                         This option will be deprecated in favor of the global
                         `--rekor-url` option in a future release. (default:
                         None)
-  --rekor-root-pubkey FILE
-                        A PEM-encoded root public key for Rekor itself
-                        (conflicts with --staging). This option will be
-                        deprecated in favor of the global `--rekor-root-
-                        pubkey` option in a future release. (default: None)
-  --certificate-chain FILE
-                        Path to a list of CA certificates in PEM format which
-                        will be needed when building the certificate chain for
-                        the Fulcio signing certificate (default: None)
 ```
 <!-- @end-sigstore-verify-github-help@ -->
 

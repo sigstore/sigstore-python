@@ -78,7 +78,7 @@ from sigstore._internal.fulcio import (
 )
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
-from sigstore._internal.trustroot import TrustedRoot
+from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import BundleType, PEMCert, sha256_digest
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 from sigstore.transparency import LogEntry
@@ -203,7 +203,7 @@ class Signer:
         cert = certificate_response.cert
         chain = certificate_response.chain
 
-        verify_sct(sct, cert, chain, self._signing_ctx._rekor._ct_keyring)
+        verify_sct(sct, cert, chain, self._signing_ctx._trusted_root.ct_keyring())
 
         _logger.debug("Successfully verified SCT...")
 
@@ -280,10 +280,7 @@ class SigningContext:
     """
 
     def __init__(
-        self,
-        *,
-        fulcio: FulcioClient,
-        rekor: RekorClient,
+        self, *, fulcio: FulcioClient, rekor: RekorClient, trusted_root: TrustedRoot
     ):
         """
         Create a new `SigningContext`.
@@ -296,17 +293,17 @@ class SigningContext:
         """
         self._fulcio = fulcio
         self._rekor = rekor
+        self._trusted_root = trusted_root
 
     @classmethod
     def production(cls) -> SigningContext:
         """
         Return a `SigningContext` instance configured against Sigstore's production-level services.
         """
-        trust_root = TrustedRoot.production()
-        rekor = RekorClient.production(trust_root)
+        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.SIGN)
+        rekor = RekorClient.production()
         return cls(
-            fulcio=FulcioClient.production(),
-            rekor=rekor,
+            fulcio=FulcioClient.production(), rekor=rekor, trusted_root=trusted_root
         )
 
     @classmethod
@@ -314,11 +311,10 @@ class SigningContext:
         """
         Return a `SignerContext` instance configured against Sigstore's staging-level services.
         """
-        trust_root = TrustedRoot.staging()
-        rekor = RekorClient.staging(trust_root)
+        trusted_root = TrustedRoot.staging(purpose=KeyringPurpose.SIGN)
+        rekor = RekorClient.staging()
         return cls(
-            fulcio=FulcioClient.staging(),
-            rekor=rekor,
+            fulcio=FulcioClient.staging(), rekor=rekor, trusted_root=trusted_root
         )
 
     @contextmanager

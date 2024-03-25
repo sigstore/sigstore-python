@@ -20,7 +20,7 @@ import base64
 
 from cryptography.exceptions import InvalidSignature
 
-from sigstore._internal.rekor import RekorClient
+from sigstore._internal.trustroot import RekorKeyring
 from sigstore._utils import KeyID
 from sigstore.transparency import LogEntry
 
@@ -33,7 +33,7 @@ class InvalidSETError(Exception):
     pass
 
 
-def verify_set(client: RekorClient, entry: LogEntry) -> None:
+def verify_set(rekor_keyring: RekorKeyring, entry: LogEntry) -> None:
     """
     Verify the inclusion promise (Signed Entry Timestamp) for a given transparency log
     `entry` using the given `client`.
@@ -46,7 +46,7 @@ def verify_set(client: RekorClient, entry: LogEntry) -> None:
     signed_entry_ts = base64.b64decode(entry.inclusion_promise)
 
     try:
-        client._rekor_keyring.verify(
+        rekor_keyring.verify(
             key_id=KeyID(bytes.fromhex(entry.log_id)),
             signature=signed_entry_ts,
             data=entry.encode_canonical(),
