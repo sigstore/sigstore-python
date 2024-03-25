@@ -42,7 +42,7 @@ from sigstore._utils import B64Str, KeyID
 from sigstore.errors import Error
 
 if typing.TYPE_CHECKING:
-    from sigstore._internal.rekor.client import RekorKeyring
+    from sigstore._internal.trustroot import RekorKeyring
 
 
 _logger = logging.getLogger(__name__)
