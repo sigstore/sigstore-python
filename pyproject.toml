@@ -33,7 +33,7 @@ dependencies = [
   "pyOpenSSL >= 23.0.0",
   "requests",
   "rich ~= 13.0",
-  "securesystemslib",
+  "rfc8785 ~= 0.1.2",
   "sigstore-protobuf-specs ~= 0.3",
   # NOTE(ww): Under active development, so strictly pinned.
   "sigstore-rekor-types == 0.0.12",
@@ -62,7 +62,7 @@ lint = [
   "mypy ~= 1.1",
   # NOTE(ww): ruff is under active development, so we pin conservatively here
   # and let Dependabot periodically perform this update.
-  "ruff < 0.3.4",
+  "ruff < 0.3.5",
   "types-requests",
   "types-pyOpenSSL",
 ]

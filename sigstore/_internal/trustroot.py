@@ -19,10 +19,18 @@ Trust root management for sigstore-python.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List, NewType
 
-from cryptography.x509 import Certificate, load_der_x509_certificate
+import cryptography.hazmat.primitives.asymmetric.padding as padding
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.x509 import (
+    Certificate,
+    load_der_x509_certificate,
+)
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     CertificateAuthority,
@@ -33,6 +41,14 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
 )
 
 from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
+from sigstore._utils import (
+    InvalidKeyError,
+    KeyID,
+    UnexpectedKeyFormatError,
+    key_id,
+    load_der_public_key,
+    load_pem_public_key,
+)
 from sigstore.errors import MetadataError
 
 
@@ -58,48 +74,186 @@ def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> boo
     return allow_expired or (period.end is None or now <= period.end)
 
 
+"""
+Functionality for interacting with a generic keyring.
+"""
+
+
+class KeyringError(Exception):
+    """
+    Raised on failure by `Keyring.verify()`.
+    """
+
+    pass
+
+
+class KeyringLookupError(KeyringError):
+    """
+    A specialization of `KeyringError`, indicating that the specified
+    key ID wasn't found in the keyring.
+    """
+
+    pass
+
+
+class KeyringSignatureError(KeyringError):
+    """
+    Raised when `Keyring.verify()` is passed an invalid signature.
+    """
+
+
+class Keyring:
+    """
+    Represents a set of CT signing keys, each of which is a potentially
+    valid signer for a Signed Certificate Timestamp (SCT).
+
+    This structure exists to facilitate key rotation in a CT log.
+    """
+
+    def __init__(self, keys: List[bytes] = []):
+        """
+        Create a new `Keyring`, with `keys` as the initial set of signing
+        keys. These `keys` can be in either DER format or PEM encoded.
+        """
+        self._keyring = {}
+        for key_bytes in keys:
+            key = None
+
+            try:
+                key = load_pem_public_key(key_bytes)
+            except UnexpectedKeyFormatError as e:
+                raise e
+            except InvalidKeyError:
+                key = load_der_public_key(key_bytes)
+
+            self._keyring[key_id(key)] = key
+
+    def add(self, key_pem: bytes) -> None:
+        """
+        Adds a PEM-encoded key to the current keyring.
+        """
+        key = load_pem_public_key(key_pem)
+        self._keyring[key_id(key)] = key
+
+    def verify(self, *, key_id: KeyID, signature: bytes, data: bytes) -> None:
+        """
+        Verify that `signature` is a valid signature for `data`, using the
+        key identified by `key_id`.
+
+        Raises if `key_id` does not match a key in the `Keyring`, or if
+        the signature is invalid.
+        """
+        key = self._keyring.get(key_id)
+        if key is None:
+            # If we don't have a key corresponding to this key ID, we can't
+            # possibly verify the signature.
+            raise KeyringLookupError(f"no known key for key ID {key_id.hex()}")
+
+        try:
+            if isinstance(key, rsa.RSAPublicKey):
+                key.verify(
+                    signature=signature,
+                    data=data,
+                    padding=padding.PKCS1v15(),
+                    algorithm=hashes.SHA256(),
+                )
+            elif isinstance(key, ec.EllipticCurvePublicKey):
+                key.verify(
+                    signature=signature,
+                    data=data,
+                    signature_algorithm=ec.ECDSA(hashes.SHA256()),
+                )
+            else:
+                # NOTE(ww): Unreachable without API misuse.
+                raise KeyringError(f"unsupported key type: {key}")
+        except InvalidSignature as exc:
+            raise KeyringSignatureError("invalid signature") from exc
+
+
+RekorKeyring = NewType("RekorKeyring", Keyring)
+CTKeyring = NewType("CTKeyring", Keyring)
+
+
+class KeyringPurpose(str, Enum):
+    """
+    Keyring purpose typing
+    """
+
+    SIGN = "sign"
+    VERIFY = "verify"
+
+    def __str__(self) -> str:
+        """Returns the purpose string value."""
+        return self.value
+
+
 class TrustedRoot(_TrustedRoot):
     """Complete set of trusted entities for a Sigstore client"""
 
-    @classmethod
-    def from_file(cls, path: str) -> "TrustedRoot":
-        """Create a new trust root from file"""
-        tr: TrustedRoot = cls().from_json(Path(path).read_bytes())
-        return tr
+    purpose: KeyringPurpose
 
     @classmethod
-    def from_tuf(cls, url: str, offline: bool = False) -> "TrustedRoot":
+    def from_file(
+        cls,
+        path: str,
+        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
+    ) -> "TrustedRoot":
+        """Create a new trust root from file"""
+        trusted_root: TrustedRoot = cls().from_json(Path(path).read_bytes())
+        trusted_root.purpose = purpose
+        return trusted_root
+
+    @classmethod
+    def from_tuf(
+        cls,
+        url: str,
+        offline: bool = False,
+        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
+    ) -> "TrustedRoot":
         """Create a new trust root from a TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
         path = TrustUpdater(url, offline).get_trusted_root_path()
-        return cls.from_file(path)
+        return cls.from_file(path, purpose)
 
     @classmethod
-    def production(cls, offline: bool = False) -> "TrustedRoot":
+    def production(
+        cls,
+        offline: bool = False,
+        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
+    ) -> "TrustedRoot":
         """Create new trust root from Sigstore production TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
-        return cls.from_tuf(DEFAULT_TUF_URL, offline)
+        return cls.from_tuf(DEFAULT_TUF_URL, offline, purpose)
 
     @classmethod
-    def staging(cls, offline: bool = False) -> "TrustedRoot":
+    def staging(
+        cls,
+        offline: bool = False,
+        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
+    ) -> "TrustedRoot":
         """Create new trust root from Sigstore staging TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
-        return cls.from_tuf(STAGING_TUF_URL, offline)
+        return cls.from_tuf(STAGING_TUF_URL, offline, purpose)
 
     @staticmethod
-    def _get_tlog_keys(tlogs: list[TransparencyLogInstance]) -> Iterable[bytes]:
+    def _get_tlog_keys(
+        tlogs: list[TransparencyLogInstance], purpose: KeyringPurpose
+    ) -> Iterable[bytes]:
         """Return public key contents given transparency log instances."""
+        allow_expired = purpose is KeyringPurpose.VERIFY
         for key in tlogs:
-            if not _is_timerange_valid(key.public_key.valid_for, allow_expired=True):
+            if not _is_timerange_valid(
+                key.public_key.valid_for, allow_expired=allow_expired
+            ):
                 continue
             key_bytes = key.public_key.raw_bytes
             if key_bytes:
@@ -117,20 +271,20 @@ class TrustedRoot(_TrustedRoot):
             for cert in ca.cert_chain.certificates:
                 yield cert.raw_bytes
 
-    def get_ctfe_keys(self) -> list[bytes]:
-        """Return the CTFE public keys contents."""
-        ctfes: list[bytes] = list(self._get_tlog_keys(self.ctlogs))
-        if not ctfes:
-            raise MetadataError("CTFE keys not found in trusted root")
-        return ctfes
+    def rekor_keyring(self) -> RekorKeyring:
+        """Return keyring with keys for Rekor."""
 
-    def get_rekor_keys(self) -> list[bytes]:
-        """Return the rekor public key content."""
-        keys: list[bytes] = list(self._get_tlog_keys(self.tlogs))
-
+        keys: list[bytes] = list(self._get_tlog_keys(self.tlogs, self.purpose))
         if len(keys) != 1:
             raise MetadataError("Did not find one Rekor key in trusted root")
-        return keys
+        return RekorKeyring(Keyring(keys))
+
+    def ct_keyring(self) -> CTKeyring:
+        """Return keyring with key for CTFE."""
+        ctfes: list[bytes] = list(self._get_tlog_keys(self.ctlogs, self.purpose))
+        if not ctfes:
+            raise MetadataError("CTFE keys not found in trusted root")
+        return CTKeyring(Keyring(ctfes))
 
     def get_fulcio_certs(self) -> list[Certificate]:
         """Return the Fulcio certificates."""
@@ -143,7 +297,6 @@ class TrustedRoot(_TrustedRoot):
             load_der_x509_certificate(c)
             for c in self._get_ca_keys(self.certificate_authorities, allow_expired=True)
         ]
-
         if not certs:
             raise MetadataError("Fulcio certificates not found in trusted root")
         return certs

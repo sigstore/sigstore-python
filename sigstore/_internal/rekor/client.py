@@ -22,24 +22,18 @@ import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Dict, NewType, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
 import rekor_types
 import requests
 
-from sigstore._internal.ctfe import CTKeyring
-from sigstore._internal.keyring import Keyring
-from sigstore._internal.trustroot import TrustedRoot
 from sigstore.transparency import LogEntry
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
-
-
-RekorKeyring = NewType("RekorKeyring", Keyring)
 
 
 @dataclass(frozen=True)
@@ -227,9 +221,7 @@ class RekorEntriesRetrieve(_Endpoint):
 class RekorClient:
     """The internal Rekor client"""
 
-    def __init__(
-        self, url: str, rekor_keyring: RekorKeyring, ct_keyring: CTKeyring
-    ) -> None:
+    def __init__(self, url: str) -> None:
         """
         Create a new `RekorClient` from the given URL.
         """
@@ -239,9 +231,6 @@ class RekorClient:
             {"Content-Type": "application/json", "Accept": "application/json"}
         )
 
-        self._ct_keyring = ct_keyring
-        self._rekor_keyring = rekor_keyring
-
     def __del__(self) -> None:
         """
         Terminates the underlying network session.
@@ -249,36 +238,24 @@ class RekorClient:
         self.session.close()
 
     @classmethod
-    def production(cls, trust_root: TrustedRoot) -> RekorClient:
+    def production(cls) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor production instance.
 
         trust_root must be a `TrustedRoot` for the production TUF repository.
         """
-        rekor_keys = trust_root.get_rekor_keys()
-        ctfe_keys = trust_root.get_ctfe_keys()
-
         return cls(
             DEFAULT_REKOR_URL,
-            RekorKeyring(Keyring(rekor_keys)),
-            CTKeyring(Keyring(ctfe_keys)),
         )
 
     @classmethod
-    def staging(cls, trust_root: TrustedRoot) -> RekorClient:
+    def staging(cls) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor staging instance.
 
         trust_root must be a `TrustedRoot` for the staging TUF repository.
         """
-        rekor_keys = trust_root.get_rekor_keys()
-        ctfe_keys = trust_root.get_ctfe_keys()
-
-        return cls(
-            STAGING_REKOR_URL,
-            RekorKeyring(Keyring(rekor_keys)),
-            CTKeyring(Keyring(ctfe_keys)),
-        )
+        return cls(STAGING_REKOR_URL)
 
     @property
     def log(self) -> RekorLog:

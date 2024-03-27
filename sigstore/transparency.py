@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import Any, List, Optional
 
+import rfc8785
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -30,7 +31,6 @@ from pydantic import (
     field_validator,
 )
 from pydantic.dataclasses import dataclass
-from securesystemslib.formats import encode_canonical
 
 from sigstore._utils import B64Str
 
@@ -172,11 +172,11 @@ class LogEntry:
         This encoded representation is suitable for verification against
         the Signed Entry Timestamp.
         """
-        payload = {
+        payload: dict[str, int | str] = {
             "body": self.body,
             "integratedTime": self.integrated_time,
             "logID": self.log_id,
             "logIndex": self.log_index,
         }
 
-        return encode_canonical(payload).encode()  # type: ignore
+        return rfc8785.dumps(payload)
