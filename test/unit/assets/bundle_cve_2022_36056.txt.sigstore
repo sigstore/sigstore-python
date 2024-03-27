@@ -1,12 +1,8 @@
 {
-    "mediaType": "application/vnd.dev.sigstore.bundle+json;version=0.1",
+    "mediaType": "application/vnd.dev.sigstore.bundle+json;version=0.3",
     "verificationMaterial": {
-        "x509CertificateChain": {
-            "certificates": [
-                {
-                    "rawBytes": "MIIC5zCCAmygAwIBAgIUJ3vpewdf6e91rgjqCqagstF4qn8wCgYIKoZIzj0EAwMwNzEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MR4wHAYDVQQDExVzaWdzdG9yZS1pbnRlcm1lZGlhdGUwHhcNMjMwNDI2MDAyMTA4WhcNMjMwNDI2MDAzMTA4WjAAMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE2sd6+lOBcn5MXtnbwca7zcwpprl7GUZiKTO9IWpAUfVTtx+BXGHQCRwsFy/d7dLlf4hurIqhzMD5yaC2kcU9/8c9G55JyBXF8Dx5SQm9y2rPWFIdm29Ql9A3I3yyEFyPo4IBbjCCAWowDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMDMB0GA1UdDgQWBBTlaUfjpiXGhBP3hOCW0JJZDSPxgzAfBgNVHSMEGDAWgBRxhjCmFHxib/n31vQFGn9f/+tvrDAYBgNVHREBAf8EDjAMgQphQHRueS50b3duMCwGCisGAQQBg78wAQEEHmh0dHBzOi8vZ2l0aHViLmNvbS9sb2dpbi9vYXV0aDAuBgorBgEEAYO/MAEIBCAMHmh0dHBzOi8vZ2l0aHViLmNvbS9sb2dpbi9vYXV0aDCBigYKKwYBBAHWeQIEAgR8BHoAeAB2ACswvNxoiMni4dgmKV50H0g5MZYC8pwzy15DQP6yrIZ6AAABh7rveBsAAAQDAEcwRQIhAKOZPMN9Q9qO1HXigHBPt+Ic16yy2Zgv2KQ23i5WLj16AiAzrFpuayGXdoK+hYePl9dEeXjG/vB2jK/E3sEsIrXtETAKBggqhkjOPQQDAwNpADBmAjEAgmhg80mI/Scr0isBnD5FYXZ8WxA8tnBBPmdf4aNGForGazGXaFQVPXgBVPv+YGI/AjEA0QzPC5dHD/WWXW2GbEC4dpwFk8OGRkiExMOy/+CqabbVg+/lx1N9VGBTlUTft45d"
-                }
-            ]
+        "certificate": {
+            "rawBytes": "MIIC1TCCAlqgAwIBAgIUJr7mMojh1Oa9vVrbOBBwKRnPDhQwCgYIKoZIzj0EAwMwNzEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MR4wHAYDVQQDExVzaWdzdG9yZS1pbnRlcm1lZGlhdGUwHhcNMjQwMzE1MjAxNzA2WhcNMjQwMzE1MjAyNzA2WjAAMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbhRwArjwQ6hh2GoqrM9QCmMBxeKPLA35VxEWtAM4LaHj0yJd8JV8GV0eaPEjnMiC/Y92GU39iPVWmKYqIa9yZ6OCAXkwggF1MA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcDAzAdBgNVHQ4EFgQUEK6qVW+7VoizwygGTpYPKi9sAmAwHwYDVR0jBBgwFoAUcYYwphR8Ym/599b0BRp/X//rb6wwIwYDVR0RAQH/BBkwF4EVd2lsbGlhbUB5b3NzYXJpYW4ubmV0MCwGCisGAQQBg78wAQEEHmh0dHBzOi8vZ2l0aHViLmNvbS9sb2dpbi9vYXV0aDAuBgorBgEEAYO/MAEIBCAMHmh0dHBzOi8vZ2l0aHViLmNvbS9sb2dpbi9vYXV0aDCBigYKKwYBBAHWeQIEAgR8BHoAeAB2ACswvNxoiMni4dgmKV50H0g5MZYC8pwzy15DQP6yrIZ6AAABjkPC13IAAAQDAEcwRQIhAKu8giO4JLjCB12g9bnqXNvLuRbcvFqTysjymJRXXGXPAiAhdLH8tY1S+gjUBew/be3YxndS/S88d/hSWbunUuANYjAKBggqhkjOPQQDAwNpADBmAjEAv1NAfS3UM3PVdMnom8CpFSgkTcWSt73md3+PVGpnEruaZSM4w/M932587R+McvL+AjEA1elUEuYaPTAkm1JHDNGSMRDNFkqXGtjAar6QCYkEJI20d2MIaOy8unvvIs54LxxJ"
         },
         "tlogEntries": [
             {
@@ -50,8 +46,8 @@
     "messageSignature": {
         "messageDigest": {
             "algorithm": "SHA2_256",
-            "digest": "gC3WD/iDM4AvJYXnMEO9IcNBKF4Zkv5bMXVeHK3q4w4="
+            "digest": "I7ce6VlZgnoxzARxnn8VcdF21SCB9EZ5gSLGbrLE8ZY="
         },
-        "signature": "MGUCMQCOOJqTY6XWgB64izK2WVP07b0SG9M5WPCwKhfTPwMvtsgUi8KeRGwQkvvLYbKHdqUCMEbOXFG0NMqEQxWVb6rmGnexdADuGf6Jl8qAC8tn67p3QfVoXzMvFA61PzxwVwvb8g=="
+        "signature": "MEUCIQCXpEJg4djX++Z9PKcY38J7B5Mzcv4/SKhbdud5lacAVwIgNumnD1DtkszkyUIReufXkmNVTjrdEsrzGeVKlmzUm48="
     }
 }

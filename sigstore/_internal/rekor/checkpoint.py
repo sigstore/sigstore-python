@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import re
 import struct
+import typing
 from dataclasses import dataclass
 from typing import List
 
@@ -28,7 +29,9 @@ from pydantic import BaseModel, Field, StrictStr
 
 from sigstore._internal.trustroot import KeyringSignatureError, RekorKeyring
 from sigstore._utils import KeyID
-from sigstore.transparency import LogEntry
+
+if typing.TYPE_CHECKING:
+    from sigstore.transparency import LogEntry
 
 
 @dataclass(frozen=True)
@@ -164,7 +167,8 @@ class SignedNote:
 
     def verify(self, rekor_keyring: RekorKeyring, key_id: KeyID) -> None:
         """
-        Verify the `SignedNote` with using the given RekorClient by verifying each contained signature.
+        Verify the `SignedNote` using the given RekorKeyring by verifying
+        each contained signature.
         """
 
         note = str.encode(self.note)

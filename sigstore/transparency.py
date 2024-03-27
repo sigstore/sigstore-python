@@ -18,9 +18,13 @@ Transparency log data structures.
 
 from __future__ import annotations
 
+import base64
+import logging
+import typing
 from typing import Any, List, Optional
 
 import rfc8785
+from cryptography.exceptions import InvalidSignature
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -32,7 +36,22 @@ from pydantic import (
 )
 from pydantic.dataclasses import dataclass
 
-from sigstore._utils import B64Str
+from sigstore._internal.merkle import verify_merkle_inclusion
+from sigstore._internal.rekor.checkpoint import verify_checkpoint
+from sigstore._utils import B64Str, KeyID
+from sigstore.errors import Error
+
+if typing.TYPE_CHECKING:
+    from sigstore._internal.trustroot import RekorKeyring
+
+
+_logger = logging.getLogger(__name__)
+
+
+class InvalidLogEntry(Error):
+    """
+    The transparency log entry is invalid in some way.
+    """
 
 
 class LogInclusionProof(BaseModel):
@@ -115,9 +134,9 @@ class LogEntry:
     The index of this entry within the log.
     """
 
-    inclusion_proof: Optional[LogInclusionProof]
+    inclusion_proof: LogInclusionProof
     """
-    An inclusion proof for this log entry, if present.
+    An inclusion proof for this log entry.
     """
 
     inclusion_promise: Optional[B64Str]
@@ -127,19 +146,6 @@ class LogEntry:
     Internally, this is a base64-encoded Signed Entry Timestamp (SET) for this
     log entry.
     """
-
-    def __post_init__(self) -> None:
-        """
-        Invariant preservation.
-        """
-
-        # An inclusion proof isn't considered present unless its checkpoint
-        # is also present.
-        has_inclusion_proof = (
-            self.inclusion_proof is not None and self.inclusion_proof.checkpoint
-        )
-        if not has_inclusion_proof and self.inclusion_promise is None:
-            raise ValueError("Log entry must have either inclusion proof or promise")
 
     @classmethod
     def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:
@@ -180,3 +186,50 @@ class LogEntry:
         }
 
         return rfc8785.dumps(payload)
+
+    def _verify_set(self, keyring: RekorKeyring) -> None:
+        """
+        Verify the inclusion promise (Signed Entry Timestamp) for a given transparency log
+        `entry` using the given `keyring`.
+
+        Fails if the given log entry does not contain an inclusion promise.
+        """
+
+        if self.inclusion_promise is None:
+            raise InvalidLogEntry("invalid inclusion promise: missing")
+
+        signed_entry_ts = base64.b64decode(self.inclusion_promise)
+
+        try:
+            keyring.verify(
+                key_id=KeyID(bytes.fromhex(self.log_id)),
+                signature=signed_entry_ts,
+                data=self.encode_canonical(),
+            )
+        except InvalidSignature as inval_sig:
+            raise InvalidLogEntry(
+                "invalid inclusion promise: invalid signature"
+            ) from inval_sig
+
+    def _verify(self, keyring: RekorKeyring) -> None:
+        """
+        Verifies this log entry.
+
+        This method performs steps (5), (6), and optionally (7) in
+        the top-level verify API:
+
+        * Verifies the consistency of the entry with the given bundle;
+        * Verifies the Merkle inclusion proof and its signed checkpoint;
+        * Verifies the inclusion promise, if present.
+        """
+
+        verify_merkle_inclusion(self)
+        verify_checkpoint(keyring, self)
+
+        _logger.debug(f"successfully verified inclusion proof: index={self.log_index}")
+
+        if self.inclusion_promise:
+            self._verify_set(keyring)
+            _logger.debug(
+                f"successfully verified inclusion promise: index={self.log_index}"
+            )

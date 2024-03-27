@@ -21,13 +21,18 @@ Rekor entries.
 The data format for the Merkle tree nodes is described in IETF's RFC 6962.
 """
 
+from __future__ import annotations
+
 import base64
 import hashlib
 import struct
+import typing
 from typing import List, Tuple
 
 from sigstore._utils import HexStr
-from sigstore.transparency import LogEntry
+
+if typing.TYPE_CHECKING:
+    from sigstore.transparency import LogEntry
 
 
 class InvalidInclusionProofError(Exception):
@@ -99,8 +104,6 @@ def _hash_leaf(leaf: bytes) -> bytes:
 def verify_merkle_inclusion(entry: LogEntry) -> None:
     """Verify the Merkle Inclusion Proof for a given Rekor entry."""
     inclusion_proof = entry.inclusion_proof
-    if inclusion_proof is None:
-        raise InvalidInclusionProofError("Rekor entry has no inclusion proof")
 
     # Figure out which subset of hashes corresponds to the inner and border nodes.
     inner, border = _decomp_inclusion_proof(

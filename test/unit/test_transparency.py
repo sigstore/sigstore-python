@@ -21,10 +21,8 @@ from sigstore.transparency import LogEntry, LogInclusionProof
 
 
 class TestLogEntry:
-    def test_consistency(self):
-        with pytest.raises(
-            ValueError, match=r"Log entry must have either inclusion proof or promise"
-        ):
+    def test_missing_inclusion_proof(self):
+        with pytest.raises(ValueError, match=r"inclusion_proof"):
             LogEntry(
                 uuid="fake",
                 body=b64encode("fake".encode()),
@@ -66,4 +64,16 @@ class TestLogInclusionProof:
         ):
             LogInclusionProof(
                 log_index=2, root_hash="abcd", tree_size=1, hashes=[], checkpoint=""
+            )
+
+    def test_checkpoint_missing(self):
+        with pytest.raises(ValidationError, match=r"should be a valid string"):
+            (
+                LogInclusionProof(
+                    checkpoint=None,
+                    hashes=["fake"],
+                    log_index=0,
+                    root_hash="fake",
+                    tree_size=100,
+                ),
             )

@@ -1,0 +1,8 @@
+DO NOT MODIFY ME!
+
+this is "bundle_invalid_versions.txt", a sample input for sigstore-python's unit tests.
+
+this has a corresponding bundle that is valid, *except* that the bundle's
+media type is nonsense.
+
+DO NOT MODIFY ME!
