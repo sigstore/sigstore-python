@@ -23,6 +23,7 @@ import logging
 import typing
 from typing import Any, List, Optional
 
+import rfc8785
 from cryptography.exceptions import InvalidSignature
 from pydantic import (
     BaseModel,
@@ -34,7 +35,6 @@ from pydantic import (
     field_validator,
 )
 from pydantic.dataclasses import dataclass
-from securesystemslib.formats import encode_canonical
 
 from sigstore._internal.merkle import verify_merkle_inclusion
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
@@ -178,14 +178,14 @@ class LogEntry:
         This encoded representation is suitable for verification against
         the Signed Entry Timestamp.
         """
-        payload = {
+        payload: dict[str, int | str] = {
             "body": self.body,
             "integratedTime": self.integrated_time,
             "logID": self.log_id,
             "logIndex": self.log_index,
         }
 
-        return encode_canonical(payload).encode()  # type: ignore
+        return rfc8785.dumps(payload)
 
     def _verify_set(self, keyring: RekorKeyring) -> None:
         """
