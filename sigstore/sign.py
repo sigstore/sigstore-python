@@ -27,13 +27,12 @@ issuer = Issuer.production()
 identity = issuer.identity_token()
 
 # The artifact to sign
-artifact = Path("foo.txt")
+artifact = Path("foo.txt").read_bytes()
 
-with artifact.open("rb") as file:
-    signing_ctx = SigningContext.production()
-    with signing_ctx.signer(identity, cache=True) as signer:
-        result = signer.sign(file)
-        print(result)
+signing_ctx = SigningContext.production()
+with signing_ctx.signer(identity, cache=True) as signer:
+    result = signer.sign(artifact)
+    print(result)
 ```
 """
 
@@ -50,23 +49,9 @@ import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
-    Bundle,
-    VerificationMaterial,
-)
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
     HashOutput,
-    LogId,
     MessageSignature,
-    X509Certificate,
-    X509CertificateChain,
-)
-from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
-    Checkpoint,
-    InclusionPromise,
-    InclusionProof,
-    KindVersion,
-    TransparencyLogEntry,
 )
 
 from sigstore import dsse
@@ -79,9 +64,9 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
-from sigstore._utils import BundleType, PEMCert, sha256_digest
+from sigstore._utils import sha256_digest
 from sigstore.oidc import ExpiredIdentity, IdentityToken
-from sigstore.transparency import LogEntry
+from sigstore.verify.models import Bundle
 
 _logger = logging.getLogger(__name__)
 
@@ -265,13 +250,7 @@ class Signer:
 
         _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
-        return _make_bundle(
-            content=content,
-            cert_pem=PEMCert(
-                cert.public_bytes(encoding=serialization.Encoding.PEM).decode()
-            ),
-            log_entry=entry,
-        )
+        return Bundle._from_parts(cert, content, entry)
 
 
 class SigningContext:
@@ -333,68 +312,3 @@ class SigningContext:
         Default is `True`.
         """
         yield Signer(identity_token, self, cache)
-
-
-def _make_bundle(
-    content: MessageSignature | dsse.Envelope,
-    cert_pem: PEMCert,
-    log_entry: LogEntry,
-) -> Bundle:
-    """
-    Convert the raw results of a Sigstore signing operation into a Sigstore bundle.
-    """
-
-    # NOTE: We explicitly only include the leaf certificate in the bundle's "chain"
-    # here: the specs explicitly forbid the inclusion of the root certificate,
-    # and discourage inclusion of any intermediates (since they're in the root of
-    # trust already).
-    cert = x509.load_pem_x509_certificate(cert_pem.encode())
-    cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
-    chain = X509CertificateChain(certificates=[X509Certificate(raw_bytes=cert_der)])
-
-    inclusion_proof: InclusionProof | None = None
-    if log_entry.inclusion_proof is not None:
-        inclusion_proof = InclusionProof(
-            log_index=log_entry.inclusion_proof.log_index,
-            root_hash=bytes.fromhex(log_entry.inclusion_proof.root_hash),
-            tree_size=log_entry.inclusion_proof.tree_size,
-            hashes=[bytes.fromhex(h) for h in log_entry.inclusion_proof.hashes],
-            checkpoint=Checkpoint(envelope=log_entry.inclusion_proof.checkpoint),
-        )
-
-    # TODO: This is a bit of a hack.
-    if isinstance(content, MessageSignature):
-        kind_version = KindVersion(kind="hashedrekord", version="0.0.1")
-    else:
-        kind_version = KindVersion(kind="dsse", version="0.0.1")
-
-    tlog_entry = TransparencyLogEntry(
-        log_index=log_entry.log_index,
-        log_id=LogId(key_id=bytes.fromhex(log_entry.log_id)),
-        kind_version=kind_version,
-        integrated_time=log_entry.integrated_time,
-        inclusion_promise=InclusionPromise(
-            signed_entry_timestamp=base64.b64decode(log_entry.inclusion_promise)
-        )
-        if log_entry.inclusion_promise
-        else None,
-        inclusion_proof=inclusion_proof,
-        canonicalized_body=base64.b64decode(log_entry.body),
-    )
-
-    material = VerificationMaterial(
-        x509_certificate_chain=chain,
-        tlog_entries=[tlog_entry],
-    )
-
-    bundle = Bundle(
-        media_type=BundleType.BUNDLE_0_2,
-        verification_material=material,
-    )
-
-    if isinstance(content, MessageSignature):
-        bundle.message_signature = content
-    else:
-        bundle.dsse_envelope = content._inner
-
-    return bundle

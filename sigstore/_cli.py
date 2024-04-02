@@ -23,8 +23,9 @@ from pathlib import Path
 from textwrap import dedent
 from typing import NoReturn, Optional, TextIO, Union, cast
 
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.x509 import load_pem_x509_certificate
 from rich.logging import RichHandler
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import Bundle
 
 from sigstore import __version__
 from sigstore._internal.fulcio.client import (
@@ -32,13 +33,15 @@ from sigstore._internal.fulcio.client import (
     ExpiredCertificate,
     FulcioClient,
 )
+from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import (
     DEFAULT_REKOR_URL,
     RekorClient,
 )
 from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
-from sigstore._utils import PEMCert, cert_der_to_pem, sha256_digest
+from sigstore._utils import sha256_digest
 from sigstore.errors import Error
+from sigstore.hashes import Hashed
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,
@@ -48,15 +51,13 @@ from sigstore.oidc import (
     detect_credential,
 )
 from sigstore.sign import SigningContext
-from sigstore.transparency import LogEntry
 from sigstore.verify import (
     CertificateVerificationFailure,
     LogEntryMissing,
-    VerificationMaterials,
     Verifier,
     policy,
 )
-from sigstore.verify.models import VerificationFailure
+from sigstore.verify.models import Bundle, VerificationFailure
 
 logging.basicConfig(format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
 logger = logging.getLogger(__name__)
@@ -635,12 +636,12 @@ def _sign(args: argparse.Namespace) -> None:
                 raise exp_certificate
 
             print("Using ephemeral certificate:")
-            cert = result.verification_material.x509_certificate_chain.certificates[0]
-            cert_pem = cert_der_to_pem(cert.raw_bytes)
+            cert = result.signing_certificate
+            cert_pem = cert.public_bytes(Encoding.PEM).decode()
             print(cert_pem)
 
             print(
-                f"Transparency log entry created at index: {result.verification_material.tlog_entries[0].log_index}"
+                f"Transparency log entry created at index: {result.log_entry.log_index}"
             )
 
             sig_output: TextIO
@@ -649,7 +650,9 @@ def _sign(args: argparse.Namespace) -> None:
             else:
                 sig_output = sys.stdout
 
-            signature = base64.b64encode(result.message_signature.signature).decode()
+            signature = base64.b64encode(
+                result._inner.message_signature.signature
+            ).decode()
             print(signature, file=sig_output)
             if outputs["sig"] is not None:
                 print(f"Signature written to {outputs['sig']}")
@@ -667,13 +670,13 @@ def _sign(args: argparse.Namespace) -> None:
 
 def _collect_verification_state(
     args: argparse.Namespace,
-) -> tuple[Verifier, list[tuple[Path, VerificationMaterials]]]:
+) -> tuple[Verifier, list[tuple[Path, Hashed, Bundle]]]:
     """
     Performs CLI functionality common across all `sigstore verify` subcommands.
 
-    Returns a tuple of the active verifier instance and a list of `(file, materials)`
-    tuples, where `file` is the path to the file being verified (for display
-    purposes) and `materials` is the `VerificationMaterials` to verify with.
+    Returns a tuple of the active verifier instance and a list of `(path, hashed, bundle)`
+    tuples, where `path` is the filename for display purposes, `hashed` is the
+    pre-hashed input to the file being verified and `bundle` is the `Bundle` to verify with.
     """
 
     # Fail if --certificate, --signature, or --bundle is specified and we
@@ -688,6 +691,10 @@ def _collect_verification_state(
     # Fail if `--certificate` or `--signature` is used with `--bundle`.
     if args.bundle and (args.certificate or args.signature):
         _die(args, "--bundle cannot be used with --certificate or --signature")
+
+    # Fail if `--certificate` or `--signature` is used with `--offline`.
+    if args.offline and (args.certificate or args.signature):
+        _die(args, "--offline cannot be used with --certificate or --signature")
 
     # The converse of `sign`: we build up an expected input map and check
     # that we have everything so that we can fail early.
@@ -764,39 +771,38 @@ def _collect_verification_state(
 
     all_materials = []
     for file, inputs in input_map.items():
-        cert_pem: str
-        signature: bytes
-        entry: LogEntry | None = None
+        with file.open(mode="rb") as io:
+            hashed = sha256_digest(io)
+
         if "bundle" in inputs:
             # Load the bundle
             logger.debug(f"Using bundle from: {inputs['bundle']}")
 
             bundle_bytes = inputs["bundle"].read_bytes()
-            bundle = Bundle().from_json(bundle_bytes)
-
-            materials = VerificationMaterials.from_bundle(
-                bundle=bundle, offline=args.offline
-            )
+            bundle = Bundle.from_json(bundle_bytes)
         else:
             # Load the signing certificate
             logger.debug(f"Using certificate from: {inputs['cert']}")
-            cert_pem = inputs["cert"].read_text()
+            cert = load_pem_x509_certificate(inputs["cert"].read_bytes())
 
             # Load the signature
             logger.debug(f"Using signature from: {inputs['sig']}")
             b64_signature = inputs["sig"].read_text()
             signature = base64.b64decode(b64_signature)
 
-            materials = VerificationMaterials(
-                cert_pem=PEMCert(cert_pem),
-                signature=signature,
-                rekor_entry=entry,
-                offline=args.offline,
+            # When using "detached" materials, we *must* retrieve the log
+            # entry from the online log.
+            # TODO: This should be abstracted somewhere much better.
+            log_entry = verifier._rekor.log.entries.retrieve.post(
+                _hashedrekord_from_parts(cert, signature, hashed)
             )
+            if log_entry is None:
+                _die(args, f"No matching log entry for {file}'s verification materials")
+            bundle = Bundle.from_parts(cert, signature, log_entry)
 
         logger.debug(f"Verifying contents from: {file}")
 
-        all_materials.append((file, materials))
+        all_materials.append((file, hashed, bundle))
 
     return (verifier, all_materials)
 
@@ -856,17 +862,17 @@ class VerificationError(Error):
 
 
 def _verify_identity(args: argparse.Namespace) -> None:
-    verifier, files_with_materials = _collect_verification_state(args)
+    verifier, materials = _collect_verification_state(args)
 
-    for file, materials in files_with_materials:
+    for file, hashed, bundle in materials:
         policy_ = policy.Identity(
             identity=args.cert_identity,
             issuer=args.cert_oidc_issuer,
         )
 
         result = verifier.verify(
-            input_=file.read_bytes(),
-            materials=materials,
+            input_=hashed,
+            bundle=bundle,
             policy=policy_,
         )
 
@@ -901,11 +907,9 @@ def _verify_github(args: argparse.Namespace) -> None:
 
     policy_ = policy.AllOf(inner_policies)
 
-    verifier, files_with_materials = _collect_verification_state(args)
-    for file, materials in files_with_materials:
-        result = verifier.verify(
-            input_=file.read_bytes(), materials=materials, policy=policy_
-        )
+    verifier, materials = _collect_verification_state(args)
+    for file, hashed, bundle in materials:
+        result = verifier.verify(input_=hashed, bundle=bundle, policy=policy_)
 
         if result:
             print(f"OK: {file}")
