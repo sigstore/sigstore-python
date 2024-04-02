@@ -22,7 +22,7 @@ import base64
 import hashlib
 import sys
 from enum import Enum
-from typing import IO, NewType, Union
+from typing import IO, NewType, Type, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -46,7 +46,7 @@ else:
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
-PublicKeyTypes = Union[type[rsa.RSAPublicKey], type[ec.EllipticCurvePublicKey]]
+PublicKeyTypes = Union[Type[rsa.RSAPublicKey], Type[ec.EllipticCurvePublicKey]]
 
 HexStr = NewType("HexStr", str)
 """

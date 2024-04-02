@@ -151,6 +151,9 @@ class Key:
         self.key_id = key_id(key)
 
     def verify(self, signature: bytes, data: bytes) -> None:
+        """
+        Verifies the given `data` against `signature` using the current key.
+        """
         if isinstance(self.key, rsa.RSAPublicKey):
             self.key.verify(
                 signature=signature,
