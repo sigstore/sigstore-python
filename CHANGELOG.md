@@ -35,20 +35,15 @@ All versions prior to 0.9.0 are untracked.
 
 ### Removed
 
-* **BREAKING API CHANGE**: `SigningResult.input_digest` has been removed;
-  users who expect to access the input digest may do so by inspecting the
-  `hashedrekord` or `dsse`-specific `SigningResult.content`
-  ([#804](https://github.com/sigstore/sigstore-python/pull/804))
+* **BREAKING API CHANGE**: `SigningResult` has been removed.
+  The public signing APIs now return `sigstore.verify.models.Bundle`.
 
-* **BREAKING API CHANGE**: `VerificationMaterials.hashed_input` has been removed
-  ([#904](https://github.com/sigstore/sigstore-python/pull/904))
+* **BREAKING API CHANGE**: `VerificationMaterials` has been removed.
+  The public verification APIs now accept `sigstore.verify.models.Bundle`.
 
 ### Changed
 
-* **BREAKING API CHANGE**: `sigstore.sign.SigningResult` has been removed
-  ([#862](https://github.com/sigstore/sigstore-python/pull/862))
-
-* **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `Bundle`,
+* **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `sigstore.verify.models.Bundle`,
   instead of a `SigningResult` ([#862](https://github.com/sigstore/sigstore-python/pull/862))
 
 * **BREAKING API CHANGE**: `Verifier.verify(...)`  now takes a `bytes | Hashed`
@@ -63,6 +58,25 @@ All versions prior to 0.9.0 are untracked.
 * **BREAKING API CHANGE**: `Signer.sign(...)` now takes a `bytes` instead of
   an `IO[bytes]` for input. Other input types (such as `Hashed` and
   `Statement`) are unchanged ([#921](https://github.com/sigstore/sigstore-python/pull/921))
+
+* **BREAKING API CHANGE**: `Verifier.verify(...)` now takes a `sigstore.verify.models.Bundle`,
+  instead of a `VerificationMaterials` ([#937](https://github.com/sigstore/sigstore-python/pull/937))
+
+* sigstore-python now requires inclusion proofs in all signing and verification
+  flows, regardless of bundle version of input types. Inputs that do not
+  have an inclusion proof (such as detached materials) cause an online lookup
+  before any further processing is performed
+  ([#937](https://github.com/sigstore/sigstore-python/pull/937))
+
+* sigstore-python now generates "v3" bundles by default during signing
+  ([#937](https://github.com/sigstore/sigstore-python/pull/937))
+
+* CLI: Bundles are now always verified offline. The offline flag has no effect.
+  ([#937](https://github.com/sigstore/sigstore-python/pull/937))
+
+* CLI: "Detached" materials are now always verified online, due to a lack of
+  an inclusion proof. Passing `--offline` with detached materials will cause
+  an error ([#937](https://github.com/sigstore/sigstore-python/pull/937))
 
 ## [2.1.3]
 

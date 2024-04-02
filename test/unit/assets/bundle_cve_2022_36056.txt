@@ -1,0 +1,8 @@
+DO NOT MODIFY ME!
+
+this is "bundle_cve_2022_36056.txt", a sample input for sigstore-python's unit tests.
+
+this has a corresponding bundle that is valid, *except* that the included log entry
+is from a *valid but unrelated* bundle (specifically, `bundle.txt`'s bundle).
+
+DO NOT MODIFY ME!

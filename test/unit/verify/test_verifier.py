@@ -15,13 +15,10 @@
 
 import pretend
 import pytest
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
-from sigstore._utils import _sha256_streaming
-from sigstore.hashes import Hashed
-from sigstore.transparency import LogEntry
 from sigstore.verify import policy
 from sigstore.verify.models import (
+    Bundle,
     VerificationFailure,
     VerificationSuccess,
 )
@@ -41,27 +38,41 @@ def test_verifier_staging(mock_staging_tuf):
 
 @pytest.mark.online
 def test_verifier_one_verification(signing_materials, null_policy):
-    (file, materials) = signing_materials("a.txt")
+    verifier = Verifier.staging()
+
+    (file, bundle) = signing_materials("a.txt", verifier._rekor)
+
+    assert verifier.verify(file.read_bytes(), bundle, null_policy)
+
+
+def test_verifier_inconsistent_log_entry(signing_bundle, null_policy, mock_staging_tuf):
+    (file, bundle) = signing_bundle("bundle_cve_2022_36056.txt")
 
     verifier = Verifier.staging()
-    assert verifier.verify(file.read_bytes(), materials, null_policy)
+    result = verifier.verify(file.read_bytes(), bundle, null_policy)
+
+    assert not result
+    assert (
+        result.reason == "transparency log entry is inconsistent with other materials"
+    )
 
 
 @pytest.mark.online
 def test_verifier_multiple_verifications(signing_materials, null_policy):
-    a = signing_materials("a.txt")
-    b = signing_materials("b.txt")
+    verifier = Verifier.staging()
+
+    a = signing_materials("a.txt", verifier._rekor)
+    b = signing_materials("b.txt", verifier._rekor)
+
+    for file, bundle in [a, b]:
+        assert verifier.verify(file.read_bytes(), bundle, null_policy)
+
+
+def test_verifier_bundle(signing_bundle, null_policy, mock_staging_tuf):
+    (file, bundle) = signing_bundle("bundle.txt")
 
     verifier = Verifier.staging()
-    for file, materials in [a, b]:
-        assert verifier.verify(file.read_bytes(), materials, null_policy)
-
-
-def test_verifier_offline(signing_bundle, null_policy, mock_staging_tuf):
-    (file, materials) = signing_bundle("bundle.txt", offline=True)
-
-    verifier = Verifier.staging()
-    assert verifier.verify(file.read_bytes(), materials, null_policy)
+    assert verifier.verify(file.read_bytes(), bundle, null_policy)
 
 
 def test_verify_result_boolish():
@@ -72,23 +83,25 @@ def test_verify_result_boolish():
 
 @pytest.mark.online
 def test_verifier_email_identity(signing_materials):
-    (file, materials) = signing_materials("a.txt")
+    verifier = Verifier.staging()
+
+    (file, bundle) = signing_materials("a.txt", verifier._rekor)
     policy_ = policy.Identity(
         identity="william@yossarian.net",
         issuer="https://github.com/login/oauth",
     )
 
-    verifier = Verifier.staging()
     assert verifier.verify(
         file.read_bytes(),
-        materials,
+        bundle,
         policy_,
     )
 
 
 @pytest.mark.online
 def test_verifier_uri_identity(signing_materials):
-    (file, materials) = signing_materials("c.txt")
+    verifier = Verifier.staging()
+    (file, bundle) = signing_materials("c.txt", verifier._rekor)
     policy_ = policy.Identity(
         identity=(
             "https://github.com/sigstore/"
@@ -97,62 +110,26 @@ def test_verifier_uri_identity(signing_materials):
         issuer="https://token.actions.githubusercontent.com",
     )
 
-    verifier = Verifier.staging()
     assert verifier.verify(
         file.read_bytes(),
-        materials,
+        bundle,
         policy_,
     )
 
 
 @pytest.mark.online
 def test_verifier_policy_check(signing_materials):
-    (file, materials) = signing_materials("a.txt")
+    verifier = Verifier.staging()
+    (file, bundle) = signing_materials("a.txt", verifier._rekor)
 
     # policy that fails to verify for any given cert.
     policy_ = pretend.stub(verify=lambda cert: False)
 
-    verifier = Verifier.staging()
     assert not verifier.verify(
         file.read_bytes(),
-        materials,
+        bundle,
         policy_,
     )
-
-
-@pytest.mark.online
-def test_verifier_invalid_signature(signing_materials, null_policy):
-    (file, materials) = signing_materials("bad.txt")
-
-    verifier = Verifier.staging()
-    assert not verifier.verify(file.read_bytes(), materials, null_policy)
-
-
-@pytest.mark.online
-def test_verifier_invalid_online_missing_inclusion_proof(
-    signing_materials, null_policy, monkeypatch
-):
-    verifier = Verifier.staging()
-
-    (file, materials) = signing_materials("a.txt")
-
-    with file.open(mode="rb", buffering=0) as input_:
-        digest = _sha256_streaming(input_)
-        hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
-
-    # Retrieve the entry, strip its inclusion proof, stuff it back
-    # into the materials, and then patch out the check that insures the
-    # inclusion proof's presence.
-    # This effectively emulates a "misbehaving" Rekor instance that returns
-    # log entries without corresponding inclusion proofs.
-    entry: LogEntry = materials.rekor_entry(hashed, verifier._rekor)
-    entry.__dict__["inclusion_proof"] = None
-    materials._rekor_entry = entry
-    monkeypatch.setattr(materials, "rekor_entry", lambda *a: entry)
-
-    result = verifier.verify(file.read_bytes(), materials, null_policy)
-    assert not result
-    assert result == VerificationFailure(reason="missing Rekor inclusion proof")
 
 
 @pytest.mark.online
@@ -166,13 +143,10 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
 
     verifier = Verifier.staging()
 
-    (file, materials) = signing_materials("a.txt")
+    bundle: Bundle
+    (file, bundle) = signing_materials("a.txt", verifier._rekor)
 
-    with file.open(mode="rb", buffering=0) as input_:
-        digest = _sha256_streaming(input_)
-        hashed = Hashed(algorithm=HashAlgorithm.SHA2_256, digest=digest)
+    entry = bundle._inner.verification_material.tlog_entries[0]
+    entry.integrated_time = datetime.MINYEAR
 
-    entry = materials.rekor_entry(hashed, verifier._rekor)
-    monkeypatch.setattr(entry, "integrated_time", datetime.MINYEAR)
-
-    assert not verifier.verify(file.read_bytes(), materials, null_policy)
+    assert not verifier.verify(file.read_bytes(), bundle, null_policy)

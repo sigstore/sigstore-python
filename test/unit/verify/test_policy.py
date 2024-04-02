@@ -47,8 +47,8 @@ class TestAnyOf:
         assert not result
         assert result == VerificationFailure(reason="0 of 0 policies succeeded")
 
-    def test_fails_no_children_match(self, signing_materials):
-        _, materials = signing_materials("a.txt")
+    def test_fails_no_children_match(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
         policy_ = policy.AnyOf(
             [
                 policy.Identity(identity="foo", issuer="bar"),
@@ -56,24 +56,24 @@ class TestAnyOf:
             ]
         )
 
-        result = policy_.verify(materials.certificate)
+        result = policy_.verify(bundle.signing_certificate)
         assert not result
         assert result == VerificationFailure(reason="0 of 2 policies succeeded")
 
-    def test_succeeds(self, signing_materials):
-        _, materials = signing_materials("a.txt")
+    def test_succeeds(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
         policy_ = policy.AnyOf(
             [
                 policy.Identity(identity="foo", issuer="bar"),
                 policy.Identity(identity="baz", issuer="quux"),
                 policy.Identity(
-                    identity="william@yossarian.net",
+                    identity="a@tny.town",
                     issuer="https://github.com/login/oauth",
                 ),
             ]
         )
 
-        result = policy_.verify(materials.certificate)
+        result = policy_.verify(bundle.signing_certificate)
         assert result
         assert result == VerificationSuccess()
 
@@ -105,20 +105,20 @@ class TestAllOf:
             )
         )
 
-    def test_fails_not_all_children_match(self, signing_materials):
-        _, materials = signing_materials("a.txt")
+    def test_fails_not_all_children_match(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
         policy_ = policy.AllOf(
             [
                 policy.Identity(identity="foo", issuer="bar"),
                 policy.Identity(identity="baz", issuer="quux"),
                 policy.Identity(
-                    identity="william@yossarian.net",
+                    identity="a@tny.town",
                     issuer="https://github.com/login/oauth",
                 ),
             ]
         )
 
-        result = policy_.verify(materials.certificate)
+        result = policy_.verify(bundle.signing_certificate)
         assert not result
         assert result == VerificationFailure(
             reason=(
@@ -130,38 +130,38 @@ class TestAllOf:
             )
         )
 
-    def test_succeeds(self, signing_materials):
-        _, materials = signing_materials("a.txt")
+    def test_succeeds(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
         policy_ = policy.AllOf(
             [
                 policy.Identity(
-                    identity="william@yossarian.net",
+                    identity="a@tny.town",
                     issuer="https://github.com/login/oauth",
                 ),
                 policy.Identity(
-                    identity="william@yossarian.net",
+                    identity="a@tny.town",
                     issuer="https://github.com/login/oauth",
                 ),
             ]
         )
 
-        result = policy_.verify(materials.certificate)
+        result = policy_.verify(bundle.signing_certificate)
         assert result
 
 
 class TestIdentity:
-    def test_fails_no_san_match(self, signing_materials):
-        _, materials = signing_materials("a.txt")
+    def test_fails_no_san_match(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
         policy_ = policy.Identity(
             identity="bad@ident.example.com",
             issuer="https://github.com/login/oauth",
         )
 
-        result = policy_.verify(materials.certificate)
+        result = policy_.verify(bundle.signing_certificate)
         assert not result
         assert result == VerificationFailure(
             reason=(
                 "Certificate's SANs do not match bad@ident.example.com; "
-                "actual SANs: {'william@yossarian.net'}"
+                "actual SANs: {'a@tny.town'}"
             )
         )
