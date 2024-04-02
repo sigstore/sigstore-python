@@ -36,14 +36,14 @@ All versions prior to 0.9.0 are untracked.
 ### Removed
 
 * **BREAKING API CHANGE**: `SigningResult` has been removed.
-  The public signing APIs now return `Bundle`.
+  The public signing APIs now return `sigstore.verify.models.Bundle`.
 
 * **BREAKING API CHANGE**: `VerificationMaterials` has been removed.
-  The public verification APIs now accept `Bundle`.
+  The public verification APIs now accept `sigstore.verify.models.Bundle`.
 
 ### Changed
 
-* **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `Bundle`,
+* **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `sigstore.verify.models.Bundle`,
   instead of a `SigningResult` ([#862](https://github.com/sigstore/sigstore-python/pull/862))
 
 * **BREAKING API CHANGE**: `Verifier.verify(...)`  now takes a `bytes | Hashed`
@@ -59,7 +59,7 @@ All versions prior to 0.9.0 are untracked.
   an `IO[bytes]` for input. Other input types (such as `Hashed` and
   `Statement`) are unchanged ([#921](https://github.com/sigstore/sigstore-python/pull/921))
 
-* **BREAKING API CHANGE**: `Verifier.verify(...)` now takes a `Bundle`,
+* **BREAKING API CHANGE**: `Verifier.verify(...)` now takes a `sigstore.verify.models.Bundle`,
   instead of a `VerificationMaterials` ([#937](https://github.com/sigstore/sigstore-python/pull/937))
 
 * sigstore-python now requires inclusion proofs in all signing and verification
