@@ -224,10 +224,10 @@ class Bundle:
 
         # Extract the log entry. For the time being, we expect
         # bundles to only contain a single log entry.
-        try:
-            tlog_entry = self._inner.verification_material.tlog_entries[0]
-        except IndexError:
+        tlog_entries = self._inner.verification_material.tlog_entries
+        if len(tlog_entries) != 1:
             raise InvalidBundle("expected exactly one log entry in bundle")
+        tlog_entry = tlog_entries[0]
 
         # Handling of inclusion promises and proofs varies between bundle
         # format versions:
@@ -280,7 +280,7 @@ class Bundle:
         if parsed_inclusion_proof is None:
             raise InvalidBundle("bundle must contain inclusion proof")
 
-        log_entry = LogEntry(
+        self._log_entry = LogEntry(
             uuid=None,
             body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
             integrated_time=tlog_entry.integrated_time,
@@ -293,8 +293,6 @@ class Bundle:
                 ).decode()
             ),
         )
-
-        self._log_entry = log_entry
 
     @property
     def signing_certificate(self) -> Certificate:
