@@ -46,6 +46,8 @@ else:
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
+PublicKeyTypes = Union[type[rsa.RSAPublicKey], type[ec.EllipticCurvePublicKey]]
+
 HexStr = NewType("HexStr", str)
 """
 A newtype for `str` objects that contain hexadecimal strings (e.g. `ffabcd00ff`).
@@ -96,19 +98,15 @@ class InvalidCertError(Error):
     """
 
 
-class UnexpectedKeyFormatError(InvalidKeyError):
-    """
-    Raised when loading a key produces a key of an unexpected type.
-    """
-
-    pass
-
-
-def load_pem_public_key(key_pem: bytes) -> PublicKey:
+def load_pem_public_key(
+    key_pem: bytes,
+    *,
+    types: tuple[PublicKeyTypes, ...] = (rsa.RSAPublicKey, ec.EllipticCurvePublicKey),
+) -> PublicKey:
     """
     A specialization of `cryptography`'s `serialization.load_pem_public_key`
-    with a uniform exception type (`InvalidKeyError`) and additional restrictions
-    on key validity (only RSA and ECDSA keys are valid).
+    with a uniform exception type (`InvalidKeyError`) and filtering on valid key types
+    for Sigstore purposes.
     """
 
     try:
@@ -116,13 +114,17 @@ def load_pem_public_key(key_pem: bytes) -> PublicKey:
     except Exception as exc:
         raise InvalidKeyError("could not load PEM-formatted public key") from exc
 
-    if not isinstance(key, (rsa.RSAPublicKey, ec.EllipticCurvePublicKey)):
-        raise UnexpectedKeyFormatError(f"invalid key format (not ECDSA or RSA): {key}")
+    if not isinstance(key, types):
+        raise InvalidKeyError(f"invalid key format: not one of {types}")
 
-    return key
+    return key  # type: ignore[return-value]
 
 
-def load_der_public_key(key_der: bytes) -> PublicKey:
+def load_der_public_key(
+    key_der: bytes,
+    *,
+    types: tuple[PublicKeyTypes, ...] = (rsa.RSAPublicKey, ec.EllipticCurvePublicKey),
+) -> PublicKey:
     """
     The `load_pem_public_key` specialization, but DER.
     """
@@ -132,10 +134,10 @@ def load_der_public_key(key_der: bytes) -> PublicKey:
     except Exception as exc:
         raise InvalidKeyError("could not load DER-formatted public key") from exc
 
-    if not isinstance(key, (rsa.RSAPublicKey, ec.EllipticCurvePublicKey)):
-        raise UnexpectedKeyFormatError(f"invalid key format (not ECDSA or RSA): {key}")
+    if not isinstance(key, types):
+        raise InvalidKeyError(f"invalid key format: not one of {types}")
 
-    return key
+    return key  # type: ignore[return-value]
 
 
 def base64_encode_pem_cert(cert: Certificate) -> B64Str:

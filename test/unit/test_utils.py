@@ -93,9 +93,7 @@ def test_load_pem_public_key_serialization(monkeypatch):
         b"-----END PUBLIC KEY-----"
     )
 
-    with pytest.raises(
-        utils.InvalidKeyError, match="invalid key format (not ECDSA or RSA)*"
-    ):
+    with pytest.raises(utils.InvalidKeyError, match="invalid key format: not one of"):
         utils.load_pem_public_key([keybytes])
 
 
