@@ -49,7 +49,7 @@ def test_sign_rekor_entry_consistent(signer_and_ident):
 
     payload = secrets.token_bytes(32)
     with ctx.signer(identity) as signer:
-        expected_entry = signer.sign(payload).log_entry
+        expected_entry = signer.sign_artifact(payload).log_entry
 
     actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
@@ -77,7 +77,7 @@ def test_sct_verify_keyring_lookup_error(signer_and_ident, monkeypatch):
         InvalidSCTError,
     ) as excinfo:
         with ctx.signer(identity) as signer:
-            signer.sign(payload)
+            signer.sign_artifact(payload)
 
     # The exception subclass is the one we expect.
     assert isinstance(excinfo.value, InvalidSCTKeyError)
@@ -101,7 +101,7 @@ def test_sct_verify_keyring_error(signer_and_ident, monkeypatch):
 
     with pytest.raises(InvalidSCTError):
         with ctx.signer(identity) as signer:
-            signer.sign(payload)
+            signer.sign_artifact(payload)
 
 
 @pytest.mark.online
@@ -118,7 +118,7 @@ def test_identity_proof_claim_lookup(signer_and_ident, monkeypatch):
     payload = secrets.token_bytes(32)
 
     with ctx.signer(identity) as signer:
-        expected_entry = signer.sign(payload).log_entry
+        expected_entry = signer.sign_artifact(payload).log_entry
     actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
 
     assert expected_entry.body == actual_entry.body
@@ -141,7 +141,7 @@ def test_sign_prehashed(staging):
     )
 
     with sign_ctx.signer(identity) as signer:
-        bundle = signer.sign(hashed)
+        bundle = signer.sign_artifact(hashed)
 
     assert bundle._inner.message_signature.message_digest.algorithm == hashed.algorithm
     assert bundle._inner.message_signature.message_digest.digest == hashed.digest
@@ -173,6 +173,6 @@ def test_sign_dsse(staging):
     ).build()
 
     with ctx.signer(identity) as signer:
-        bundle = signer.sign(stmt)
+        bundle = signer.sign_intoto(stmt)
         # Ensures that all of our inner types serialize as expected.
         bundle.to_json()

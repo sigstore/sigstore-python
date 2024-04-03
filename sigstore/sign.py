@@ -58,7 +58,6 @@ from sigstore import dsse
 from sigstore import hashes as sigstore_hashes
 from sigstore._internal.fulcio import (
     ExpiredCertificate,
-    FulcioCertificateSigningResponse,
     FulcioClient,
 )
 from sigstore._internal.rekor.client import RekorClient
@@ -98,14 +97,12 @@ class Signer:
         self._identity_token = identity_token
         self._signing_ctx: SigningContext = signing_ctx
         self.__cached_private_key: Optional[ec.EllipticCurvePrivateKey] = None
-        self.__cached_signing_certificate: Optional[
-            FulcioCertificateSigningResponse
-        ] = None
+        self.__cached_signing_certificate: Optional[x509.Certificate] = None
         if cache:
             _logger.debug("Generating ephemeral keys...")
             self.__cached_private_key = ec.generate_private_key(ec.SECP256R1())
             _logger.debug("Requesting ephemeral certificate...")
-            self.__cached_signing_certificate = self._signing_cert(self._private_key)
+            self.__cached_signing_certificate = self._signing_cert()
 
     @property
     def _private_key(self) -> ec.EllipticCurvePrivateKey:
@@ -117,12 +114,22 @@ class Signer:
 
     def _signing_cert(
         self,
-        private_key: ec.EllipticCurvePrivateKey,
-    ) -> FulcioCertificateSigningResponse:
-        """Get or request a signing certificate from Fulcio."""
+    ) -> x509.Certificate:
+        """
+        Get or request a signing certificate from Fulcio.
+
+        Internally, this performs a CSR against Fulcio and verifies that
+        the returned certificate is present in Fulcio's CT log.
+        """
+
+        # Our CSR cannot possibly succeed if our underlying identity token
+        # is expired.
+        if not self._identity_token.in_validity_period():
+            raise ExpiredIdentity
+
         # If it exists, verify if the current certificate is expired
         if self.__cached_signing_certificate:
-            not_valid_after = self.__cached_signing_certificate.cert.not_valid_after_utc
+            not_valid_after = self.__cached_signing_certificate.not_valid_after_utc
             if datetime.now(timezone.utc) > not_valid_after:
                 raise ExpiredCertificate
             return self.__cached_signing_certificate
@@ -147,50 +154,91 @@ class Signer:
                     critical=True,
                 )
             )
-            certificate_request = builder.sign(private_key, hashes.SHA256())
+            certificate_request = builder.sign(self._private_key, hashes.SHA256())
 
             certificate_response = self._signing_ctx._fulcio.signing_cert.post(
                 certificate_request, self._identity_token
             )
 
-            return certificate_response
+            # Verify the SCT
+            sct = certificate_response.sct
+            cert = certificate_response.cert
+            chain = certificate_response.chain
 
-    def sign(
+            verify_sct(sct, cert, chain, self._signing_ctx._trusted_root.ct_keyring())
+
+            _logger.debug("Successfully verified SCT...")
+
+            return cert
+
+    def _finalize_sign(
         self,
-        input_: bytes | dsse.Statement | sigstore_hashes.Hashed,
+        cert: x509.Certificate,
+        content: MessageSignature | dsse.Envelope,
+        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
     ) -> Bundle:
         """
-        Sign an input, and return a `Bundle` corresponding to the signed result.
+        Perform the common "finalizing" steps in a Sigstore signing flow.
+        """
+        # Submit the proposed entry to the transparency log
+        entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
 
-        The input can be one of three forms:
+        _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
+
+        return Bundle._from_parts(cert, content, entry)
+
+    def sign_intoto(
+        self,
+        input_: dsse.Statement,
+    ) -> Bundle:
+        """
+        Sign the given in-toto statement, and return a `Bundle` containing
+        the signed result.
+
+        This API is **only** for in-toto statements; to sign arbitrary artifacts,
+        use `sign_artifact` instead.
+        """
+        cert = self._signing_cert()
+
+        # Prepare inputs
+        b64_cert = base64.b64encode(
+            cert.public_bytes(encoding=serialization.Encoding.PEM)
+        )
+
+        # Sign the statement, producing a DSSE envelope
+        content = dsse._sign(self._private_key, input_)
+
+        # Create the proposed DSSE log entry
+        proposed_entry = rekor_types.Dsse(
+            spec=rekor_types.dsse.DsseV001Schema(
+                proposed_content=rekor_types.dsse.ProposedContent(
+                    envelope=content.to_json(),
+                    verifiers=[b64_cert.decode()],
+                ),
+            ),
+        )
+
+        return self._finalize_sign(cert, content, proposed_entry)
+
+    def sign_artifact(
+        self,
+        input_: bytes | sigstore_hashes.Hashed,
+    ) -> Bundle:
+        """
+        Sign an artifact, and return a `Bundle` corresponding to the signed result.
+
+        The input can be one of two forms:
 
         1. A `bytes` buffer;
         2. A `Hashed` object, containing a pre-hashed input (e.g., for inputs
-           that are too large to buffer into memory);
-        3. An in-toto `Statement` object.
+           that are too large to buffer into memory).
 
         In cases (1) and (2), the signing operation will produce a `hashedrekord`
         entry within the bundle. In case (3), the signing operation will produce
         a DSSE envelope and corresponding `dsse` entry within the bundle.
         """
-        private_key = self._private_key
 
-        if not self._identity_token.in_validity_period():
-            raise ExpiredIdentity
-
-        try:
-            certificate_response = self._signing_cert(private_key)
-        except ExpiredCertificate as e:
-            raise e
-
-        # Verify the SCT
-        sct = certificate_response.sct
-        cert = certificate_response.cert
-        chain = certificate_response.chain
-
-        verify_sct(sct, cert, chain, self._signing_ctx._trusted_root.ct_keyring())
-
-        _logger.debug("Successfully verified SCT...")
+        cert = self._signing_cert()
 
         # Prepare inputs
         b64_cert = base64.b64encode(
@@ -198,59 +246,39 @@ class Signer:
         )
 
         # Sign artifact
-        content: MessageSignature | dsse.Envelope
-        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse
-        if isinstance(input_, dsse.Statement):
-            content = dsse._sign(private_key, input_)
+        hashed_input = sha256_digest(input_)
 
-            # Create the proposed DSSE entry
-            proposed_entry = rekor_types.Dsse(
-                spec=rekor_types.dsse.DsseV001Schema(
-                    proposed_content=rekor_types.dsse.ProposedContent(
-                        envelope=content.to_json(),
-                        verifiers=[b64_cert.decode()],
+        artifact_signature = self._private_key.sign(
+            hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())
+        )
+
+        content = MessageSignature(
+            message_digest=HashOutput(
+                algorithm=hashed_input.algorithm,
+                digest=hashed_input.digest,
+            ),
+            signature=artifact_signature,
+        )
+
+        # Create the proposed hashedrekord entry
+        proposed_entry = rekor_types.Hashedrekord(
+            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                signature=rekor_types.hashedrekord.Signature(
+                    content=base64.b64encode(artifact_signature).decode(),
+                    public_key=rekor_types.hashedrekord.PublicKey(
+                        content=b64_cert.decode()
                     ),
                 ),
-            )
-        else:
-            hashed_input = sha256_digest(input_)
-
-            artifact_signature = private_key.sign(
-                hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())
-            )
-
-            content = MessageSignature(
-                message_digest=HashOutput(
-                    algorithm=hashed_input.algorithm,
-                    digest=hashed_input.digest,
+                data=rekor_types.hashedrekord.Data(
+                    hash=rekor_types.hashedrekord.Hash(
+                        algorithm=hashed_input._as_hashedrekord_algorithm(),
+                        value=hashed_input.digest.hex(),
+                    )
                 ),
-                signature=artifact_signature,
-            )
+            ),
+        )
 
-            # Create the proposed hashedrekord entry
-            proposed_entry = rekor_types.Hashedrekord(
-                spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                    signature=rekor_types.hashedrekord.Signature(
-                        content=base64.b64encode(artifact_signature).decode(),
-                        public_key=rekor_types.hashedrekord.PublicKey(
-                            content=b64_cert.decode()
-                        ),
-                    ),
-                    data=rekor_types.hashedrekord.Data(
-                        hash=rekor_types.hashedrekord.Hash(
-                            algorithm=hashed_input._as_hashedrekord_algorithm(),
-                            value=hashed_input.digest.hex(),
-                        )
-                    ),
-                ),
-            )
-
-        # Submit the proposed entry to the transparency log
-        entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
-
-        _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
-
-        return Bundle._from_parts(cert, content, entry)
+        return self._finalize_sign(cert, content, proposed_entry)
 
 
 class SigningContext:

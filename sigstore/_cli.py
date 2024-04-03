@@ -626,7 +626,7 @@ def _sign(args: argparse.Namespace) -> None:
                 # digest and sign the prehash rather than buffering it fully.
                 digest = sha256_digest(io)
             try:
-                result = signer.sign(input_=digest)
+                result = signer.sign_artifact(input_=digest)
             except ExpiredIdentity as exp_identity:
                 print("Signature failed: identity token has expired")
                 raise exp_identity
