@@ -77,7 +77,8 @@ class BundleType(str, Enum):
 
     BUNDLE_0_1 = "application/vnd.dev.sigstore.bundle+json;version=0.1"
     BUNDLE_0_2 = "application/vnd.dev.sigstore.bundle+json;version=0.2"
-    BUNDLE_0_3 = "application/vnd.dev.sigstore.bundle+json;version=0.3"
+    BUNDLE_0_3_ALT = "application/vnd.dev.sigstore.bundle+json;version=0.3"
+    BUNDLE_0_3 = "application/vnd.dev.sigstore.bundle.v0.3+json"
 
     def __str__(self) -> str:
         """Returns the variant's string value."""
