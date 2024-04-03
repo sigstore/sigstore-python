@@ -51,7 +51,7 @@ from sigstore._utils import (
 )
 from sigstore.errors import Error
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 def _pack_signed_entry(
@@ -183,11 +183,11 @@ def _get_precertificate_signed_certificate_timestamps(
 
 
 def _cert_is_ca(cert: Certificate) -> bool:
-    logger.debug(f"Found {cert.subject} as issuer, verifying if it is a ca")
+    _logger.debug(f"Found {cert.subject} as issuer, verifying if it is a ca")
     try:
         cert_is_ca(cert)
     except InvalidCertError as e:
-        logger.debug(f"Invalid {cert.subject}: failed to validate as a CA: {e}")
+        _logger.debug(f"Invalid {cert.subject}: failed to validate as a CA: {e}")
         return False
     return True
 
@@ -308,7 +308,7 @@ def verify_sct(
         )
 
     try:
-        logger.debug(f"attempting to verify SCT with key ID {sct.log_id.hex()}")
+        _logger.debug(f"attempting to verify SCT with key ID {sct.log_id.hex()}")
         # NOTE(ww): In terms of the DER structure, the SCT's `LogID` contains a
         # singular `opaque key_id[32]`. Cryptography's APIs don't bother
         # to expose this trivial single member, so we use the `log_id`
