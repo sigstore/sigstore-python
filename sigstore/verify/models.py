@@ -181,12 +181,6 @@ class Bundle:
 
         # Extract the signing certificate.
         if media_type in (BundleType.BUNDLE_0_3, BundleType.BUNDLE_0_3_ALT):
-            if media_type == BundleType.BUNDLE_0_3_ALT:
-                _logger.warning(
-                    f"media type {BundleType.BUNDLE_0_3_ALT} is discouraged; "
-                    f"consider using {BundleType.BUNDLE_0_3} for v3 bundles"
-                )
-
             # For "v3" bundles, the signing certificate is the only one present.
             leaf_cert = load_der_x509_certificate(
                 self._inner.verification_material.certificate.raw_bytes

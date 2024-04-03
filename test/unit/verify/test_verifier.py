@@ -16,7 +16,6 @@
 import pretend
 import pytest
 
-from sigstore._utils import BundleType
 from sigstore.verify import policy
 from sigstore.verify.models import (
     Bundle,
@@ -154,12 +153,3 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
     entry.integrated_time = datetime.MINYEAR
 
     assert not verifier.verify(file.read_bytes(), bundle, null_policy)
-
-
-@pytest.mark.online
-def test_verifier_bundle_v3_alt_warns(signing_bundle, null_policy, caplog):
-    verifier = Verifier.staging()
-    (file, bundle) = signing_bundle("bundle_v3_alt.txt")
-
-    assert verifier.verify(file.read_bytes(), bundle, null_policy)
-    assert f"media type {BundleType.BUNDLE_0_3_ALT} is discouraged" in caplog.text
