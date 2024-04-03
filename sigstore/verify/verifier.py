@@ -231,6 +231,12 @@ class Verifier:
         that the in-toto statement is valid or trustworthy.
         """
 
+        # (1) through (3) are performed by `_verify_common_signing_cert`.
+        self._verify_common_signing_cert(bundle.signing_certificate, policy)
+
+        # (4): verify the bundle's signature and DSSE envelope against the
+        #      signing certificate's public key.
+
     def verify_artifact(
         self,
         input_: bytes | Hashed,
@@ -281,8 +287,6 @@ class Verifier:
         # 7. Verify the inclusion promise for the log entry, if present.
         # 8. Verify the timely insertion of the log entry against the validity
         #    period for the signing certificate.
-
-        # (1) through (3) are performed by `_verify_common_signing_cert`.
 
         # 1. Verify that the signing certificate is signed by the root certificate and that the
         #    signing certificate was valid at the time of signing.
