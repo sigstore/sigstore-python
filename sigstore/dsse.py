@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Literal, Optional, Union
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictStr, ValidationError
@@ -103,12 +104,7 @@ class Statement:
         Construct the PAE encoding for this statement.
         """
 
-        # See:
-        # https://github.com/secure-systems-lab/dsse/blob/v1.0.0/envelope.md
-        # https://github.com/in-toto/attestation/blob/v1.0/spec/v1.0/envelope.md
-        pae = f"DSSEv1 {len(Envelope._TYPE)} {Envelope._TYPE} ".encode()
-        pae += b" ".join([str(len(self._contents)).encode(), self._contents])
-        return pae
+        return _pae(Envelope._TYPE, self._contents)
 
 
 class _StatementBuilder:
@@ -193,6 +189,19 @@ class Envelope:
         return self._inner.to_json()  # type: ignore[no-any-return]
 
 
+def _pae(type_: str, body: bytes) -> bytes:
+    """
+    Compute the PAE encoding for the given `type_` and `body`.
+    """
+
+    # See:
+    # https://github.com/secure-systems-lab/dsse/blob/v1.0.0/envelope.md
+    # https://github.com/in-toto/attestation/blob/v1.0/spec/v1.0/envelope.md
+    pae = f"DSSEv1 {len(type_)} {type_} ".encode()
+    pae += b" ".join([str(len(body)).encode(), body])
+    return pae
+
+
 def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
     """
     Sign for the given in-toto `Statement`, and encapsulate the resulting
@@ -209,3 +218,22 @@ def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
             signatures=[Signature(sig=signature, keyid=None)],
         )
     )
+
+
+def _verify(key: ec.EllipticCurvePublicKey, sig: bytes, evp: Envelope) -> bytes:
+    """
+    Verify the given in-toto `Envelope`, returning the verified inner payload.
+
+
+    This function does **not** check the envelope's payload type. The caller
+    is responsible for performing this check.
+    """
+
+    pae = _pae(evp._inner.payload_type, evp._inner.payload)
+
+    try:
+        key.verify(sig, pae, ec.ECDSA(hashes.SHA256()))
+    except InvalidSignature:
+        raise ValueError("invalid signature")
+
+    return evp._inner.payload

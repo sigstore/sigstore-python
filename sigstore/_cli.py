@@ -870,7 +870,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
             issuer=args.cert_oidc_issuer,
         )
 
-        result = verifier.verify(
+        result = verifier.verify_artifact(
             input_=hashed,
             bundle=bundle,
             policy=policy_,
@@ -909,7 +909,7 @@ def _verify_github(args: argparse.Namespace) -> None:
 
     verifier, materials = _collect_verification_state(args)
     for file, hashed, bundle in materials:
-        result = verifier.verify(input_=hashed, bundle=bundle, policy=policy_)
+        result = verifier.verify_artifact(input_=hashed, bundle=bundle, policy=policy_)
 
         if result:
             print(f"OK: {file}")

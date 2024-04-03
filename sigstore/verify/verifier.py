@@ -27,6 +27,7 @@ import rekor_types
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
+    Certificate,
     ExtendedKeyUsage,
     KeyUsage,
 )
@@ -54,6 +55,7 @@ from sigstore._internal.sct import (
 )
 from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import B64Str, HexStr, sha256_digest
+from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.transparency import InvalidLogEntry
 from sigstore.verify.models import (
@@ -146,7 +148,90 @@ class Verifier:
             trusted_root=trusted_root,
         )
 
-    def verify(
+    def _verify_common_signing_cert(
+        self, cert: Certificate, policy: VerificationPolicy
+    ) -> None:
+        """
+        Performs the signing certificate verification steps that are shared between
+        `verify_intoto` and `verify_artifact`.
+
+        Raises `VerificationError` on all failures.
+        """
+
+        # NOTE: The `X509Store` object currently cannot have its time reset once the `set_time`
+        # method been called on it. To get around this, we construct a new one for every `verify`
+        # call.
+        store = X509Store()
+        # NOTE: By explicitly setting the flags here, we ensure that OpenSSL's
+        # PARTIAL_CHAIN default does not change on us. Enabling PARTIAL_CHAIN
+        # would be strictly more conformant of OpenSSL, but we currently
+        # *want* the "long" chain behavior of performing path validation
+        # down to a self-signed root.
+        store.set_flags(X509StoreFlags.X509_STRICT)
+        for parent_cert_ossl in self._fulcio_certificate_chain:
+            store.add_cert(parent_cert_ossl)
+
+        # 1. Verify that the signing certificate is signed by the root certificate and that the
+        #    signing certificate was valid at the time of signing.
+        sign_date = cert.not_valid_before_utc
+        cert_ossl = X509.from_cryptography(cert)
+
+        store.set_time(sign_date)
+        store_ctx = X509StoreContext(store, cert_ossl)
+        try:
+            # get_verified_chain returns the full chain including the end-entity certificate
+            # and chain should contain only CA certificates
+            chain = store_ctx.get_verified_chain()[1:]
+        except X509StoreContextError as e:
+            raise VerificationError(f"failed to build chain: {e}")
+
+        # 2. Check that the signing certificate has a valid SCT
+        sct = _get_precertificate_signed_certificate_timestamps(cert)[0]
+        try:
+            verify_sct(
+                sct,
+                cert,
+                [parent_cert.to_cryptography() for parent_cert in chain],
+                self._trusted_root.ct_keyring(),
+            )
+        except Error as e:
+            raise VerificationError(f"failed to verify SCT on signing certificate: {e}")
+
+        # 3. Check that the signing certificate has the expected KU/EKU and
+        #    verifies against the given `VerificationPolicy`.
+
+        usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
+        if not usage_ext.value.digital_signature:
+            raise VerificationError("Key usage is not of type `digital signature`")
+
+        extended_usage_ext = cert.extensions.get_extension_for_class(ExtendedKeyUsage)
+        if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
+            raise VerificationError("Extended usage does not contain `code signing`")
+
+        policy.verify(cert)
+
+        _logger.debug("Successfully verified signing certificate validity...")
+
+    def verify_intoto(self, bundle: Bundle, policy: VerificationPolicy) -> None:
+        """
+        Verifies an bundle's in-toto statement (encapsulated within the bundle
+        as a DSSE envelope).
+
+        This method is only for DSSE-enveloped in-toto statements. To verify
+        an arbitrary input against a bundle, use the `verify_artifact`
+        method.
+
+        `bundle` is the Sigstore `Bundle` to both verify and verify against.
+
+        `policy` is the `VerificationPolicy` to verify against.
+
+        Returns the in-toto statement as a raw `bytes`, for subsequent
+        JSON decoding and policy evaluation. Callers **must** perform this decoding
+        and evaluation; mere signature verification by this API does not imply
+        that the in-toto statement is valid or trustworthy.
+        """
+
+    def verify_artifact(
         self,
         input_: bytes | Hashed,
         bundle: Bundle,
@@ -182,23 +267,24 @@ class Verifier:
 
         # In order to verify an artifact, we need to achieve the following:
         #
-        # 1) Verify that the signing certificate is signed by the certificate
-        #    chain and that the signing certificate was valid at the time
-        #    of signing.
-        # 2) Verify the certificate sct.
-        # 3) Verify that the signing certificate belongs to the signer.
-        # 4) Verify that the artifact signature was signed by the public key in the
-        #    signing certificate.
-        # 5) Verify that the log entry is consistent with the other verification
+        # 1. Verify that the signing certificate chains to the root of trust
+        #    and is valid at the time of signing.
+        # 2. Verify the signing certificate's SCT.
+        # 3. Verify that the signing certificate conforms to the Sigstore
+        #    X.509 profile as well as the passed-in `VerificationPolicy`.
+        # 4. Verify the signature and input against the signing certificate's
+        #    public key.
+        # 5. Verify the transparency log entry's consistency against the other
         #    materials, to prevent variants of CVE-2022-36056.
-        # 6) Verify the inclusion proof supplied by Rekor for this artifact,
-        #    if we're doing online verification.
-        # 7) Verify the Signed Entry Timestamp (SET) supplied by Rekor for this
-        #    artifact.
-        # 8) Verify that the signing certificate was valid at the time of
-        #    signing by comparing the expiry against the integrated timestamp.
+        # 6. Verify the inclusion proof and signed checkpoint for the log
+        #    entry.
+        # 7. Verify the inclusion promise for the log entry, if present.
+        # 8. Verify the timely insertion of the log entry against the validity
+        #    period for the signing certificate.
 
-        # 1) Verify that the signing certificate is signed by the root certificate and that the
+        # (1) through (3) are performed by `_verify_common_signing_cert`.
+
+        # 1. Verify that the signing certificate is signed by the root certificate and that the
         #    signing certificate was valid at the time of signing.
         sign_date = bundle.signing_certificate.not_valid_before_utc
         cert_ossl = X509.from_cryptography(bundle.signing_certificate)
@@ -214,7 +300,7 @@ class Verifier:
                 exception=store_ctx_error,
             )
 
-        # 2) Check that the signing certificate has a valid sct
+        # 2. Check that the signing certificate has a valid SCT
 
         # The SignedCertificateTimestamp should be acessed by the index 0
         sct = _get_precertificate_signed_certificate_timestamps(
@@ -227,7 +313,7 @@ class Verifier:
             self._trusted_root.ct_keyring(),
         )
 
-        # 3) Check that the signing certificate contains the proof claim as the subject
+        # 3. Check that the signing certificate contains the proof claim as the subject
         # Check usage is "digital signature"
         usage_ext = bundle.signing_certificate.extensions.get_extension_for_class(
             KeyUsage
@@ -254,7 +340,7 @@ class Verifier:
 
         _logger.debug("Successfully verified signing certificate validity...")
 
-        # 4) Verify that the signature was signed by the public key in the signing certificate
+        # 4. Verify that the signature was signed by the public key in the signing certificate
         try:
             signing_key = bundle.signing_certificate.public_key()
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
@@ -268,7 +354,7 @@ class Verifier:
 
         _logger.debug("Successfully verified signature...")
 
-        # 5) Verify the consistency of the log entry's body against
+        # 5. Verify the consistency of the log entry's body against
         #    the other bundle materials (and input being verified).
         entry = bundle.log_entry
 
@@ -285,8 +371,8 @@ class Verifier:
                 reason="transparency log entry is inconsistent with other materials"
             )
 
-        # 6) Verify the inclusion proof for this artifact, including its checkpoint.
-        # 7) Verify the optional inclusion promise (SET) for this artifact
+        # 6. Verify the inclusion proof for this artifact, including its checkpoint.
+        # 7. Verify the optional inclusion promise (SET) for this artifact
         try:
             entry._verify(self._trusted_root.rekor_keyring())
         except InvalidInclusionProofError as exc:
@@ -298,7 +384,8 @@ class Verifier:
         except InvalidLogEntry as exc:
             return VerificationFailure(reason=str(exc))
 
-        # 7) Verify that the signing certificate was valid at the time of signing
+        # 8. Verify that log entry was integrated circa the signing certificate's
+        #    validity period.
         integrated_time = datetime.fromtimestamp(entry.integrated_time, tz=timezone.utc)
         if not (
             bundle.signing_certificate.not_valid_before_utc

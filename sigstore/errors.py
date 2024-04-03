@@ -117,3 +117,9 @@ class RootError(Error):
         Unable to establish root of trust.
 
         This error may occur when the resources embedded in this distribution of sigstore-python are out of date."""
+
+
+class VerificationError(Error):
+    """
+    Raised when a Sigstore verification flow fails.
+    """
