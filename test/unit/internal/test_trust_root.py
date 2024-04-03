@@ -26,7 +26,7 @@ from sigstore._internal.trustroot import (
     TrustedRoot,
     _is_timerange_valid,
 )
-from sigstore._utils import load_der_public_key, load_pem_public_key
+from sigstore._utils import load_pem_public_key
 from sigstore.errors import RootError
 
 
@@ -135,11 +135,6 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
             for k in keys
         ]
 
-    # We don't strictly need to re-encode these keys as they are already DER,
-    # but by doing so we are also validating the keys structurally.
-    def _der_keys(keys):
-        return get_public_bytes([load_der_public_key(k) for k in keys])
-
     def _pem_keys(keys):
         return get_public_bytes([load_pem_public_key(k) for k in keys])
 
@@ -159,21 +154,36 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
 
     # Assert that trust root from TUF contains the expected keys/certs
     trust_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
-    assert ctfe_keys[0] in get_public_bytes(trust_root.ct_keyring()._keyring.values())
-    assert get_public_bytes(trust_root.rekor_keyring()._keyring.values()) == rekor_keys
+    assert ctfe_keys[0] in get_public_bytes(
+        [k.key for k in trust_root.ct_keyring()._keyring.values()]
+    )
+    assert (
+        get_public_bytes([k.key for k in trust_root.rekor_keyring()._keyring.values()])
+        == rekor_keys
+    )
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from offline TUF contains the expected keys/certs
     trust_root = TrustedRoot.staging(offline=True, purpose=KeyringPurpose.VERIFY)
-    assert ctfe_keys[0] in get_public_bytes(trust_root.ct_keyring()._keyring.values())
-    assert get_public_bytes(trust_root.rekor_keyring()._keyring.values()) == rekor_keys
+    assert ctfe_keys[0] in get_public_bytes(
+        [k.key for k in trust_root.ct_keyring()._keyring.values()]
+    )
+    assert (
+        get_public_bytes([k.key for k in trust_root.rekor_keyring()._keyring.values()])
+        == rekor_keys
+    )
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from file contains the expected keys/certs
     path = tuf_asset.target_path("trusted_root.json")
     trust_root = TrustedRoot.from_file(path, purpose=KeyringPurpose.VERIFY)
-    assert ctfe_keys[0] in get_public_bytes(trust_root.ct_keyring()._keyring.values())
-    assert get_public_bytes(trust_root.rekor_keyring()._keyring.values()) == rekor_keys
+    assert ctfe_keys[0] in get_public_bytes(
+        [k.key for k in trust_root.ct_keyring()._keyring.values()]
+    )
+    assert (
+        get_public_bytes([k.key for k in trust_root.rekor_keyring()._keyring.values()])
+        == rekor_keys
+    )
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
 
