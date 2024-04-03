@@ -68,8 +68,11 @@ def test_verifier_multiple_verifications(signing_materials, null_policy):
         assert verifier.verify(file.read_bytes(), bundle, null_policy)
 
 
-def test_verifier_bundle(signing_bundle, null_policy, mock_staging_tuf):
-    (file, bundle) = signing_bundle("bundle.txt")
+@pytest.mark.parametrize(
+    "filename", ("bundle.txt", "bundle_v3.txt", "bundle_v3_alt.txt")
+)
+def test_verifier_bundle(signing_bundle, null_policy, mock_staging_tuf, filename):
+    (file, bundle) = signing_bundle(filename)
 
     verifier = Verifier.staging()
     assert verifier.verify(file.read_bytes(), bundle, null_policy)
