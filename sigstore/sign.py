@@ -31,7 +31,7 @@ artifact = Path("foo.txt").read_bytes()
 
 signing_ctx = SigningContext.production()
 with signing_ctx.signer(identity, cache=True) as signer:
-    result = signer.sign(artifact)
+    result = signer.sign_artifact(artifact)
     print(result)
 ```
 """
