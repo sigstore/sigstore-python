@@ -111,7 +111,7 @@ positional arguments:
 optional arguments:
   -h, --help          show this help message and exit
   -v, --verbose       run with additional debug logging; supply multiple times
-                      to increase verbosity
+                      to increase verbosity (default: 0)
   -V, --version       show program's version number and exit
 
 Sigstore instance options:
