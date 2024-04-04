@@ -41,6 +41,10 @@ All versions prior to 0.9.0 are untracked.
 * **BREAKING API CHANGE**: `VerificationMaterials` has been removed.
   The public verification APIs now accept `sigstore.verify.models.Bundle`.
 
+* **BREAKING API CHANGE**: `VerificationResult` has been removed.
+  The public verification and policy APIs now raise
+  `sigstore.errors.VerificationError` on failure.
+
 ### Changed
 
 * **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `sigstore.verify.models.Bundle`,
