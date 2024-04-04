@@ -27,7 +27,6 @@ from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
 )
-from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.bundle import v1 as bundle_v1
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle as _Bundle,
@@ -50,56 +49,6 @@ from sigstore.errors import Error
 from sigstore.transparency import LogEntry, LogInclusionProof
 
 _logger = logging.getLogger(__name__)
-
-
-class VerificationResult(BaseModel):
-    """
-    Represents the result of a verification operation.
-
-    Results are boolish, and failures contain a reason (and potentially
-    some additional context).
-    """
-
-    success: bool
-    """
-    Represents the status of this result.
-    """
-
-    def __bool__(self) -> bool:
-        """
-        Returns a boolean representation of this result.
-
-        `VerificationSuccess` is always `True`, and `VerificationFailure`
-        is always `False`.
-        """
-        return self.success
-
-
-class VerificationSuccess(VerificationResult):
-    """
-    The verification completed successfully,
-    """
-
-    success: bool = True
-    """
-    See `VerificationResult.success`.
-    """
-
-
-class VerificationFailure(VerificationResult):
-    """
-    The verification failed, due to `reason`.
-    """
-
-    success: bool = False
-    """
-    See `VerificationResult.success`.
-    """
-
-    reason: str
-    """
-    A human-readable explanation or description of the verification failure.
-    """
 
 
 class InvalidBundle(Error):

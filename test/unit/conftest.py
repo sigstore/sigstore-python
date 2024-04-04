@@ -41,7 +41,6 @@ from sigstore._utils import sha256_digest
 from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
 from sigstore.sign import SigningContext
 from sigstore.verify.models import Bundle
-from sigstore.verify.policy import VerificationSuccess
 from sigstore.verify.verifier import Verifier
 
 _ASSETS = (Path(__file__).parent / "assets").resolve()
@@ -195,7 +194,7 @@ def signing_bundle():
 def null_policy():
     class NullPolicy:
         def verify(self, cert):
-            return VerificationSuccess()
+            return
 
     return NullPolicy()
 
