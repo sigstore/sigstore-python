@@ -30,7 +30,7 @@ from tuf.ngclient import RequestsFetcher, Updater
 from sigstore._utils import read_embedded
 from sigstore.errors import RootError, TUFError
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 DEFAULT_TUF_URL = "https://tuf-repo-cdn.sigstore.dev"
 STAGING_TUF_URL = "https://tuf-repo-cdn.sigstage.dev"
@@ -122,8 +122,8 @@ class TrustUpdater:
 
             trusted_root_target.write_bytes(trusted_root_json)
 
-        logger.debug(f"TUF metadata: {self._metadata_dir}")
-        logger.debug(f"TUF targets cache: {self._targets_dir}")
+        _logger.debug(f"TUF metadata: {self._metadata_dir}")
+        _logger.debug(f"TUF targets cache: {self._targets_dir}")
 
         self._updater: None | Updater = None
         if not offline:
@@ -144,7 +144,7 @@ class TrustUpdater:
     def get_trusted_root_path(self) -> str:
         """Return local path to currently valid trusted root file"""
         if not self._updater:
-            logger.debug("Using unverified trusted root from cache")
+            _logger.debug("Using unverified trusted root from cache")
             return str(self._targets_dir / "trusted_root.json")
 
         root_info = self._updater.get_targetinfo("trusted_root.json")
@@ -160,5 +160,5 @@ class TrustUpdater:
             ) as e:
                 raise TUFError("Failed to download trusted key bundle") from e
 
-        logger.debug("Found and verified trusted root")
+        _logger.debug("Found and verified trusted root")
         return path
