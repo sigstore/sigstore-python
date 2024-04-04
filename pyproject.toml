@@ -36,7 +36,7 @@ dependencies = [
   "rfc8785 ~= 0.1.2",
   "sigstore-protobuf-specs ~= 0.3.1",
   # NOTE(ww): Under active development, so strictly pinned.
-  "sigstore-rekor-types == 0.0.12",
+  "sigstore-rekor-types == 0.0.13",
   "tuf ~= 4.0",
   "platformdirs ~= 4.2",
 ]
