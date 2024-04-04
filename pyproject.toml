@@ -37,7 +37,7 @@ dependencies = [
   "sigstore-protobuf-specs ~= 0.3.1",
   # NOTE(ww): Under active development, so strictly pinned.
   "sigstore-rekor-types == 0.0.12",
-  "tuf >= 2.1,< 4.0",
+  "tuf >= 2.1,< 5.0",
   "platformdirs ~= 4.2",
 ]
 requires-python = ">=3.8"
