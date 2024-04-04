@@ -224,7 +224,7 @@ def _parser() -> argparse.ArgumentParser:
         "-v",
         "--verbose",
         action="count",
-        default=argparse.SUPPRESS,
+        default=0,
         help="run with additional debug logging; supply multiple times to increase verbosity",
     )
 
@@ -462,7 +462,6 @@ def main() -> None:
     args = parser.parse_args()
 
     # Configure logging upfront, so that we don't miss anything.
-    args.verbose = getattr(args, "verbose", 0)
     if args.verbose >= 1:
         _package_logger.setLevel("DEBUG")
     if args.verbose >= 2:
