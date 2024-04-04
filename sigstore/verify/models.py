@@ -123,17 +123,6 @@ class InvalidBundle(Error):
         )
 
 
-class RekorEntryMissing(Exception):
-    """
-    Raised if `VerificationMaterials.rekor_entry()` fails to find an entry
-    in the Rekor log.
-
-    This is an internal exception; users should not see it.
-    """
-
-    pass
-
-
 class InvalidRekorEntry(InvalidBundle):
     """
     Raised if the effective Rekor entry in `VerificationMaterials.rekor_entry()`

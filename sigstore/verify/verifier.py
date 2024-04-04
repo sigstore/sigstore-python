@@ -40,13 +40,7 @@ from OpenSSL.crypto import (
 )
 from pydantic import ConfigDict
 
-from sigstore._internal.merkle import (
-    InvalidInclusionProofError,
-)
 from sigstore._internal.rekor import _hashedrekord_from_parts
-from sigstore._internal.rekor.checkpoint import (
-    CheckpointError,
-)
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
     _get_precertificate_signed_certificate_timestamps,
@@ -54,8 +48,8 @@ from sigstore._internal.sct import (
 )
 from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import B64Str, HexStr, sha256_digest
+from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
-from sigstore.transparency import InvalidLogEntry
 from sigstore.verify.models import (
     Bundle,
     VerificationFailure,
@@ -289,14 +283,8 @@ class Verifier:
         # 7) Verify the optional inclusion promise (SET) for this artifact
         try:
             entry._verify(self._trusted_root.rekor_keyring())
-        except InvalidInclusionProofError as exc:
-            return VerificationFailure(reason=f"invalid inclusion proof: {exc}")
-        except CheckpointError as exc:
-            return VerificationFailure(
-                reason=f"invalid inclusion proof checkpoint: {exc}"
-            )
-        except InvalidLogEntry as exc:
-            return VerificationFailure(reason=str(exc))
+        except VerificationError as exc:
+            return VerificationFailure(reason=f"invalid log entry: {exc}")
 
         # 7) Verify that the signing certificate was valid at the time of signing
         integrated_time = datetime.fromtimestamp(entry.integrated_time, tz=timezone.utc)

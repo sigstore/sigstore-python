@@ -22,6 +22,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
 from sigstore import _utils as utils
+from sigstore.errors import VerificationError
 
 
 def test_key_id():
@@ -76,7 +77,7 @@ def test_sha256_streaming(size):
 def test_load_pem_public_key_format():
     keybytes = b"-----BEGIN PUBLIC KEY-----\n" b"bleh\n" b"-----END PUBLIC KEY-----"
     with pytest.raises(
-        utils.InvalidKeyError, match="could not load PEM-formatted public key"
+        VerificationError, match="could not load PEM-formatted public key"
     ):
         utils.load_pem_public_key([keybytes])
 
@@ -93,7 +94,7 @@ def test_load_pem_public_key_serialization(monkeypatch):
         b"-----END PUBLIC KEY-----"
     )
 
-    with pytest.raises(utils.InvalidKeyError, match="invalid key format: not one of"):
+    with pytest.raises(VerificationError, match="invalid key format: not one of"):
         utils.load_pem_public_key([keybytes])
 
 
@@ -122,7 +123,7 @@ def test_cert_is_ca(x509_testcase, testcase, valid):
 def test_cert_is_ca_invalid_states(x509_testcase, testcase):
     cert = x509_testcase(testcase)
 
-    with pytest.raises(utils.InvalidCertError):
+    with pytest.raises(VerificationError, match="invalid X.509 certificate"):
         utils.cert_is_ca(cert)
 
 
@@ -169,7 +170,7 @@ def test_cert_is_leaf(x509_testcase, testcase, valid):
 def test_cert_is_leaf_invalid_states(x509_testcase, testcase):
     cert = x509_testcase(testcase)
 
-    with pytest.raises(utils.InvalidCertError):
+    with pytest.raises(VerificationError):
         utils.cert_is_leaf(cert)
 
 
@@ -179,7 +180,7 @@ def test_cert_is_leaf_invalid_states(x509_testcase, testcase):
 def test_cert_is_leaf_invalid_version(helper):
     cert = pretend.stub(version=x509.Version.v1)
 
-    with pytest.raises(utils.InvalidCertError):
+    with pytest.raises(VerificationError, match="invalid X.509 version"):
         helper(cert)
 
 

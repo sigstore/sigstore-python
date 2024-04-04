@@ -36,7 +36,7 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 from sigstore import hashes as sigstore_hashes
-from sigstore.errors import Error
+from sigstore.errors import VerificationError
 
 if sys.version_info < (3, 11):
     import importlib_resources as resources
@@ -85,20 +85,6 @@ class BundleType(str, Enum):
         return self.value
 
 
-class InvalidKeyError(Error):
-    """
-    Raised when loading a key fails.
-    """
-
-    pass
-
-
-class InvalidCertError(Error):
-    """
-    Raised when loading or evaluating a certificate fails.
-    """
-
-
 def load_pem_public_key(
     key_pem: bytes,
     *,
@@ -106,17 +92,17 @@ def load_pem_public_key(
 ) -> PublicKey:
     """
     A specialization of `cryptography`'s `serialization.load_pem_public_key`
-    with a uniform exception type (`InvalidKeyError`) and filtering on valid key types
+    with a uniform exception type (`VerificationError`) and filtering on valid key types
     for Sigstore purposes.
     """
 
     try:
         key = serialization.load_pem_public_key(key_pem)
     except Exception as exc:
-        raise InvalidKeyError("could not load PEM-formatted public key") from exc
+        raise VerificationError("could not load PEM-formatted public key") from exc
 
     if not isinstance(key, types):
-        raise InvalidKeyError(f"invalid key format: not one of {types}")
+        raise VerificationError(f"invalid key format: not one of {types}")
 
     return key  # type: ignore[return-value]
 
@@ -133,10 +119,10 @@ def load_der_public_key(
     try:
         key = serialization.load_der_public_key(key_der)
     except Exception as exc:
-        raise InvalidKeyError("could not load DER-formatted public key") from exc
+        raise VerificationError("could not load DER-formatted public key") from exc
 
     if not isinstance(key, types):
-        raise InvalidKeyError(f"invalid key format: not one of {types}")
+        raise VerificationError(f"invalid key format: not one of {types}")
 
     return key  # type: ignore[return-value]
 
@@ -259,7 +245,7 @@ def cert_is_ca(cert: Certificate) -> bool:
     # earlier versions of X.509 lack extensions and have ambiguous CA
     # behavior.
     if cert.version != Version.v3:
-        raise InvalidCertError(f"invalid X.509 version: {cert.version}")
+        raise VerificationError(f"invalid X.509 version: {cert.version}")
 
     # Valid CA certificates must have the following set:
     #
@@ -276,7 +262,7 @@ def cert_is_ca(cert: Certificate) -> bool:
 
         # BasicConstraints must be marked as critical, per RFC 5280 4.2.1.9.
         if not basic_constraints.critical:
-            raise InvalidCertError(
+            raise VerificationError(
                 "invalid X.509 certificate: non-critical BasicConstraints in CA"
             )
 
@@ -290,7 +276,7 @@ def cert_is_ca(cert: Certificate) -> bool:
         key_usage = cert.extensions.get_extension_for_oid(ExtensionOID.KEY_USAGE)
         key_cert_sign = key_usage.value.key_cert_sign  # type: ignore
     except ExtensionNotFound:
-        raise InvalidCertError("invalid X.509 certificate: missing KeyUsage")
+        raise VerificationError("invalid X.509 certificate: missing KeyUsage")
 
     # If both states are set, this is a CA.
     if ca and key_cert_sign:
@@ -300,8 +286,8 @@ def cert_is_ca(cert: Certificate) -> bool:
         return False
 
     # Anything else is an invalid state that should never occur.
-    raise InvalidCertError(
-        f"invalid certificate states: KeyUsage.keyCertSign={key_cert_sign}"
+    raise VerificationError(
+        f"invalid X.509 certificate states: KeyUsage.keyCertSign={key_cert_sign}"
         f", BasicConstraints.ca={ca}"
     )
 
@@ -322,7 +308,7 @@ def cert_is_root_ca(cert: Certificate) -> bool:
     # earlier versions of X.509 lack extensions and have ambiguous CA
     # behavior.
     if cert.version != Version.v3:
-        raise InvalidCertError(f"invalid X.509 version: {cert.version}")
+        raise VerificationError(f"invalid X.509 version: {cert.version}")
 
     # Non-CAs can't possibly be root CAs.
     if not cert_is_ca(cert):
@@ -353,7 +339,7 @@ def cert_is_leaf(cert: Certificate) -> bool:
     # earlier versions of X.509 lack extensions and have ambiguous CA
     # behavior.
     if cert.version != Version.v3:
-        raise InvalidCertError(f"invalid X.509 version: {cert.version}")
+        raise VerificationError(f"invalid X.509 version: {cert.version}")
 
     # CAs are not leaves.
     if cert_is_ca(cert):
@@ -363,7 +349,7 @@ def cert_is_leaf(cert: Certificate) -> bool:
     digital_signature = key_usage.value.digital_signature  # type: ignore
 
     if not digital_signature:
-        raise InvalidCertError(
+        raise VerificationError(
             "invalid certificate for Sigstore purposes: missing digital signature usage"
         )
 
@@ -377,4 +363,4 @@ def cert_is_leaf(cert: Certificate) -> bool:
 
         return ExtendedKeyUsageOID.CODE_SIGNING in extended_key_usage.value  # type: ignore
     except ExtensionNotFound:
-        raise InvalidCertError("invalid X.509 certificate: missing ExtendedKeyUsage")
+        raise VerificationError("invalid X.509 certificate: missing ExtendedKeyUsage")

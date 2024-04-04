@@ -30,17 +30,10 @@ import typing
 from typing import List, Tuple
 
 from sigstore._utils import HexStr
+from sigstore.errors import VerificationError
 
 if typing.TYPE_CHECKING:
     from sigstore.transparency import LogEntry
-
-
-class InvalidInclusionProofError(Exception):
-    """
-    Raised if the Merkle inclusion proof fails.
-    """
-
-    pass
 
 
 _LEAF_HASH_PREFIX = 0
@@ -112,8 +105,8 @@ def verify_merkle_inclusion(entry: LogEntry) -> None:
 
     # Check against the number of hashes.
     if len(inclusion_proof.hashes) != (inner + border):
-        raise InvalidInclusionProofError(
-            f"Inclusion proof has wrong size: expected {inner + border}, got "
+        raise VerificationError(
+            f"inclusion proof has wrong size: expected {inner + border}, got "
             f"{len(inclusion_proof.hashes)}"
         )
 
@@ -132,7 +125,7 @@ def verify_merkle_inclusion(entry: LogEntry) -> None:
     )
 
     if calc_hash != inclusion_proof.root_hash:
-        raise InvalidInclusionProofError(
-            f"Inclusion proof contains invalid root hash: expected {inclusion_proof}, calculated "
+        raise VerificationError(
+            f"inclusion proof contains invalid root hash: expected {inclusion_proof}, calculated "
             f"{calc_hash}"
         )
