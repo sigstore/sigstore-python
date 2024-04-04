@@ -17,6 +17,7 @@ Exceptions.
 """
 
 import sys
+from logging import Logger
 from typing import Any, Mapping
 
 
@@ -26,9 +27,9 @@ class Error(Exception):
     def diagnostics(self) -> str:
         """Returns human-friendly error information."""
 
-        return """An issue occurred."""
+        return str(self)
 
-    def print_and_exit(self, raise_error: bool = False) -> None:
+    def log_and_exit(self, logger: Logger, raise_error: bool = False) -> None:
         """Prints all relevant error information to stderr and exits."""
 
         remind_verbose = (
@@ -37,7 +38,7 @@ class Error(Exception):
             else "For detailed error information, run sigstore with the `--verbose` flag."
         )
 
-        print(f"{self.diagnostics()}\n{remind_verbose}", file=sys.stderr)
+        logger.error(f"{self.diagnostics()}\n{remind_verbose}")
 
         if raise_error:
             # don't want "during handling another exception"

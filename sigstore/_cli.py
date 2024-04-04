@@ -462,10 +462,10 @@ def main() -> None:
     args = parser.parse_args()
 
     # Configure logging upfront, so that we don't miss anything.
-    verbose = args.verbose if hasattr(args, "verbose") else 0
-    if verbose >= 1:
+    args.verbose = getattr(args, "verbose", 0)
+    if args.verbose >= 1:
         _package_logger.setLevel("DEBUG")
-    if verbose >= 2:
+    if args.verbose >= 2:
         logging.getLogger().setLevel("DEBUG")
 
     _logger.debug(f"parsed arguments {args}")
@@ -508,7 +508,7 @@ def main() -> None:
         else:
             _die(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
-        e.print_and_exit(verbose >= 1)
+        e.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _sign(args: argparse.Namespace) -> None:
@@ -821,8 +821,8 @@ def _verify_identity(args: argparse.Namespace) -> None:
             )
             print(f"OK: {file}")
         except VerificationError as exc:
-            print(f"FAIL: {file}")
-            exc.print_and_exit(args.verbose >= 1)
+            _logger.error(f"FAIL: {file}")
+            exc.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _verify_github(args: argparse.Namespace) -> None:
@@ -855,8 +855,8 @@ def _verify_github(args: argparse.Namespace) -> None:
             verifier.verify(input_=hashed, bundle=bundle, policy=policy_)
             print(f"OK: {file}")
         except VerificationError as exc:
-            print(f"FAIL: {file}")
-            exc.print_and_exit(args.verbose >= 1)
+            _logger.error(f"FAIL: {file}")
+            exc.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
