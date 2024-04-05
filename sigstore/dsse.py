@@ -242,4 +242,6 @@ def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:
     except InvalidSignature:
         raise VerificationError("DSSE: invalid signature")
 
-    return evp._inner.payload
+    # TODO: Remove ignore when protobuf-specs contains a py.typed marker.
+    # See: <https://github.com/sigstore/protobuf-specs/pull/287>
+    return evp._inner.payload  # type: ignore[no-any-return]

@@ -26,11 +26,7 @@ from typing import List, cast
 import rekor_types
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509 import (
-    Certificate,
-    ExtendedKeyUsage,
-    KeyUsage,
-)
+from cryptography.x509 import ExtendedKeyUsage, KeyUsage
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import (
     X509,
@@ -243,7 +239,9 @@ class Verifier:
                 "cannot perform DSSE verification on a bundle without a DSSE envelope"
             )
 
-        dsse._verify(bundle.signing_certificate.public_key(), envelope)
+        signing_key = bundle.signing_certificate.public_key()
+        signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
+        dsse._verify(signing_key, envelope)
 
         # (8): verify the consistency of the log entry's body against
         #      the other bundle materials.
