@@ -233,9 +233,9 @@ class Signer:
         2. A `Hashed` object, containing a pre-hashed input (e.g., for inputs
            that are too large to buffer into memory).
 
-        In cases (1) and (2), the signing operation will produce a `hashedrekord`
-        entry within the bundle. In case (3), the signing operation will produce
-        a DSSE envelope and corresponding `dsse` entry within the bundle.
+        Regardless of the input format, the signing operation will produce a
+        `hashedrekord` entry within the bundle. No other entry types
+        are supported by this API.
         """
 
         cert = self._signing_cert()
