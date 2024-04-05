@@ -28,6 +28,8 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictStr, Validat
 from sigstore_protobuf_specs.io.intoto import Envelope as _Envelope
 from sigstore_protobuf_specs.io.intoto import Signature
 
+from sigstore.errors import VerificationError
+
 _logger = logging.getLogger(__name__)
 
 _Digest = Union[
@@ -220,20 +222,24 @@ def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
     )
 
 
-def _verify(key: ec.EllipticCurvePublicKey, sig: bytes, evp: Envelope) -> bytes:
+def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:
     """
     Verify the given in-toto `Envelope`, returning the verified inner payload.
 
-
     This function does **not** check the envelope's payload type. The caller
     is responsible for performing this check.
+
+    Assumes that the envelope only has a single signature.
     """
 
     pae = _pae(evp._inner.payload_type, evp._inner.payload)
 
     try:
-        key.verify(sig, pae, ec.ECDSA(hashes.SHA256()))
+        # NB: Assumes only one signature in the DSSE envelope.
+        key.verify(evp._inner.signatures[0].sig, pae, ec.ECDSA(hashes.SHA256()))
+    except IndexError:
+        raise VerificationError("DSSE: no signature to verify")
     except InvalidSignature:
-        raise ValueError("invalid signature")
+        raise VerificationError("DSSE: invalid signature")
 
     return evp._inner.payload

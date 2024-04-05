@@ -245,6 +245,17 @@ class Bundle:
         """
         return self._log_entry
 
+    @property
+    def _dsse_envelope(self) -> dsse.Envelope | None:
+        """
+        Returns the DSSE envelope within this Bundle as a `dsse.Envelope`.
+
+        @private
+        """
+        if self._inner.dsse_envelope:
+            return dsse.Envelope(self._inner.dsse_envelope)
+        return None
+
     @classmethod
     def from_json(cls, raw: bytes | str) -> Bundle:
         """
