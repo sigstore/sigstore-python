@@ -205,7 +205,7 @@ class Signer:
 
             # Create the proposed DSSE entry
             proposed_entry = rekor_types.Dsse(
-                spec=rekor_types.dsse.DsseV001Schema(
+                spec=rekor_types.dsse.DsseSchema(
                     proposed_content=rekor_types.dsse.ProposedContent(
                         envelope=content.to_json(),
                         verifiers=[b64_cert.decode()],
