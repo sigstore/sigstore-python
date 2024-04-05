@@ -141,9 +141,9 @@ def test_sign_prehashed(staging):
     assert bundle._inner.message_signature.message_digest.digest == hashed.digest
 
     # verifying against the original input works
-    verifier.verify(input_, bundle=bundle, policy=UnsafeNoOp())
+    verifier.verify_artifact(input_, bundle=bundle, policy=UnsafeNoOp())
     # verifying against the prehash also works
-    verifier.verify(hashed, bundle=bundle, policy=UnsafeNoOp())
+    verifier.verify_artifact(hashed, bundle=bundle, policy=UnsafeNoOp())
 
 
 @pytest.mark.online
