@@ -33,7 +33,7 @@ from id import IdentityError
 from sigstore._utils import B64Str
 from sigstore.oidc import Issuer
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 # This HTML is copied from the Go Sigstore library and was originally authored by Julien Vermette:
@@ -128,13 +128,13 @@ class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self) -> None:
-        logger.debug(f"GET: {self.path} with {dict(self.headers)}")
+        _logger.debug(f"GET: {self.path} with {dict(self.headers)}")
         server = cast(_OAuthRedirectServer, self.server)
 
         # If the auth response has already been populated, the main thread will be stopping this
         # thread and accessing the auth response shortly so we should stop servicing any requests.
         if server.auth_response is not None:
-            logger.debug(f"{self.path} unavailable (teardown)")
+            _logger.debug(f"{self.path} unavailable (teardown)")
             self.send_response(404)
             return None
 
@@ -249,7 +249,7 @@ class _OAuthRedirectServer(http.server.HTTPServer):
         return self.oauth_session.auth_endpoint(self.redirect_uri)
 
     def enable_oob(self) -> None:
-        logger.debug("enabling out-of-band OAuth flow")
+        _logger.debug("enabling out-of-band OAuth flow")
         self._is_out_of_band = True
 
     def is_oob(self) -> bool:

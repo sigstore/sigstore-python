@@ -20,8 +20,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from textwrap import dedent
-from typing import NoReturn, Optional, TextIO, Union, cast
+from typing import NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -40,7 +39,7 @@ from sigstore._internal.rekor.client import (
 )
 from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
-from sigstore.errors import Error
+from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
@@ -52,20 +51,18 @@ from sigstore.oidc import (
 )
 from sigstore.sign import SigningContext
 from sigstore.verify import (
-    CertificateVerificationFailure,
-    LogEntryMissing,
     Verifier,
     policy,
 )
-from sigstore.verify.models import Bundle, VerificationFailure
+from sigstore.verify.models import Bundle
 
 logging.basicConfig(format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # NOTE: We configure the top package logger, rather than the root logger,
 # to avoid overly verbose logging in third-party code by default.
-package_logger = logging.getLogger("sigstore")
-package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
+_package_logger = logging.getLogger("sigstore")
+_package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
 
 
 def _die(args: argparse.Namespace, message: str) -> NoReturn:
@@ -227,7 +224,7 @@ def _parser() -> argparse.ArgumentParser:
         "-v",
         "--verbose",
         action="count",
-        default=argparse.SUPPRESS,
+        default=0,
         help="run with additional debug logging; supply multiple times to increase verbosity",
     )
 
@@ -465,25 +462,24 @@ def main() -> None:
     args = parser.parse_args()
 
     # Configure logging upfront, so that we don't miss anything.
-    verbose = args.verbose if hasattr(args, "verbose") else 0
-    if verbose >= 1:
-        package_logger.setLevel("DEBUG")
-    if verbose >= 2:
+    if args.verbose >= 1:
+        _package_logger.setLevel("DEBUG")
+    if args.verbose >= 2:
         logging.getLogger().setLevel("DEBUG")
 
-    logger.debug(f"parsed arguments {args}")
+    _logger.debug(f"parsed arguments {args}")
 
     # A few instance flags (like `--staging` and `--rekor-url`) are supported at both the
     # top-level `sigstore` level and the subcommand level (e.g. `sigstore verify --staging`),
     # but the former is preferred.
     if getattr(args, "__deprecated_staging", False):
-        logger.warning(
+        _logger.warning(
             "`--staging` should be used as a global option, rather than a subcommand option. "
             "Passing `--staging` as a subcommand option will be deprecated in a future release."
         )
         args.staging = args.__deprecated_staging
     if getattr(args, "__deprecated_rekor_url", None):
-        logger.warning(
+        _logger.warning(
             "`--rekor-url` should be used as a global option, rather than a subcommand option. "
             "Passing `--rekor-url` as a subcommand option will be deprecated in a future release."
         )
@@ -511,7 +507,7 @@ def main() -> None:
         else:
             _die(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
-        e.print_and_exit(verbose >= 1)
+        e.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _sign(args: argparse.Namespace) -> None:
@@ -589,7 +585,7 @@ def _sign(args: argparse.Namespace) -> None:
 
     # Select the signing context to use.
     if args.staging:
-        logger.debug("sign: staging instances requested")
+        _logger.debug("sign: staging instances requested")
         signing_ctx = SigningContext.staging()
         args.oidc_issuer = STAGING_OAUTH_ISSUER_URL
     elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
@@ -620,7 +616,7 @@ def _sign(args: argparse.Namespace) -> None:
 
     with signing_ctx.signer(identity) as signer:
         for file, outputs in output_map.items():
-            logger.debug(f"signing for {file.name}")
+            _logger.debug(f"signing for {file.name}")
             with file.open(mode="rb") as io:
                 # The input can be indefinitely large, so we perform a streaming
                 # digest and sign the prehash rather than buffering it fully.
@@ -720,7 +716,7 @@ def _collect_verification_state(
             bundle = file.parent / f"{file.name}.sigstore.json"
 
             if not bundle.is_file() and legacy_default_bundle.is_file():
-                logger.warning(
+                _logger.warning(
                     f"{file}: {legacy_default_bundle} should be named {bundle}. "
                     "Support for discovering 'bare' .sigstore inputs will be deprecated in "
                     "a future release."
@@ -756,7 +752,7 @@ def _collect_verification_state(
                 f"Missing verification materials for {(file)}: {', '.join(missing)}",
             )
     if args.staging:
-        logger.debug("verify: staging instances requested")
+        _logger.debug("verify: staging instances requested")
         verifier = Verifier.staging()
     elif args.rekor_url == DEFAULT_REKOR_URL:
         verifier = Verifier.production()
@@ -776,17 +772,17 @@ def _collect_verification_state(
 
         if "bundle" in inputs:
             # Load the bundle
-            logger.debug(f"Using bundle from: {inputs['bundle']}")
+            _logger.debug(f"Using bundle from: {inputs['bundle']}")
 
             bundle_bytes = inputs["bundle"].read_bytes()
             bundle = Bundle.from_json(bundle_bytes)
         else:
             # Load the signing certificate
-            logger.debug(f"Using certificate from: {inputs['cert']}")
+            _logger.debug(f"Using certificate from: {inputs['cert']}")
             cert = load_pem_x509_certificate(inputs["cert"].read_bytes())
 
             # Load the signature
-            logger.debug(f"Using signature from: {inputs['sig']}")
+            _logger.debug(f"Using signature from: {inputs['sig']}")
             b64_signature = inputs["sig"].read_text()
             signature = base64.b64decode(b64_signature)
 
@@ -800,65 +796,11 @@ def _collect_verification_state(
                 _die(args, f"No matching log entry for {file}'s verification materials")
             bundle = Bundle.from_parts(cert, signature, log_entry)
 
-        logger.debug(f"Verifying contents from: {file}")
+        _logger.debug(f"Verifying contents from: {file}")
 
         all_materials.append((file, hashed, bundle))
 
     return (verifier, all_materials)
-
-
-class VerificationError(Error):
-    """Raised when the verifier returns a `VerificationFailure` result."""
-
-    def __init__(self, result: VerificationFailure):
-        self.message = f"Verification failed: {result.reason}"
-        self.result = result
-
-    def diagnostics(self) -> str:
-        message = f"Failure reason: {self.result.reason}\n"
-
-        if isinstance(self.result, CertificateVerificationFailure):
-            message += dedent(
-                f"""
-                The given certificate could not be verified against the
-                root of trust.
-
-                This may be a result of connecting to the wrong Fulcio instance
-                (for example, staging instead of production, or vice versa).
-
-                Additional context:
-
-                {self.result.exception}
-                """
-            )
-        elif isinstance(self.result, LogEntryMissing):
-            message += dedent(
-                f"""
-                These signing artifacts could not be matched to a entry
-                in the configured transparency log.
-
-                This may be a result of connecting to the wrong Rekor instance
-                (for example, staging instead of production, or vice versa).
-
-                Additional context:
-
-                Signature: {self.result.signature}
-
-                Artifact hash: {self.result.artifact_hash}
-                """
-            )
-        else:
-            message += dedent(
-                f"""
-                A verification error occurred.
-
-                Additional context:
-
-                {self.result}
-                """
-            )
-
-        return message
 
 
 def _verify_identity(args: argparse.Namespace) -> None:
@@ -870,17 +812,16 @@ def _verify_identity(args: argparse.Namespace) -> None:
             issuer=args.cert_oidc_issuer,
         )
 
-        result = verifier.verify_artifact(
-            input_=hashed,
-            bundle=bundle,
-            policy=policy_,
-        )
-
-        if result:
+        try:
+            verifier.verify_artifact(
+                input_=hashed,
+                bundle=bundle,
+                policy=policy_,
+            )
             print(f"OK: {file}")
-        else:
-            print(f"FAIL: {file}")
-            raise VerificationError(cast(VerificationFailure, result))
+        except VerificationError as exc:
+            _logger.error(f"FAIL: {file}")
+            exc.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _verify_github(args: argparse.Namespace) -> None:
@@ -909,13 +850,12 @@ def _verify_github(args: argparse.Namespace) -> None:
 
     verifier, materials = _collect_verification_state(args)
     for file, hashed, bundle in materials:
-        result = verifier.verify_artifact(input_=hashed, bundle=bundle, policy=policy_)
-
-        if result:
+        try:
+            verifier.verify_artifact(input_=hashed, bundle=bundle, policy=policy_)
             print(f"OK: {file}")
-        else:
-            print(f"FAIL: {file}")
-            raise VerificationError(cast(VerificationFailure, result))
+        except VerificationError as exc:
+            _logger.error(f"FAIL: {file}")
+            exc.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:

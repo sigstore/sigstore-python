@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
+
 import pretend
 import pytest
 from cryptography.x509 import ExtensionNotFound
 
+from sigstore.errors import VerificationError
 from sigstore.verify import policy
-from sigstore.verify.models import VerificationFailure, VerificationSuccess
 
 
 class TestVerificationPolicy:
@@ -32,7 +34,7 @@ class TestUnsafeNoOp:
         monkeypatch.setattr(policy, "_logger", logger)
 
         policy_ = policy.UnsafeNoOp()
-        assert policy_.verify(pretend.stub())
+        policy_.verify(pretend.stub())
         assert logger.warning.calls == [
             pretend.call(
                 "unsafe (no-op) verification policy used! no verification performed!"
@@ -43,9 +45,9 @@ class TestUnsafeNoOp:
 class TestAnyOf:
     def test_trivially_false(self):
         policy_ = policy.AnyOf([])
-        result = policy_.verify(pretend.stub())
-        assert not result
-        assert result == VerificationFailure(reason="0 of 0 policies succeeded")
+
+        with pytest.raises(VerificationError, match="0 of 0 policies succeeded"):
+            policy_.verify(pretend.stub())
 
     def test_fails_no_children_match(self, signing_bundle):
         _, bundle = signing_bundle("bundle.txt")
@@ -56,9 +58,8 @@ class TestAnyOf:
             ]
         )
 
-        result = policy_.verify(bundle.signing_certificate)
-        assert not result
-        assert result == VerificationFailure(reason="0 of 2 policies succeeded")
+        with pytest.raises(VerificationError, match="0 of 2 policies succeeded"):
+            policy_.verify(bundle.signing_certificate)
 
     def test_succeeds(self, signing_bundle):
         _, bundle = signing_bundle("bundle.txt")
@@ -73,17 +74,15 @@ class TestAnyOf:
             ]
         )
 
-        result = policy_.verify(bundle.signing_certificate)
-        assert result
-        assert result == VerificationSuccess()
+        policy_.verify(bundle.signing_certificate)
 
 
 class TestAllOf:
     def test_trivially_false(self):
         policy_ = policy.AllOf([])
-        result = policy_.verify(pretend.stub())
-        assert not result
-        assert result == VerificationFailure(reason="no child policies to verify")
+
+        with pytest.raises(VerificationError, match="no child policies to verify"):
+            policy_.verify(pretend.stub())
 
     def test_certificate_extension_not_found(self):
         policy_ = policy.AllOf([policy.Identity(identity="foo", issuer="bar")])
@@ -95,15 +94,12 @@ class TestAllOf:
             )
         )
 
-        result = policy_.verify(cert_)
-        assert not result
-        assert result == VerificationFailure(
-            reason=(
-                "1 of 1 policies failed: "
-                "Certificate does not contain OIDCIssuer "
-                "(1.3.6.1.4.1.57264.1.1) extension"
-            )
+        reason = re.escape(
+            "Certificate does not contain OIDCIssuer "
+            "(1.3.6.1.4.1.57264.1.1) extension"
         )
+        with pytest.raises(VerificationError, match=reason):
+            policy_.verify(cert_)
 
     def test_fails_not_all_children_match(self, signing_bundle):
         _, bundle = signing_bundle("bundle.txt")
@@ -118,17 +114,11 @@ class TestAllOf:
             ]
         )
 
-        result = policy_.verify(bundle.signing_certificate)
-        assert not result
-        assert result == VerificationFailure(
-            reason=(
-                "2 of 3 policies failed: "
-                "Certificate's OIDCIssuer does not match "
-                "(got https://github.com/login/oauth, expected bar), "
-                "Certificate's OIDCIssuer does not match "
-                "(got https://github.com/login/oauth, expected quux)"
-            )
-        )
+        with pytest.raises(
+            VerificationError,
+            match="Certificate's OIDCIssuer does not match",
+        ):
+            policy_.verify(bundle.signing_certificate)
 
     def test_succeeds(self, signing_bundle):
         _, bundle = signing_bundle("bundle.txt")
@@ -145,8 +135,7 @@ class TestAllOf:
             ]
         )
 
-        result = policy_.verify(bundle.signing_certificate)
-        assert result
+        policy_.verify(bundle.signing_certificate)
 
 
 class TestIdentity:
@@ -157,11 +146,8 @@ class TestIdentity:
             issuer="https://github.com/login/oauth",
         )
 
-        result = policy_.verify(bundle.signing_certificate)
-        assert not result
-        assert result == VerificationFailure(
-            reason=(
-                "Certificate's SANs do not match bad@ident.example.com; "
-                "actual SANs: {'a@tny.town'}"
-            )
-        )
+        with pytest.raises(
+            VerificationError,
+            match="Certificate's SANs do not match",
+        ):
+            policy_.verify(bundle.signing_certificate)

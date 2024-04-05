@@ -24,7 +24,6 @@ import typing
 from typing import Any, List, Optional
 
 import rfc8785
-from cryptography.exceptions import InvalidSignature
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -39,19 +38,13 @@ from pydantic.dataclasses import dataclass
 from sigstore._internal.merkle import verify_merkle_inclusion
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
 from sigstore._utils import B64Str, KeyID
-from sigstore.errors import Error
+from sigstore.errors import VerificationError
 
 if typing.TYPE_CHECKING:
     from sigstore._internal.trustroot import RekorKeyring
 
 
 _logger = logging.getLogger(__name__)
-
-
-class InvalidLogEntry(Error):
-    """
-    The transparency log entry is invalid in some way.
-    """
 
 
 class LogInclusionProof(BaseModel):
@@ -196,7 +189,7 @@ class LogEntry:
         """
 
         if self.inclusion_promise is None:
-            raise InvalidLogEntry("invalid inclusion promise: missing")
+            raise VerificationError("SET: invalid inclusion promise: missing")
 
         signed_entry_ts = base64.b64decode(self.inclusion_promise)
 
@@ -206,10 +199,8 @@ class LogEntry:
                 signature=signed_entry_ts,
                 data=self.encode_canonical(),
             )
-        except InvalidSignature as inval_sig:
-            raise InvalidLogEntry(
-                "invalid inclusion promise: invalid signature"
-            ) from inval_sig
+        except VerificationError as exc:
+            raise VerificationError(f"SET: invalid inclusion promise: {exc}")
 
     def _verify(self, keyring: RekorKeyring) -> None:
         """

@@ -39,69 +39,21 @@ from OpenSSL.crypto import (
     X509StoreContextError,
     X509StoreFlags,
 )
-from pydantic import ConfigDict
 
-from sigstore._internal.merkle import (
-    InvalidInclusionProofError,
-)
 from sigstore._internal.rekor import _hashedrekord_from_parts
-from sigstore._internal.rekor.checkpoint import (
-    CheckpointError,
-)
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
     _get_precertificate_signed_certificate_timestamps,
     verify_sct,
 )
 from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
-from sigstore._utils import B64Str, HexStr, sha256_digest
-from sigstore.errors import Error, VerificationError
+from sigstore._utils import sha256_digest
+from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
-from sigstore.transparency import InvalidLogEntry
-from sigstore.verify.models import (
-    Bundle,
-    VerificationFailure,
-    VerificationResult,
-    VerificationSuccess,
-)
+from sigstore.verify.models import Bundle
 from sigstore.verify.policy import VerificationPolicy
 
 _logger = logging.getLogger(__name__)
-
-
-class LogEntryMissing(VerificationFailure):
-    """
-    A specialization of `VerificationFailure` for transparency log lookup failures,
-    with additional lookup context.
-    """
-
-    reason: str = (
-        "The transparency log has no entry for the given verification materials"
-    )
-
-    signature: B64Str
-    """
-    The signature present during lookup failure, encoded with base64.
-    """
-
-    artifact_hash: HexStr
-    """
-    The artifact hash present during lookup failure, encoded as a hex string.
-    """
-
-
-class CertificateVerificationFailure(VerificationFailure):
-    """
-    A specialization of `VerificationFailure` for certificate signature
-    verification failures, with additional exception context.
-    """
-
-    # Needed for the `exception` field above, since exceptions are
-    # not trivially serializable.
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    reason: str = "Failed to verify signing certificate"
-    exception: Exception
 
 
 class Verifier:
@@ -194,7 +146,7 @@ class Verifier:
                 [parent_cert.to_cryptography() for parent_cert in chain],
                 self._trusted_root.ct_keyring(),
             )
-        except Error as e:
+        except VerificationError as e:
             raise VerificationError(f"failed to verify SCT on signing certificate: {e}")
 
         # 3. Check that the signing certificate has the expected KU/EKU and
@@ -242,8 +194,9 @@ class Verifier:
         input_: bytes | Hashed,
         bundle: Bundle,
         policy: VerificationPolicy,
-    ) -> VerificationResult:
-        """Public API for verifying.
+    ) -> None:
+        """
+        Public API for verifying.
 
         `input_` is the input to verify, either as a buffer of contents or as
         a prehashed `Hashed` object.
@@ -252,8 +205,7 @@ class Verifier:
 
         `policy` is the `VerificationPolicy` to verify against.
 
-        Returns a `VerificationResult` which will be truthy or falsey depending on
-        success.
+        On failure, this method raises `VerificationError`.
         """
 
         hashed_input = sha256_digest(input_)
@@ -299,9 +251,9 @@ class Verifier:
             # get_verified_chain returns the full chain including the end-entity certificate
             # and chain should contain only CA certificates
             chain = store_ctx.get_verified_chain()[1:]
-        except X509StoreContextError as store_ctx_error:
-            return CertificateVerificationFailure(
-                exception=store_ctx_error,
+        except X509StoreContextError as exc:
+            raise VerificationError(
+                f"failed to build chain to signing certificate: {exc}"
             )
 
         # 2. Check that the signing certificate has a valid SCT
@@ -323,9 +275,7 @@ class Verifier:
             KeyUsage
         )
         if not usage_ext.value.digital_signature:
-            return VerificationFailure(
-                reason="Key usage is not of type `digital signature`"
-            )
+            raise VerificationError("Key usage is not of type `digital signature`")
 
         # Check that extended usage contains "code signing"
         extended_usage_ext = (
@@ -334,13 +284,9 @@ class Verifier:
             )
         )
         if ExtendedKeyUsageOID.CODE_SIGNING not in extended_usage_ext.value:
-            return VerificationFailure(
-                reason="Extended usage does not contain `code signing`"
-            )
+            raise VerificationError("Extended usage does not contain `code signing`")
 
-        policy_check = policy.verify(bundle.signing_certificate)
-        if not policy_check:
-            return policy_check
+        policy.verify(bundle.signing_certificate)
 
         _logger.debug("Successfully verified signing certificate validity...")
 
@@ -354,7 +300,7 @@ class Verifier:
                 ec.ECDSA(hashed_input._as_prehashed()),
             )
         except InvalidSignature:
-            return VerificationFailure(reason="Signature is invalid for input")
+            raise VerificationError("Signature is invalid for input")
 
         _logger.debug("Successfully verified signature...")
 
@@ -371,22 +317,17 @@ class Verifier:
             base64.b64decode(entry.body)
         )
         if expected_body != actual_body:
-            return VerificationFailure(
-                reason="transparency log entry is inconsistent with other materials"
+            raise VerificationError(
+                "transparency log entry is inconsistent with other materials"
             )
 
         # 6. Verify the inclusion proof for this artifact, including its checkpoint.
         # 7. Verify the optional inclusion promise (SET) for this artifact
         try:
             entry._verify(self._trusted_root.rekor_keyring())
-        except InvalidInclusionProofError as exc:
-            return VerificationFailure(reason=f"invalid inclusion proof: {exc}")
-        except CheckpointError as exc:
-            return VerificationFailure(
-                reason=f"invalid inclusion proof checkpoint: {exc}"
-            )
-        except InvalidLogEntry as exc:
-            return VerificationFailure(reason=str(exc))
+        except VerificationError as exc:
+            # NOTE: Re-raise with a prefix here for additional context.
+            raise VerificationError(f"invalid log entry: {exc}")
 
         # 8. Verify that log entry was integrated circa the signing certificate's
         #    validity period.
@@ -396,8 +337,6 @@ class Verifier:
             <= integrated_time
             <= bundle.signing_certificate.not_valid_after_utc
         ):
-            return VerificationFailure(
-                reason="invalid signing cert: expired at time of Rekor entry"
+            raise VerificationError(
+                "invalid signing cert: expired at time of Rekor entry"
             )
-
-        return VerificationSuccess()

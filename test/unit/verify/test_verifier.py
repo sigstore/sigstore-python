@@ -16,13 +16,10 @@
 import pretend
 import pytest
 
+from sigstore.errors import VerificationError
 from sigstore.verify import policy
-from sigstore.verify.models import (
-    Bundle,
-    VerificationFailure,
-    VerificationSuccess,
-)
-from sigstore.verify.verifier import CertificateVerificationFailure, Verifier
+from sigstore.verify.models import Bundle
+from sigstore.verify.verifier import Verifier
 
 
 @pytest.mark.online
@@ -42,19 +39,19 @@ def test_verifier_one_verification(signing_materials, null_policy):
 
     (file, bundle) = signing_materials("a.txt", verifier._rekor)
 
-    assert verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+    verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
 def test_verifier_inconsistent_log_entry(signing_bundle, null_policy, mock_staging_tuf):
     (file, bundle) = signing_bundle("bundle_cve_2022_36056.txt")
 
     verifier = Verifier.staging()
-    result = verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
-    assert not result
-    assert (
-        result.reason == "transparency log entry is inconsistent with other materials"
-    )
+    with pytest.raises(
+        VerificationError,
+        match="transparency log entry is inconsistent with other materials",
+    ):
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
 @pytest.mark.online
@@ -65,7 +62,7 @@ def test_verifier_multiple_verifications(signing_materials, null_policy):
     b = signing_materials("b.txt", verifier._rekor)
 
     for file, bundle in [a, b]:
-        assert verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
 @pytest.mark.parametrize(
@@ -75,13 +72,7 @@ def test_verifier_bundle(signing_bundle, null_policy, mock_staging_tuf, filename
     (file, bundle) = signing_bundle(filename)
 
     verifier = Verifier.staging()
-    assert verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
-
-
-def test_verify_result_boolish():
-    assert not VerificationFailure(reason="foo")
-    assert not CertificateVerificationFailure(reason="foo", exception=ValueError("bar"))
-    assert VerificationSuccess()
+    verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
 @pytest.mark.online
@@ -94,7 +85,7 @@ def test_verifier_email_identity(signing_materials):
         issuer="https://github.com/login/oauth",
     )
 
-    assert verifier.verify_artifact(
+    verifier.verify_artifact(
         file.read_bytes(),
         bundle,
         policy_,
@@ -113,7 +104,7 @@ def test_verifier_uri_identity(signing_materials):
         issuer="https://token.actions.githubusercontent.com",
     )
 
-    assert verifier.verify_artifact(
+    verifier.verify_artifact(
         file.read_bytes(),
         bundle,
         policy_,
@@ -126,13 +117,14 @@ def test_verifier_policy_check(signing_materials):
     (file, bundle) = signing_materials("a.txt", verifier._rekor)
 
     # policy that fails to verify for any given cert.
-    policy_ = pretend.stub(verify=lambda cert: False)
+    policy_ = pretend.stub(verify=pretend.raiser(VerificationError("policy failed")))
 
-    assert not verifier.verify_artifact(
-        file.read_bytes(),
-        bundle,
-        policy_,
-    )
+    with pytest.raises(VerificationError, match="policy failed"):
+        verifier.verify_artifact(
+            file.read_bytes(),
+            bundle,
+            policy_,
+        )
 
 
 @pytest.mark.online
@@ -152,4 +144,5 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
     entry = bundle._inner.verification_material.tlog_entries[0]
     entry.integrated_time = datetime.MINYEAR
 
-    assert not verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+    with pytest.raises(VerificationError):
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)

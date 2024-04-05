@@ -30,7 +30,7 @@ import requests
 
 from sigstore.transparency import LogEntry
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
@@ -152,7 +152,7 @@ class RekorEntries(_Endpoint):
         """
 
         payload = proposed_entry.model_dump(mode="json", by_alias=True)
-        logger.debug(f"proposed: {json.dumps(payload)}")
+        _logger.debug(f"proposed: {json.dumps(payload)}")
 
         resp: requests.Response = self.session.post(self.url, json=payload)
         try:
@@ -161,7 +161,7 @@ class RekorEntries(_Endpoint):
             raise RekorClientError(http_error)
 
         integrated_entry = resp.json()
-        logger.debug(f"integrated: {integrated_entry}")
+        _logger.debug(f"integrated: {integrated_entry}")
         return LogEntry._from_response(integrated_entry)
 
     @property
