@@ -40,6 +40,10 @@ All versions prior to 0.9.0 are untracked.
   either `sign_artifact(...)` or `sign_intoto(...)`, depending on whether
   you're signing opaque bytes or an in-toto statement.
 
+* **BREAKING API CHANGE**: `VerificationResult` has been removed.
+  The public verification and policy APIs now raise
+  `sigstore.errors.VerificationError` on failure.
+
 ### Changed
 
 * **BREAKING API CHANGE**: `Verifier.verify(...)`  now takes a `bytes | Hashed`

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Protocol, cast
+from typing import Protocol
 
 from cryptography.x509 import (
     Certificate,
@@ -33,11 +33,7 @@ from cryptography.x509 import (
     UniformResourceIdentifier,
 )
 
-from sigstore.verify.models import (
-    VerificationFailure,
-    VerificationResult,
-    VerificationSuccess,
-)
+from sigstore.errors import VerificationError
 
 _logger = logging.getLogger(__name__)
 
@@ -69,15 +65,17 @@ class _SingleX509ExtPolicy(ABC):
         """
         self._value = value
 
-    def verify(self, cert: Certificate) -> VerificationResult:
+    def verify(self, cert: Certificate) -> None:
         """
         Verify this policy against `cert`.
+
+        Raises `VerificationError` on failure.
         """
         try:
             ext = cert.extensions.get_extension_for_oid(self.oid).value
         except ExtensionNotFound:
-            return VerificationFailure(
-                reason=(
+            raise VerificationError(
+                (
                     f"Certificate does not contain {self.__class__.__name__} "
                     f"({self.oid.dotted_string}) extension"
                 )
@@ -87,14 +85,12 @@ class _SingleX509ExtPolicy(ABC):
         # by `get_extension_for_oid` above.
         ext_value = ext.value.decode()  # type: ignore[attr-defined]
         if ext_value != self._value:
-            return VerificationFailure(
-                reason=(
+            raise VerificationError(
+                (
                     f"Certificate's {self.__class__.__name__} does not match "
                     f"(got {ext_value}, expected {self._value})"
                 )
             )
-
-        return VerificationSuccess()
 
 
 class OIDCIssuer(_SingleX509ExtPolicy):
@@ -158,9 +154,10 @@ class VerificationPolicy(Protocol):
     """
 
     @abstractmethod
-    def verify(self, cert: Certificate) -> VerificationResult:
+    def verify(self, cert: Certificate) -> None:
         """
-        Verify the given `cert` against this policy, returning a `VerificationResult`.
+        Verify the given `cert` against this policy, raising `VerificationError`
+        on failure.
         """
         raise NotImplementedError  # pragma: no cover
 
@@ -178,17 +175,22 @@ class AnyOf:
         """
         self._children = children
 
-    def verify(self, cert: Certificate) -> VerificationResult:
+    def verify(self, cert: Certificate) -> None:
         """
         Verify `cert` against the policy.
+
+        Raises `VerificationError` on failure.
         """
-        verified = any(child.verify(cert) for child in self._children)
-        if verified:
-            return VerificationSuccess()
-        else:
-            return VerificationFailure(
-                reason=f"0 of {len(self._children)} policies succeeded"
-            )
+
+        for child in self._children:
+            try:
+                child.verify(cert)
+            except VerificationError:
+                pass
+            else:
+                return
+
+        raise VerificationError(f"0 of {len(self._children)} policies succeeded")
 
 
 class AllOf:
@@ -206,7 +208,7 @@ class AllOf:
 
         self._children = children
 
-    def verify(self, cert: Certificate) -> VerificationResult:
+    def verify(self, cert: Certificate) -> None:
         """
         Verify `cert` against the policy.
         """
@@ -215,21 +217,10 @@ class AllOf:
         # This is almost certainly not what the user wants and is a potential
         # source of API misuse, so we explicitly disallow it.
         if len(self._children) < 1:
-            return VerificationFailure(reason="no child policies to verify")
+            raise VerificationError("no child policies to verify")
 
-        # NOTE(ww): We need the cast here because MyPy can't tell that
-        # `VerificationResult.__bool__` is invariant with
-        # `VerificationSuccess | VerificationFailure`.
-        results = [child.verify(cert) for child in self._children]
-        failures = [
-            cast(VerificationFailure, result).reason for result in results if not result
-        ]
-        if len(failures) > 0:
-            inner_reasons = ", ".join(failures)
-            return VerificationFailure(
-                reason=f"{len(failures)} of {len(self._children)} policies failed: {inner_reasons}"
-            )
-        return VerificationSuccess()
+        for child in self._children:
+            child.verify(cert)
 
 
 class UnsafeNoOp:
@@ -244,7 +235,7 @@ class UnsafeNoOp:
     be used for testing purposes.**
     """
 
-    def verify(self, cert: Certificate) -> VerificationResult:
+    def verify(self, cert: Certificate) -> None:
         """
         Verify `cert` against the policy.
         """
@@ -252,7 +243,6 @@ class UnsafeNoOp:
         _logger.warning(
             "unsafe (no-op) verification policy used! no verification performed!"
         )
-        return VerificationSuccess()
 
 
 class Identity:
@@ -272,14 +262,12 @@ class Identity:
         self._identity = identity
         self._issuer = OIDCIssuer(issuer)
 
-    def verify(self, cert: Certificate) -> VerificationResult:
+    def verify(self, cert: Certificate) -> None:
         """
         Verify `cert` against the policy.
         """
 
-        issuer_verified: VerificationResult = self._issuer.verify(cert)
-        if not issuer_verified:
-            return issuer_verified
+        self._issuer.verify(cert)
 
         # Build a set of all valid identities.
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName).value
@@ -295,8 +283,6 @@ class Identity:
 
         verified = self._identity in all_sans
         if not verified:
-            return VerificationFailure(
-                reason=f"Certificate's SANs do not match {self._identity}; actual SANs: {all_sans}"
+            raise VerificationError(
+                f"Certificate's SANs do not match {self._identity}; actual SANs: {all_sans}"
             )
-
-        return VerificationSuccess()

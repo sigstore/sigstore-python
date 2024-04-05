@@ -47,13 +47,12 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
 
 from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
 from sigstore._utils import (
-    InvalidKeyError,
     KeyID,
     PublicKey,
     key_id,
     load_der_public_key,
 )
-from sigstore.errors import MetadataError
+from sigstore.errors import MetadataError, VerificationError
 
 
 def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
@@ -76,34 +75,6 @@ def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> boo
     # If we want Expired keys, the key is valid at this point. Otherwise, check
     # that we are within range.
     return allow_expired or (period.end is None or now <= period.end)
-
-
-"""
-Functionality for interacting with a generic keyring.
-"""
-
-
-class KeyringError(Exception):
-    """
-    Raised on failure by `Keyring.verify()`.
-    """
-
-    pass
-
-
-class KeyringLookupError(KeyringError):
-    """
-    A specialization of `KeyringError`, indicating that the specified
-    key ID wasn't found in the keyring.
-    """
-
-    pass
-
-
-class KeyringSignatureError(KeyringError):
-    """
-    Raised when `Keyring.verify()` is passed an invalid signature.
-    """
 
 
 @dataclass(init=False)
@@ -144,7 +115,7 @@ class Key:
                 public_key.raw_bytes, types=(ec.EllipticCurvePublicKey,)
             )
         else:
-            raise InvalidKeyError(f"unsupported key type: {public_key.key_details}")
+            raise VerificationError(f"unsupported key type: {public_key.key_details}")
 
         self.hash_algorithm = hash_algorithm
         self.key = key
@@ -170,7 +141,7 @@ class Key:
             )
         else:
             # Unreachable without API misuse.
-            raise KeyringSignatureError(f"unsupported key: {self.key}")
+            raise VerificationError(f"keyring: unsupported key: {self.key}")
 
 
 class Keyring:
@@ -218,7 +189,7 @@ class Keyring:
                 pass
 
         if not valid:
-            raise KeyringSignatureError("invalid signature")
+            raise VerificationError("keyring: invalid signature")
 
 
 RekorKeyring = NewType("RekorKeyring", Keyring)

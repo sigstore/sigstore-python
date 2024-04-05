@@ -20,8 +20,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from textwrap import dedent
-from typing import NoReturn, Optional, TextIO, Union, cast
+from typing import NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -40,7 +39,7 @@ from sigstore._internal.rekor.client import (
 )
 from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
-from sigstore.errors import Error
+from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
@@ -52,12 +51,10 @@ from sigstore.oidc import (
 )
 from sigstore.sign import SigningContext
 from sigstore.verify import (
-    CertificateVerificationFailure,
-    LogEntryMissing,
     Verifier,
     policy,
 )
-from sigstore.verify.models import Bundle, VerificationFailure
+from sigstore.verify.models import Bundle
 
 logging.basicConfig(format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
 _logger = logging.getLogger(__name__)
@@ -227,7 +224,7 @@ def _parser() -> argparse.ArgumentParser:
         "-v",
         "--verbose",
         action="count",
-        default=argparse.SUPPRESS,
+        default=0,
         help="run with additional debug logging; supply multiple times to increase verbosity",
     )
 
@@ -465,10 +462,9 @@ def main() -> None:
     args = parser.parse_args()
 
     # Configure logging upfront, so that we don't miss anything.
-    verbose = args.verbose if hasattr(args, "verbose") else 0
-    if verbose >= 1:
+    if args.verbose >= 1:
         _package_logger.setLevel("DEBUG")
-    if verbose >= 2:
+    if args.verbose >= 2:
         logging.getLogger().setLevel("DEBUG")
 
     _logger.debug(f"parsed arguments {args}")
@@ -511,7 +507,7 @@ def main() -> None:
         else:
             _die(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
-        e.print_and_exit(verbose >= 1)
+        e.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _sign(args: argparse.Namespace) -> None:
@@ -807,60 +803,6 @@ def _collect_verification_state(
     return (verifier, all_materials)
 
 
-class VerificationError(Error):
-    """Raised when the verifier returns a `VerificationFailure` result."""
-
-    def __init__(self, result: VerificationFailure):
-        self.message = f"Verification failed: {result.reason}"
-        self.result = result
-
-    def diagnostics(self) -> str:
-        message = f"Failure reason: {self.result.reason}\n"
-
-        if isinstance(self.result, CertificateVerificationFailure):
-            message += dedent(
-                f"""
-                The given certificate could not be verified against the
-                root of trust.
-
-                This may be a result of connecting to the wrong Fulcio instance
-                (for example, staging instead of production, or vice versa).
-
-                Additional context:
-
-                {self.result.exception}
-                """
-            )
-        elif isinstance(self.result, LogEntryMissing):
-            message += dedent(
-                f"""
-                These signing artifacts could not be matched to a entry
-                in the configured transparency log.
-
-                This may be a result of connecting to the wrong Rekor instance
-                (for example, staging instead of production, or vice versa).
-
-                Additional context:
-
-                Signature: {self.result.signature}
-
-                Artifact hash: {self.result.artifact_hash}
-                """
-            )
-        else:
-            message += dedent(
-                f"""
-                A verification error occurred.
-
-                Additional context:
-
-                {self.result}
-                """
-            )
-
-        return message
-
-
 def _verify_identity(args: argparse.Namespace) -> None:
     verifier, materials = _collect_verification_state(args)
 
@@ -870,17 +812,16 @@ def _verify_identity(args: argparse.Namespace) -> None:
             issuer=args.cert_oidc_issuer,
         )
 
-        result = verifier.verify(
-            input_=hashed,
-            bundle=bundle,
-            policy=policy_,
-        )
-
-        if result:
+        try:
+            verifier.verify(
+                input_=hashed,
+                bundle=bundle,
+                policy=policy_,
+            )
             print(f"OK: {file}")
-        else:
-            print(f"FAIL: {file}")
-            raise VerificationError(cast(VerificationFailure, result))
+        except VerificationError as exc:
+            _logger.error(f"FAIL: {file}")
+            exc.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _verify_github(args: argparse.Namespace) -> None:
@@ -909,13 +850,12 @@ def _verify_github(args: argparse.Namespace) -> None:
 
     verifier, materials = _collect_verification_state(args)
     for file, hashed, bundle in materials:
-        result = verifier.verify(input_=hashed, bundle=bundle, policy=policy_)
-
-        if result:
+        try:
+            verifier.verify(input_=hashed, bundle=bundle, policy=policy_)
             print(f"OK: {file}")
-        else:
-            print(f"FAIL: {file}")
-            raise VerificationError(cast(VerificationFailure, result))
+        except VerificationError as exc:
+            _logger.error(f"FAIL: {file}")
+            exc.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:

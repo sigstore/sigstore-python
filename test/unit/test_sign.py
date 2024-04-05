@@ -20,9 +20,8 @@ import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 import sigstore.oidc
-from sigstore._internal.sct import InvalidSCTError, InvalidSCTKeyError
-from sigstore._internal.trustroot import KeyringError, KeyringLookupError
 from sigstore.dsse import _StatementBuilder, _Subject
+from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
 from sigstore.verify.policy import UnsafeNoOp
@@ -67,20 +66,15 @@ def test_sct_verify_keyring_lookup_error(signer_and_ident, monkeypatch):
     # a signer whose keyring always fails to lookup a given key.
     ctx: SigningContext = ctx()
     mock = pretend.stub(
-        ct_keyring=lambda: pretend.stub(verify=pretend.raiser(KeyringLookupError))
+        ct_keyring=lambda: pretend.stub(verify=pretend.raiser(VerificationError))
     )
     ctx._trusted_root = mock
     assert identity is not None
 
     payload = secrets.token_bytes(32)
-    with pytest.raises(
-        InvalidSCTError,
-    ) as excinfo:
+    with pytest.raises(VerificationError, match=r"SCT verify failed:"):
         with ctx.signer(identity) as signer:
             signer.sign_artifact(payload)
-
-    # The exception subclass is the one we expect.
-    assert isinstance(excinfo.value, InvalidSCTKeyError)
 
 
 @pytest.mark.online
@@ -91,15 +85,15 @@ def test_sct_verify_keyring_error(signer_and_ident, monkeypatch):
     # a signer whose keyring throws an internal error.
     ctx: SigningContext = ctx()
     mock = pretend.stub(
-        ct_keyring=lambda: pretend.stub(verify=pretend.raiser(KeyringLookupError))
+        ct_keyring=lambda: pretend.stub(verify=pretend.raiser(VerificationError))
     )
     ctx._trusted_root = mock
-    ctx._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(KeyringError))
+    ctx._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(VerificationError))
     assert identity is not None
 
     payload = secrets.token_bytes(32)
 
-    with pytest.raises(InvalidSCTError):
+    with pytest.raises(VerificationError):
         with ctx.signer(identity) as signer:
             signer.sign_artifact(payload)
 
