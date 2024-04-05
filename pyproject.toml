@@ -34,7 +34,7 @@ dependencies = [
   "pyOpenSSL >= 23.0.0",
   "requests",
   "rich ~= 13.0",
-  "securesystemslib",
+  "securesystemslib < 0.32.0",
   "sigstore-protobuf-specs >= 0.2.2, < 0.4",
   # NOTE(ww): Under active development, so strictly pinned.
   "sigstore-rekor-types == 0.0.11",
