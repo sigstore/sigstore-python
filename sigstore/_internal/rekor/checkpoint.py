@@ -27,8 +27,9 @@ from typing import List
 
 from pydantic import BaseModel, Field, StrictStr
 
-from sigstore._internal.trustroot import KeyringSignatureError, RekorKeyring
+from sigstore._internal.trustroot import RekorKeyring
 from sigstore._utils import KeyID
+from sigstore.errors import VerificationError
 
 if typing.TYPE_CHECKING:
     from sigstore.transparency import LogEntry
@@ -47,10 +48,6 @@ class RekorSignature:
     name: str
     sig_hash: bytes
     signature: bytes
-
-
-class CheckpointError(Exception):
-    """Raised during LogCheckpoint parsing or verification."""
 
 
 class LogCheckpoint(BaseModel):
@@ -78,11 +75,11 @@ class LogCheckpoint(BaseModel):
 
         lines = text.strip().split("\n")
         if len(lines) < 3:
-            raise CheckpointError("Malformed LogCheckpoint: too few items in header!")
+            raise VerificationError("malformed LogCheckpoint: too few items in header")
 
         origin = lines[0]
         if len(origin) == 0:
-            raise CheckpointError("Malformed LogCheckpoint: empty origin!")
+            raise VerificationError("malformed LogCheckpoint: empty origin")
 
         log_size = int(lines[1])
         root_hash = base64.b64decode(lines[2]).hex()
@@ -132,8 +129,8 @@ class SignedNote:
 
         separator: str = "\n\n"
         if text.count(separator) != 1:
-            raise CheckpointError(
-                "Note must contain one blank line, deliniating the text from the signature block"
+            raise VerificationError(
+                "note must contain one blank line, deliniating the text from the signature block"
             )
         split = text.index(separator)
 
@@ -141,19 +138,21 @@ class SignedNote:
         data: str = text[split + len(separator) :]
 
         if len(data) == 0:
-            raise CheckpointError(
-                "Malformed Note: must contain at least one signature!"
+            raise VerificationError(
+                "malformed Note: must contain at least one signature"
             )
         if data[-1] != "\n":
-            raise CheckpointError("Malformed Note: data section must end with newline!")
+            raise VerificationError(
+                "malformed Note: data section must end with newline"
+            )
 
         sig_parser = re.compile(r"\u2014 (\S+) (\S+)\n")
         signatures: list[RekorSignature] = []
         for name, signature in re.findall(sig_parser, data):
             signature_bytes: bytes = base64.b64decode(signature)
             if len(signature_bytes) < 5:
-                raise CheckpointError(
-                    "Malformed Note: signature contains too few bytes"
+                raise VerificationError(
+                    "malformed Note: signature contains too few bytes"
                 )
 
             signature = RekorSignature(
@@ -175,14 +174,16 @@ class SignedNote:
 
         for sig in self.signatures:
             if sig.sig_hash != key_id[:4]:
-                raise CheckpointError("sig_hash hint does not match expected key_id")
+                raise VerificationError(
+                    "checkpoint: sig_hash hint does not match expected key_id"
+                )
 
             try:
                 rekor_keyring.verify(
                     key_id=key_id, signature=base64.b64decode(sig.signature), data=note
                 )
-            except KeyringSignatureError as sig_err:
-                raise CheckpointError("invalid signature") from sig_err
+            except VerificationError as sig_err:
+                raise VerificationError(f"checkpoint: invalid signature: {sig_err}")
 
 
 @dataclass(frozen=True)
@@ -212,7 +213,7 @@ def verify_checkpoint(rekor_keyring: RekorKeyring, entry: LogEntry) -> None:
 
     inclusion_proof = entry.inclusion_proof
     if inclusion_proof is None:
-        raise CheckpointError("Rekor entry has no inclusion proof")
+        raise VerificationError("Rekor entry has no inclusion proof")
 
     # verification occurs in two stages:
     # 1) verify the signature on the checkpoint
@@ -226,7 +227,7 @@ def verify_checkpoint(rekor_keyring: RekorKeyring, entry: LogEntry) -> None:
     root_hash = inclusion_proof.root_hash
 
     if checkpoint_hash != root_hash:
-        raise CheckpointError(
+        raise VerificationError(
             "Inclusion proof contains invalid root hash signature: ",
             f"expected {str(checkpoint_hash)} got {str(root_hash)}",
         )
