@@ -262,11 +262,11 @@ class Verifier:
 
         payload_hash = sha256_digest(envelope._inner.payload).digest.hex()
         if (
-            entry_body.spec.root.payload_hash.algorithm
+            entry_body.spec.root.payload_hash.algorithm  # type: ignore[union-attr]
             != rekor_types.dsse.Algorithm.SHA256
         ):
             raise VerificationError("expected SHA256 payload hash in DSSE log entry")
-        if payload_hash != entry_body.spec.root.payload_hash.value:
+        if payload_hash != entry_body.spec.root.payload_hash.value:  # type: ignore[union-attr]
             raise VerificationError("log entry payload hash does not match bundle")
 
         signature = rekor_types.dsse.Signature(
