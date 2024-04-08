@@ -82,6 +82,19 @@ All versions prior to 0.9.0 are untracked.
   an inclusion proof. Passing `--offline` with detached materials will cause
   an error ([#937](https://github.com/sigstore/sigstore-python/pull/937))
 
+
+## [2.1.5]
+
+## Fixed
+
+* Backported b32ad1bd (slsa-github-generator upgrade) to make release possible
+
+## [2.1.4]
+
+## Fixed
+
+* Pinned `securesystemslib` dependency strictly to prevent future breakage
+
 ## [2.1.3]
 
 ## Fixed
@@ -394,7 +407,9 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v2.1.3...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v2.1.5...HEAD
+[2.1.5]: https://github.com/sigstore/sigstore-python/compare/v2.1.4...v2.1.5
+[2.1.4]: https://github.com/sigstore/sigstore-python/compare/v2.1.3...v2.1.4
 [2.1.3]: https://github.com/sigstore/sigstore-python/compare/v2.1.2...v2.1.3
 [2.1.2]: https://github.com/sigstore/sigstore-python/compare/v2.1.1...v2.1.2
 [2.1.1]: https://github.com/sigstore/sigstore-python/compare/v2.1.0...v2.1.1
