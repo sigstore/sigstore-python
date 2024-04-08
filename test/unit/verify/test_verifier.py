@@ -154,9 +154,9 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
 @pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_verifier_dsse_roundtrip(staging):
-    sign_ctx, verifier, identity = staging
+    signer_cls, verifier_cls, identity = staging
 
-    ctx = sign_ctx()
+    ctx = signer_cls()
     stmt = (
         _StatementBuilder()
         .subjects(
@@ -174,6 +174,7 @@ def test_verifier_dsse_roundtrip(staging):
     with ctx.signer(identity) as signer:
         bundle = signer.sign(stmt)
 
+    verifier = verifier_cls()
     payload_type, payload = verifier.verify_dsse(bundle, policy.UnsafeNoOp())
     assert payload_type == "application/vnd.in-toto+json"
     assert payload == stmt._contents
