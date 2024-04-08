@@ -156,7 +156,7 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
 def test_verifier_dsse_roundtrip(staging):
     sign_ctx, verifier, identity = staging
 
-    ctx = sign_ctx
+    ctx = sign_ctx()
     stmt = (
         _StatementBuilder()
         .subjects(
