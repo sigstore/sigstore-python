@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [2.1.5]
+
+## Fixed
+
+* Backported b32ad1bd (slsa-github-generator upgrade) to make release possible
+
 ## [2.1.4]
 
 ## Fixed
@@ -322,7 +328,8 @@ This is a corrective release for [2.1.1].
   ([#351](https://github.com/sigstore/sigstore-python/pull/351))
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v2.1.4...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v2.1.5...HEAD
+[2.1.5]: https://github.com/sigstore/sigstore-python/compare/v2.1.4...v2.1.5
 [2.1.4]: https://github.com/sigstore/sigstore-python/compare/v2.1.3...v2.1.4
 [2.1.3]: https://github.com/sigstore/sigstore-python/compare/v2.1.2...v2.1.3
 [2.1.2]: https://github.com/sigstore/sigstore-python/compare/v2.1.1...v2.1.2
