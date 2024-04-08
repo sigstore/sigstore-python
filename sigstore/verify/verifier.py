@@ -35,6 +35,7 @@ from OpenSSL.crypto import (
     X509StoreContextError,
     X509StoreFlags,
 )
+from pydantic import ValidationError
 
 from sigstore import dsse
 from sigstore._internal.rekor import _hashedrekord_from_parts
@@ -44,7 +45,7 @@ from sigstore._internal.sct import (
     verify_sct,
 )
 from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
-from sigstore._utils import sha256_digest
+from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.verify.models import Bundle
@@ -245,9 +246,35 @@ class Verifier:
 
         # (8): verify the consistency of the log entry's body against
         #      the other bundle materials.
-        _ = bundle.log_entry
+        # NOTE: This is very slightly weaker than the consistency check
+        # for hashedrekord entries, due to how inclusion is recorded for DSSE:
+        # the included entry for DSSE includes an envelope hash that we
+        # *cannot* verify, since the envelope is uncanonicalized JSON.
+        # Instead, we manually pick apart the entry body below and verify
+        # the parts we can (namely the payload hash and signature list).
+        entry = bundle.log_entry
+        try:
+            entry_body = rekor_types.Dsse.model_validate_json(
+                base64.b64decode(entry.body)
+            )
+        except ValidationError as exc:
+            raise VerificationError(f"invalid DSSE log entry: {exc}")
 
-        # TODO
+        payload_hash = sha256_digest(envelope._inner.payload).digest.hex()
+        if (
+            entry_body.spec.root.payload_hash.algorithm
+            != rekor_types.dsse.Algorithm.SHA256
+        ):
+            raise VerificationError("expected SHA256 payload hash in DSSE log entry")
+        if payload_hash != entry_body.spec.root.payload_hash.value:
+            raise VerificationError("log entry payload hash does not match bundle")
+
+        signature = rekor_types.dsse.Signature(
+            signature=base64.b64encode(envelope._inner.signatures[0].sig).decode(),
+            verifier=base64_encode_pem_cert(bundle.signing_certificate),
+        )
+        if [signature] != entry_body.spec.root.signatures:
+            raise VerificationError("log entry signatures do not match bundle")
 
         return (envelope._inner.payload_type, envelope._inner.payload)
 
