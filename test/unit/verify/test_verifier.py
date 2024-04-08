@@ -13,9 +13,12 @@
 # limitations under the License.
 
 
+import hashlib
+
 import pretend
 import pytest
 
+from sigstore.dsse import _StatementBuilder, _Subject
 from sigstore.errors import VerificationError
 from sigstore.verify import policy
 from sigstore.verify.models import Bundle
@@ -146,3 +149,31 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
 
     with pytest.raises(VerificationError):
         verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+@pytest.mark.online
+@pytest.mark.ambient_oidc
+def test_verifier_dsse_roundtrip(staging):
+    sign_ctx, verifier, identity = staging
+
+    ctx = sign_ctx
+    stmt = (
+        _StatementBuilder()
+        .subjects(
+            [_Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
+        )
+        .predicate_type("https://cosign.sigstore.dev/attestation/v1")
+        .predicate(
+            {
+                "Data": "",
+                "Timestamp": "2023-12-07T00:37:58Z",
+            }
+        )
+    ).build()
+
+    with ctx.signer(identity) as signer:
+        bundle = signer.sign(stmt)
+
+    payload_type, payload = verifier.verify_dsse(bundle, policy.UnsafeNoOp())
+    assert payload_type == "application/vnd.in-toto+json"
+    assert payload == stmt._contents
