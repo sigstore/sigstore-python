@@ -21,34 +21,17 @@ import base64
 import rekor_types
 from cryptography.x509 import Certificate
 
-from sigstore import dsse
 from sigstore._utils import base64_encode_pem_cert
 from sigstore.hashes import Hashed
 
 from .checkpoint import SignedCheckpoint
 from .client import RekorClient
 
-__all__ = ["RekorClient", "SignedCheckpoint"]
-
-
-def _dsse_from_parts(cert: Certificate, evp: dsse.Envelope) -> rekor_types.Dsse:
-    signature = rekor_types.dsse.Signature(
-        signature=evp._inner.signatures[0].sig,
-        verifier=base64_encode_pem_cert(cert),
-    )
-    return rekor_types.Dsse(
-        spec=rekor_types.dsse.DsseV001Schema(
-            signatures=[signature],
-            envelope_hash=rekor_types.dsse.EnvelopeHash(
-                algorithm=rekor_types.dsse.Algorithm.SHA256,
-                value=None,
-            ),
-            payload_hash=rekor_types.dsse.PayloadHash(
-                algorithm=rekor_types.dsse.Algorithm.SHA256,
-                value=None,
-            ),
-        )
-    )
+__all__ = [
+    "RekorClient",
+    "SignedCheckpoint",
+    "_hashedrekord_from_parts",
+]
 
 
 # TODO: This should probably live somewhere better.
