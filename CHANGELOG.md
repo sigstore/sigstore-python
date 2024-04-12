@@ -10,17 +10,12 @@ All versions prior to 0.9.0 are untracked.
 
 ### Added
 
-* API: `Signer.sign()` can now take a `Hashed` as an input,
-  performing a signature on a pre-computed hash value
-  ([#860](https://github.com/sigstore/sigstore-python/pull/860))
+* API: `Signer.sign_artifact()` has been added, replacing the removed
+  `Signer.sign()` API
 
-* API: `Signer.sign()` can now take an in-toto `Statement` as an input,
-  producing a DSSE-formatted signature rather than a "bare" signature
-  ([#804](https://github.com/sigstore/sigstore-python/pull/804))
-
-* API: `SigningResult.content` has been added, representing either the
-  `hashedrekord` entry's message signature or the `dsse` entry's envelope
-  ([#804](https://github.com/sigstore/sigstore-python/pull/804))
+* API: `Signer.sign_intoto()` has been added. It takes an in-toto `Statement`
+  as an input, producing a DSSE-formatted signature rather than a "bare"
+  signature ([#804](https://github.com/sigstore/sigstore-python/pull/804))
 
 * API: "v3" Sigstore bundles are now supported during verification
   ([#901](https://github.com/sigstore/sigstore-python/pull/901))
@@ -41,14 +36,15 @@ All versions prior to 0.9.0 are untracked.
 * **BREAKING API CHANGE**: `VerificationMaterials` has been removed.
   The public verification APIs now accept `sigstore.verify.models.Bundle`.
 
+* **BREAKING API CHANGE**: `Signer.sign(...)` has been removed. Use
+  either `sign_artifact(...)` or `sign_intoto(...)`, depending on whether
+  you're signing opaque bytes or an in-toto statement.
+
 * **BREAKING API CHANGE**: `VerificationResult` has been removed.
   The public verification and policy APIs now raise
   `sigstore.errors.VerificationError` on failure.
 
 ### Changed
-
-* **BREAKING API CHANGE**: The `Signer.sign(...)` API now returns a `sigstore.verify.models.Bundle`,
-  instead of a `SigningResult` ([#862](https://github.com/sigstore/sigstore-python/pull/862))
 
 * **BREAKING API CHANGE**: `Verifier.verify(...)`  now takes a `bytes | Hashed`
   as its verification input, rather than implicitly receiving the input through
@@ -58,10 +54,6 @@ All versions prior to 0.9.0 are untracked.
 * **BREAKING API CHANGE**: `VerificationMaterials.rekor_entry(...)` now takes
   a `Hashed` parameter to convey the digest used for Rekor entry lookup
   ([#904](https://github.com/sigstore/sigstore-python/pull/904))
-
-* **BREAKING API CHANGE**: `Signer.sign(...)` now takes a `bytes` instead of
-  an `IO[bytes]` for input. Other input types (such as `Hashed` and
-  `Statement`) are unchanged ([#921](https://github.com/sigstore/sigstore-python/pull/921))
 
 * **BREAKING API CHANGE**: `Verifier.verify(...)` now takes a `sigstore.verify.models.Bundle`,
   instead of a `VerificationMaterials` ([#937](https://github.com/sigstore/sigstore-python/pull/937))
