@@ -228,19 +228,21 @@ def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:
 
     This function does **not** check the envelope's payload type. The caller
     is responsible for performing this check.
-
-    Assumes that the envelope only has a single signature.
     """
 
     pae = _pae(evp._inner.payload_type, evp._inner.payload)
 
-    try:
-        # NB: Assumes only one signature in the DSSE envelope.
-        key.verify(evp._inner.signatures[0].sig, pae, ec.ECDSA(hashes.SHA256()))
-    except IndexError:
-        raise VerificationError("DSSE: no signature to verify")
-    except InvalidSignature:
-        raise VerificationError("DSSE: invalid signature")
+    if not evp._inner.signatures:
+        raise VerificationError("DSSE: envelope contains no signatures")
+
+    # In practice checking more than one signature here is frivolous, since
+    # they're all being checked against the same key. But there's no
+    # particular harm in checking them all either.
+    for signature in evp._inner.signatures:
+        try:
+            key.verify(signature.sig, pae, ec.ECDSA(hashes.SHA256()))
+        except InvalidSignature:
+            raise VerificationError("DSSE: invalid signature")
 
     # TODO: Remove ignore when protobuf-specs contains a py.typed marker.
     # See: <https://github.com/sigstore/protobuf-specs/pull/287>

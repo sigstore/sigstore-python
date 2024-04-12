@@ -269,11 +269,17 @@ class Verifier:
         if payload_hash != entry_body.spec.root.payload_hash.value:  # type: ignore[union-attr]
             raise VerificationError("log entry payload hash does not match bundle")
 
-        signature = rekor_types.dsse.Signature(
-            signature=base64.b64encode(envelope._inner.signatures[0].sig).decode(),
-            verifier=base64_encode_pem_cert(bundle.signing_certificate),
-        )
-        if [signature] != entry_body.spec.root.signatures:
+        # NOTE: Like `dsse._verify`: multiple signatures would be frivolous here,
+        # but we handle them just in case the signer has somehow produced multiple
+        # signatures for their envelope with the same signing key.
+        signatures = [
+            rekor_types.dsse.Signature(
+                signature=base64.b64encode(signature.sig).decode(),
+                verifier=base64_encode_pem_cert(bundle.signing_certificate),
+            )
+            for signature in envelope._inner.signatures
+        ]
+        if signatures != entry_body.spec.root.signatures:
             raise VerificationError("log entry signatures do not match bundle")
 
         return (envelope._inner.payload_type, envelope._inner.payload)
