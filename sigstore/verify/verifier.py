@@ -103,7 +103,7 @@ class Verifier:
     ) -> None:
         """
         Performs the signing certificate verification steps that are shared between
-        `verify_intoto` and `verify_artifact`.
+        `verify_dsse` and `verify_artifact`.
 
         Raises `VerificationError` on all failures.
         """
