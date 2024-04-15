@@ -13,9 +13,12 @@
 # limitations under the License.
 
 
+import hashlib
+
 import pretend
 import pytest
 
+from sigstore.dsse import _StatementBuilder, _Subject
 from sigstore.errors import VerificationError
 from sigstore.verify import policy
 from sigstore.verify.models import Bundle
@@ -39,7 +42,7 @@ def test_verifier_one_verification(signing_materials, null_policy):
 
     (file, bundle) = signing_materials("a.txt", verifier._rekor)
 
-    verifier.verify(file.read_bytes(), bundle, null_policy)
+    verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
 def test_verifier_inconsistent_log_entry(signing_bundle, null_policy, mock_staging_tuf):
@@ -51,7 +54,7 @@ def test_verifier_inconsistent_log_entry(signing_bundle, null_policy, mock_stagi
         VerificationError,
         match="transparency log entry is inconsistent with other materials",
     ):
-        verifier.verify(file.read_bytes(), bundle, null_policy)
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
 @pytest.mark.online
@@ -62,7 +65,7 @@ def test_verifier_multiple_verifications(signing_materials, null_policy):
     b = signing_materials("b.txt", verifier._rekor)
 
     for file, bundle in [a, b]:
-        verifier.verify(file.read_bytes(), bundle, null_policy)
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
 @pytest.mark.parametrize(
@@ -72,7 +75,7 @@ def test_verifier_bundle(signing_bundle, null_policy, mock_staging_tuf, filename
     (file, bundle) = signing_bundle(filename)
 
     verifier = Verifier.staging()
-    verifier.verify(file.read_bytes(), bundle, null_policy)
+    verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
 @pytest.mark.online
@@ -85,7 +88,7 @@ def test_verifier_email_identity(signing_materials):
         issuer="https://github.com/login/oauth",
     )
 
-    verifier.verify(
+    verifier.verify_artifact(
         file.read_bytes(),
         bundle,
         policy_,
@@ -104,7 +107,7 @@ def test_verifier_uri_identity(signing_materials):
         issuer="https://token.actions.githubusercontent.com",
     )
 
-    verifier.verify(
+    verifier.verify_artifact(
         file.read_bytes(),
         bundle,
         policy_,
@@ -120,7 +123,7 @@ def test_verifier_policy_check(signing_materials):
     policy_ = pretend.stub(verify=pretend.raiser(VerificationError("policy failed")))
 
     with pytest.raises(VerificationError, match="policy failed"):
-        verifier.verify(
+        verifier.verify_artifact(
             file.read_bytes(),
             bundle,
             policy_,
@@ -145,4 +148,33 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
     entry.integrated_time = datetime.MINYEAR
 
     with pytest.raises(VerificationError):
-        verifier.verify(file.read_bytes(), bundle, null_policy)
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+@pytest.mark.online
+@pytest.mark.ambient_oidc
+def test_verifier_dsse_roundtrip(staging):
+    signer_cls, verifier_cls, identity = staging
+
+    ctx = signer_cls()
+    stmt = (
+        _StatementBuilder()
+        .subjects(
+            [_Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
+        )
+        .predicate_type("https://cosign.sigstore.dev/attestation/v1")
+        .predicate(
+            {
+                "Data": "",
+                "Timestamp": "2023-12-07T00:37:58Z",
+            }
+        )
+    ).build()
+
+    with ctx.signer(identity) as signer:
+        bundle = signer.sign_intoto(stmt)
+
+    verifier = verifier_cls()
+    payload_type, payload = verifier.verify_dsse(bundle, policy.UnsafeNoOp())
+    assert payload_type == "application/vnd.in-toto+json"
+    assert payload == stmt._contents

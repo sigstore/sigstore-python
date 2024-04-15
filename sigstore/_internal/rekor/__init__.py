@@ -27,7 +27,11 @@ from sigstore.hashes import Hashed
 from .checkpoint import SignedCheckpoint
 from .client import RekorClient
 
-__all__ = ["RekorClient", "SignedCheckpoint"]
+__all__ = [
+    "RekorClient",
+    "SignedCheckpoint",
+    "_hashedrekord_from_parts",
+]
 
 
 # TODO: This should probably live somewhere better.

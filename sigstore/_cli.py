@@ -813,7 +813,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
         )
 
         try:
-            verifier.verify(
+            verifier.verify_artifact(
                 input_=hashed,
                 bundle=bundle,
                 policy=policy_,
@@ -851,7 +851,7 @@ def _verify_github(args: argparse.Namespace) -> None:
     verifier, materials = _collect_verification_state(args)
     for file, hashed, bundle in materials:
         try:
-            verifier.verify(input_=hashed, bundle=bundle, policy=policy_)
+            verifier.verify_artifact(input_=hashed, bundle=bundle, policy=policy_)
             print(f"OK: {file}")
         except VerificationError as exc:
             _logger.error(f"FAIL: {file}")
