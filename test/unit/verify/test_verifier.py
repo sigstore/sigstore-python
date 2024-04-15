@@ -172,7 +172,7 @@ def test_verifier_dsse_roundtrip(staging):
     ).build()
 
     with ctx.signer(identity) as signer:
-        bundle = signer.sign_intoto(stmt)
+        bundle = signer.sign_dsse(stmt)
 
     verifier = verifier_cls()
     payload_type, payload = verifier.verify_dsse(bundle, policy.UnsafeNoOp())

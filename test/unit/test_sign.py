@@ -167,6 +167,6 @@ def test_sign_dsse(staging):
     ).build()
 
     with ctx.signer(identity) as signer:
-        bundle = signer.sign_intoto(stmt)
+        bundle = signer.sign_dsse(stmt)
         # Ensures that all of our inner types serialize as expected.
         bundle.to_json()
