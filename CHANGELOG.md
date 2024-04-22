@@ -13,7 +13,7 @@ All versions prior to 0.9.0 are untracked.
 * API: `Signer.sign_artifact()` has been added, replacing the removed
   `Signer.sign()` API
 
-* API: `Signer.sign_intoto()` has been added. It takes an in-toto `Statement`
+* API: `Signer.sign_dsse()` has been added. It takes an in-toto `Statement`
   as an input, producing a DSSE-formatted signature rather than a "bare"
   signature ([#804](https://github.com/sigstore/sigstore-python/pull/804))
 
@@ -37,7 +37,7 @@ All versions prior to 0.9.0 are untracked.
   The public verification APIs now accept `sigstore.verify.models.Bundle`.
 
 * **BREAKING API CHANGE**: `Signer.sign(...)` has been removed. Use
-  either `sign_artifact(...)` or `sign_intoto(...)`, depending on whether
+  either `sign_artifact(...)` or `sign_dsse(...)`, depending on whether
   you're signing opaque bytes or an in-toto statement.
 
 * **BREAKING API CHANGE**: `VerificationResult` has been removed.

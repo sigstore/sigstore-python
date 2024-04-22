@@ -187,13 +187,13 @@ class Signer:
 
         return Bundle._from_parts(cert, content, entry)
 
-    def sign_intoto(
+    def sign_dsse(
         self,
         input_: dsse.Statement,
     ) -> Bundle:
         """
-        Sign the given in-toto statement, and return a `Bundle` containing
-        the signed result.
+        Sign the given in-toto statement as a DSSE envelope, and return a
+        `Bundle` containing the signed result.
 
         This API is **only** for in-toto statements; to sign arbitrary artifacts,
         use `sign_artifact` instead.
