@@ -210,8 +210,12 @@ class Signer:
 
         # Create the proposed DSSE log entry
         proposed_entry = rekor_types.Dsse(
-            spec=rekor_types.dsse.DsseV001Schema(
-                proposed_content=rekor_types.dsse.ProposedContent(
+            spec=rekor_types.dsse.DsseSchema(
+                # NOTE: mypy can't see that this kwarg is correct due to two interacting
+                # behaviors/bugs (one pydantic, one datamodel-codegen):
+                # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
+                # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
+                proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
                     envelope=content.to_json(),
                     verifiers=[b64_cert.decode()],
                 ),
