@@ -28,7 +28,7 @@ from urllib.parse import urljoin
 import rekor_types
 import requests
 
-from sigstore.transparency import LogEntry
+from sigstore.models import LogEntry
 
 _logger = logging.getLogger(__name__)
 

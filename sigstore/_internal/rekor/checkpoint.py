@@ -32,7 +32,7 @@ from sigstore._utils import KeyID
 from sigstore.errors import VerificationError
 
 if typing.TYPE_CHECKING:
-    from sigstore.transparency import LogEntry
+    from sigstore.models import LogEntry
 
 
 @dataclass(frozen=True)

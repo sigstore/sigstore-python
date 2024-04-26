@@ -24,12 +24,7 @@ from cryptography.x509 import Certificate
 from sigstore._utils import base64_encode_pem_cert
 from sigstore.hashes import Hashed
 
-from .checkpoint import SignedCheckpoint
-from .client import RekorClient
-
 __all__ = [
-    "RekorClient",
-    "SignedCheckpoint",
     "_hashedrekord_from_parts",
 ]
 
