@@ -262,9 +262,12 @@ def tuf_dirs(monkeypatch, tmp_path):
 
 @pytest.fixture
 def sign_ctx_and_ident_for_env(
+    pytestconfig,
     env: str,
 ) -> tuple[type[SigningContext], type[IdentityToken]]:
     if env == "staging":
+        if pytestconfig.getoption("skip-staging"):
+            pytest.skip("skipping staging test variant due to --skip-staging")
         ctx_cls = SigningContext.staging
     elif env == "production":
         ctx_cls = SigningContext.production
