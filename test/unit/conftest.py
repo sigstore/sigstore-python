@@ -261,11 +261,6 @@ def tuf_dirs(monkeypatch, tmp_path):
 
 
 @pytest.fixture
-def test_fixture(arg) -> str:
-    return f"fixture arg was {arg}"
-
-
-@pytest.fixture
 def sign_ctx_and_ident_for_env(
     env: str,
 ) -> tuple[type[SigningContext], type[IdentityToken]]:
