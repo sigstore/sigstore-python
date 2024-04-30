@@ -252,9 +252,7 @@ class LogEntry:
         body_entry = TypeAdapter(ProposedEntry).validate_json(
             tlog_entry.canonicalized_body
         )
-        if not isinstance(body_entry, Hashedrekord) and not isinstance(
-            body_entry, Dsse
-        ):
+        if not isinstance(body_entry, (Hashedrekord, Dsse)):
             raise ValueError("LogEntry is not of expected type")
 
         tlog_entry.kind_version = rekor_v1.KindVersion(
