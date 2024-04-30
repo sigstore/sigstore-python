@@ -36,10 +36,12 @@ from pydantic import (
     Field,
     StrictInt,
     StrictStr,
+    TypeAdapter,
     ValidationInfo,
     field_validator,
 )
 from pydantic.dataclasses import dataclass
+from rekor_types import Dsse, Hashedrekord, ProposedEntry
 from sigstore_protobuf_specs.dev.sigstore.bundle import v1 as bundle_v1
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle as _Bundle,
@@ -222,7 +224,7 @@ class LogEntry:
             ),
         )
 
-    def _to_dict_rekor(self, is_message_signature: bool) -> dict[str, Any]:
+    def _to_dict_rekor(self) -> dict[str, Any]:
         inclusion_promise: rekor_v1.InclusionPromise | None = None
         if self.inclusion_promise:
             inclusion_promise = rekor_v1.InclusionPromise(
@@ -247,12 +249,17 @@ class LogEntry:
         )
 
         # Fill in the appropriate kind
-        if is_message_signature:
-            tlog_entry.kind_version = rekor_v1.KindVersion(
-                kind="hashedrekord", version="0.0.1"
-            )
-        else:
-            tlog_entry.kind_version = rekor_v1.KindVersion(kind="dsse", version="0.0.1")
+        body_entry = TypeAdapter(ProposedEntry).validate_json(
+            tlog_entry.canonicalized_body
+        )
+        if not isinstance(body_entry, Hashedrekord) and not isinstance(
+            body_entry, Dsse
+        ):
+            raise ValueError("LogEntry is not of expected type")
+
+        tlog_entry.kind_version = rekor_v1.KindVersion(
+            kind=body_entry.kind, version=body_entry.api_version
+        )
 
         tlog_entry_dict: dict[str, Any] = tlog_entry.to_dict()
         return tlog_entry_dict
@@ -521,15 +528,14 @@ class Bundle:
             ),
         )
 
-        is_message_signature = isinstance(content, common_v1.MessageSignature)
         # Fill in the appropriate variants.
-        if is_message_signature:
+        if isinstance(content, common_v1.MessageSignature):
             inner.message_signature = content
         else:
             inner.dsse_envelope = content._inner
 
         tlog_entry = rekor_v1.TransparencyLogEntry()
-        tlog_entry.from_dict(log_entry._to_dict_rekor(is_message_signature))
+        tlog_entry.from_dict(log_entry._to_dict_rekor())
         inner.verification_material.tlog_entries = [tlog_entry]
 
         return cls(inner)
