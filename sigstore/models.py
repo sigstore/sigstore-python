@@ -253,7 +253,7 @@ class LogEntry:
             tlog_entry.canonicalized_body
         )
         if not isinstance(body_entry, (Hashedrekord, Dsse)):
-            raise ValueError("LogEntry is not of expected type")
+            raise InvalidBundle("log entry is not of expected type")
 
         tlog_entry.kind_version = rekor_v1.KindVersion(
             kind=body_entry.kind, version=body_entry.api_version
