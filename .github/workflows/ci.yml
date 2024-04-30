@@ -55,7 +55,7 @@ jobs:
 
       - name: test (interactive)
         if: (github.event_name != 'pull_request') || !github.event.pull_request.head.repo.fork
-        run: make test-interactive TEST_ARGS="-vv --showlocals"
+        run: make test-interactive TEST_ARGS="-vv --showlocals --skip-staging"
 
       - uses: ./.github/actions/upload-coverage
         # only aggregate test coverage over linux-based tests to avoid any OS-specific filesystem information stored in
