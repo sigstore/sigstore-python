@@ -84,20 +84,44 @@ def pytest_addoption(parser):
         action="store_true",
         help="skip tests that require network connectivity",
     )
+    parser.addoption(
+        "--skip-staging",
+        action="store_true",
+        help="skip tests that require Sigstore staging infrastructure",
+    )
 
 
 def pytest_runtest_setup(item):
-    if "online" in item.keywords and item.config.getoption("--skip-online"):
+    # Do we need a network connection?
+    online = False
+    for mark in ["online", "staging", "production"]:
+        if mark in item.keywords:
+            online = True
+
+    if online and item.config.getoption("--skip-online"):
         pytest.skip(
             "skipping test that requires network connectivity due to `--skip-online` flag"
         )
     elif "ambient_oidc" in item.keywords and not _has_oidc_id():
         pytest.skip("skipping test that requires an ambient OIDC credential")
 
+    if "staging" in item.keywords and item.config.getoption("--skip-staging"):
+        pytest.skip(
+            "skipping test that requires staging infrastructure due to `--skip-staging` flag"
+        )
+
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "online: mark test as requiring network connectivity"
+        "markers", "staging: mark test as requiring Sigstore staging infrastructure"
+    )
+    config.addinivalue_line(
+        "markers",
+        "production: mark test as requiring Sigstore production infrastructure",
+    )
+    config.addinivalue_line(
+        "markers",
+        "online: mark test as requiring network connectivity (but not a specific Sigstore infrastructure)",
     )
     config.addinivalue_line(
         "markers", "ambient_oidc: mark test as requiring an ambient OIDC identity"
@@ -236,22 +260,23 @@ def tuf_dirs(monkeypatch, tmp_path):
     return (data_dir, cache_dir)
 
 
-@pytest.fixture(
-    params=[
-        ("production", SigningContext.production),
-        ("staging", SigningContext.staging),
-    ],
-    ids=["production", "staging"],
-)
-def signer_and_ident(request) -> tuple[type[SigningContext], type[IdentityToken]]:
-    env, signer = request.param
-    # Detect env variable for local interactive tests.
+@pytest.fixture
+def sign_ctx_and_ident_for_env(
+    env: str,
+) -> tuple[type[SigningContext], type[IdentityToken]]:
+    if env == "staging":
+        ctx_cls = SigningContext.staging
+    elif env == "production":
+        ctx_cls = SigningContext.production
+    else:
+        raise ValueError(f"Unknown env {env}")
+
     token = os.getenv(f"SIGSTORE_IDENTITY_TOKEN_{env}")
     if not token:
         # If the variable is not defined, try getting an ambient token.
         token = detect_credential(_DEFAULT_AUDIENCE)
 
-    return signer, IdentityToken(token)
+    return ctx_cls, IdentityToken(token)
 
 
 @pytest.fixture
