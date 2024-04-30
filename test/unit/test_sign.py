@@ -35,11 +35,11 @@ class TestSigningContext:
     def test_staging(self, mock_staging_tuf):
         assert SigningContext.staging() is not None
 
-
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-def test_sign_rekor_entry_consistent(signer_and_ident):
-    ctx_cls, identity = signer_and_ident
+def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
+    ctx_cls, identity = sign_ctx_and_ident_for_env
 
     # NOTE: The actual signer instance is produced lazily, so that parameter
     # expansion doesn't fail in offline tests.
@@ -58,10 +58,11 @@ def test_sign_rekor_entry_consistent(signer_and_ident):
     assert expected_entry.log_index == actual_entry.log_index
 
 
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-def test_sct_verify_keyring_lookup_error(signer_and_ident, monkeypatch):
-    ctx, identity = signer_and_ident
+def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch):
+    ctx, identity = sign_ctx_and_ident_for_env
 
     # a signer whose keyring always fails to lookup a given key.
     ctx: SigningContext = ctx()
@@ -77,10 +78,11 @@ def test_sct_verify_keyring_lookup_error(signer_and_ident, monkeypatch):
             signer.sign_artifact(payload)
 
 
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-def test_sct_verify_keyring_error(signer_and_ident, monkeypatch):
-    ctx, identity = signer_and_ident
+def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
+    ctx, identity = sign_ctx_and_ident_for_env
 
     # a signer whose keyring throws an internal error.
     ctx: SigningContext = ctx()
@@ -98,10 +100,11 @@ def test_sct_verify_keyring_error(signer_and_ident, monkeypatch):
             signer.sign_artifact(payload)
 
 
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.online
 @pytest.mark.ambient_oidc
-def test_identity_proof_claim_lookup(signer_and_ident, monkeypatch):
-    ctx_cls, identity = signer_and_ident
+def test_identity_proof_claim_lookup(sign_ctx_and_ident_for_env, monkeypatch):
+    ctx_cls, identity = sign_ctx_and_ident_for_env
 
     ctx: SigningContext = ctx_cls()
     assert identity is not None

@@ -235,24 +235,25 @@ def tuf_dirs(monkeypatch, tmp_path):
 
     return (data_dir, cache_dir)
 
+@pytest.fixture
+def test_fixture(arg) -> str:
+    return f"fixture arg was {arg}"
 
-@pytest.fixture(
-    params=[
-        ("production", SigningContext.production),
-        ("staging", SigningContext.staging),
-    ],
-    ids=["production", "staging"],
-)
-def signer_and_ident(request) -> tuple[type[SigningContext], type[IdentityToken]]:
-    env, signer = request.param
-    # Detect env variable for local interactive tests.
+@pytest.fixture
+def sign_ctx_and_ident_for_env(env: str) -> tuple[type[SigningContext], type[IdentityToken]]:
+    if env == "staging":
+        ctx_cls = SigningContext.staging
+    elif env == "production":
+        ctx_cls = SigningContext.production
+    else:
+        raise ValueError(f"Unknown env {env}")
+
     token = os.getenv(f"SIGSTORE_IDENTITY_TOKEN_{env}")
     if not token:
         # If the variable is not defined, try getting an ambient token.
         token = detect_credential(_DEFAULT_AUDIENCE)
 
-    return signer, IdentityToken(token)
-
+    return ctx_cls, IdentityToken(token)
 
 @pytest.fixture
 def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
