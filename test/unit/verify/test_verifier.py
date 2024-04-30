@@ -25,7 +25,7 @@ from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
 
 
-@pytest.mark.online
+@pytest.mark.production
 def test_verifier_production():
     verifier = Verifier.production()
     assert verifier is not None
@@ -36,7 +36,7 @@ def test_verifier_staging(mock_staging_tuf):
     assert verifier is not None
 
 
-@pytest.mark.online
+@pytest.mark.staging
 def test_verifier_one_verification(signing_materials, null_policy):
     verifier = Verifier.staging()
 
@@ -45,6 +45,7 @@ def test_verifier_one_verification(signing_materials, null_policy):
     verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
+@pytest.mark.staging
 def test_verifier_inconsistent_log_entry(signing_bundle, null_policy, mock_staging_tuf):
     (file, bundle) = signing_bundle("bundle_cve_2022_36056.txt")
 
@@ -57,7 +58,7 @@ def test_verifier_inconsistent_log_entry(signing_bundle, null_policy, mock_stagi
         verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
-@pytest.mark.online
+@pytest.mark.staging
 def test_verifier_multiple_verifications(signing_materials, null_policy):
     verifier = Verifier.staging()
 
@@ -78,7 +79,7 @@ def test_verifier_bundle(signing_bundle, null_policy, mock_staging_tuf, filename
     verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
-@pytest.mark.online
+@pytest.mark.staging
 def test_verifier_email_identity(signing_materials):
     verifier = Verifier.staging()
 
@@ -95,7 +96,7 @@ def test_verifier_email_identity(signing_materials):
     )
 
 
-@pytest.mark.online
+@pytest.mark.staging
 def test_verifier_uri_identity(signing_materials):
     verifier = Verifier.staging()
     (file, bundle) = signing_materials("c.txt", verifier._rekor)
@@ -114,7 +115,7 @@ def test_verifier_uri_identity(signing_materials):
     )
 
 
-@pytest.mark.online
+@pytest.mark.staging
 def test_verifier_policy_check(signing_materials):
     verifier = Verifier.staging()
     (file, bundle) = signing_materials("a.txt", verifier._rekor)
@@ -130,7 +131,7 @@ def test_verifier_policy_check(signing_materials):
         )
 
 
-@pytest.mark.online
+@pytest.mark.staging
 @pytest.mark.xfail
 def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
     # FIXME(jl): can't mock:
@@ -151,7 +152,7 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
         verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
-@pytest.mark.online
+@pytest.mark.staging
 @pytest.mark.ambient_oidc
 def test_verifier_dsse_roundtrip(staging):
     signer_cls, verifier_cls, identity = staging

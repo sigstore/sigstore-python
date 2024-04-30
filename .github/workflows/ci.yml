@@ -51,7 +51,7 @@ jobs:
           unshare --map-root-user --net make test TEST_ARGS="--skip-online -vv --showlocals"
 
       - name: test
-        run: make test TEST_ARGS="-vv --showlocals"
+        run: make test TEST_ARGS="-vv --showlocals --skip-staging"
 
       - name: test (interactive)
         if: (github.event_name != 'pull_request') || !github.event.pull_request.head.repo.fork
