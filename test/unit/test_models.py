@@ -34,6 +34,14 @@ class TestLogEntry:
                 inclusion_promise=None,
             )
 
+    def test_logentry_roundtrip(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
+
+        assert (
+            LogEntry._from_dict_rekor(bundle.log_entry._to_dict_rekor())
+            == bundle.log_entry
+        )
+
 
 class TestLogInclusionProof:
     def test_valid(self):
