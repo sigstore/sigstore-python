@@ -28,7 +28,7 @@ from sigstore.verify.policy import UnsafeNoOp
 
 
 class TestSigningContext:
-    @pytest.mark.online
+    @pytest.mark.production
     def test_production(self):
         assert SigningContext.production() is not None
 
@@ -36,7 +36,6 @@ class TestSigningContext:
         assert SigningContext.staging() is not None
 
 @pytest.mark.parametrize("env", ["staging", "production"])
-@pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
     ctx_cls, identity = sign_ctx_and_ident_for_env
@@ -59,7 +58,6 @@ def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])
-@pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch):
     ctx, identity = sign_ctx_and_ident_for_env
@@ -79,7 +77,6 @@ def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])
-@pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
     ctx, identity = sign_ctx_and_ident_for_env
@@ -101,7 +98,6 @@ def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])
-@pytest.mark.online
 @pytest.mark.ambient_oidc
 def test_identity_proof_claim_lookup(sign_ctx_and_ident_for_env, monkeypatch):
     ctx_cls, identity = sign_ctx_and_ident_for_env
@@ -124,7 +120,7 @@ def test_identity_proof_claim_lookup(sign_ctx_and_ident_for_env, monkeypatch):
     assert expected_entry.log_index == actual_entry.log_index
 
 
-@pytest.mark.online
+@pytest.mark.staging
 @pytest.mark.ambient_oidc
 def test_sign_prehashed(staging):
     sign_ctx_cls, verifier_cls, identity = staging
@@ -149,7 +145,7 @@ def test_sign_prehashed(staging):
     verifier.verify_artifact(hashed, bundle=bundle, policy=UnsafeNoOp())
 
 
-@pytest.mark.online
+@pytest.mark.staging
 @pytest.mark.ambient_oidc
 def test_sign_dsse(staging):
     sign_ctx, _, identity = staging
