@@ -35,6 +35,7 @@ class TestSigningContext:
     def test_staging(self, mock_staging_tuf):
         assert SigningContext.staging() is not None
 
+
 @pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):

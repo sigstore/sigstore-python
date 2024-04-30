@@ -116,10 +116,12 @@ def pytest_configure(config):
         "markers", "staging: mark test as requiring Sigstore staging infrastructure"
     )
     config.addinivalue_line(
-        "markers", "production: mark test as requiring Sigstore production infrastructure"
+        "markers",
+        "production: mark test as requiring Sigstore production infrastructure",
     )
     config.addinivalue_line(
-        "markers", "online: mark test as requiring network connectivity (but not a specific Sigstore infrastructure)"
+        "markers",
+        "online: mark test as requiring network connectivity (but not a specific Sigstore infrastructure)",
     )
     config.addinivalue_line(
         "markers", "ambient_oidc: mark test as requiring an ambient OIDC identity"
@@ -257,12 +259,16 @@ def tuf_dirs(monkeypatch, tmp_path):
 
     return (data_dir, cache_dir)
 
+
 @pytest.fixture
 def test_fixture(arg) -> str:
     return f"fixture arg was {arg}"
 
+
 @pytest.fixture
-def sign_ctx_and_ident_for_env(env: str) -> tuple[type[SigningContext], type[IdentityToken]]:
+def sign_ctx_and_ident_for_env(
+    env: str,
+) -> tuple[type[SigningContext], type[IdentityToken]]:
     if env == "staging":
         ctx_cls = SigningContext.staging
     elif env == "production":
@@ -276,6 +282,7 @@ def sign_ctx_and_ident_for_env(env: str) -> tuple[type[SigningContext], type[Ide
         token = detect_credential(_DEFAULT_AUDIENCE)
 
     return ctx_cls, IdentityToken(token)
+
 
 @pytest.fixture
 def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
