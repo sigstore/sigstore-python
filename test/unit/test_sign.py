@@ -36,11 +36,7 @@ class TestSigningContext:
         assert SigningContext.staging() is not None
 
 
-# TODO: re-add "staging" as an env to each test below, once staging is stabilized.
-# See: https://github.com/sigstore/sigstore-python/issues/995
-
-
-@pytest.mark.parametrize("env", ["production"])
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
     ctx_cls, identity = sign_ctx_and_ident_for_env
@@ -62,7 +58,7 @@ def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
     assert expected_entry.log_index == actual_entry.log_index
 
 
-@pytest.mark.parametrize("env", ["production"])
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch):
     ctx, identity = sign_ctx_and_ident_for_env
@@ -81,7 +77,7 @@ def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch
             signer.sign_artifact(payload)
 
 
-@pytest.mark.parametrize("env", ["production"])
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
     ctx, identity = sign_ctx_and_ident_for_env
@@ -102,7 +98,7 @@ def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
             signer.sign_artifact(payload)
 
 
-@pytest.mark.parametrize("env", ["production"])
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_identity_proof_claim_lookup(sign_ctx_and_ident_for_env, monkeypatch):
     ctx_cls, identity = sign_ctx_and_ident_for_env
