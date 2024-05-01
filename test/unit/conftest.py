@@ -262,6 +262,7 @@ def tuf_dirs(monkeypatch, tmp_path):
 
 @pytest.fixture
 def sign_ctx_and_ident_for_env(
+    pytestconfig,
     env: str,
 ) -> tuple[type[SigningContext], type[IdentityToken]]:
     if env == "staging":
