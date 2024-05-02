@@ -48,7 +48,7 @@ from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
-from sigstore.verify.models import Bundle
+from sigstore.models import Bundle
 from sigstore.verify.policy import VerificationPolicy
 
 _logger = logging.getLogger(__name__)

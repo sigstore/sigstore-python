@@ -41,6 +41,7 @@ from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
 from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
+from sigstore.models import Bundle
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
     STAGING_OAUTH_ISSUER_URL,
@@ -54,7 +55,6 @@ from sigstore.verify import (
     Verifier,
     policy,
 )
-from sigstore.verify.models import Bundle
 
 logging.basicConfig(format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
 _logger = logging.getLogger(__name__)

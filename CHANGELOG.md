@@ -31,10 +31,10 @@ All versions prior to 0.9.0 are untracked.
 ### Removed
 
 * **BREAKING API CHANGE**: `SigningResult` has been removed.
-  The public signing APIs now return `sigstore.verify.models.Bundle`.
+  The public signing APIs now return `sigstore.models.Bundle`.
 
 * **BREAKING API CHANGE**: `VerificationMaterials` has been removed.
-  The public verification APIs now accept `sigstore.verify.models.Bundle`.
+  The public verification APIs now accept `sigstore.models.Bundle`.
 
 * **BREAKING API CHANGE**: `Signer.sign(...)` has been removed. Use
   either `sign_artifact(...)` or `sign_dsse(...)`, depending on whether
@@ -55,7 +55,7 @@ All versions prior to 0.9.0 are untracked.
   a `Hashed` parameter to convey the digest used for Rekor entry lookup
   ([#904](https://github.com/sigstore/sigstore-python/pull/904))
 
-* **BREAKING API CHANGE**: `Verifier.verify(...)` now takes a `sigstore.verify.models.Bundle`,
+* **BREAKING API CHANGE**: `Verifier.verify(...)` now takes a `sigstore.models.Bundle`,
   instead of a `VerificationMaterials` ([#937](https://github.com/sigstore/sigstore-python/pull/937))
 
 * sigstore-python now requires inclusion proofs in all signing and verification
@@ -74,6 +74,9 @@ All versions prior to 0.9.0 are untracked.
   an inclusion proof. Passing `--offline` with detached materials will cause
   an error ([#937](https://github.com/sigstore/sigstore-python/pull/937))
 
+* API: `sigstore.transparency` has been removed, and its pre-existing APIs
+  have been re-homed under `sigstore.models`
+  ([#990](https://github.com/sigstore/sigstore-python/pull/990))
 
 ## [2.1.5]
 

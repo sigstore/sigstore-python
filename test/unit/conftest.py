@@ -38,9 +38,9 @@ from sigstore._internal import tuf
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._utils import sha256_digest
+from sigstore.models import Bundle
 from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
 from sigstore.sign import SigningContext
-from sigstore.verify.models import Bundle
 from sigstore.verify.verifier import Verifier
 
 _ASSETS = (Path(__file__).parent / "assets").resolve()

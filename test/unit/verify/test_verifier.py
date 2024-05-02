@@ -20,8 +20,8 @@ import pytest
 
 from sigstore.dsse import _StatementBuilder, _Subject
 from sigstore.errors import VerificationError
+from sigstore.models import Bundle
 from sigstore.verify import policy
-from sigstore.verify.models import Bundle
 from sigstore.verify.verifier import Verifier
 
 

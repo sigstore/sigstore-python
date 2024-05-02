@@ -20,7 +20,8 @@ Example:
 import base64
 from pathlib import Path
 
-from sigstore.verify import Bundle, Verifier
+from sigstore.models import Bundle
+from sigstore.verify import Verifier
 from sigstore.verify.policy import Identity
 
 # The input to verify
@@ -42,13 +43,10 @@ print(result)
 ```
 """
 
-from sigstore.verify.models import Bundle
 from sigstore.verify.verifier import Verifier
 
 __all__ = [
-    "Bundle",
     "Verifier",
     "policy",
-    "models",
     "verifier",
 ]
