@@ -112,7 +112,7 @@ class _SingleX509ExtPolicy(ABC):
             )
 
 
-class _SingleX509ExtPolicyDer(_SingleX509ExtPolicy):
+class _SingleX509ExtPolicyV2(_SingleX509ExtPolicy):
     """
     An base class for verification policies that boil down to checking a single
     X.509 extension's value, where the value is formatted as a DER-encoded string,
@@ -201,7 +201,7 @@ class GitHubWorkflowRef(_SingleX509ExtPolicy):
     oid = _OIDC_GITHUB_WORKFLOW_REF_OID
 
 
-class OIDCIssuerV2(_SingleX509ExtPolicyDer):
+class OIDCIssuerV2(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC issuer, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.8`.
@@ -213,7 +213,7 @@ class OIDCIssuerV2(_SingleX509ExtPolicyDer):
     oid = _OIDC_ISSUER_V2_OID
 
 
-class OIDCBuildSignerURI(_SingleX509ExtPolicyDer):
+class OIDCBuildSignerURI(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Build Signer URI, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.9`.
@@ -222,7 +222,7 @@ class OIDCBuildSignerURI(_SingleX509ExtPolicyDer):
     oid = _OIDC_BUILD_SIGNER_URI_OID
 
 
-class OIDCBuildSignerDigest(_SingleX509ExtPolicyDer):
+class OIDCBuildSignerDigest(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Build Signer Digest, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.10`.
@@ -231,7 +231,7 @@ class OIDCBuildSignerDigest(_SingleX509ExtPolicyDer):
     oid = _OIDC_BUILD_SIGNER_DIGEST_OID
 
 
-class OIDCRunnerEnvironment(_SingleX509ExtPolicyDer):
+class OIDCRunnerEnvironment(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Runner Environment, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.11`.
@@ -240,7 +240,7 @@ class OIDCRunnerEnvironment(_SingleX509ExtPolicyDer):
     oid = _OIDC_RUNNER_ENVIRONMENT_OID
 
 
-class OIDCSourceRepositoryURI(_SingleX509ExtPolicyDer):
+class OIDCSourceRepositoryURI(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Source Repository URI, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.12`.
@@ -249,7 +249,7 @@ class OIDCSourceRepositoryURI(_SingleX509ExtPolicyDer):
     oid = _OIDC_SOURCE_REPOSITORY_URI_OID
 
 
-class OIDCSourceRepositoryDigest(_SingleX509ExtPolicyDer):
+class OIDCSourceRepositoryDigest(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Source Repository Digest, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.13`.
@@ -258,7 +258,7 @@ class OIDCSourceRepositoryDigest(_SingleX509ExtPolicyDer):
     oid = _OIDC_SOURCE_REPOSITORY_DIGEST_OID
 
 
-class OIDCSourceRepositoryRef(_SingleX509ExtPolicyDer):
+class OIDCSourceRepositoryRef(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Source Repository Ref, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.14`.
@@ -267,7 +267,7 @@ class OIDCSourceRepositoryRef(_SingleX509ExtPolicyDer):
     oid = _OIDC_SOURCE_REPOSITORY_REF_OID
 
 
-class OIDCSourceRepositoryIdentifier(_SingleX509ExtPolicyDer):
+class OIDCSourceRepositoryIdentifier(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Source Repository Identifier, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.15`.
@@ -276,7 +276,7 @@ class OIDCSourceRepositoryIdentifier(_SingleX509ExtPolicyDer):
     oid = _OIDC_SOURCE_REPOSITORY_IDENTIFIER_OID
 
 
-class OIDCSourceRepositoryOwnerURI(_SingleX509ExtPolicyDer):
+class OIDCSourceRepositoryOwnerURI(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Source Repository Owner URI, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.16`.
@@ -285,7 +285,7 @@ class OIDCSourceRepositoryOwnerURI(_SingleX509ExtPolicyDer):
     oid = _OIDC_SOURCE_REPOSITORY_OWNER_URI_OID
 
 
-class OIDCSourceRepositoryOwnerIdentifier(_SingleX509ExtPolicyDer):
+class OIDCSourceRepositoryOwnerIdentifier(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Source Repository Owner Identifier, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.17`.
@@ -294,7 +294,7 @@ class OIDCSourceRepositoryOwnerIdentifier(_SingleX509ExtPolicyDer):
     oid = _OIDC_SOURCE_REPOSITORY_OWNER_IDENTIFIER_OID
 
 
-class OIDCBuildConfigURI(_SingleX509ExtPolicyDer):
+class OIDCBuildConfigURI(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Build Config URI, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.18`.
@@ -303,7 +303,7 @@ class OIDCBuildConfigURI(_SingleX509ExtPolicyDer):
     oid = _OIDC_BUILD_CONFIG_URI_OID
 
 
-class OIDCBuildConfigDigest(_SingleX509ExtPolicyDer):
+class OIDCBuildConfigDigest(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Build Config Digest, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.19`.
@@ -312,7 +312,7 @@ class OIDCBuildConfigDigest(_SingleX509ExtPolicyDer):
     oid = _OIDC_BUILD_CONFIG_DIGEST_OID
 
 
-class OIDCBuildTrigger(_SingleX509ExtPolicyDer):
+class OIDCBuildTrigger(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Build Trigger, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.20`.
@@ -321,7 +321,7 @@ class OIDCBuildTrigger(_SingleX509ExtPolicyDer):
     oid = _OIDC_BUILD_TRIGGER_OID
 
 
-class OIDCRunInvocationURI(_SingleX509ExtPolicyDer):
+class OIDCRunInvocationURI(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Run Invocation URI, identified by
     an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.21`.
@@ -330,7 +330,7 @@ class OIDCRunInvocationURI(_SingleX509ExtPolicyDer):
     oid = _OIDC_RUN_INVOCATION_URI_OID
 
 
-class OIDCSourceRepositoryVisibility(_SingleX509ExtPolicyDer):
+class OIDCSourceRepositoryVisibility(_SingleX509ExtPolicyV2):
     """
     Verifies the certificate's OIDC Source Repository Visibility
     At Signing, identified by an X.509v3 extension tagged with
