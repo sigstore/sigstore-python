@@ -28,6 +28,7 @@ dependencies = [
   "cryptography >= 42",
   "id >= 1.1.0",
   "importlib_resources ~= 5.7; python_version < '3.11'",
+  "pyasn1",
   "pydantic >= 2,< 3",
   "pyjwt >= 2.1",
   "pyOpenSSL >= 23.0.0",
