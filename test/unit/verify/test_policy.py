@@ -151,3 +151,43 @@ class TestIdentity:
             match="Certificate's SANs do not match",
         ):
             policy_.verify(bundle.signing_certificate)
+
+
+class TestSingleExtPolicy:
+    def test_succeeds(self, signing_bundle):
+        _, bundle = signing_bundle("bundle_v3_github.whl")
+
+        verification_policy_extensions = [
+            policy.OIDCIssuer("https://token.actions.githubusercontent.com"),
+            policy.GitHubWorkflowTrigger("release"),
+            policy.GitHubWorkflowSHA("d8b4a6445f38c48b9137a8099706d9b8073146e4"),
+            policy.GitHubWorkflowName("release"),
+            policy.GitHubWorkflowRepository("trailofbits/rfc8785.py"),
+            policy.GitHubWorkflowRef("refs/tags/v0.1.2"),
+            policy.OIDCIssuerV2("https://token.actions.githubusercontent.com"),
+            policy.OIDCBuildSignerURI(
+                "https://github.com/trailofbits/rfc8785.py/.github/workflows/release.yml@refs/tags/v0.1.2"
+            ),
+            policy.OIDCBuildSignerDigest("d8b4a6445f38c48b9137a8099706d9b8073146e4"),
+            policy.OIDCRunnerEnvironment("github-hosted"),
+            policy.OIDCSourceRepositoryURI("https://github.com/trailofbits/rfc8785.py"),
+            policy.OIDCSourceRepositoryDigest(
+                "d8b4a6445f38c48b9137a8099706d9b8073146e4"
+            ),
+            policy.OIDCSourceRepositoryRef("refs/tags/v0.1.2"),
+            policy.OIDCSourceRepositoryIdentifier("768213997"),
+            policy.OIDCSourceRepositoryOwnerURI("https://github.com/trailofbits"),
+            policy.OIDCSourceRepositoryOwnerIdentifier("2314423"),
+            policy.OIDCBuildConfigURI(
+                "https://github.com/trailofbits/rfc8785.py/.github/workflows/release.yml@refs/tags/v0.1.2"
+            ),
+            policy.OIDCBuildConfigDigest("d8b4a6445f38c48b9137a8099706d9b8073146e4"),
+            policy.OIDCBuildTrigger("release"),
+            policy.OIDCRunInvocationURI(
+                "https://github.com/trailofbits/rfc8785.py/actions/runs/8351058501/attempts/1"
+            ),
+            policy.OIDCSourceRepositoryVisibility("public"),
+        ]
+
+        policy_ = policy.AllOf(verification_policy_extensions)
+        policy_.verify(bundle.signing_certificate)

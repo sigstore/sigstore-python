@@ -32,6 +32,8 @@ from cryptography.x509 import (
     SubjectAlternativeName,
     UniformResourceIdentifier,
 )
+from pyasn1.codec.der.decoder import decode as der_decode
+from pyasn1.type.char import UTF8String
 
 from sigstore.errors import VerificationError
 
@@ -45,6 +47,23 @@ _OIDC_GITHUB_WORKFLOW_NAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.4")
 _OIDC_GITHUB_WORKFLOW_REPOSITORY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.5")
 _OIDC_GITHUB_WORKFLOW_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.6")
 _OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
+_OIDC_ISSUER_V2_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.8")
+_OIDC_BUILD_SIGNER_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.9")
+_OIDC_BUILD_SIGNER_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.10")
+_OIDC_RUNNER_ENVIRONMENT_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.11")
+_OIDC_SOURCE_REPOSITORY_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.12")
+_OIDC_SOURCE_REPOSITORY_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.13")
+_OIDC_SOURCE_REPOSITORY_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.14")
+_OIDC_SOURCE_REPOSITORY_IDENTIFIER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.15")
+_OIDC_SOURCE_REPOSITORY_OWNER_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.16")
+_OIDC_SOURCE_REPOSITORY_OWNER_IDENTIFIER_OID = ObjectIdentifier(
+    "1.3.6.1.4.1.57264.1.17"
+)
+_OIDC_BUILD_CONFIG_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.18")
+_OIDC_BUILD_CONFIG_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.19")
+_OIDC_BUILD_TRIGGER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.20")
+_OIDC_RUN_INVOCATION_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.21")
+_OIDC_SOURCE_REPOSITORY_VISIBILITY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.22")
 
 
 class _SingleX509ExtPolicy(ABC):
@@ -84,6 +103,41 @@ class _SingleX509ExtPolicy(ABC):
         # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
         # by `get_extension_for_oid` above.
         ext_value = ext.value.decode()  # type: ignore[attr-defined]
+        if ext_value != self._value:
+            raise VerificationError(
+                (
+                    f"Certificate's {self.__class__.__name__} does not match "
+                    f"(got {ext_value}, expected {self._value})"
+                )
+            )
+
+
+class _SingleX509ExtPolicyV2(_SingleX509ExtPolicy):
+    """
+    An base class for verification policies that boil down to checking a single
+    X.509 extension's value, where the value is formatted as a DER-encoded string,
+    the ASN.1 tag is UTF8String (0x0C) and the tag class is universal.
+    """
+
+    def verify(self, cert: Certificate) -> None:
+        """
+        Verify this policy against `cert`.
+
+        Raises `VerificationError` on failure.
+        """
+        try:
+            ext = cert.extensions.get_extension_for_oid(self.oid).value
+        except ExtensionNotFound:
+            raise VerificationError(
+                (
+                    f"Certificate does not contain {self.__class__.__name__} "
+                    f"({self.oid.dotted_string}) extension"
+                )
+            )
+
+        # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
+        # by `get_extension_for_oid` above.
+        ext_value = der_decode(ext.value, UTF8String)[0].decode()  # type: ignore[attr-defined]
         if ext_value != self._value:
             raise VerificationError(
                 (
@@ -145,6 +199,145 @@ class GitHubWorkflowRef(_SingleX509ExtPolicy):
     """
 
     oid = _OIDC_GITHUB_WORKFLOW_REF_OID
+
+
+class OIDCIssuerV2(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC issuer, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.8`.
+    The difference with `OIDCIssuer` is that the value for
+    this extension is formatted to the RFC 5280 specification
+    as a DER-encoded string.
+    """
+
+    oid = _OIDC_ISSUER_V2_OID
+
+
+class OIDCBuildSignerURI(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Build Signer URI, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.9`.
+    """
+
+    oid = _OIDC_BUILD_SIGNER_URI_OID
+
+
+class OIDCBuildSignerDigest(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Build Signer Digest, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.10`.
+    """
+
+    oid = _OIDC_BUILD_SIGNER_DIGEST_OID
+
+
+class OIDCRunnerEnvironment(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Runner Environment, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.11`.
+    """
+
+    oid = _OIDC_RUNNER_ENVIRONMENT_OID
+
+
+class OIDCSourceRepositoryURI(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Source Repository URI, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.12`.
+    """
+
+    oid = _OIDC_SOURCE_REPOSITORY_URI_OID
+
+
+class OIDCSourceRepositoryDigest(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Source Repository Digest, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.13`.
+    """
+
+    oid = _OIDC_SOURCE_REPOSITORY_DIGEST_OID
+
+
+class OIDCSourceRepositoryRef(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Source Repository Ref, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.14`.
+    """
+
+    oid = _OIDC_SOURCE_REPOSITORY_REF_OID
+
+
+class OIDCSourceRepositoryIdentifier(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Source Repository Identifier, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.15`.
+    """
+
+    oid = _OIDC_SOURCE_REPOSITORY_IDENTIFIER_OID
+
+
+class OIDCSourceRepositoryOwnerURI(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Source Repository Owner URI, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.16`.
+    """
+
+    oid = _OIDC_SOURCE_REPOSITORY_OWNER_URI_OID
+
+
+class OIDCSourceRepositoryOwnerIdentifier(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Source Repository Owner Identifier, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.17`.
+    """
+
+    oid = _OIDC_SOURCE_REPOSITORY_OWNER_IDENTIFIER_OID
+
+
+class OIDCBuildConfigURI(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Build Config URI, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.18`.
+    """
+
+    oid = _OIDC_BUILD_CONFIG_URI_OID
+
+
+class OIDCBuildConfigDigest(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Build Config Digest, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.19`.
+    """
+
+    oid = _OIDC_BUILD_CONFIG_DIGEST_OID
+
+
+class OIDCBuildTrigger(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Build Trigger, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.20`.
+    """
+
+    oid = _OIDC_BUILD_TRIGGER_OID
+
+
+class OIDCRunInvocationURI(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Run Invocation URI, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.21`.
+    """
+
+    oid = _OIDC_RUN_INVOCATION_URI_OID
+
+
+class OIDCSourceRepositoryVisibility(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Source Repository Visibility
+    At Signing, identified by an X.509v3 extension tagged with
+    `1.3.6.1.4.1.57264.1.22`.
+    """
+
+    oid = _OIDC_SOURCE_REPOSITORY_VISIBILITY_OID
 
 
 class VerificationPolicy(Protocol):
