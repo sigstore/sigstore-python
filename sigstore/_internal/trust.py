@@ -42,6 +42,9 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     TransparencyLogInstance,
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    ClientTrustConfig as _ClientTrustConfig,
+)
+from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     TrustedRoot as _TrustedRoot,
 )
 
@@ -266,15 +269,14 @@ class TrustedRoot(_TrustedRoot):
         """
         return cls.from_tuf(STAGING_TUF_URL, offline, purpose)
 
-    @staticmethod
     def _get_tlog_keys(
-        tlogs: list[TransparencyLogInstance], purpose: KeyringPurpose
+        self, tlogs: list[TransparencyLogInstance]
     ) -> Iterable[_PublicKey]:
         """
         Yields an iterator of public keys for transparency log instances that
         are suitable for `purpose`.
         """
-        allow_expired = purpose is KeyringPurpose.VERIFY
+        allow_expired = self.purpose is KeyringPurpose.VERIFY
         for tlog in tlogs:
             if not _is_timerange_valid(
                 tlog.public_key.valid_for, allow_expired=allow_expired
@@ -298,14 +300,14 @@ class TrustedRoot(_TrustedRoot):
     def rekor_keyring(self) -> RekorKeyring:
         """Return keyring with keys for Rekor."""
 
-        keys: list[_PublicKey] = list(self._get_tlog_keys(self.tlogs, self.purpose))
+        keys: list[_PublicKey] = list(self._get_tlog_keys(self.tlogs))
         if len(keys) != 1:
             raise MetadataError("Did not find one Rekor key in trusted root")
         return RekorKeyring(Keyring(keys))
 
     def ct_keyring(self) -> CTKeyring:
         """Return keyring with key for CTFE."""
-        ctfes: list[_PublicKey] = list(self._get_tlog_keys(self.ctlogs, self.purpose))
+        ctfes: list[_PublicKey] = list(self._get_tlog_keys(self.ctlogs))
         if not ctfes:
             raise MetadataError("CTFE keys not found in trusted root")
         return CTKeyring(Keyring(ctfes))
@@ -324,3 +326,28 @@ class TrustedRoot(_TrustedRoot):
         if not certs:
             raise MetadataError("Fulcio certificates not found in trusted root")
         return certs
+
+
+class ClientTrustConfig:
+    """
+    Represents a Sigstore client's trust configuration, including a root of trust.
+    """
+
+    @classmethod
+    def from_json(cls, raw: str) -> None:
+        """
+        Deserialize the given client trust config.
+        """
+        inner = _ClientTrustConfig().from_json(raw)
+        cls(inner)
+
+    def __init__(self, inner: _ClientTrustConfig) -> None:
+        """
+        @api private
+        """
+        self._inner = inner
+        # self._
+
+    # @property
+    # def trusted_root(self) -> TrustedRoot:
+    #     pass
