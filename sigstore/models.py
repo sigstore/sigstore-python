@@ -65,7 +65,7 @@ from sigstore._utils import (
 from sigstore.errors import Error, VerificationError
 
 if typing.TYPE_CHECKING:
-    from sigstore._internal.trustroot import RekorKeyring
+    from sigstore._internal.trust import RekorKeyring
 
 
 _logger = logging.getLogger(__name__)

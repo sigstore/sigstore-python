@@ -44,7 +44,7 @@ from sigstore._internal.sct import (
     _get_precertificate_signed_certificate_timestamps,
     verify_sct,
 )
-from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
+from sigstore._internal.trust import KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed

@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
-from sigstore._internal.trustroot import (
+from sigstore._internal.trust import (
     KeyringPurpose,
     TrustedRoot,
     _is_timerange_valid,

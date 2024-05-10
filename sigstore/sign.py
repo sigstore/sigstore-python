@@ -62,7 +62,7 @@ from sigstore._internal.fulcio import (
 )
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
-from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
+from sigstore._internal.trust import KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
 from sigstore.models import Bundle
 from sigstore.oidc import ExpiredIdentity, IdentityToken
