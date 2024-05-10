@@ -27,17 +27,8 @@ from cryptography.x509 import load_pem_x509_certificate
 from rich.logging import RichHandler
 
 from sigstore import __version__
-from sigstore._internal.fulcio.client import (
-    DEFAULT_FULCIO_URL,
-    ExpiredCertificate,
-    FulcioClient,
-)
+from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
-from sigstore._internal.rekor.client import (
-    DEFAULT_REKOR_URL,
-    RekorClient,
-)
-from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
 from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
@@ -93,35 +84,6 @@ def _boolify_env(envvar: str) -> bool:
         return False
     else:
         raise ValueError(f"can't coerce '{val}' to a boolean")
-
-
-def _add_shared_instance_options(group: argparse._ArgumentGroup) -> None:
-    """
-    Common Sigstore instance options, shared between all `sigstore` subcommands.
-    """
-    group.add_argument(
-        "--staging",
-        dest="__deprecated_staging",
-        action="store_true",
-        default=False,
-        help=(
-            "Use sigstore's staging instances, instead of the default production instances. "
-            "This option will be deprecated in favor of the global `--staging` option "
-            "in a future release."
-        ),
-    )
-    group.add_argument(
-        "--rekor-url",
-        dest="__deprecated_rekor_url",
-        metavar="URL",
-        type=str,
-        default=None,
-        help=(
-            "The Rekor instance to use (conflicts with --staging). "
-            "This option will be deprecated in favor of the global `--rekor-url` option "
-            "in a future release."
-        ),
-    )
 
 
 def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
@@ -238,7 +200,7 @@ def _parser() -> argparse.ArgumentParser:
         "-V", "--version", action="version", version=f"sigstore {__version__}"
     )
 
-    global_instance_options = parser.add_argument_group("Sigstore instance options")
+    global_instance_options = parser.add_mutually_exclusive_group()
     global_instance_options.add_argument(
         "--staging",
         action="store_true",
@@ -246,13 +208,11 @@ def _parser() -> argparse.ArgumentParser:
         help="Use sigstore's staging instances, instead of the default production instances",
     )
     global_instance_options.add_argument(
-        "--rekor-url",
-        metavar="URL",
+        "--trust-config",
+        metavar="FILE",
         type=str,
-        default=os.getenv("SIGSTORE_REKOR_URL", DEFAULT_REKOR_URL),
-        help="The Rekor instance to use (conflicts with --staging)",
+        help="The client trust configuration to use",
     )
-
     subcommands = parser.add_subparsers(
         required=True,
         dest="subcommand",
@@ -332,16 +292,6 @@ def _parser() -> argparse.ArgumentParser:
         help="Overwrite preexisting signature and certificate outputs, if present",
     )
 
-    instance_options = sign.add_argument_group("Sigstore instance options")
-    _add_shared_instance_options(instance_options)
-    instance_options.add_argument(
-        "--fulcio-url",
-        metavar="URL",
-        type=str,
-        default=os.getenv("SIGSTORE_FULCIO_URL", DEFAULT_FULCIO_URL),
-        help="The Fulcio instance to use (conflicts with --staging)",
-    )
-
     sign.add_argument(
         "files",
         metavar="FILE",
@@ -384,9 +334,6 @@ def _parser() -> argparse.ArgumentParser:
         help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
         required=True,
     )
-
-    instance_options = verify_identity.add_argument_group("Sigstore instance options")
-    _add_shared_instance_options(instance_options)
 
     # `sigstore verify github`
     verify_github = verify_subcommand.add_parser(
@@ -442,9 +389,6 @@ def _parser() -> argparse.ArgumentParser:
         help="The `git` ref that the workflow was invoked with",
     )
 
-    instance_options = verify_github.add_argument_group("Sigstore instance options")
-    _add_shared_instance_options(instance_options)
-
     # `sigstore get-identity-token`
     get_identity_token = subcommands.add_parser(
         "get-identity-token",
@@ -468,22 +412,6 @@ def main() -> None:
         logging.getLogger().setLevel("DEBUG")
 
     _logger.debug(f"parsed arguments {args}")
-
-    # A few instance flags (like `--staging` and `--rekor-url`) are supported at both the
-    # top-level `sigstore` level and the subcommand level (e.g. `sigstore verify --staging`),
-    # but the former is preferred.
-    if getattr(args, "__deprecated_staging", False):
-        _logger.warning(
-            "`--staging` should be used as a global option, rather than a subcommand option. "
-            "Passing `--staging` as a subcommand option will be deprecated in a future release."
-        )
-        args.staging = args.__deprecated_staging
-    if getattr(args, "__deprecated_rekor_url", None):
-        _logger.warning(
-            "`--rekor-url` should be used as a global option, rather than a subcommand option. "
-            "Passing `--rekor-url` as a subcommand option will be deprecated in a future release."
-        )
-        args.rekor_url = args.__deprecated_rekor_url
 
     # Stuff the parser back into our namespace, so that we can use it for
     # error handling later.
@@ -588,17 +516,13 @@ def _sign(args: argparse.Namespace) -> None:
         _logger.debug("sign: staging instances requested")
         signing_ctx = SigningContext.staging()
         args.oidc_issuer = STAGING_OAUTH_ISSUER_URL
-    elif args.fulcio_url == DEFAULT_FULCIO_URL and args.rekor_url == DEFAULT_REKOR_URL:
-        signing_ctx = SigningContext.production()
+    elif args.trust_config:
+        raise ValueError("fuck")
     else:
-        # Assume "production" trust root if no keys are given as arguments
-        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.SIGN)
-
-        signing_ctx = SigningContext(
-            fulcio=FulcioClient(args.fulcio_url),
-            rekor=RekorClient(args.rekor_url),
-            trusted_root=trusted_root,
-        )
+        # If the user didn't request the staging instance or pass in an
+        # explicit client trust config, we're using the public good (i.e.
+        # production) instance.
+        signing_ctx = SigningContext.production()
 
     # The order of precedence for identities is as follows:
     #
@@ -738,8 +662,8 @@ def _collect_verification_state(
                 missing.append(str(cert))
             input_map[file] = {"cert": cert, "sig": sig}
         else:
-            # If a user hasn't explicitly supplied `--signature`, `--certificate` or
-            # `--rekor-bundle`, we expect a bundle either supplied via `--bundle` or with the
+            # If a user hasn't explicitly supplied `--signature` or `--certificate`,
+            # we expect a bundle either supplied via `--bundle` or with the
             # default `{input}.sigstore(.json)?` name.
             if not bundle.is_file():
                 missing.append(str(bundle))
@@ -754,16 +678,10 @@ def _collect_verification_state(
     if args.staging:
         _logger.debug("verify: staging instances requested")
         verifier = Verifier.staging()
-    elif args.rekor_url == DEFAULT_REKOR_URL:
-        verifier = Verifier.production()
+    elif args.trust_config:
+        raise ValueError("fuck")
     else:
-        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.VERIFY)
-        verifier = Verifier(
-            rekor=RekorClient(
-                url=args.rekor_url,
-            ),
-            trusted_root=trusted_root,
-        )
+        verifier = Verifier.production()
 
     all_materials = []
     for file, inputs in input_map.items():
