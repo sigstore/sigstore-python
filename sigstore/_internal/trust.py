@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Trust root management for sigstore-python.
+Client trust configuration and trust root management for sigstore-python.
 """
 
 from __future__ import annotations
