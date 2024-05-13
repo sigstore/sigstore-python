@@ -886,7 +886,6 @@ def _verify_common(
             bundle=bundle,
             policy=policy_,
         )
-    pass
 
 
 def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
