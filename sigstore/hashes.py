@@ -22,6 +22,8 @@ from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from pydantic import BaseModel
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
+from sigstore.errors import Error
+
 
 class Hashed(BaseModel):
     """
@@ -44,7 +46,7 @@ class Hashed(BaseModel):
         """
         if self.algorithm == HashAlgorithm.SHA2_256:
             return rekor_types.hashedrekord.Algorithm.SHA256
-        raise ValueError(f"unknown hash algorithm: {self.algorithm}")
+        raise Error(f"unknown hash algorithm: {self.algorithm}")
 
     def _as_prehashed(self) -> Prehashed:
         """
@@ -52,4 +54,4 @@ class Hashed(BaseModel):
         """
         if self.algorithm == HashAlgorithm.SHA2_256:
             return Prehashed(hashes.SHA256())
-        raise ValueError(f"unknown hash algorithm: {self.algorithm}")
+        raise Error(f"unknown hash algorithm: {self.algorithm}")
