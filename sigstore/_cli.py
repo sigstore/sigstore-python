@@ -839,7 +839,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
                 )
 
             print(f"OK: {file}")
-        except VerificationError as exc:
+        except Error as exc:
             _logger.error(f"FAIL: {file}")
             exc.log_and_exit(_logger, args.verbose >= 1)
 
@@ -896,7 +896,7 @@ def _verify_github(args: argparse.Namespace) -> None:
                     policy=policy_,
                 )
             print(f"OK: {file}")
-        except VerificationError as exc:
+        except Error as exc:
             _logger.error(f"FAIL: {file}")
             exc.log_and_exit(_logger, args.verbose >= 1)
 

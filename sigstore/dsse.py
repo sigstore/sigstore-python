@@ -29,7 +29,7 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 from sigstore_protobuf_specs.io.intoto import Envelope as _Envelope
 from sigstore_protobuf_specs.io.intoto import Signature
 
-from sigstore.errors import VerificationError
+from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
 
 _logger = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ class Statement:
         try:
             self._inner = _Statement.model_validate_json(contents)
         except ValidationError:
-            raise ValueError("malformed in-toto statement")
+            raise Error("malformed in-toto statement")
 
     def _matches_digest(self, digest: Hashed) -> bool:
         """
@@ -181,7 +181,7 @@ class _StatementBuilder:
                 predicate=self._predicate,
             )
         except ValidationError as e:
-            raise ValueError(f"invalid statement: {e}")
+            raise Error(f"invalid statement: {e}")
 
         return Statement(stmt.model_dump_json(by_alias=True).encode())
 
