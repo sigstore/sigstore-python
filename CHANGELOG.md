@@ -28,6 +28,11 @@ All versions prior to 0.9.0 are untracked.
   for representing in-toto statements and DSSE envelopes
   ([#930](https://github.com/sigstore/sigstore-python/pull/930))
 
+* CLI: The `sigstore verify` subcommands can now verify bundles containing
+  DSSE entries, such as those produced by
+  [GitHub Artifact Attestations](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds)
+  ([#1015](https://github.com/sigstore/sigstore-python/pull/1015))
+
 ### Removed
 
 * **BREAKING API CHANGE**: `SigningResult` has been removed.
@@ -81,6 +86,11 @@ All versions prior to 0.9.0 are untracked.
 * API: `sigstore.transparency` has been removed, and its pre-existing APIs
   have been re-homed under `sigstore.models`
   ([#990](https://github.com/sigstore/sigstore-python/pull/990))
+
+* CLI: `sigstore verify github` no longer requires the `--cert-identity` option.
+  Passing one or more alternative identity options (such as `--repository`)
+  is now sufficient
+  ([#1015](https://github.com/sigstore/sigstore-python/pull/1015))
 
 ## [2.1.5]
 
