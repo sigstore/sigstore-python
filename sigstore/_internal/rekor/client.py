@@ -28,6 +28,7 @@ from urllib.parse import urljoin
 import rekor_types
 import requests
 
+from sigstore._internal import USER_AGENT
 from sigstore.models import LogEntry
 
 _logger = logging.getLogger(__name__)
@@ -228,7 +229,11 @@ class RekorClient:
         self.url = urljoin(url, "api/v1/")
         self.session = requests.Session()
         self.session.headers.update(
-            {"Content-Type": "application/json", "Accept": "application/json"}
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            }
         )
 
     def __del__(self) -> None:
