@@ -161,14 +161,6 @@ def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
 
 def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
     group.add_argument(
-        "--cert-identity",
-        metavar="IDENTITY",
-        type=str,
-        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
-        help="The identity to check for in the certificate's Subject Alternative Name",
-        required=True,
-    )
-    group.add_argument(
         "--offline",
         action="store_true",
         default=_boolify_env("SIGSTORE_OFFLINE"),
@@ -377,6 +369,14 @@ def _parser() -> argparse.ArgumentParser:
     verification_options = verify_identity.add_argument_group("Verification options")
     _add_shared_verification_options(verification_options)
     verification_options.add_argument(
+        "--cert-identity",
+        metavar="IDENTITY",
+        type=str,
+        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
+        help="The identity to check for in the certificate's Subject Alternative Name",
+        required=True,
+    )
+    verification_options.add_argument(
         "--cert-oidc-issuer",
         metavar="URL",
         type=str,
@@ -401,6 +401,13 @@ def _parser() -> argparse.ArgumentParser:
 
     verification_options = verify_github.add_argument_group("Verification options")
     _add_shared_verification_options(verification_options)
+    verification_options.add_argument(
+        "--cert-identity",
+        metavar="IDENTITY",
+        type=str,
+        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
+        help="The identity to check for in the certificate's Subject Alternative Name",
+    )
     verification_options.add_argument(
         "--trigger",
         dest="workflow_trigger",
@@ -821,16 +828,15 @@ def _verify_identity(args: argparse.Namespace) -> None:
 
 
 def _verify_github(args: argparse.Namespace) -> None:
-    # Every GitHub verification begins with an identity policy,
-    # for which we know the issuer URL ahead of time.
-    # We then add more policies, as configured by the user's passed-in options.
-    inner_policies: list[policy.VerificationPolicy] = [
-        policy.Identity(
-            identity=args.cert_identity,
-            issuer="https://token.actions.githubusercontent.com",
-        )
-    ]
+    inner_policies: list[policy.VerificationPolicy] = []
 
+    if args.cert_identity:
+        inner_policies.append(
+            policy.Identity(
+                identity=args.cert_identity,
+                issuer="https://token.actions.githubusercontent.com",
+            )
+        )
     if args.workflow_trigger:
         inner_policies.append(policy.GitHubWorkflowTrigger(args.workflow_trigger))
     if args.workflow_sha:
@@ -841,6 +847,9 @@ def _verify_github(args: argparse.Namespace) -> None:
         inner_policies.append(policy.GitHubWorkflowRepository(args.workflow_repository))
     if args.workflow_ref:
         inner_policies.append(policy.GitHubWorkflowRef(args.workflow_ref))
+
+    if not inner_policies:
+        _die(args, "No verification options supplied")
 
     policy_ = policy.AllOf(inner_policies)
 

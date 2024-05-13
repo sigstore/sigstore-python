@@ -107,7 +107,7 @@ class _SingleX509ExtPolicy(ABC):
             raise VerificationError(
                 (
                     f"Certificate's {self.__class__.__name__} does not match "
-                    f"(got {ext_value}, expected {self._value})"
+                    f"(got '{ext_value}', expected '{self._value}')"
                 )
             )
 
