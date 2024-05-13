@@ -82,6 +82,11 @@ All versions prior to 0.9.0 are untracked.
   have been re-homed under `sigstore.models`
   ([#990](https://github.com/sigstore/sigstore-python/pull/990))
 
+* API: `oidc.IdentityToken.expected_certificate_subject` has been renamed
+  to `oidc.IdentityToken.federated_issuer` to better describe what it actually
+  contains. No functional changes have been made to it
+  ([#1016](https://github.com/sigstore/sigstore-python/pull/1016))
+
 ## [2.1.5]
 
 ## Fixed
