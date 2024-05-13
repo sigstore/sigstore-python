@@ -26,7 +26,7 @@ from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
 from rich.logging import RichHandler
 
-from sigstore import __version__
+from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import (
     DEFAULT_FULCIO_URL,
     ExpiredCertificate,
@@ -813,11 +813,31 @@ def _verify_identity(args: argparse.Namespace) -> None:
         )
 
         try:
-            verifier.verify_artifact(
-                input_=hashed,
-                bundle=bundle,
-                policy=policy_,
-            )
+            # If the bundle specifies a DSSE envelope, perform DSSE verification
+            # and assert that the inner payload is an in-toto statement bound
+            # to a subject matching the input's digest.
+            if bundle._dsse_envelope:
+                with file.open(mode="rb", buffering=0) as io:
+                    digest = sha256_digest(io)
+
+                type_, payload = verifier.verify_dsse(bundle=bundle, policy=policy_)
+                if type_ != dsse.Envelope._TYPE:
+                    raise VerificationError(
+                        f"expected JSON payload for DSSE, got {type_}"
+                    )
+
+                stmt = dsse.Statement(payload)
+                if not stmt._matches_digest(digest):
+                    raise VerificationError(
+                        f"in-toto statement has no subject for digest {digest.digest.hex()}"
+                    )
+            else:
+                verifier.verify_artifact(
+                    input_=hashed,
+                    bundle=bundle,
+                    policy=policy_,
+                )
+
             print(f"OK: {file}")
         except VerificationError as exc:
             _logger.error(f"FAIL: {file}")
@@ -851,7 +871,30 @@ def _verify_github(args: argparse.Namespace) -> None:
     verifier, materials = _collect_verification_state(args)
     for file, hashed, bundle in materials:
         try:
-            verifier.verify_artifact(input_=hashed, bundle=bundle, policy=policy_)
+            # If the bundle specifies a DSSE envelope, perform DSSE verification
+            # and assert that the inner payload is an in-toto statement bound
+            # to a subject matching the input's digest.
+            if bundle._dsse_envelope:
+                with file.open(mode="rb", buffering=0) as io:
+                    digest = sha256_digest(io)
+
+                type_, payload = verifier.verify_dsse(bundle=bundle, policy=policy_)
+                if type_ != dsse.Envelope._TYPE:
+                    raise VerificationError(
+                        f"expected JSON payload for DSSE, got {type_}"
+                    )
+
+                stmt = dsse.Statement(payload)
+                if not stmt._matches_digest(digest):
+                    raise VerificationError(
+                        f"in-toto statement has no subject for digest {digest.digest.hex()}"
+                    )
+            else:
+                verifier.verify_artifact(
+                    input_=hashed,
+                    bundle=bundle,
+                    policy=policy_,
+                )
             print(f"OK: {file}")
         except VerificationError as exc:
             _logger.error(f"FAIL: {file}")
