@@ -35,7 +35,7 @@ dependencies = [
   "requests",
   "rich ~= 13.0",
   "rfc8785 ~= 0.1.2",
-  "sigstore-protobuf-specs ~= 0.3.1",
+  "sigstore-protobuf-specs ~= 0.3.2",
   # NOTE(ww): Under active development, so strictly pinned.
   "sigstore-rekor-types == 0.0.13",
   "tuf ~= 4.0",

@@ -105,6 +105,11 @@ class Key:
         Construct a key from the given Sigstore PublicKey message.
         """
 
+        # NOTE: `raw_bytes` is marked as `optional` in the `PublicKey` message,
+        # for unclear reasons.
+        if not public_key.raw_bytes:
+            raise VerificationError("public key is empty")
+
         hash_algorithm: hashes.HashAlgorithm
         if public_key.key_details in self._RSA_SHA_256_DETAILS:
             hash_algorithm = hashes.SHA256()
