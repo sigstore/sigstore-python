@@ -31,6 +31,7 @@ import jwt
 import requests
 from pydantic import BaseModel, StrictStr
 
+from sigstore._internal import USER_AGENT
 from sigstore.errors import Error, NetworkError
 
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
@@ -255,12 +256,15 @@ class Issuer:
         which is then used to bootstrap the issuer's state (such
         as authorization and token endpoints).
         """
+        self.session = requests.Session()
+        self.session.headers.update({"User-Agent": USER_AGENT})
+
         oidc_config_url = urllib.parse.urljoin(
             f"{base_url}/", ".well-known/openid-configuration"
         )
 
         try:
-            resp: requests.Response = requests.get(oidc_config_url, timeout=30)
+            resp: requests.Response = self.session.get(oidc_config_url, timeout=30)
         except (requests.ConnectionError, requests.Timeout) as exc:
             raise NetworkError from exc
 
@@ -352,7 +356,7 @@ class Issuer:
         )
         logging.debug(f"PAYLOAD: data={data}")
         try:
-            resp: requests.Response = requests.post(
+            resp = self.session.post(
                 self.oidc_config.token_endpoint,
                 data=data,
                 auth=auth,

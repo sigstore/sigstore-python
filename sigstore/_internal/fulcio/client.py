@@ -44,6 +44,7 @@ from cryptography.x509.certificate_transparency import (
 )
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from sigstore._internal import USER_AGENT
 from sigstore._internal.sct import (
     UnexpectedSctCountException,
     _get_precertificate_signed_certificate_timestamps,
@@ -338,6 +339,11 @@ class FulcioClient:
         _logger.debug(f"Fulcio client using URL: {url}")
         self.url = url
         self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "User-Agent": USER_AGENT,
+            }
+        )
 
     def __del__(self) -> None:
         """
