@@ -813,31 +813,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
         )
 
         try:
-            # If the bundle specifies a DSSE envelope, perform DSSE verification
-            # and assert that the inner payload is an in-toto statement bound
-            # to a subject matching the input's digest.
-            if bundle._dsse_envelope:
-                with file.open(mode="rb", buffering=0) as io:
-                    digest = sha256_digest(io)
-
-                type_, payload = verifier.verify_dsse(bundle=bundle, policy=policy_)
-                if type_ != dsse.Envelope._TYPE:
-                    raise VerificationError(
-                        f"expected JSON payload for DSSE, got {type_}"
-                    )
-
-                stmt = dsse.Statement(payload)
-                if not stmt._matches_digest(digest):
-                    raise VerificationError(
-                        f"in-toto statement has no subject for digest {digest.digest.hex()}"
-                    )
-            else:
-                verifier.verify_artifact(
-                    input_=hashed,
-                    bundle=bundle,
-                    policy=policy_,
-                )
-
+            _verify_common(verifier, hashed, bundle, policy_)
             print(f"OK: {file}")
         except Error as exc:
             _logger.error(f"FAIL: {file}")
@@ -871,34 +847,46 @@ def _verify_github(args: argparse.Namespace) -> None:
     verifier, materials = _collect_verification_state(args)
     for file, hashed, bundle in materials:
         try:
-            # If the bundle specifies a DSSE envelope, perform DSSE verification
-            # and assert that the inner payload is an in-toto statement bound
-            # to a subject matching the input's digest.
-            if bundle._dsse_envelope:
-                with file.open(mode="rb", buffering=0) as io:
-                    digest = sha256_digest(io)
-
-                type_, payload = verifier.verify_dsse(bundle=bundle, policy=policy_)
-                if type_ != dsse.Envelope._TYPE:
-                    raise VerificationError(
-                        f"expected JSON payload for DSSE, got {type_}"
-                    )
-
-                stmt = dsse.Statement(payload)
-                if not stmt._matches_digest(digest):
-                    raise VerificationError(
-                        f"in-toto statement has no subject for digest {digest.digest.hex()}"
-                    )
-            else:
-                verifier.verify_artifact(
-                    input_=hashed,
-                    bundle=bundle,
-                    policy=policy_,
-                )
+            _verify_common(verifier, hashed, bundle, policy_)
             print(f"OK: {file}")
         except Error as exc:
             _logger.error(f"FAIL: {file}")
             exc.log_and_exit(_logger, args.verbose >= 1)
+
+
+def _verify_common(
+    verifier: Verifier,
+    hashed: Hashed,
+    bundle: Bundle,
+    policy_: policy.VerificationPolicy,
+) -> None:
+    """
+    Common verification handling.
+
+    This dispatches to either artifact or DSSE verification, depending on
+    `bundle`'s inner type.
+    """
+
+    # If the bundle specifies a DSSE envelope, perform DSSE verification
+    # and assert that the inner payload is an in-toto statement bound
+    # to a subject matching the input's digest.
+    if bundle._dsse_envelope:
+        type_, payload = verifier.verify_dsse(bundle=bundle, policy=policy_)
+        if type_ != dsse.Envelope._TYPE:
+            raise VerificationError(f"expected JSON payload for DSSE, got {type_}")
+
+        stmt = dsse.Statement(payload)
+        if not stmt._matches_digest(hashed):
+            raise VerificationError(
+                f"in-toto statement has no subject for digest {hashed.digest.hex()}"
+            )
+    else:
+        verifier.verify_artifact(
+            input_=hashed,
+            bundle=bundle,
+            policy=policy_,
+        )
+    pass
 
 
 def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
