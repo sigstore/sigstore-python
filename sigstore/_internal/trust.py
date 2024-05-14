@@ -223,6 +223,11 @@ class TrustedRoot:
     """
 
     def __init__(self, inner: _TrustedRoot):
+        """
+        Construct a new `TrustedRoot`.
+
+        @api private
+        """
         self._inner = inner
 
     @classmethod
