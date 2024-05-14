@@ -165,7 +165,12 @@ class Signer:
             cert = certificate_response.cert
             chain = certificate_response.chain
 
-            verify_sct(sct, cert, chain, self._signing_ctx._trusted_root.ct_keyring())
+            verify_sct(
+                sct,
+                cert,
+                chain,
+                self._signing_ctx._trusted_root.ct_keyring(KeyringPurpose.SIGN),
+            )
 
             _logger.debug("Successfully verified SCT...")
 
@@ -311,10 +316,10 @@ class SigningContext:
         """
         Return a `SigningContext` instance configured against Sigstore's production-level services.
         """
-        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.SIGN)
-        rekor = RekorClient.production()
         return cls(
-            fulcio=FulcioClient.production(), rekor=rekor, trusted_root=trusted_root
+            fulcio=FulcioClient.production(),
+            rekor=RekorClient.production(),
+            trusted_root=TrustedRoot.production(),
         )
 
     @classmethod
@@ -322,10 +327,10 @@ class SigningContext:
         """
         Return a `SignerContext` instance configured against Sigstore's staging-level services.
         """
-        trusted_root = TrustedRoot.staging(purpose=KeyringPurpose.SIGN)
-        rekor = RekorClient.staging()
         return cls(
-            fulcio=FulcioClient.staging(), rekor=rekor, trusted_root=trusted_root
+            fulcio=FulcioClient.staging(),
+            rekor=RekorClient.staging(),
+            trusted_root=TrustedRoot.staging(),
         )
 
     @contextmanager

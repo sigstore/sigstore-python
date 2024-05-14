@@ -81,10 +81,9 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's production-level services.
         """
-        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.VERIFY)
         return cls(
             rekor=RekorClient.production(),
-            trusted_root=trusted_root,
+            trusted_root=TrustedRoot.production(),
         )
 
     @classmethod
@@ -92,10 +91,9 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's staging-level services.
         """
-        trusted_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
         return cls(
             rekor=RekorClient.staging(),
-            trusted_root=trusted_root,
+            trusted_root=TrustedRoot.staging(),
         )
 
     def _verify_common_signing_cert(
@@ -166,7 +164,7 @@ class Verifier:
                 sct,
                 cert,
                 [parent_cert.to_cryptography() for parent_cert in chain],
-                self._trusted_root.ct_keyring(),
+                self._trusted_root.ct_keyring(KeyringPurpose.VERIFY),
             )
         except VerificationError as e:
             raise VerificationError(f"failed to verify SCT on signing certificate: {e}")
@@ -190,7 +188,7 @@ class Verifier:
         # (5): verify the inclusion promise for the log entry, if present.
         entry = bundle.log_entry
         try:
-            entry._verify(self._trusted_root.rekor_keyring())
+            entry._verify(self._trusted_root.rekor_keyring(KeyringPurpose.VERIFY))
         except VerificationError as exc:
             raise VerificationError(f"invalid log entry: {exc}")
 
