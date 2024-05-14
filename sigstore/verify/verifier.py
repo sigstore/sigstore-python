@@ -44,7 +44,7 @@ from sigstore._internal.sct import (
     _get_precertificate_signed_certificate_timestamps,
     verify_sct,
 )
-from sigstore._internal.trust import KeyringPurpose, TrustedRoot
+from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
@@ -94,6 +94,18 @@ class Verifier:
         return cls(
             rekor=RekorClient.staging(),
             trusted_root=TrustedRoot.staging(),
+        )
+
+    @classmethod
+    def _from_trust_config(cls, trust_config: ClientTrustConfig) -> Verifier:
+        """
+        Create a `Verifier` from the given `ClientTrustConfig`.
+
+        @api private
+        """
+        return cls(
+            rekor=RekorClient(trust_config._inner.signing_config.tlog_urls[0]),
+            trusted_root=trust_config.trusted_root,
         )
 
     def _verify_common_signing_cert(

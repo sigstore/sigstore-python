@@ -344,20 +344,22 @@ class ClientTrustConfig:
     """
 
     @classmethod
-    def from_json(cls, raw: str) -> None:
+    def from_json(cls, raw: str) -> ClientTrustConfig:
         """
         Deserialize the given client trust config.
         """
         inner = _ClientTrustConfig().from_json(raw)
-        cls(inner)
+        return cls(inner)
 
     def __init__(self, inner: _ClientTrustConfig) -> None:
         """
         @api private
         """
         self._inner = inner
-        # self._
 
-    # @property
-    # def trusted_root(self) -> TrustedRoot:
-    #     pass
+    @property
+    def trusted_root(self) -> TrustedRoot:
+        """
+        Return the interior root of trust, as a `TrustedRoot`.
+        """
+        return TrustedRoot(self._inner.trusted_root)

@@ -29,13 +29,13 @@ from rich.logging import RichHandler
 from sigstore import __version__
 from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
+from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
-    STAGING_OAUTH_ISSUER_URL,
     ExpiredIdentity,
     IdentityToken,
     Issuer,
@@ -210,7 +210,7 @@ def _parser() -> argparse.ArgumentParser:
     global_instance_options.add_argument(
         "--trust-config",
         metavar="FILE",
-        type=str,
+        type=Path,
         help="The client trust configuration to use",
     )
     subcommands = parser.add_subparsers(
@@ -515,9 +515,9 @@ def _sign(args: argparse.Namespace) -> None:
     if args.staging:
         _logger.debug("sign: staging instances requested")
         signing_ctx = SigningContext.staging()
-        args.oidc_issuer = STAGING_OAUTH_ISSUER_URL
     elif args.trust_config:
-        raise ValueError("fuck")
+        trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
+        signing_ctx = SigningContext._from_trust_config(trust_config)
     else:
         # If the user didn't request the staging instance or pass in an
         # explicit client trust config, we're using the public good (i.e.
@@ -679,7 +679,8 @@ def _collect_verification_state(
         _logger.debug("verify: staging instances requested")
         verifier = Verifier.staging()
     elif args.trust_config:
-        raise ValueError("fuck")
+        trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
+        verifier = Verifier._from_trust_config(trust_config)
     else:
         verifier = Verifier.production()
 
