@@ -25,8 +25,9 @@ from urllib import parse
 
 import platformdirs
 from tuf.api import exceptions as TUFExceptions
-from tuf.ngclient import RequestsFetcher, Updater
+from tuf.ngclient import Updater, UpdaterConfig
 
+from sigstore import __version__
 from sigstore._utils import read_embedded
 from sigstore.errors import RootError, TUFError
 
@@ -34,18 +35,6 @@ _logger = logging.getLogger(__name__)
 
 DEFAULT_TUF_URL = "https://tuf-repo-cdn.sigstore.dev"
 STAGING_TUF_URL = "https://tuf-repo-cdn.sigstage.dev"
-
-
-@lru_cache()
-def _get_fetcher() -> RequestsFetcher:
-    # NOTE: We poke into the underlying fetcher here to set a more reasonable timeout.
-    # The default timeout is 4 seconds, which can cause spurious timeout errors on
-    # CI systems like GitHub Actions (where traffic may be delayed/deprioritized due
-    # to network load).
-    fetcher = RequestsFetcher()
-    fetcher.socket_timeout = 30
-
-    return fetcher
 
 
 def _get_dirs(url: str) -> tuple[Path, Path]:
@@ -133,7 +122,7 @@ class TrustUpdater:
                 metadata_base_url=self._repo_url,
                 target_base_url=parse.urljoin(f"{self._repo_url}/", "targets/"),
                 target_dir=str(self._targets_dir),
-                fetcher=_get_fetcher(),
+                config=UpdaterConfig(app_user_agent=f"sigstore-python/{__version__}"),
             )
             try:
                 self._updater.refresh()

@@ -33,6 +33,7 @@ from id import (
 )
 from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface
+from tuf.ngclient.updater import requests_fetcher
 
 from sigstore._internal import tuf
 from sigstore._internal.rekor import _hashedrekord_from_parts
@@ -225,7 +226,7 @@ def null_policy():
 
 @pytest.fixture
 def mock_staging_tuf(monkeypatch, tuf_dirs):
-    """Mock that prevents tuf module from making requests: it returns staging
+    """Mock that prevents python-tuf from making requests: it returns staging
     assets from a local directory instead
 
     Return a tuple of dicts with the requested files and counts"""
@@ -244,7 +245,9 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
             failure[filename] += 1
             raise DownloadHTTPError("File not found", 404)
 
-    monkeypatch.setattr(tuf, "_get_fetcher", lambda: MockFetcher())
+    monkeypatch.setattr(
+        requests_fetcher, "RequestsFetcher", lambda app_user_agent: MockFetcher()
+    )
 
     return success, failure
 

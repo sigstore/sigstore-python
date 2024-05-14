@@ -205,9 +205,9 @@ class IdentityToken:
         return self._iss
 
     @property
-    def expected_certificate_subject(self) -> str:
+    def federated_issuer(self) -> str:
         """
-        Returns a URL identifying the **expected** subject for any Sigstore
+        Returns a URL identifying the **federated** issuer for any Sigstore
         certificate issued against this identity token.
 
         The behavior of this field is slightly subtle: for non-federated
@@ -218,7 +218,7 @@ class IdentityToken:
         implementation-defined claim.
 
         This attribute exists so that clients who wish to inspect the expected
-        subject of their certificates can do so without relying on
+        underlying issuer of their certificates can do so without relying on
         implementation-specific behavior.
         """
         if self._federated_issuer is not None:
