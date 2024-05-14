@@ -834,7 +834,9 @@ def _verify_github(args: argparse.Namespace) -> None:
         inner_policies.append(
             policy.Identity(
                 identity=args.cert_identity,
-                issuer="https://token.actions.githubusercontent.com",
+                # We always explicitly check the issuer below, so configuring
+                # it here is unnecessary.
+                issuer=None,
             )
         )
     if args.workflow_trigger:
@@ -850,6 +852,13 @@ def _verify_github(args: argparse.Namespace) -> None:
 
     if not inner_policies:
         _die(args, "No verification options supplied")
+
+    # No matter what the user configures above, we require the OIDC issuer to
+    # be GitHub Actions. We add this below the check above, since it doesn't
+    # constitute a sufficient policy check on its own.
+    inner_policies.append(
+        policy.OIDCIssuer("https://token.actions.githubusercontent.com")
+    )
 
     policy_ = policy.AllOf(inner_policies)
 
