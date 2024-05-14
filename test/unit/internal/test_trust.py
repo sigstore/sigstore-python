@@ -37,7 +37,7 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
 
-    trust_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
+    trust_root = TrustedRoot.staging()
     # metadata was "downloaded" from staging
     expected = ["root.json", "snapshot.json", "targets.json", "timestamp.json"]
     assert sorted(os.listdir(data_dir)) == expected
@@ -53,15 +53,15 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
-    trust_root.ct_keyring()
-    trust_root.rekor_keyring()
+    trust_root.ct_keyring(KeyringPurpose.VERIFY)
+    trust_root.rekor_keyring(KeyringPurpose.VERIFY)
 
     # no new requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
     # New trust root (and TrustUpdater instance), same cache dirs
-    trust_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
+    trust_root = TrustedRoot.staging()
 
     # Expect new timestamp and root requests
     expected_requests["timestamp.json"] += 1
@@ -69,8 +69,8 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
-    trust_root.ct_keyring()
-    trust_root.rekor_keyring()
+    trust_root.ct_keyring(purpose=KeyringPurpose.VERIFY)
+    trust_root.rekor_keyring(purpose=KeyringPurpose.VERIFY)
     # Expect no requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
@@ -83,7 +83,7 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
 
-    trust_root = TrustedRoot.staging(offline=True, purpose=KeyringPurpose.VERIFY)
+    trust_root = TrustedRoot.staging(offline=True)
 
     # Only the embedded root is in local TUF metadata, nothing is downloaded
     expected = ["root.json"]
@@ -91,8 +91,8 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     assert reqs == {}
     assert fail_reqs == {}
 
-    trust_root.ct_keyring()
-    trust_root.rekor_keyring()
+    trust_root.ct_keyring(purpose=KeyringPurpose.VERIFY)
+    trust_root.rekor_keyring(purpose=KeyringPurpose.VERIFY)
 
     # Still no requests
     assert reqs == {}
@@ -153,35 +153,71 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     ]
 
     # Assert that trust root from TUF contains the expected keys/certs
-    trust_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
+    trust_root = TrustedRoot.staging()
     assert ctfe_keys[0] in get_public_bytes(
-        [k.key for k in trust_root.ct_keyring()._keyring.values()]
+        [
+            k.key
+            for k in trust_root.ct_keyring(
+                purpose=KeyringPurpose.VERIFY
+            )._keyring.values()
+        ]
     )
     assert (
-        get_public_bytes([k.key for k in trust_root.rekor_keyring()._keyring.values()])
+        get_public_bytes(
+            [
+                k.key
+                for k in trust_root.rekor_keyring(
+                    purpose=KeyringPurpose.VERIFY
+                )._keyring.values()
+            ]
+        )
         == rekor_keys
     )
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from offline TUF contains the expected keys/certs
-    trust_root = TrustedRoot.staging(offline=True, purpose=KeyringPurpose.VERIFY)
+    trust_root = TrustedRoot.staging(offline=True)
     assert ctfe_keys[0] in get_public_bytes(
-        [k.key for k in trust_root.ct_keyring()._keyring.values()]
+        [
+            k.key
+            for k in trust_root.ct_keyring(
+                purpose=KeyringPurpose.VERIFY
+            )._keyring.values()
+        ]
     )
     assert (
-        get_public_bytes([k.key for k in trust_root.rekor_keyring()._keyring.values()])
+        get_public_bytes(
+            [
+                k.key
+                for k in trust_root.rekor_keyring(
+                    purpose=KeyringPurpose.VERIFY
+                )._keyring.values()
+            ]
+        )
         == rekor_keys
     )
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from file contains the expected keys/certs
     path = tuf_asset.target_path("trusted_root.json")
-    trust_root = TrustedRoot.from_file(path, purpose=KeyringPurpose.VERIFY)
+    trust_root = TrustedRoot.from_file(path)
     assert ctfe_keys[0] in get_public_bytes(
-        [k.key for k in trust_root.ct_keyring()._keyring.values()]
+        [
+            k.key
+            for k in trust_root.ct_keyring(
+                purpose=KeyringPurpose.VERIFY
+            )._keyring.values()
+        ]
     )
     assert (
-        get_public_bytes([k.key for k in trust_root.rekor_keyring()._keyring.values()])
+        get_public_bytes(
+            [
+                k.key
+                for k in trust_root.rekor_keyring(
+                    purpose=KeyringPurpose.VERIFY
+                )._keyring.values()
+            ]
+        )
         == rekor_keys
     )
     assert trust_root.get_fulcio_certs() == fulcio_certs
@@ -194,14 +230,14 @@ def test_trust_root_tuf_instance_error():
 
 def test_trust_root_tuf_ctfe_keys_error(monkeypatch):
     trust_root = TrustedRoot.staging(offline=True)
-    monkeypatch.setattr(trust_root, "ctlogs", [])
+    monkeypatch.setattr(trust_root._inner, "ctlogs", [])
     with pytest.raises(Exception, match="CTFE keys not found in trusted root"):
-        trust_root.ct_keyring()
+        trust_root.ct_keyring(purpose=KeyringPurpose.VERIFY)
 
 
 def test_trust_root_fulcio_certs_error(tuf_asset, monkeypatch):
     trust_root = TrustedRoot.staging(offline=True)
-    monkeypatch.setattr(trust_root, "certificate_authorities", [])
+    monkeypatch.setattr(trust_root._inner, "certificate_authorities", [])
     with pytest.raises(
         Exception, match="Fulcio certificates not found in trusted root"
     ):
