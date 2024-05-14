@@ -58,6 +58,10 @@ All versions prior to 0.9.0 are untracked.
 * **BREAKING API CHANGE**: `Verifier.verify(...)` now takes a `sigstore.models.Bundle`,
   instead of a `VerificationMaterials` ([#937](https://github.com/sigstore/sigstore-python/pull/937))
 
+* **BREAKING CLI CHANGE**: `sigstore sign` now emits `{input}.sigstore.json`
+  by default instead of `{input}.sigstore`, per the client specification
+  ([#1007](https://github.com/sigstore/sigstore-python/pull/1007))
+
 * sigstore-python now requires inclusion proofs in all signing and verification
   flows, regardless of bundle version of input types. Inputs that do not
   have an inclusion proof (such as detached materials) cause an online lookup
@@ -77,6 +81,11 @@ All versions prior to 0.9.0 are untracked.
 * API: `sigstore.transparency` has been removed, and its pre-existing APIs
   have been re-homed under `sigstore.models`
   ([#990](https://github.com/sigstore/sigstore-python/pull/990))
+
+* API: `oidc.IdentityToken.expected_certificate_subject` has been renamed
+  to `oidc.IdentityToken.federated_issuer` to better describe what it actually
+  contains. No functional changes have been made to it
+  ([#1016](https://github.com/sigstore/sigstore-python/pull/1016))
 
 ## [2.1.5]
 

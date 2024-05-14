@@ -243,7 +243,7 @@ def _parser() -> argparse.ArgumentParser:
         "--no-default-files",
         action="store_true",
         default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
-        help="Don't emit the default output files ({input}.sigstore)",
+        help="Don't emit the default output files ({input}.sigstore.json)",
     )
     output_options.add_argument(
         "--signature",
@@ -487,7 +487,7 @@ def _sign(args: argparse.Namespace) -> None:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         if not bundle and not args.no_default_files:
-            bundle = output_dir / f"{file.name}.sigstore"
+            bundle = output_dir / f"{file.name}.sigstore.json"
 
         if not args.overwrite:
             extants = []

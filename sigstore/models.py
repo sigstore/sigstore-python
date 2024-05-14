@@ -243,7 +243,7 @@ class LogEntry:
             log_index=self.log_index,
             log_id=common_v1.LogId(key_id=bytes.fromhex(self.log_id)),
             integrated_time=self.integrated_time,
-            inclusion_promise=inclusion_promise,
+            inclusion_promise=inclusion_promise,  # type: ignore[arg-type]
             inclusion_proof=inclusion_proof,
             canonicalized_body=base64.b64decode(self.body),
         )
@@ -494,8 +494,7 @@ class Bundle:
         """
         Return a JSON encoding of this bundle.
         """
-        # TODO: Unclear why mypy doesn't like this.
-        return self._inner.to_json()  # type: ignore[no-any-return]
+        return self._inner.to_json()
 
     @classmethod
     def from_parts(cls, cert: Certificate, sig: bytes, log_entry: LogEntry) -> Bundle:

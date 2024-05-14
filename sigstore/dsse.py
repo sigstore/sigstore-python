@@ -187,8 +187,7 @@ class Envelope:
         """
         Return a JSON string with this DSSE envelope's contents.
         """
-        # TODO: Unclear why mypy thinks this is returning `Any`.
-        return self._inner.to_json()  # type: ignore[no-any-return]
+        return self._inner.to_json()
 
 
 def _pae(type_: str, body: bytes) -> bytes:
@@ -217,7 +216,7 @@ def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
         _Envelope(
             payload=stmt._contents,
             payload_type=Envelope._TYPE,
-            signatures=[Signature(sig=signature, keyid=None)],
+            signatures=[Signature(sig=signature)],
         )
     )
 
@@ -244,6 +243,4 @@ def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:
         except InvalidSignature:
             raise VerificationError("DSSE: invalid signature")
 
-    # TODO: Remove ignore when protobuf-specs contains a py.typed marker.
-    # See: <https://github.com/sigstore/protobuf-specs/pull/287>
-    return evp._inner.payload  # type: ignore[no-any-return]
+    return evp._inner.payload

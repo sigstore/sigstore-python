@@ -162,8 +162,8 @@ OpenID Connect options:
                         False)
 
 Output options:
-  --no-default-files    Don't emit the default output files ({input}.sigstore)
-                        (default: False)
+  --no-default-files    Don't emit the default output files
+                        ({input}.sigstore.json) (default: False)
   --signature FILE, --output-signature FILE
                         Write a single signature to the given file; does not
                         work with multiple input files (default: None)
