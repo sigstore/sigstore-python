@@ -267,4 +267,4 @@ class TestIdentityToken:
         assert identity.in_validity_period()
         assert identity.identity == identity_value
         assert identity.issuer == iss
-        assert identity.expected_certificate_subject == iss if not fed_iss else fed_iss
+        assert identity.federated_issuer == iss if not fed_iss else fed_iss
