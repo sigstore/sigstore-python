@@ -95,9 +95,8 @@ All versions prior to 0.9.0 are untracked.
 * API: `policy.Identity` now takes an **optional** OIDC issuer, rather than a
   required one ([#1015](https://github.com/sigstore/sigstore-python/pull/1015))
 
-* CLI: `sigstore verify github` no longer requires the `--cert-identity` option.
-  Passing one or more alternative identity options (such as `--repository`)
-  is now sufficient
+* CLI: `sigstore verify github` now requires `--cert-identity` **or**
+  `--repository`, not just `--cert-identity`
   ([#1015](https://github.com/sigstore/sigstore-python/pull/1015))
 
 ## [2.1.5]
