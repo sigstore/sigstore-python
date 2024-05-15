@@ -28,6 +28,10 @@ All versions prior to 0.9.0 are untracked.
   for representing in-toto statements and DSSE envelopes
   ([#930](https://github.com/sigstore/sigstore-python/pull/930))
 
+* CLI: The `--trust-config` flag has been added as a global option,
+  enabling consistent "BYO PKI" uses of `sigstore` with a single flag
+  ([#1010](https://github.com/sigstore/sigstore-python/pull/1010))
+
 ### Removed
 
 * **BREAKING API CHANGE**: `SigningResult` has been removed.
@@ -43,6 +47,11 @@ All versions prior to 0.9.0 are untracked.
 * **BREAKING API CHANGE**: `VerificationResult` has been removed.
   The public verification and policy APIs now raise
   `sigstore.errors.VerificationError` on failure.
+
+* **BREAKING CLI CHANGE**: The `--rekor-url` and `--fulcio-url`
+  flags have been entirely removed. To configure a custom PKI, use
+  `--trust-config`
+  ([#1010](https://github.com/sigstore/sigstore-python/pull/1010))
 
 ### Changed
 
