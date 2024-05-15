@@ -55,7 +55,7 @@ from sigstore._utils import (
     key_id,
     load_der_public_key,
 )
-from sigstore.errors import MetadataError, VerificationError
+from sigstore.errors import Error, MetadataError, VerificationError
 
 
 def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
@@ -343,6 +343,17 @@ class ClientTrustConfig:
     Represents a Sigstore client's trust configuration, including a root of trust.
     """
 
+    class ClientTrustConfigType(str, Enum):
+        """
+        Known Sigstore client trust config media types.
+        """
+
+        CONFIG_0_1 = "application/vnd.dev.sigstore.clienttrustconfig.v0.1+json"
+
+        def __str__(self) -> str:
+            """Returns the variant's string value."""
+            return self.value
+
     @classmethod
     def from_json(cls, raw: str) -> ClientTrustConfig:
         """
@@ -356,6 +367,21 @@ class ClientTrustConfig:
         @api private
         """
         self._inner = inner
+        self._verify()
+
+    def _verify(self) -> None:
+        """
+        Performs various feats of heroism to ensure that the client trust config
+        is well-formed.
+        """
+
+        # The client trust config must have a recognized media type.
+        try:
+            ClientTrustConfig(self._inner.media_type)
+        except ValueError:
+            raise Error(
+                f"unsupported client trust config format: {self._inner.media_type}"
+            )
 
     @property
     def trusted_root(self) -> TrustedRoot:
