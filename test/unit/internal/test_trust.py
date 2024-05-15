@@ -31,6 +31,31 @@ from sigstore._utils import load_pem_public_key
 from sigstore.errors import Error, RootError
 
 
+class TestTrustedRoot:
+    def test_good(self, asset):
+        path = asset("trusted_root/trustedroot.v1.json")
+        root = TrustedRoot.from_file(path)
+
+        assert (
+            root._inner.media_type == TrustedRoot.TrustedRootType.TRUSTED_ROOT_0_1.value
+        )
+        assert len(root._inner.tlogs) == 1
+        assert len(root._inner.certificate_authorities) == 2
+        assert len(root._inner.ctlogs) == 2
+        assert len(root._inner.timestamp_authorities) == 1
+
+    def test_bad_media_type(self, asset):
+        path = asset("trusted_root/trustedroot.badtype.json")
+
+        with pytest.raises(
+            Error, match="unsupported trusted root format: bad-media-type"
+        ):
+            TrustedRoot.from_file(path)
+
+
+# TODO(ww): Move these into appropriate class-scoped tests.
+
+
 def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # start with empty target cache, empty local metadata dir
     data_dir, cache_dir = tuf_dirs
