@@ -377,7 +377,7 @@ class ClientTrustConfig:
 
         # The client trust config must have a recognized media type.
         try:
-            ClientTrustConfig(self._inner.media_type)
+            ClientTrustConfig.ClientTrustConfigType(self._inner.media_type)
         except ValueError:
             raise Error(
                 f"unsupported client trust config format: {self._inner.media_type}"
