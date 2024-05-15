@@ -22,12 +22,13 @@ from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
 from sigstore._internal.trust import (
+    ClientTrustConfig,
     KeyringPurpose,
     TrustedRoot,
     _is_timerange_valid,
 )
 from sigstore._utils import load_pem_public_key
-from sigstore.errors import RootError
+from sigstore.errors import Error, RootError
 
 
 def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
@@ -242,3 +243,23 @@ def test_trust_root_fulcio_certs_error(tuf_asset, monkeypatch):
         Exception, match="Fulcio certificates not found in trusted root"
     ):
         trust_root.get_fulcio_certs()
+
+
+class TestClientTrustConfig:
+    def test_good(self, asset):
+        path = asset("trust_config/config.v1.json")
+        config = ClientTrustConfig.from_json(path.read_text())
+
+        assert config._inner.signing_config.ca_url == "https://fakeca.example.com"
+        assert config._inner.signing_config.oidc_url == "https://fakeoidc.example.com"
+        assert config._inner.signing_config.tlog_urls == ["https://fakelog.example.com"]
+        assert config._inner.signing_config.tsa_urls == ["https://faketsa.example.com"]
+        assert isinstance(config.trusted_root, TrustedRoot)
+
+    def test_bad_media_type(self, asset):
+        path = asset("trust_config/config.badtype.json")
+
+        with pytest.raises(
+            Error, match="unsupported client trust config format: bad-media-type"
+        ):
+            ClientTrustConfig.from_json(path.read_text())

@@ -222,6 +222,17 @@ class TrustedRoot:
     The cryptographic root(s) of trust for a Sigstore instance.
     """
 
+    class TrustedRootType(str, Enum):
+        """
+        Known Sigstore trusted root media types.
+        """
+
+        TRUSTED_ROOT_0_1 = "application/vnd.dev.sigstore.trustedroot+json;version=0.1"
+
+        def __str__(self) -> str:
+            """Returns the variant's string value."""
+            return self.value
+
     def __init__(self, inner: _TrustedRoot):
         """
         Construct a new `TrustedRoot`.
@@ -229,6 +240,19 @@ class TrustedRoot:
         @api private
         """
         self._inner = inner
+        self._verify()
+
+    def _verify(self) -> None:
+        """
+        Performs various feats of heroism to ensure that the trusted root
+        is well-formed.
+        """
+
+        # The trusted root must have a recognized media type.
+        try:
+            TrustedRoot.TrustedRootType(self._inner.media_type)
+        except ValueError:
+            raise Error(f"unsupported trusted root format: {self._inner.media_type}")
 
     @classmethod
     def from_file(
