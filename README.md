@@ -373,9 +373,11 @@ $ python -m sigstore verify identity foo.txt bar.txt \
 Actions. `sigstore-python` signs releases via GitHub Actions, so the examples below are working
 examples of how you can verify a given `sigstore-python` release.
 
-As with `sigstore verify identity`, the `--cert-identity` flag is required. However, since we know
-that the signature was generated with an GitHub Actions ambient credential, the OIDC issuer is
-inferred.
+When using `sigstore verify github`, you must pass `--cert-identity` or `--repository`, or both.
+Unlike `sigstore verify identity`, `--cert-oidc-issuer` is **not** required (since it's
+inferred to be GitHub Actions).
+
+Verifying with `--cert-identity`:
 
 ```console
 $ python -m sigstore verify github sigstore-0.10.0-py3-none-any.whl \
@@ -383,7 +385,15 @@ $ python -m sigstore verify github sigstore-0.10.0-py3-none-any.whl \
     --cert-identity https://github.com/sigstore/sigstore-python/.github/workflows/release.yml@refs/tags/v0.10.0
 ```
 
-Additionally, GitHub Actions specific claims can be verified like so:
+Verifying with `--repository`:
+
+```console
+$ python -m sigstore verify github sigstore-0.10.0-py3-none-any.whl \
+    --bundle sigstore-0.10.0-py3-none-any.whl.bundle \
+    --repository sigstore/sigstore-python
+```
+
+Additional GitHub Actions specific claims can be verified like so:
 
 ```console
 $ python -m sigstore verify github sigstore-0.10.0-py3-none-any.whl \
