@@ -32,6 +32,11 @@ All versions prior to 0.9.0 are untracked.
   enabling consistent "BYO PKI" uses of `sigstore` with a single flag
   ([#1010](https://github.com/sigstore/sigstore-python/pull/1010))
 
+* CLI: The `sigstore verify` subcommands can now verify bundles containing
+  DSSE entries, such as those produced by
+  [GitHub Artifact Attestations](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds)
+  ([#1015](https://github.com/sigstore/sigstore-python/pull/1015))
+
 ### Removed
 
 * **BREAKING API CHANGE**: `SigningResult` has been removed.
@@ -95,6 +100,13 @@ All versions prior to 0.9.0 are untracked.
   to `oidc.IdentityToken.federated_issuer` to better describe what it actually
   contains. No functional changes have been made to it
   ([#1016](https://github.com/sigstore/sigstore-python/pull/1016))
+
+* API: `policy.Identity` now takes an **optional** OIDC issuer, rather than a
+  required one ([#1015](https://github.com/sigstore/sigstore-python/pull/1015))
+
+* CLI: `sigstore verify github` now requires `--cert-identity` **or**
+  `--repository`, not just `--cert-identity`
+  ([#1015](https://github.com/sigstore/sigstore-python/pull/1015))
 
 ## [2.1.5]
 

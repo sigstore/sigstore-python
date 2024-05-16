@@ -190,9 +190,9 @@ to by a particular OIDC provider (like `https://github.com/login/oauth`).
 <!-- @begin-sigstore-verify-identity-help@ -->
 ```
 usage: sigstore verify identity [-h] [-v] [--certificate FILE]
-                                [--signature FILE] [--bundle FILE]
-                                --cert-identity IDENTITY [--offline]
-                                --cert-oidc-issuer URL
+                                [--signature FILE] [--bundle FILE] [--offline]
+                                --cert-identity IDENTITY --cert-oidc-issuer
+                                URL
                                 FILE [FILE ...]
 
 optional arguments:
@@ -211,11 +211,11 @@ Verification inputs:
   FILE                  The file to verify
 
 Verification options:
+  --offline             Perform offline verification; requires a Sigstore
+                        bundle (default: False)
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
                         Alternative Name (default: None)
-  --offline             Perform offline verification; requires a Sigstore
-                        bundle (default: False)
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
                         OIDC issuer extension (default: None)
@@ -232,13 +232,13 @@ claims more precisely than `sigstore verify identity` allows:
 <!-- @begin-sigstore-verify-github-help@ -->
 ```
 usage: sigstore verify github [-h] [-v] [--certificate FILE]
-                              [--signature FILE] [--bundle FILE]
-                              --cert-identity IDENTITY [--offline]
-                              [--trigger EVENT] [--sha SHA] [--name NAME]
-                              [--repository REPO] [--ref REF]
+                              [--signature FILE] [--bundle FILE] [--offline]
+                              [--cert-identity IDENTITY] [--trigger EVENT]
+                              [--sha SHA] [--name NAME] [--repository REPO]
+                              [--ref REF]
                               FILE [FILE ...]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
@@ -254,11 +254,11 @@ Verification inputs:
   FILE                  The file to verify
 
 Verification options:
+  --offline             Perform offline verification; requires a Sigstore
+                        bundle (default: False)
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
                         Alternative Name (default: None)
-  --offline             Perform offline verification; requires a Sigstore
-                        bundle (default: False)
   --trigger EVENT       The GitHub Actions event name that triggered the
                         workflow (default: None)
   --sha SHA             The `git` commit SHA that the workflow run was invoked

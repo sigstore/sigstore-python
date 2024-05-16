@@ -25,10 +25,12 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictStr, ValidationError
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 from sigstore_protobuf_specs.io.intoto import Envelope as _Envelope
 from sigstore_protobuf_specs.io.intoto import Signature
 
-from sigstore.errors import VerificationError
+from sigstore.errors import Error, VerificationError
+from sigstore.hashes import Hashed
 
 _logger = logging.getLogger(__name__)
 
@@ -97,9 +99,28 @@ class Statement:
         """
         self._contents = contents
         try:
-            self._statement = _Statement.model_validate_json(contents)
+            self._inner = _Statement.model_validate_json(contents)
         except ValidationError:
-            raise ValueError("malformed in-toto statement")
+            raise Error("malformed in-toto statement")
+
+    def _matches_digest(self, digest: Hashed) -> bool:
+        """
+        Returns a boolean indicating whether this in-toto Statement contains a subject
+        matching the given digest. The subject's name is **not** checked.
+
+        No digests other than SHA256 are currently supported.
+        """
+        if digest.algorithm != HashAlgorithm.SHA2_256:
+            raise VerificationError(f"unexpected digest algorithm: {digest.algorithm}")
+
+        for sub in self._inner.subjects:
+            sub_digest = sub.digest.root.get("sha256")
+            if sub_digest is None:
+                continue
+            if sub_digest == digest.digest.hex():
+                return True
+
+        return False
 
     def _pae(self) -> bytes:
         """
@@ -160,7 +181,7 @@ class _StatementBuilder:
                 predicate=self._predicate,
             )
         except ValidationError as e:
-            raise ValueError(f"invalid statement: {e}")
+            raise Error(f"invalid statement: {e}")
 
         return Statement(stmt.model_dump_json(by_alias=True).encode())
 
