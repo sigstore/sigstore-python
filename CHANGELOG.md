@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.0.0]
+
+Maintainers' note: this is a major release, with significant public API and CLI
+changes. We **strongly** recommend you read the entries below to fully
+understand the changes between `2.x` and `3.x`.
+
 ### Added
 
 * API: `Signer.sign_artifact()` has been added, replacing the removed
@@ -432,7 +438,8 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v2.1.5...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/sigstore/sigstore-python/compare/v2.1.5...v3.0.0
 [2.1.5]: https://github.com/sigstore/sigstore-python/compare/v2.1.4...v2.1.5
 [2.1.4]: https://github.com/sigstore/sigstore-python/compare/v2.1.3...v2.1.4
 [2.1.3]: https://github.com/sigstore/sigstore-python/compare/v2.1.2...v2.1.3
