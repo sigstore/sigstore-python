@@ -124,7 +124,7 @@ jobs:
       - name: publish
         uses: pypa/gh-action-pypi-publish@81e9d935c883d0b210363ab89cf05f3894778450 # v1.8.14
         with:
-          packages_dir: built-packages/
+          packages-dir: built-packages/
 
   release-github:
     needs: [build, generate-provenance]
