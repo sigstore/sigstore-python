@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Trust root management for sigstore-python.
+Client trust configuration and trust root management for sigstore-python.
 """
 
 from __future__ import annotations
@@ -42,6 +42,9 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     TransparencyLogInstance,
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    ClientTrustConfig as _ClientTrustConfig,
+)
+from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     TrustedRoot as _TrustedRoot,
 )
 
@@ -52,7 +55,7 @@ from sigstore._utils import (
     key_id,
     load_der_public_key,
 )
-from sigstore.errors import MetadataError, VerificationError
+from sigstore.errors import Error, MetadataError, VerificationError
 
 
 def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
@@ -214,28 +217,57 @@ class KeyringPurpose(str, Enum):
         return self.value
 
 
-class TrustedRoot(_TrustedRoot):
-    """Complete set of trusted entities for a Sigstore client"""
+class TrustedRoot:
+    """
+    The cryptographic root(s) of trust for a Sigstore instance.
+    """
 
-    purpose: KeyringPurpose
+    class TrustedRootType(str, Enum):
+        """
+        Known Sigstore trusted root media types.
+        """
+
+        TRUSTED_ROOT_0_1 = "application/vnd.dev.sigstore.trustedroot+json;version=0.1"
+
+        def __str__(self) -> str:
+            """Returns the variant's string value."""
+            return self.value
+
+    def __init__(self, inner: _TrustedRoot):
+        """
+        Construct a new `TrustedRoot`.
+
+        @api private
+        """
+        self._inner = inner
+        self._verify()
+
+    def _verify(self) -> None:
+        """
+        Performs various feats of heroism to ensure that the trusted root
+        is well-formed.
+        """
+
+        # The trusted root must have a recognized media type.
+        try:
+            TrustedRoot.TrustedRootType(self._inner.media_type)
+        except ValueError:
+            raise Error(f"unsupported trusted root format: {self._inner.media_type}")
 
     @classmethod
     def from_file(
         cls,
         path: str,
-        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
     ) -> TrustedRoot:
         """Create a new trust root from file"""
-        trusted_root: TrustedRoot = cls().from_json(Path(path).read_bytes())
-        trusted_root.purpose = purpose
-        return trusted_root
+        inner = _TrustedRoot().from_json(Path(path).read_bytes())
+        return cls(inner)
 
     @classmethod
     def from_tuf(
         cls,
         url: str,
         offline: bool = False,
-        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
     ) -> TrustedRoot:
         """Create a new trust root from a TUF repository.
 
@@ -243,37 +275,34 @@ class TrustedRoot(_TrustedRoot):
         update the trust root from remote TUF repository.
         """
         path = TrustUpdater(url, offline).get_trusted_root_path()
-        return cls.from_file(path, purpose)
+        return cls.from_file(path)
 
     @classmethod
     def production(
         cls,
         offline: bool = False,
-        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
     ) -> TrustedRoot:
         """Create new trust root from Sigstore production TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
-        return cls.from_tuf(DEFAULT_TUF_URL, offline, purpose)
+        return cls.from_tuf(DEFAULT_TUF_URL, offline)
 
     @classmethod
     def staging(
         cls,
         offline: bool = False,
-        purpose: KeyringPurpose = KeyringPurpose.VERIFY,
     ) -> TrustedRoot:
         """Create new trust root from Sigstore staging TUF repository.
 
         If `offline`, will use trust root in local TUF cache. Otherwise will
         update the trust root from remote TUF repository.
         """
-        return cls.from_tuf(STAGING_TUF_URL, offline, purpose)
+        return cls.from_tuf(STAGING_TUF_URL, offline)
 
-    @staticmethod
     def _get_tlog_keys(
-        tlogs: list[TransparencyLogInstance], purpose: KeyringPurpose
+        self, tlogs: list[TransparencyLogInstance], purpose: KeyringPurpose
     ) -> Iterable[_PublicKey]:
         """
         Yields an iterator of public keys for transparency log instances that
@@ -300,17 +329,17 @@ class TrustedRoot(_TrustedRoot):
             for cert in ca.cert_chain.certificates:
                 yield cert.raw_bytes
 
-    def rekor_keyring(self) -> RekorKeyring:
+    def rekor_keyring(self, purpose: KeyringPurpose) -> RekorKeyring:
         """Return keyring with keys for Rekor."""
 
-        keys: list[_PublicKey] = list(self._get_tlog_keys(self.tlogs, self.purpose))
+        keys: list[_PublicKey] = list(self._get_tlog_keys(self._inner.tlogs, purpose))
         if len(keys) != 1:
             raise MetadataError("Did not find one Rekor key in trusted root")
         return RekorKeyring(Keyring(keys))
 
-    def ct_keyring(self) -> CTKeyring:
+    def ct_keyring(self, purpose: KeyringPurpose) -> CTKeyring:
         """Return keyring with key for CTFE."""
-        ctfes: list[_PublicKey] = list(self._get_tlog_keys(self.ctlogs, self.purpose))
+        ctfes: list[_PublicKey] = list(self._get_tlog_keys(self._inner.ctlogs, purpose))
         if not ctfes:
             raise MetadataError("CTFE keys not found in trusted root")
         return CTKeyring(Keyring(ctfes))
@@ -324,8 +353,63 @@ class TrustedRoot(_TrustedRoot):
         # been active when the certificate was used to sign.
         certs = [
             load_der_x509_certificate(c)
-            for c in self._get_ca_keys(self.certificate_authorities, allow_expired=True)
+            for c in self._get_ca_keys(
+                self._inner.certificate_authorities, allow_expired=True
+            )
         ]
         if not certs:
             raise MetadataError("Fulcio certificates not found in trusted root")
         return certs
+
+
+class ClientTrustConfig:
+    """
+    Represents a Sigstore client's trust configuration, including a root of trust.
+    """
+
+    class ClientTrustConfigType(str, Enum):
+        """
+        Known Sigstore client trust config media types.
+        """
+
+        CONFIG_0_1 = "application/vnd.dev.sigstore.clienttrustconfig.v0.1+json"
+
+        def __str__(self) -> str:
+            """Returns the variant's string value."""
+            return self.value
+
+    @classmethod
+    def from_json(cls, raw: str) -> ClientTrustConfig:
+        """
+        Deserialize the given client trust config.
+        """
+        inner = _ClientTrustConfig().from_json(raw)
+        return cls(inner)
+
+    def __init__(self, inner: _ClientTrustConfig) -> None:
+        """
+        @api private
+        """
+        self._inner = inner
+        self._verify()
+
+    def _verify(self) -> None:
+        """
+        Performs various feats of heroism to ensure that the client trust config
+        is well-formed.
+        """
+
+        # The client trust config must have a recognized media type.
+        try:
+            ClientTrustConfig.ClientTrustConfigType(self._inner.media_type)
+        except ValueError:
+            raise Error(
+                f"unsupported client trust config format: {self._inner.media_type}"
+            )
+
+    @property
+    def trusted_root(self) -> TrustedRoot:
+        """
+        Return the interior root of trust, as a `TrustedRoot`.
+        """
+        return TrustedRoot(self._inner.trusted_root)

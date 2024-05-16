@@ -44,7 +44,7 @@ from sigstore._internal.sct import (
     _get_precertificate_signed_certificate_timestamps,
     verify_sct,
 )
-from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
+from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
@@ -81,10 +81,9 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's production-level services.
         """
-        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.VERIFY)
         return cls(
             rekor=RekorClient.production(),
-            trusted_root=trusted_root,
+            trusted_root=TrustedRoot.production(),
         )
 
     @classmethod
@@ -92,10 +91,21 @@ class Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's staging-level services.
         """
-        trusted_root = TrustedRoot.staging(purpose=KeyringPurpose.VERIFY)
         return cls(
             rekor=RekorClient.staging(),
-            trusted_root=trusted_root,
+            trusted_root=TrustedRoot.staging(),
+        )
+
+    @classmethod
+    def _from_trust_config(cls, trust_config: ClientTrustConfig) -> Verifier:
+        """
+        Create a `Verifier` from the given `ClientTrustConfig`.
+
+        @api private
+        """
+        return cls(
+            rekor=RekorClient(trust_config._inner.signing_config.tlog_urls[0]),
+            trusted_root=trust_config.trusted_root,
         )
 
     def _verify_common_signing_cert(
@@ -166,7 +176,7 @@ class Verifier:
                 sct,
                 cert,
                 [parent_cert.to_cryptography() for parent_cert in chain],
-                self._trusted_root.ct_keyring(),
+                self._trusted_root.ct_keyring(KeyringPurpose.VERIFY),
             )
         except VerificationError as e:
             raise VerificationError(f"failed to verify SCT on signing certificate: {e}")
@@ -190,7 +200,7 @@ class Verifier:
         # (5): verify the inclusion promise for the log entry, if present.
         entry = bundle.log_entry
         try:
-            entry._verify(self._trusted_root.rekor_keyring())
+            entry._verify(self._trusted_root.rekor_keyring(KeyringPurpose.VERIFY))
         except VerificationError as exc:
             raise VerificationError(f"invalid log entry: {exc}")
 

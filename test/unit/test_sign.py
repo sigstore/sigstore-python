@@ -66,7 +66,7 @@ def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch
     # a signer whose keyring always fails to lookup a given key.
     ctx: SigningContext = ctx()
     mock = pretend.stub(
-        ct_keyring=lambda: pretend.stub(verify=pretend.raiser(VerificationError))
+        ct_keyring=lambda *a: pretend.stub(verify=pretend.raiser(VerificationError))
     )
     ctx._trusted_root = mock
     assert identity is not None
@@ -85,10 +85,9 @@ def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
     # a signer whose keyring throws an internal error.
     ctx: SigningContext = ctx()
     mock = pretend.stub(
-        ct_keyring=lambda: pretend.stub(verify=pretend.raiser(VerificationError))
+        ct_keyring=lambda *a: pretend.stub(verify=pretend.raiser(VerificationError))
     )
     ctx._trusted_root = mock
-    ctx._rekor._ct_keyring = pretend.stub(verify=pretend.raiser(VerificationError))
     assert identity is not None
 
     payload = secrets.token_bytes(32)

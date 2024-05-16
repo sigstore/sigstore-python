@@ -62,7 +62,7 @@ from sigstore._internal.fulcio import (
 )
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
-from sigstore._internal.trustroot import KeyringPurpose, TrustedRoot
+from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
 from sigstore.models import Bundle
 from sigstore.oidc import ExpiredIdentity, IdentityToken
@@ -165,7 +165,12 @@ class Signer:
             cert = certificate_response.cert
             chain = certificate_response.chain
 
-            verify_sct(sct, cert, chain, self._signing_ctx._trusted_root.ct_keyring())
+            verify_sct(
+                sct,
+                cert,
+                chain,
+                self._signing_ctx._trusted_root.ct_keyring(KeyringPurpose.SIGN),
+            )
 
             _logger.debug("Successfully verified SCT...")
 
@@ -311,10 +316,10 @@ class SigningContext:
         """
         Return a `SigningContext` instance configured against Sigstore's production-level services.
         """
-        trusted_root = TrustedRoot.production(purpose=KeyringPurpose.SIGN)
-        rekor = RekorClient.production()
         return cls(
-            fulcio=FulcioClient.production(), rekor=rekor, trusted_root=trusted_root
+            fulcio=FulcioClient.production(),
+            rekor=RekorClient.production(),
+            trusted_root=TrustedRoot.production(),
         )
 
     @classmethod
@@ -322,10 +327,23 @@ class SigningContext:
         """
         Return a `SignerContext` instance configured against Sigstore's staging-level services.
         """
-        trusted_root = TrustedRoot.staging(purpose=KeyringPurpose.SIGN)
-        rekor = RekorClient.staging()
         return cls(
-            fulcio=FulcioClient.staging(), rekor=rekor, trusted_root=trusted_root
+            fulcio=FulcioClient.staging(),
+            rekor=RekorClient.staging(),
+            trusted_root=TrustedRoot.staging(),
+        )
+
+    @classmethod
+    def _from_trust_config(cls, trust_config: ClientTrustConfig) -> SigningContext:
+        """
+        Create a `SigningContext` from the given `ClientTrustConfig`.
+
+        @api private
+        """
+        return cls(
+            fulcio=FulcioClient(trust_config._inner.signing_config.ca_url),
+            rekor=RekorClient(trust_config._inner.signing_config.tlog_urls[0]),
+            trusted_root=trust_config.trusted_root,
         )
 
     @contextmanager

@@ -24,6 +24,7 @@ else!
   * [Verifying](#verifying)
     * [Generic identities](#generic-identities)
     * [Signatures from GitHub Actions](#signatures-from-github-actions)
+  * [Advanced usage](#advanced-usage)
 * [Example uses](#example-uses)
   * [Signing with ambient credentials](#signing-with-ambient-credentials)
   * [Signing with an email identity](#signing-with-an-email-identity)
@@ -96,29 +97,26 @@ Top-level:
 
 <!-- @begin-sigstore-help@ -->
 ```
-usage: sigstore [-h] [-v] [-V] [--staging] [--rekor-url URL] COMMAND ...
+usage: sigstore [-h] [-v] [-V] [--staging | --trust-config FILE] COMMAND ...
 
 a tool for signing and verifying Python package distributions
 
 positional arguments:
-  COMMAND             the operation to perform
-    sign              sign one or more inputs
-    verify            verify one or more inputs
+  COMMAND              the operation to perform
+    sign               sign one or more inputs
+    verify             verify one or more inputs
     get-identity-token
-                      retrieve and return a Sigstore-compatible OpenID Connect
-                      token
+                       retrieve and return a Sigstore-compatible OpenID
+                       Connect token
 
 optional arguments:
-  -h, --help          show this help message and exit
-  -v, --verbose       run with additional debug logging; supply multiple times
-                      to increase verbosity (default: 0)
-  -V, --version       show program's version number and exit
-
-Sigstore instance options:
-  --staging           Use sigstore's staging instances, instead of the default
-                      production instances (default: False)
-  --rekor-url URL     The Rekor instance to use (conflicts with --staging)
-                      (default: https://rekor.sigstore.dev)
+  -h, --help           show this help message and exit
+  -v, --verbose        run with additional debug logging; supply multiple
+                       times to increase verbosity (default: 0)
+  -V, --version        show program's version number and exit
+  --staging            Use sigstore's staging instances, instead of the
+                       default production instances (default: False)
+  --trust-config FILE  The client trust configuration to use (default: None)
 ```
 <!-- @end-sigstore-help@ -->
 
@@ -132,8 +130,7 @@ usage: sigstore sign [-h] [-v] [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--oauth-force-oob] [--no-default-files]
                      [--signature FILE] [--certificate FILE] [--bundle FILE]
-                     [--output-directory DIR] [--overwrite] [--staging]
-                     [--rekor-url URL] [--fulcio-url URL]
+                     [--output-directory DIR] [--overwrite]
                      FILE [FILE ...]
 
 positional arguments:
@@ -178,18 +175,6 @@ Output options:
                         (default: None)
   --overwrite           Overwrite preexisting signature and certificate
                         outputs, if present (default: False)
-
-Sigstore instance options:
-  --staging             Use sigstore's staging instances, instead of the
-                        default production instances. This option will be
-                        deprecated in favor of the global `--staging` option
-                        in a future release. (default: False)
-  --rekor-url URL       The Rekor instance to use (conflicts with --staging).
-                        This option will be deprecated in favor of the global
-                        `--rekor-url` option in a future release. (default:
-                        None)
-  --fulcio-url URL      The Fulcio instance to use (conflicts with --staging)
-                        (default: https://fulcio.sigstore.dev)
 ```
 <!-- @end-sigstore-sign-help@ -->
 
@@ -207,7 +192,7 @@ to by a particular OIDC provider (like `https://github.com/login/oauth`).
 usage: sigstore verify identity [-h] [-v] [--certificate FILE]
                                 [--signature FILE] [--bundle FILE] [--offline]
                                 --cert-identity IDENTITY --cert-oidc-issuer
-                                URL [--staging] [--rekor-url URL]
+                                URL
                                 FILE [FILE ...]
 
 optional arguments:
@@ -234,16 +219,6 @@ Verification options:
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
                         OIDC issuer extension (default: None)
-
-Sigstore instance options:
-  --staging             Use sigstore's staging instances, instead of the
-                        default production instances. This option will be
-                        deprecated in favor of the global `--staging` option
-                        in a future release. (default: False)
-  --rekor-url URL       The Rekor instance to use (conflicts with --staging).
-                        This option will be deprecated in favor of the global
-                        `--rekor-url` option in a future release. (default:
-                        None)
 ```
 <!-- @end-sigstore-verify-identity-help@ -->
 
@@ -260,7 +235,7 @@ usage: sigstore verify github [-h] [-v] [--certificate FILE]
                               [--signature FILE] [--bundle FILE] [--offline]
                               [--cert-identity IDENTITY] [--trigger EVENT]
                               [--sha SHA] [--name NAME] [--repository REPO]
-                              [--ref REF] [--staging] [--rekor-url URL]
+                              [--ref REF]
                               FILE [FILE ...]
 
 optional arguments:
@@ -294,18 +269,31 @@ Verification options:
                         under (default: None)
   --ref REF             The `git` ref that the workflow was invoked with
                         (default: None)
-
-Sigstore instance options:
-  --staging             Use sigstore's staging instances, instead of the
-                        default production instances. This option will be
-                        deprecated in favor of the global `--staging` option
-                        in a future release. (default: False)
-  --rekor-url URL       The Rekor instance to use (conflicts with --staging).
-                        This option will be deprecated in favor of the global
-                        `--rekor-url` option in a future release. (default:
-                        None)
 ```
 <!-- @end-sigstore-verify-github-help@ -->
+
+## Advanced usage
+
+### Configuring a custom root of trust ("BYO PKI")
+
+Apart from the default and "staging" Sigstore instances, `sigstore` also
+supports "BYO PKI" setups, where a user maintains their own Sigstore
+instance services.
+
+These are supported via the `--trust-config` flag, which accepts a
+JSON-formatted file conforming to the `ClientTrustConfig` message
+in the [Sigstore protobuf specs](https://github.com/sigstore/protobuf-specs).
+This file configures the entire Sigstore instance state, *including* the URIs
+used to access the CA and artifact transparency services as well as the
+cryptographic root of trust itself.
+
+To use a custom client config, prepend `--trust-config` to any `sigstore`
+command:
+
+```console
+$ sigstore --trust-config custom.trustconfig.json sign foo.txt
+$ sigstore --trust-config custom.trustconfig.json verify identity foo.txt ...
+```
 
 ## Example uses
 

@@ -65,7 +65,7 @@ from sigstore._utils import (
 from sigstore.errors import Error, VerificationError
 
 if typing.TYPE_CHECKING:
-    from sigstore._internal.trustroot import RekorKeyring
+    from sigstore._internal.trust import RekorKeyring
 
 
 _logger = logging.getLogger(__name__)
@@ -358,9 +358,9 @@ class Bundle:
         @private
         """
         self._inner = inner
-        self._verify_bundle()
+        self._verify()
 
-    def _verify_bundle(self) -> None:
+    def _verify(self) -> None:
         """
         Performs various feats of heroism to ensure the bundle is well-formed
         and upholds invariants, including:
