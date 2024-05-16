@@ -238,7 +238,7 @@ usage: sigstore verify github [-h] [-v] [--certificate FILE]
                               [--ref REF]
                               FILE [FILE ...]
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
