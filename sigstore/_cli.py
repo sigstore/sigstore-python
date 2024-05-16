@@ -26,7 +26,7 @@ from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
 from rich.logging import RichHandler
 
-from sigstore import __version__
+from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import (
     DEFAULT_FULCIO_URL,
     ExpiredCertificate,
@@ -160,14 +160,6 @@ def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
 
 
 def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
-    group.add_argument(
-        "--cert-identity",
-        metavar="IDENTITY",
-        type=str,
-        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
-        help="The identity to check for in the certificate's Subject Alternative Name",
-        required=True,
-    )
     group.add_argument(
         "--offline",
         action="store_true",
@@ -377,6 +369,14 @@ def _parser() -> argparse.ArgumentParser:
     verification_options = verify_identity.add_argument_group("Verification options")
     _add_shared_verification_options(verification_options)
     verification_options.add_argument(
+        "--cert-identity",
+        metavar="IDENTITY",
+        type=str,
+        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
+        help="The identity to check for in the certificate's Subject Alternative Name",
+        required=True,
+    )
+    verification_options.add_argument(
         "--cert-oidc-issuer",
         metavar="URL",
         type=str,
@@ -401,6 +401,13 @@ def _parser() -> argparse.ArgumentParser:
 
     verification_options = verify_github.add_argument_group("Verification options")
     _add_shared_verification_options(verification_options)
+    verification_options.add_argument(
+        "--cert-identity",
+        metavar="IDENTITY",
+        type=str,
+        default=os.getenv("SIGSTORE_CERT_IDENTITY"),
+        help="The identity to check for in the certificate's Subject Alternative Name",
+    )
     verification_options.add_argument(
         "--trigger",
         dest="workflow_trigger",
@@ -813,28 +820,36 @@ def _verify_identity(args: argparse.Namespace) -> None:
         )
 
         try:
-            verifier.verify_artifact(
-                input_=hashed,
-                bundle=bundle,
-                policy=policy_,
-            )
+            _verify_common(verifier, hashed, bundle, policy_)
             print(f"OK: {file}")
-        except VerificationError as exc:
+        except Error as exc:
             _logger.error(f"FAIL: {file}")
             exc.log_and_exit(_logger, args.verbose >= 1)
 
 
 def _verify_github(args: argparse.Namespace) -> None:
-    # Every GitHub verification begins with an identity policy,
-    # for which we know the issuer URL ahead of time.
-    # We then add more policies, as configured by the user's passed-in options.
-    inner_policies: list[policy.VerificationPolicy] = [
-        policy.Identity(
-            identity=args.cert_identity,
-            issuer="https://token.actions.githubusercontent.com",
-        )
-    ]
+    inner_policies: list[policy.VerificationPolicy] = []
 
+    # We require at least one of `--cert-identity` or `--repository`,
+    # to minimize the risk of user confusion about what's being verified.
+    if not (args.cert_identity or args.workflow_repository):
+        _die(args, "--cert-identity or --repository is required")
+
+    # No matter what the user configures above, we require the OIDC issuer to
+    # be GitHub Actions.
+    inner_policies.append(
+        policy.OIDCIssuer("https://token.actions.githubusercontent.com")
+    )
+
+    if args.cert_identity:
+        inner_policies.append(
+            policy.Identity(
+                identity=args.cert_identity,
+                # We always explicitly check the issuer below, so configuring
+                # it here is unnecessary.
+                issuer=None,
+            )
+        )
     if args.workflow_trigger:
         inner_policies.append(policy.GitHubWorkflowTrigger(args.workflow_trigger))
     if args.workflow_sha:
@@ -851,11 +866,45 @@ def _verify_github(args: argparse.Namespace) -> None:
     verifier, materials = _collect_verification_state(args)
     for file, hashed, bundle in materials:
         try:
-            verifier.verify_artifact(input_=hashed, bundle=bundle, policy=policy_)
+            _verify_common(verifier, hashed, bundle, policy_)
             print(f"OK: {file}")
-        except VerificationError as exc:
+        except Error as exc:
             _logger.error(f"FAIL: {file}")
             exc.log_and_exit(_logger, args.verbose >= 1)
+
+
+def _verify_common(
+    verifier: Verifier,
+    hashed: Hashed,
+    bundle: Bundle,
+    policy_: policy.VerificationPolicy,
+) -> None:
+    """
+    Common verification handling.
+
+    This dispatches to either artifact or DSSE verification, depending on
+    `bundle`'s inner type.
+    """
+
+    # If the bundle specifies a DSSE envelope, perform DSSE verification
+    # and assert that the inner payload is an in-toto statement bound
+    # to a subject matching the input's digest.
+    if bundle._dsse_envelope:
+        type_, payload = verifier.verify_dsse(bundle=bundle, policy=policy_)
+        if type_ != dsse.Envelope._TYPE:
+            raise VerificationError(f"expected JSON payload for DSSE, got {type_}")
+
+        stmt = dsse.Statement(payload)
+        if not stmt._matches_digest(hashed):
+            raise VerificationError(
+                f"in-toto statement has no subject for digest {hashed.digest.hex()}"
+            )
+    else:
+        verifier.verify_artifact(
+            input_=hashed,
+            bundle=bundle,
+            policy=policy_,
+        )
 
 
 def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:

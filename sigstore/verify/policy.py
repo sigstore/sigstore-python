@@ -107,7 +107,7 @@ class _SingleX509ExtPolicy(ABC):
             raise VerificationError(
                 (
                     f"Certificate's {self.__class__.__name__} does not match "
-                    f"(got {ext_value}, expected {self._value})"
+                    f"(got '{ext_value}', expected '{self._value}')"
                 )
             )
 
@@ -441,26 +441,33 @@ class UnsafeNoOp:
 class Identity:
     """
     Verifies the certificate's "identity", corresponding to the X.509v3 SAN.
-    Identities are verified modulo an OIDC issuer, so the issuer's URI
-    is also required.
+
+    Identities can be verified modulo an OIDC issuer, to prevent an unexpected
+    issuer from offering a particular identity.
 
     Supported SAN types include emails, URIs, and Sigstore-specific "other names".
     """
 
-    def __init__(self, *, identity: str, issuer: str):
+    _issuer: OIDCIssuer | None
+
+    def __init__(self, *, identity: str, issuer: str | None = None):
         """
         Create a new `Identity`, with the given expected identity and issuer values.
         """
 
         self._identity = identity
-        self._issuer = OIDCIssuer(issuer)
+        if issuer:
+            self._issuer = OIDCIssuer(issuer)
+        else:
+            self._issuer = None
 
     def verify(self, cert: Certificate) -> None:
         """
         Verify `cert` against the policy.
         """
 
-        self._issuer.verify(cert)
+        if self._issuer:
+            self._issuer.verify(cert)
 
         # Build a set of all valid identities.
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName).value
