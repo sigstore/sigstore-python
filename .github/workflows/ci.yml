@@ -51,11 +51,11 @@ jobs:
           unshare --map-root-user --net make test TEST_ARGS="--skip-online -vv --showlocals"
 
       - name: test
-        run: make test TEST_ARGS="-vv --showlocals --skip-staging"
+        run: make test TEST_ARGS="-vv --showlocals"
 
       - name: test (interactive)
         if: (github.event_name != 'pull_request') || !github.event.pull_request.head.repo.fork
-        run: make test-interactive TEST_ARGS="-vv --showlocals --skip-staging"
+        run: make test-interactive TEST_ARGS="-vv --showlocals"
 
       - uses: ./.github/actions/upload-coverage
         # only aggregate test coverage over linux-based tests to avoid any OS-specific filesystem information stored in
