@@ -130,7 +130,7 @@ class SignedNote:
         separator: str = "\n\n"
         if text.count(separator) != 1:
             raise VerificationError(
-                "note must contain one blank line, deliniating the text from the signature block"
+                "note must contain one blank line, delineating the text from the signature block"
             )
         split = text.index(separator)
 
