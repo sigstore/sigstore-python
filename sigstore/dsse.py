@@ -190,7 +190,7 @@ class Envelope:
     """
     Represents a DSSE envelope.
 
-    This class cannot be constructed directly; you must use `sign`.
+    This class cannot be constructed directly; you must use `sign` or `from_json`.
 
     See: <https://github.com/secure-systems-lab/dsse/blob/v1.0.0/envelope.md>
     """
@@ -204,11 +204,21 @@ class Envelope:
 
         self._inner = inner
 
+    @classmethod
+    def _from_json(cls, contents: bytes | str) -> Envelope:
+        """Return a DSSE envelope from the given JSON representation."""
+        inner = _Envelope().from_json(contents)
+        return cls(inner)
+
     def to_json(self) -> str:
         """
         Return a JSON string with this DSSE envelope's contents.
         """
         return self._inner.to_json()
+
+    def __eq__(self, other: Envelope) -> bool:
+        """Equality for DSSE envelopes."""
+        return self._inner == other._inner
 
 
 def _pae(type_: str, body: bytes) -> bytes:
