@@ -216,8 +216,12 @@ class Envelope:
         """
         return self._inner.to_json()
 
-    def __eq__(self, other: Envelope) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Equality for DSSE envelopes."""
+
+        if not isinstance(other, Envelope):
+            return NotImplemented
+
         return self._inner == other._inner
 
 
