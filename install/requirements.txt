@@ -458,9 +458,9 @@ requests==2.32.0 \
     #   id
     #   sigstore
     #   tuf
-rfc8785==0.1.2 \
-    --hash=sha256:4668c70e02f4cf96327d60375d2f1f21958830ff777e0e414424a794323521a1 \
-    --hash=sha256:c4e92e9ecc828bef2aa7dba1de8ac983511f7532a0df11c770d39099a25cf201
+rfc8785==0.1.3 \
+    --hash=sha256:167efe3b5cdd09dded9d0cfc8fec1f48f5cd9f8f13b580ada4efcac138925048 \
+    --hash=sha256:6116062831c62e7ac5d027973a1fe07b601ccd854bca4a2b401938a00a20b0c0
     # via sigstore
 rich==13.7.1 \
     --hash=sha256:4edbae314f59eb482f54e9e30bf00d33350aaa94f4bfcd4e9e3110e64d0d7222 \
