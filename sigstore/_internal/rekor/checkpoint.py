@@ -27,11 +27,11 @@ from typing import List
 
 from pydantic import BaseModel, Field, StrictStr
 
-from sigstore._internal.trust import RekorKeyring
 from sigstore._utils import KeyID
 from sigstore.errors import VerificationError
 
 if typing.TYPE_CHECKING:
+    from sigstore._internal.trust import RekorKeyring
     from sigstore.models import LogEntry
 
 

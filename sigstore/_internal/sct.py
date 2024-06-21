@@ -37,7 +37,6 @@ from cryptography.x509.oid import ExtendedKeyUsageOID
 
 from sigstore._internal.trust import CTKeyring
 from sigstore._utils import (
-    DERCert,
     KeyID,
     cert_is_ca,
     key_id,
@@ -56,7 +55,7 @@ def _pack_signed_entry(
         #
         # [0]: opaque ASN.1Cert<1..2^24-1>
         pack_format = "!BBB{cert_der_len}s"
-        cert_der = DERCert(cert.public_bytes(encoding=serialization.Encoding.DER))
+        cert_der = cert.public_bytes(encoding=serialization.Encoding.DER)
     elif sct.entry_type == LogEntryType.PRE_CERTIFICATE:
         if not issuer_key_id or len(issuer_key_id) != 32:
             raise VerificationError("API misuse: issuer key ID missing")
@@ -68,7 +67,7 @@ def _pack_signed_entry(
         pack_format = "!32sBBB{cert_der_len}s"
 
         # Precertificates must have their SCT list extension filtered out.
-        cert_der = DERCert(cert.tbs_precertificate_bytes)
+        cert_der = cert.tbs_precertificate_bytes
         fields.append(issuer_key_id)
     else:
         raise VerificationError(f"unknown SCT log entry type: {sct.entry_type!r}")
