@@ -56,14 +56,6 @@ B64Str = NewType("B64Str", str)
 """
 A newtype for `str` objects that contain base64 encoded strings.
 """
-PEMCert = NewType("PEMCert", str)
-"""
-A newtype for `str` objects that contain PEM-encoded certificates.
-"""
-DERCert = NewType("DERCert", bytes)
-"""
-A newtype for `bytes` objects that contain DER-encoded certificates.
-"""
 KeyID = NewType("KeyID", bytes)
 """
 A newtype for `bytes` objects that contain a key id.
