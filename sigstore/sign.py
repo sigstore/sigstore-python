@@ -1,4 +1,5 @@
 # Copyright 2022 The Sigstore Authors
+# Copyright (c) 2024, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -233,6 +234,17 @@ class Signer:
             self,
             envelope: dsse.Envelope,
     ) -> Bundle:
+        """
+        Signs the provided envelope's payload, and returns a
+        `Bundle containing the signed envelope and the verification
+        material.
+
+        Args:
+            envelope (dsse.Envelope): The envelope to be signed.
+
+        Returns:
+            Bundle: The bundle containing the signed DSSE envelope.
+        """
         cert = self._signing_cert()
 
         b64_cert = base64.b64encode(
