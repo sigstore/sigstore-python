@@ -210,6 +210,23 @@ class Envelope:
         inner = _Envelope().from_json(contents)
         return cls(inner)
 
+    @classmethod
+    def from_payload(cls, payload_type: str, payload: bytes) -> Envelope:
+        """Return an unsigned DSSE envelope.
+
+        Args:
+            payload_type (str): The envelope's payload type
+            payload (bytes): The envelope's payload
+
+        Returns:
+            Envelope: An unsigned DSSE envelope
+        """
+        inner = _Envelope(
+            payload=payload,
+            payload_type=payload_type,
+        )
+        return cls(inner)
+
     def to_json(self) -> str:
         """
         Return a JSON string with this DSSE envelope's contents.
@@ -254,6 +271,18 @@ def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
             signatures=[Signature(sig=signature)],
         )
     )
+
+
+def _sign_envelope(
+        key: ec.EllipticCurvePrivateKey, envelope: Envelope) -> Envelope:
+    """
+    Sign the given envelope's payload and set the signature field
+    with the generated signature.
+    """
+    pae = _pae(envelope._inner.payload_type, envelope._inner.payload)
+    signature = key.sign(pae, ec.ECDS(hashes.SHA256()))
+    envelope._inner.signaures = [Signature(sig=signature)]
+    return envelope
 
 
 def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:

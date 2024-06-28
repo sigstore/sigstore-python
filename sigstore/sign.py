@@ -229,6 +229,34 @@ class Signer:
 
         return self._finalize_sign(cert, content, proposed_entry)
 
+    def sign_dsse_envelope(
+            self,
+            envelope: dsse.Envelope,
+    ) -> Bundle:
+        cert = self._signing_cert()
+
+        b64_cert = base64.b64encode(
+            cert.public_bytes(encoding=serialization.Encoding.PEM)
+        )
+        envelope = dsse._sign_envelope(
+            self._private_key,
+            envelope,
+        )
+
+        proposed_entry = rekor_types.Dsse(
+            spec=rekor_types.dsse.DsseSchema(
+                # NOTE: mypy can't see that this kwarg is correct due to two interacting
+                # behaviors/bugs (one pydantic, one datamodel-codegen):
+                # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
+                # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
+                proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
+                    envelope=envelope.to_json(),
+                    verifiers=[b64_cert.decode()],
+                ),
+            ),
+        )
+        return self._finalize_sign(cert, envelope, proposed_entry)
+
     def sign_artifact(
         self,
         input_: bytes | sigstore_hashes.Hashed,
