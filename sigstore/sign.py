@@ -195,10 +195,10 @@ class Signer:
 
     def sign_dsse(
         self,
-        input_: dsse.Statement,
+        input_: dsse.Statement | dsse.RawPayload,
     ) -> Bundle:
         """
-        Sign the given in-toto statement as a DSSE envelope, and return a
+        Sign the given in-toto statement or DSSE envelope, and return a
         `Bundle` containing the signed result.
 
         This API is **only** for in-toto statements; to sign arbitrary artifacts,
@@ -212,62 +212,27 @@ class Signer:
         )
 
         # Sign the statement, producing a DSSE envelope
-        content = dsse._sign(self._private_key, input_)
-
-        # Create the proposed DSSE log entry
-        proposed_entry = rekor_types.Dsse(
-            spec=rekor_types.dsse.DsseSchema(
-                # NOTE: mypy can't see that this kwarg is correct due to two interacting
-                # behaviors/bugs (one pydantic, one datamodel-codegen):
-                # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
-                # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
-                proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
-                    envelope=content.to_json(),
-                    verifiers=[b64_cert.decode()],
+        content: dsse.Envelope = None
+        proposed_entry: rekor_types.ProposedEntry = None
+        if type(input_) is dsse.Statement:
+            content = dsse._sign(self._private_key, input_)
+            # Create the proposed DSSE log entry
+            proposed_entry = rekor_types.Dsse(
+                spec=rekor_types.dsse.DsseSchema(
+                    # NOTE: mypy can't see that this kwarg is correct due to two interacting
+                    # behaviors/bugs (one pydantic, one datamodel-codegen):
+                    # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
+                    # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
+                    proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
+                        envelope=content.to_json(),
+                        verifiers=[b64_cert.decode()],
+                    ),
                 ),
-            ),
-        )
-
+            )
+        elif type(input_) is dsse.RawPayload:
+            content = dsse._sign_payload(self._private_key, input_)
+            # TODO: figure out an entry that works.
         return self._finalize_sign(cert, content, proposed_entry)
-
-    def sign_dsse_envelope(
-            self,
-            envelope: dsse.Envelope,
-    ) -> Bundle:
-        """
-        Signs the provided envelope's payload, and returns a
-        `Bundle containing the signed envelope and the verification
-        material.
-
-        Args:
-            envelope (dsse.Envelope): The envelope to be signed.
-
-        Returns:
-            Bundle: The bundle containing the signed DSSE envelope.
-        """
-        cert = self._signing_cert()
-
-        b64_cert = base64.b64encode(
-            cert.public_bytes(encoding=serialization.Encoding.PEM)
-        )
-        envelope = dsse._sign_envelope(
-            self._private_key,
-            envelope,
-        )
-
-        proposed_entry = rekor_types.Dsse(
-            spec=rekor_types.dsse.DsseSchema(
-                # NOTE: mypy can't see that this kwarg is correct due to two interacting
-                # behaviors/bugs (one pydantic, one datamodel-codegen):
-                # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
-                # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
-                proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
-                    envelope=envelope.to_json(),
-                    verifiers=[b64_cert.decode()],
-                ),
-            ),
-        )
-        return self._finalize_sign(cert, envelope, proposed_entry)
 
     def sign_artifact(
         self,

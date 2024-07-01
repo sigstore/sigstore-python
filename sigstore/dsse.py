@@ -20,6 +20,7 @@ Functionality for building and manipulating in-toto Statements and DSSE envelope
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from cryptography.exceptions import InvalidSignature
@@ -187,6 +188,17 @@ class _StatementBuilder:
         return Statement(stmt.model_dump_json(by_alias=True).encode())
 
 
+@dataclass
+class RawPayload:
+    """
+    Represents a raw payload.
+
+    This type can be signed and wrapped into a `Envelope`.
+    """
+    type: str
+    data: bytes
+
+
 class Envelope:
     """
     Represents a DSSE envelope.
@@ -212,7 +224,9 @@ class Envelope:
         return cls(inner)
 
     @classmethod
-    def from_payload(cls, payload_type: str, payload: bytes) -> Envelope:
+    def _from_payload(
+        cls, payload: RawPayload, sigs: list[Signature]
+    ) -> Envelope:
         """Return an unsigned DSSE envelope.
 
         Args:
@@ -223,8 +237,9 @@ class Envelope:
             Envelope: An unsigned DSSE envelope
         """
         inner = _Envelope(
-            payload=payload,
-            payload_type=payload_type,
+            payload=payload.data,
+            payload_type=payload.type,
+            signatures=sigs,
         )
         return cls(inner)
 
@@ -274,16 +289,17 @@ def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
     )
 
 
-def _sign_envelope(
-        key: ec.EllipticCurvePrivateKey, envelope: Envelope) -> Envelope:
+def _sign_payload(
+        key: ec.EllipticCurvePrivateKey, payload: RawPayload) -> Envelope:
     """
     Sign the given envelope's payload and set the signature field
     with the generated signature.
     """
-    pae = _pae(envelope._inner.payload_type, envelope._inner.payload)
-    signature = key.sign(pae, ec.ECDS(hashes.SHA256()))
-    envelope._inner.signaures = [Signature(sig=signature)]
-    return envelope
+    pae = _pae(payload.payload_type, payload.payload)
+    signature = key.sign(pae, ec.ECDSA(hashes.SHA256()))
+    return Envelope._from_payload(
+        payload_=payload,
+        sigs=[Signature(sig=signature)])
 
 
 def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:

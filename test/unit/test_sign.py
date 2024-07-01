@@ -21,7 +21,7 @@ import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 import sigstore.oidc
-from sigstore.dsse import _StatementBuilder, _Subject, Envelope
+from sigstore.dsse import _StatementBuilder, _Subject, RawPayload
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
@@ -178,12 +178,11 @@ def test_sign_dsse_envelope(staging):
     sign_ctx, _, identity = staging
 
     ctx = sign_ctx()
-    payload = b"Hello World!"
-    payload_type = "type/custom/my_payload"
-
-    env = Envelope.from_payload(payload_type, payload)
+    payload = RawPayload(
+        payload_type="type/custom/my_payload",
+        payload=b"Hello World!")
 
     with ctx.signer(identity) as signer:
-        bundle = signer.sign_dsse_envelope(env)
+        bundle = signer.sign_dsse(payload)
 
         bundle.to_json()
