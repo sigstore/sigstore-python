@@ -1,4 +1,5 @@
 # Copyright 2022 The Sigstore Authors
+# Copyright (c) 2024, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +21,7 @@ import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 import sigstore.oidc
-from sigstore.dsse import _StatementBuilder, _Subject
+from sigstore.dsse import _StatementBuilder, _Subject, RawPayload
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
@@ -168,4 +169,20 @@ def test_sign_dsse(staging):
     with ctx.signer(identity) as signer:
         bundle = signer.sign_dsse(stmt)
         # Ensures that all of our inner types serialize as expected.
+        bundle.to_json()
+
+
+@pytest.mark.staging
+@pytest.mark.ambient_oidc
+def test_sign_dsse_envelope(staging):
+    sign_ctx, _, identity = staging
+
+    ctx = sign_ctx()
+    payload = RawPayload(
+        payload_type="type/custom/my_payload",
+        payload=b"Hello World!")
+
+    with ctx.signer(identity) as signer:
+        bundle = signer.sign_dsse(payload)
+
         bundle.to_json()

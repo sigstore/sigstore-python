@@ -1,4 +1,5 @@
 # Copyright 2022 The Sigstore Authors
+# Copyright (c) 2024, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +20,7 @@ Functionality for building and manipulating in-toto Statements and DSSE envelope
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from cryptography.exceptions import InvalidSignature
@@ -186,6 +188,17 @@ class _StatementBuilder:
         return Statement(stmt.model_dump_json(by_alias=True).encode())
 
 
+@dataclass
+class RawPayload:
+    """
+    Represents a raw payload.
+
+    This type can be signed and wrapped into a `Envelope`.
+    """
+    type: str
+    data: bytes
+
+
 class Envelope:
     """
     Represents a DSSE envelope.
@@ -208,6 +221,26 @@ class Envelope:
     def _from_json(cls, contents: bytes | str) -> Envelope:
         """Return a DSSE envelope from the given JSON representation."""
         inner = _Envelope().from_json(contents)
+        return cls(inner)
+
+    @classmethod
+    def _from_payload(
+        cls, payload: RawPayload, sigs: list[Signature]
+    ) -> Envelope:
+        """Return an unsigned DSSE envelope.
+
+        Args:
+            payload_type (str): The envelope's payload type
+            payload (bytes): The envelope's payload
+
+        Returns:
+            Envelope: An unsigned DSSE envelope
+        """
+        inner = _Envelope(
+            payload=payload.data,
+            payload_type=payload.type,
+            signatures=sigs,
+        )
         return cls(inner)
 
     def to_json(self) -> str:
@@ -254,6 +287,19 @@ def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
             signatures=[Signature(sig=signature)],
         )
     )
+
+
+def _sign_payload(
+        key: ec.EllipticCurvePrivateKey, payload: RawPayload) -> Envelope:
+    """
+    Sign the given envelope's payload and set the signature field
+    with the generated signature.
+    """
+    pae = _pae(payload.payload_type, payload.payload)
+    signature = key.sign(pae, ec.ECDSA(hashes.SHA256()))
+    return Envelope._from_payload(
+        payload_=payload,
+        sigs=[Signature(sig=signature)])
 
 
 def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:
