@@ -249,7 +249,7 @@ class LogEntry:
         )
 
         # Fill in the appropriate kind
-        body_entry = TypeAdapter(ProposedEntry).validate_json(
+        body_entry: ProposedEntry = TypeAdapter(ProposedEntry).validate_json(
             tlog_entry.canonicalized_body
         )
         if not isinstance(body_entry, (Hashedrekord, Dsse)):
