@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Changed
+
+* API: `verify_dsse` now rejects bundles with DSSE envelopes that have more than
+  one signature, rather than checking all signatures against the same key
+  ([#1062](https://github.com/sigstore/sigstore-python/pull/1062))
+
 ## [3.0.0]
 
 Maintainers' note: this is a major release, with significant public API and CLI

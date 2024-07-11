@@ -266,16 +266,15 @@ def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:
 
     pae = _pae(evp._inner.payload_type, evp._inner.payload)
 
-    if not evp._inner.signatures:
-        raise VerificationError("DSSE: envelope contains no signatures")
+    nsigs = len(evp._inner.signatures)
+    if nsigs != 1:
+        raise VerificationError(f"DSSE: exactly 1 signature allowed, got {nsigs}")
 
-    # In practice checking more than one signature here is frivolous, since
-    # they're all being checked against the same key. But there's no
-    # particular harm in checking them all either.
-    for signature in evp._inner.signatures:
-        try:
-            key.verify(signature.sig, pae, ec.ECDSA(hashes.SHA256()))
-        except InvalidSignature:
-            raise VerificationError("DSSE: invalid signature")
+    signature = evp._inner.signatures[0].sig
+
+    try:
+        key.verify(signature, pae, ec.ECDSA(hashes.SHA256()))
+    except InvalidSignature:
+        raise VerificationError("DSSE: invalid signature")
 
     return evp._inner.payload
