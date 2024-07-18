@@ -15,6 +15,7 @@
 
 import os
 from datetime import datetime, timedelta, timezone
+from urllib import parse
 
 import pytest
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -27,6 +28,7 @@ from sigstore._internal.trust import (
     TrustedRoot,
     _is_timerange_valid,
 )
+from sigstore._internal.tuf import STAGING_TUF_URL
 from sigstore._utils import load_pem_public_key
 from sigstore.errors import Error, RootError
 
@@ -51,6 +53,19 @@ class TestTrustedRoot:
             Error, match="unsupported trusted root format: bad-media-type"
         ):
             TrustedRoot.from_file(path)
+
+    @pytest.mark.online
+    def test_staging_custom_base_dir(self, tmp_path):
+        repo_base = parse.quote(STAGING_TUF_URL, safe="")
+        TrustedRoot.staging(base_dir=tmp_path)
+
+        metadata_dir = tmp_path / "tuf" / repo_base / "metadata"
+        targets_dir = tmp_path / "tuf" / repo_base / "targets"
+
+        assert metadata_dir.is_dir()
+        assert (metadata_dir / "root.json").is_file()
+        assert targets_dir.is_dir()
+        assert (targets_dir / "trusted_root.json").is_file()
 
 
 # TODO(ww): Move these into appropriate class-scoped tests.
