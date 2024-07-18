@@ -66,8 +66,9 @@ class Verifier:
         `rekor` is a `RekorClient` capable of connecting to a Rekor instance
         containing logs for the file(s) being verified.
 
-        `fulcio_certificate_chain` is a list of PEM-encoded X.509 certificates,
-        establishing the trust chain for the signing certificate and signature.
+        `trusted_root` is a `TrustedRoot` that conveys the Sigstore root of trust.
+
+        @private
         """
         self._rekor = rekor
         self._fulcio_certificate_chain: List[X509] = [

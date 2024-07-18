@@ -306,6 +306,10 @@ class SigningContext:
 
         `rekor` is a `RekorClient` capable of connecting to a Rekor instance
         and creating transparency log entries.
+
+        `trusted_root` is a `TrustedRoot` that conveys the Sigstore root of trust.
+
+        @private
         """
         self._fulcio = fulcio
         self._rekor = rekor
