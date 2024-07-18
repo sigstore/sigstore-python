@@ -254,11 +254,11 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
 
 @pytest.fixture
 def tuf_dirs(monkeypatch, tmp_path):
-    # Patch _get_dirs as well, to avoid polluting the user's actual cache
+    # Patch _get_user_tuf_dirs as well, to avoid polluting the user's actual cache
     # with test assets.
     data_dir = tmp_path / "data" / "tuf"
     cache_dir = tmp_path / "cache" / "tuf"
-    monkeypatch.setattr(tuf, "_get_dirs", lambda u: (data_dir, cache_dir))
+    monkeypatch.setattr(tuf, "_get_user_tuf_dirs", lambda u: (data_dir, cache_dir))
 
     return (data_dir, cache_dir)
 

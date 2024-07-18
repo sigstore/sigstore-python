@@ -37,7 +37,7 @@ DEFAULT_TUF_URL = "https://tuf-repo-cdn.sigstore.dev"
 STAGING_TUF_URL = "https://tuf-repo-cdn.sigstage.dev"
 
 
-def _get_dirs(url: str) -> tuple[Path, Path]:
+def _get_user_tuf_dirs(url: str) -> tuple[Path, Path]:
     """
     Given a TUF repository URL, return suitable local metadata and cache directories.
 
@@ -55,6 +55,22 @@ def _get_dirs(url: str) -> tuple[Path, Path]:
     return (tuf_data_dir / repo_base), (tuf_cache_dir / repo_base)
 
 
+def _get_custom_tuf_dirs(url: str, base_dir: Path) -> tuple[Path, Path]:
+    """
+    Given a base directory and a TUF repository URL, return suitable
+    metadata and cache directories within the base directory.
+
+    These directories are not guaranteed to already exist.
+    """
+
+    repo_base = parse.quote(url, safe="")
+
+    tuf_data_dir = base_dir / "tuf" / repo_base / "metadata"
+    tuf_cache_dir = base_dir / "tuf" / repo_base / "targets"
+
+    return tuf_data_dir, tuf_cache_dir
+
+
 class TrustUpdater:
     """Internal trust root (certificates and keys) downloader.
 
@@ -66,7 +82,9 @@ class TrustUpdater:
     production and staging instances) in the application resources.
     """
 
-    def __init__(self, url: str, offline: bool = False) -> None:
+    def __init__(
+        self, url: str, offline: bool = False, base_dir: Path | None = None
+    ) -> None:
         """
         Create a new `TrustUpdater`, pulling from the given `url`.
 
@@ -75,9 +93,17 @@ class TrustUpdater:
 
         If not `offline`, TrustUpdater will update the TUF metadata from
         the remote repository.
+
+        If `base_dir` is given, TUF will write to appropriate subdirectories
+        within `base_dir`. If not given (the default), TUF will write to
+        appropriate subdirectories within the user's data and cache directories.
         """
         self._repo_url = url
-        self._metadata_dir, self._targets_dir = _get_dirs(url)
+
+        if base_dir is not None:
+            self._metadata_dir, self._targets_dir = _get_custom_tuf_dirs(url, base_dir)
+        else:
+            self._metadata_dir, self._targets_dir = _get_user_tuf_dirs(url)
 
         rsrc_prefix: str
         if self._repo_url == DEFAULT_TUF_URL:

@@ -268,38 +268,45 @@ class TrustedRoot:
         cls,
         url: str,
         offline: bool = False,
+        base_dir: Path | None = None,
     ) -> TrustedRoot:
         """Create a new trust root from a TUF repository.
 
-        If `offline`, will use trust root in local TUF cache. Otherwise will
-        update the trust root from remote TUF repository.
+        If `offline`, TUF will use the trust root in the local cache. Otherwise
+        TUFF will update the trust root from remote TUF repository.
+
+        If `base_dir` is given, TUF will use it for appropriate local
+        subdirectories. If not given, appropriate subdirectories within
+        the user's data and cache directories will be used instead.
         """
-        path = TrustUpdater(url, offline).get_trusted_root_path()
+        path = TrustUpdater(
+            url, offline=offline, base_dir=base_dir
+        ).get_trusted_root_path()
         return cls.from_file(path)
 
     @classmethod
     def production(
         cls,
         offline: bool = False,
+        base_dir: Path | None = None,
     ) -> TrustedRoot:
         """Create new trust root from Sigstore production TUF repository.
 
-        If `offline`, will use trust root in local TUF cache. Otherwise will
-        update the trust root from remote TUF repository.
+        See `from_tuf` for the behavior of `offline` and `base_dir`.
         """
-        return cls.from_tuf(DEFAULT_TUF_URL, offline)
+        return cls.from_tuf(DEFAULT_TUF_URL, offline=offline, base_dir=base_dir)
 
     @classmethod
     def staging(
         cls,
         offline: bool = False,
+        base_dir: Path | None = None,
     ) -> TrustedRoot:
         """Create new trust root from Sigstore staging TUF repository.
 
-        If `offline`, will use trust root in local TUF cache. Otherwise will
-        update the trust root from remote TUF repository.
+        See `from_tuf` for the behavior of `offline` and `base_dir`.
         """
-        return cls.from_tuf(STAGING_TUF_URL, offline)
+        return cls.from_tuf(STAGING_TUF_URL, offline=offline, base_dir=base_dir)
 
     def _get_tlog_keys(
         self, tlogs: list[TransparencyLogInstance], purpose: KeyringPurpose
