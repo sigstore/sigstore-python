@@ -443,9 +443,9 @@ pyjwt==2.8.0 \
     --hash=sha256:57e28d156e3d5c10088e0c68abb90bfac3df82b40a71bd0daa20c65ccd5c23de \
     --hash=sha256:59127c392cc44c2da5bb3192169a91f429924e17aff6534d70fdc02ab3e04320
     # via sigstore
-pyopenssl==24.1.0 \
-    --hash=sha256:17ed5be5936449c5418d1cd269a1a9e9081bc54c17aed272b45856a3d3dc86ad \
-    --hash=sha256:cabed4bfaa5df9f1a16c0ef64a0cb65318b5cd077a7eda7d6970131ca2f41a6f
+pyopenssl==24.2.1 \
+    --hash=sha256:4247f0dbe3748d560dcbb2ff3ea01af0f9a1a001ef5f7c4c647956ed8cbf0e95 \
+    --hash=sha256:967d5719b12b243588573f39b0c677637145c7a1ffedcd495a487e58177fbb8d
     # via sigstore
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
@@ -473,7 +473,7 @@ securesystemslib==1.0.0 \
 sigstore==3.0.0 \
     --hash=sha256:6cc7dc92607c2fd481aada0f3c79e710e4c6086e3beab50b07daa9a50a79d109 \
     --hash=sha256:a6a9538a648e112a0c3d8092d3f73a351c7598164764f1e73a6b5ba406a3a0bd
-    # via -r requirements.in
+    # via -r install/requirements.in
 sigstore-protobuf-specs==0.3.2 \
     --hash=sha256:50c99fa6747a3a9c5c562a43602cf76df0b199af28f0e9d4319b6775630425ea \
     --hash=sha256:cae041b40502600b8a633f43c257695d0222a94efa1e5110a7ec7ada78c39d99
