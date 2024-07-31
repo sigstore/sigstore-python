@@ -16,6 +16,13 @@ All versions prior to 0.9.0 are untracked.
   release.**
   ([#1077](https://github.com/sigstore/sigstore-python/pull/1077))
 
+* API: `dsse.Digest`, `dsse.DigestSet`, and `dsse.Subject` have been added.
+  These types can be used with the `StatementBuilder` API as part of in-toto
+  `Statement` construction.
+  These API are public but are **not considered stable until the next major
+  release.**
+  ([#1078](https://github.com/sigstore/sigstore-python/pull/1078))
+
 ### Changed
 
 * API: `verify_dsse` now rejects bundles with DSSE envelopes that have more than
