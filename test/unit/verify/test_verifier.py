@@ -18,7 +18,7 @@ import hashlib
 import pretend
 import pytest
 
-from sigstore.dsse import _StatementBuilder, _Subject
+from sigstore.dsse import StatementBuilder, _Subject
 from sigstore.errors import VerificationError
 from sigstore.models import Bundle
 from sigstore.verify import policy
@@ -159,7 +159,7 @@ def test_verifier_dsse_roundtrip(staging):
 
     ctx = signer_cls()
     stmt = (
-        _StatementBuilder()
+        StatementBuilder()
         .subjects(
             [_Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
         )
