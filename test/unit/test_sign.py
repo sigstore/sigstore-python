@@ -20,7 +20,7 @@ import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 import sigstore.oidc
-from sigstore.dsse import _StatementBuilder, _Subject
+from sigstore.dsse import StatementBuilder, _Subject
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
@@ -152,7 +152,7 @@ def test_sign_dsse(staging):
 
     ctx = sign_ctx()
     stmt = (
-        _StatementBuilder()
+        StatementBuilder()
         .subjects(
             [_Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
         )

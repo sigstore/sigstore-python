@@ -8,6 +8,14 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* API: `dsse.StatementBuilder` has been added. It can be used to construct an
+  in-toto `Statement` for subsequent enveloping and signing.
+  This API is public but is **not considered stable until the next major
+  release.**
+  ([#1077](https://github.com/sigstore/sigstore-python/pull/1077))
+
 ### Changed
 
 * API: `verify_dsse` now rejects bundles with DSSE envelopes that have more than

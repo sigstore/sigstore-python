@@ -89,7 +89,7 @@ class Statement:
     See: <https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md>
     """
 
-    def __init__(self, contents: bytes) -> None:
+    def __init__(self, contents: bytes | _Statement) -> None:
         """
         Construct a new Statement.
 
@@ -97,11 +97,15 @@ class Statement:
         `StatementBuilder` to manually construct an in-toto statement
         from constituent pieces.
         """
-        self._contents = contents
-        try:
-            self._inner = _Statement.model_validate_json(contents)
-        except ValidationError:
-            raise Error("malformed in-toto statement")
+        if isinstance(contents, bytes):
+            self._contents = contents
+            try:
+                self._inner = _Statement.model_validate_json(contents)
+            except ValidationError:
+                raise Error("malformed in-toto statement")
+        else:
+            self._contents = contents.model_dump_json(by_alias=True).encode()
+            self._inner = contents
 
     def _matches_digest(self, digest: Hashed) -> bool:
         """
@@ -130,7 +134,7 @@ class Statement:
         return _pae(Envelope._TYPE, self._contents)
 
 
-class _StatementBuilder:
+class StatementBuilder:
     """
     A builder-style API for constructing in-toto Statements.
     """
@@ -142,27 +146,27 @@ class _StatementBuilder:
         predicate: Optional[Dict[str, Any]] = None,
     ):
         """
-        Create a new `_StatementBuilder`.
+        Create a new `StatementBuilder`.
         """
         self._subjects = subjects or []
         self._predicate_type = predicate_type
         self._predicate = predicate
 
-    def subjects(self, subjects: list[_Subject]) -> _StatementBuilder:
+    def subjects(self, subjects: list[_Subject]) -> StatementBuilder:
         """
         Configure the subjects for this builder.
         """
         self._subjects = subjects
         return self
 
-    def predicate_type(self, predicate_type: str) -> _StatementBuilder:
+    def predicate_type(self, predicate_type: str) -> StatementBuilder:
         """
         Configure the predicate type for this builder.
         """
         self._predicate_type = predicate_type
         return self
 
-    def predicate(self, predicate: dict[str, Any]) -> _StatementBuilder:
+    def predicate(self, predicate: dict[str, Any]) -> StatementBuilder:
         """
         Configure the predicate for this builder.
         """
@@ -183,7 +187,7 @@ class _StatementBuilder:
         except ValidationError as e:
             raise Error(f"invalid statement: {e}")
 
-        return Statement(stmt.model_dump_json(by_alias=True).encode())
+        return Statement(stmt)
 
 
 class Envelope:
