@@ -20,7 +20,7 @@ import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 import sigstore.oidc
-from sigstore.dsse import StatementBuilder, _Subject
+from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
@@ -154,7 +154,7 @@ def test_sign_dsse(staging):
     stmt = (
         StatementBuilder()
         .subjects(
-            [_Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
+            [Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
         )
         .predicate_type("https://cosign.sigstore.dev/attestation/v1")
         .predicate(
