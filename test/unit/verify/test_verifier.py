@@ -18,7 +18,7 @@ import hashlib
 import pretend
 import pytest
 
-from sigstore.dsse import StatementBuilder, _Subject
+from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import VerificationError
 from sigstore.models import Bundle
 from sigstore.verify import policy
@@ -161,7 +161,7 @@ def test_verifier_dsse_roundtrip(staging):
     stmt = (
         StatementBuilder()
         .subjects(
-            [_Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
+            [Subject(name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()})]
         )
         .predicate_type("https://cosign.sigstore.dev/attestation/v1")
         .predicate(

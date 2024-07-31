@@ -34,7 +34,7 @@ from sigstore.hashes import Hashed
 
 _logger = logging.getLogger(__name__)
 
-_Digest = Union[
+Digest = Union[
     Literal["sha256"],
     Literal["sha384"],
     Literal["sha512"],
@@ -50,19 +50,19 @@ SHA-2 and SHA-3 family that are at least as strong as SHA-256.
 See: <https://github.com/in-toto/attestation/blob/main/spec/v1/digest_set.md>
 """
 
-_DigestSet = RootModel[Dict[_Digest, str]]
+DigestSet = RootModel[Dict[Digest, str]]
 """
 An internal validation model for in-toto subject digest sets.
 """
 
 
-class _Subject(BaseModel):
+class Subject(BaseModel):
     """
     A single in-toto statement subject.
     """
 
     name: Optional[StrictStr]
-    digest: _DigestSet = Field(...)
+    digest: DigestSet = Field(...)
 
 
 class _Statement(BaseModel):
@@ -73,7 +73,7 @@ class _Statement(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     type_: Literal["https://in-toto.io/Statement/v1"] = Field(..., alias="_type")
-    subjects: List[_Subject] = Field(..., min_length=1, alias="subject")
+    subjects: List[Subject] = Field(..., min_length=1, alias="subject")
     predicate_type: StrictStr = Field(..., alias="predicateType")
     predicate: Optional[Dict[str, Any]] = Field(None, alias="predicate")
 
@@ -141,7 +141,7 @@ class StatementBuilder:
 
     def __init__(
         self,
-        subjects: Optional[List[_Subject]] = None,
+        subjects: Optional[List[Subject]] = None,
         predicate_type: Optional[str] = None,
         predicate: Optional[Dict[str, Any]] = None,
     ):
@@ -152,7 +152,7 @@ class StatementBuilder:
         self._predicate_type = predicate_type
         self._predicate = predicate
 
-    def subjects(self, subjects: list[_Subject]) -> StatementBuilder:
+    def subjects(self, subjects: list[Subject]) -> StatementBuilder:
         """
         Configure the subjects for this builder.
         """
