@@ -444,9 +444,9 @@ pygments==2.18.0 \
     --hash=sha256:786ff802f32e91311bff3889f6e9a86e81505fe99f2735bb6d60ae0c5004f199 \
     --hash=sha256:b8e6aca0523f3ab76fee51799c488e38782ac06eafcf95e7ba832985c8e7b13a
     # via rich
-pyjwt==2.8.0 \
-    --hash=sha256:57e28d156e3d5c10088e0c68abb90bfac3df82b40a71bd0daa20c65ccd5c23de \
-    --hash=sha256:59127c392cc44c2da5bb3192169a91f429924e17aff6534d70fdc02ab3e04320
+pyjwt==2.9.0 \
+    --hash=sha256:3b02fb0f44517787776cf48f2ae25d8e14f300e6d7545a4315cee571a415e850 \
+    --hash=sha256:7e1e5b56cc735432a7369cbfa0efe50fa113ebecdc04ae6922deba8b84582d0c
     # via sigstore
 pyopenssl==24.2.1 \
     --hash=sha256:4247f0dbe3748d560dcbb2ff3ea01af0f9a1a001ef5f7c4c647956ed8cbf0e95 \
@@ -478,7 +478,7 @@ securesystemslib==1.1.0 \
 sigstore==3.1.0 \
     --hash=sha256:3cfe2da19a053757a06bd9ecae322fa539fece7df3e8139d30e32172e41cb812 \
     --hash=sha256:cc0b52acff3ae25f7f1993e21dec4ebed44213c48e2ec095e8c06f69b3751fdf
-    # via -r requirements.in
+    # via -r install/requirements.in
 sigstore-protobuf-specs==0.3.2 \
     --hash=sha256:50c99fa6747a3a9c5c562a43602cf76df0b199af28f0e9d4319b6775630425ea \
     --hash=sha256:cae041b40502600b8a633f43c257695d0222a94efa1e5110a7ec7ada78c39d99
