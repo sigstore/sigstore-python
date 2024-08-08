@@ -23,6 +23,5 @@ build
 !sigstore/_store/*.crt
 !sigstore/_store/*.pem
 !sigstore/_store/*.pub
-!test/assets/*
-!test/assets/x509/*
+!test/assets/**
 !test/assets/staging-tuf/**
