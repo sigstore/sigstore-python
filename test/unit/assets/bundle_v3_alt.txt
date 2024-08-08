@@ -1,6 +1,0 @@
-DO NOT MODIFY ME!
-
-this is the input for bundle_v3_alt, which tests support for "v3" bundles
-with the older ("alternate") v3 media type.
-
-DO NOT MODIFY ME!

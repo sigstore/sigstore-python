@@ -246,8 +246,6 @@ class RekorClient:
     def production(cls) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor production instance.
-
-        trust_root must be a `TrustedRoot` for the production TUF repository.
         """
         return cls(
             DEFAULT_REKOR_URL,
@@ -257,8 +255,6 @@ class RekorClient:
     def staging(cls) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor staging instance.
-
-        trust_root must be a `TrustedRoot` for the staging TUF repository.
         """
         return cls(STAGING_REKOR_URL)
 

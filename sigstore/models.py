@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import logging
 import typing
+from enum import Enum
 from textwrap import dedent
 from typing import Any, List, Optional
 
@@ -57,7 +58,6 @@ from sigstore._internal.merkle import verify_merkle_inclusion
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
 from sigstore._utils import (
     B64Str,
-    BundleType,
     KeyID,
     cert_is_leaf,
     cert_is_root_ca,
@@ -199,8 +199,8 @@ class LogEntry:
         inclusion_proof: InclusionProof | None = tlog_entry.inclusion_proof
         # This check is required by us as the client, not the
         # protobuf-specs themselves.
-        if inclusion_proof is None or inclusion_proof.checkpoint.envelope is None:
-            raise InvalidBundle("entry must contain inclusion proof")
+        if not inclusion_proof or not inclusion_proof.checkpoint.envelope:
+            raise InvalidBundle("entry must contain inclusion proof, with checkpoint")
 
         parsed_inclusion_proof = LogInclusionProof(
             checkpoint=inclusion_proof.checkpoint.envelope,
@@ -224,7 +224,12 @@ class LogEntry:
             ),
         )
 
-    def _to_dict_rekor(self) -> dict[str, Any]:
+    def _to_rekor(self) -> rekor_v1.TransparencyLogEntry:
+        """
+        Create a new protobuf-level `TransparencyLogEntry` from this `LogEntry`.
+
+        @private
+        """
         inclusion_promise: rekor_v1.InclusionPromise | None = None
         if self.inclusion_promise:
             inclusion_promise = rekor_v1.InclusionPromise(
@@ -259,8 +264,7 @@ class LogEntry:
             kind=body_entry.kind, version=body_entry.api_version
         )
 
-        tlog_entry_dict: dict[str, Any] = tlog_entry.to_dict()
-        return tlog_entry_dict
+        return tlog_entry
 
     def encode_canonical(self) -> bytes:
         """
@@ -350,6 +354,20 @@ class Bundle:
     Represents a Sigstore bundle.
     """
 
+    class BundleType(str, Enum):
+        """
+        Known Sigstore bundle media types.
+        """
+
+        BUNDLE_0_1 = "application/vnd.dev.sigstore.bundle+json;version=0.1"
+        BUNDLE_0_2 = "application/vnd.dev.sigstore.bundle+json;version=0.2"
+        BUNDLE_0_3_ALT = "application/vnd.dev.sigstore.bundle+json;version=0.3"
+        BUNDLE_0_3 = "application/vnd.dev.sigstore.bundle.v0.3+json"
+
+        def __str__(self) -> str:
+            """Returns the variant's string value."""
+            return self.value
+
     def __init__(self, inner: _Bundle) -> None:
         """
         Creates a new bundle. This is not a public API; use
@@ -372,12 +390,15 @@ class Bundle:
 
         # The bundle must have a recognized media type.
         try:
-            media_type = BundleType(self._inner.media_type)
+            media_type = Bundle.BundleType(self._inner.media_type)
         except ValueError:
             raise InvalidBundle(f"unsupported bundle format: {self._inner.media_type}")
 
         # Extract the signing certificate.
-        if media_type in (BundleType.BUNDLE_0_3, BundleType.BUNDLE_0_3_ALT):
+        if media_type in (
+            Bundle.BundleType.BUNDLE_0_3,
+            Bundle.BundleType.BUNDLE_0_3_ALT,
+        ):
             # For "v3" bundles, the signing certificate is the only one present.
             leaf_cert = load_der_x509_certificate(
                 self._inner.verification_material.certificate.raw_bytes
@@ -445,7 +466,7 @@ class Bundle:
         # (when constructing the LogEntry).
         log_entry = LogEntry._from_dict_rekor(tlog_entry.to_dict())
 
-        if media_type == BundleType.BUNDLE_0_1:
+        if media_type == Bundle.BundleType.BUNDLE_0_1:
             if not log_entry.inclusion_promise:
                 raise InvalidBundle("bundle must contain an inclusion promise")
             if not log_entry.inclusion_proof.checkpoint:
@@ -496,6 +517,23 @@ class Bundle:
         """
         return self._inner.to_json()
 
+    def _to_parts(
+        self,
+    ) -> tuple[Certificate, common_v1.MessageSignature | dsse.Envelope, LogEntry]:
+        """
+        Decompose the `Bundle` into its core constituent parts.
+
+        @private
+        """
+
+        content: common_v1.MessageSignature | dsse.Envelope
+        if self._dsse_envelope:
+            content = self._dsse_envelope
+        else:
+            content = self._inner.message_signature
+
+        return (self.signing_certificate, content, self.log_entry)
+
     @classmethod
     def from_parts(cls, cert: Certificate, sig: bytes, log_entry: LogEntry) -> Bundle:
         """
@@ -519,7 +557,7 @@ class Bundle:
         """
 
         inner = _Bundle(
-            media_type=BundleType.BUNDLE_0_3.value,
+            media_type=Bundle.BundleType.BUNDLE_0_3.value,
             verification_material=bundle_v1.VerificationMaterial(
                 certificate=common_v1.X509Certificate(cert.public_bytes(Encoding.DER)),
             ),
@@ -531,8 +569,7 @@ class Bundle:
         else:
             inner.dsse_envelope = content._inner
 
-        tlog_entry = rekor_v1.TransparencyLogEntry()
-        tlog_entry.from_dict(log_entry._to_dict_rekor())
+        tlog_entry = log_entry._to_rekor()
         inner.verification_material.tlog_entries = [tlog_entry]
 
         return cls(inner)

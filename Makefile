@@ -40,7 +40,7 @@ endif
 ifneq ($(T),)
 	T := $(T)
 else
-	T := test/unit
+	T := test/unit test/integration
 endif
 
 .PHONY: all

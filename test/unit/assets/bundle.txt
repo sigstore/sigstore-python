@@ -1,5 +1,0 @@
-DO NOT MODIFY ME!
-
-this is "bundle.txt", a sample input for sigstore-python's unit tests.
-
-DO NOT MODIFY ME!
