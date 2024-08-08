@@ -40,7 +40,50 @@ def test_fix_bundle_fixes_missing_checkpoint(capsys, sigstore, asset):
     # The bundle now loads correctly.
     bundle = Bundle.from_json(captures.out)
 
-    # ...and can now be used to verify the `Python-3.12.5.tgz` release.
+    # We didn't pass `--upgrade-version` so the version is still v0.1.
+    assert bundle._inner.media_type == Bundle.BundleType.BUNDLE_0_1
+
+    # ...and the fixed bundle can now be used to verify the `Python-3.12.5.tgz`
+    # release.
+    verifier = Verifier.production()
+    verifier.verify_artifact(
+        Hashed(
+            algorithm=HashAlgorithm.SHA2_256,
+            digest=bytes.fromhex(
+                "38dc4e2c261d49c661196066edbfb70fdb16be4a79cc8220c224dfeb5636d405"
+            ),
+        ),
+        bundle,
+        policy.AllOf(
+            [
+                policy.Identity(
+                    identity="thomas@python.org", issuer="https://accounts.google.com"
+                )
+            ]
+        ),
+    )
+
+
+def test_fix_bundle_upgrades_bundle(capsys, sigstore, asset):
+    invalid_bundle = asset("Python-3.12.5.tgz.sigstore")
+
+    # Running `sigstore plumbing fix-bundle --upgrade-version`
+    # emits a fixed bundle.
+    sigstore(
+        "plumbing", "fix-bundle", "--upgrade-version", "--bundle", str(invalid_bundle)
+    )
+
+    captures = capsys.readouterr()
+
+    # The bundle now loads correctly.
+    bundle = Bundle.from_json(captures.out)
+
+    # The bundle is now the latest version (v0.3).
+    assert bundle._inner.media_type == Bundle.BundleType.BUNDLE_0_3
+
+    # ...and the upgraded (and fixed) bundle can still verify
+    # the release.
+    # ...and the fixed can now be used to verify the `Python-3.12.5.tgz` release.
     verifier = Verifier.production()
     verifier.verify_artifact(
         Hashed(
