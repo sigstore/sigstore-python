@@ -25,4 +25,4 @@ build
 !sigstore/_store/*.pub
 !test/assets/*
 !test/assets/x509/*
-!test/assets/staging-tuf/*
+!test/assets/staging-tuf/**
