@@ -424,7 +424,7 @@ def _parser() -> argparse.ArgumentParser:
     # `sigstore plumbing`
     plumbing = subcommands.add_parser(
         "plumbing",
-        help="Developer-only plumbing operations",
+        help="developer-only plumbing operations",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[parent_parser],
     )

@@ -108,6 +108,7 @@ positional arguments:
     get-identity-token
                        retrieve and return a Sigstore-compatible OpenID
                        Connect token
+    plumbing           developer-only plumbing operations
 
 optional arguments:
   -h, --help           show this help message and exit
