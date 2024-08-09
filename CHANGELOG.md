@@ -8,6 +8,22 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* API: `models.Bundle.BundleType` is now a public API
+  ([#1089](https://github.com/sigstore/sigstore-python/pull/1089))
+
+* CLI: The `sigstore plumbing` subcommand hierarchy has been added. This
+  hierarchy is for *developer-only* interactions, such as fixing malformed
+  Sigstore bundles. These subcommands are **not considered stable until
+  explicitly documented as such**.
+  ([#1089](https://github.com/sigstore/sigstore-python/pull/1089))
+
+### Changed
+
+* CLI: The default console logger now emits to `stderr`, rather than `stdout`
+  ([#1089](https://github.com/sigstore/sigstore-python/pull/1089))
+
 ## [3.1.0]
 
 ### Added

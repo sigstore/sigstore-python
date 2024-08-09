@@ -44,7 +44,7 @@ from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
 from sigstore.sign import SigningContext
 from sigstore.verify.verifier import Verifier
 
-_ASSETS = (Path(__file__).parent / "assets").resolve()
+_ASSETS = (Path(__file__).parent.parent / "assets").resolve()
 assert _ASSETS.is_dir()
 
 _TUF_ASSETS = (_ASSETS / "staging-tuf").resolve()

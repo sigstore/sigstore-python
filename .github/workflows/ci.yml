@@ -48,7 +48,9 @@ jobs:
           # This in turn effectively exercises the correctness of our
           # "online-only" test markers, since any test that's online
           # but not marked as such will fail.
-          unshare --map-root-user --net make test TEST_ARGS="--skip-online -vv --showlocals"
+          # We also explicitly exclude the intergration tests, since these are
+          # always online.
+          unshare --map-root-user --net make test T="test/unit" TEST_ARGS="--skip-online -vv --showlocals"
 
       - name: test
         run: make test TEST_ARGS="-vv --showlocals"
