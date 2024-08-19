@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.2.0]
+
 ### Added
 
 * API: `models.Bundle.BundleType` is now a public API
@@ -477,7 +479,8 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/sigstore/sigstore-python/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/sigstore/sigstore-python/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/sigstore/sigstore-python/compare/v2.1.5...v3.0.0
 [2.1.5]: https://github.com/sigstore/sigstore-python/compare/v2.1.4...v2.1.5
