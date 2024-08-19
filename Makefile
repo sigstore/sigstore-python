@@ -40,7 +40,7 @@ endif
 ifneq ($(T),)
 	T := $(T)
 else
-	T := test/unit
+	T := test/unit test/integration
 endif
 
 .PHONY: all
@@ -91,7 +91,7 @@ test-interactive: test
 gen-x509-testcases: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
 		export TESTCASE_OVERWRITE=1 && \
-		python test/unit/assets/x509/build-testcases.py && \
+		python test/assets/x509/build-testcases.py && \
 		git diff --exit-code
 
 .PHONY: doc

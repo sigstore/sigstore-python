@@ -38,7 +38,7 @@ class TestLogEntry:
         _, bundle = signing_bundle("bundle.txt")
 
         assert (
-            LogEntry._from_dict_rekor(bundle.log_entry._to_dict_rekor())
+            LogEntry._from_dict_rekor(bundle.log_entry._to_rekor().to_dict())
             == bundle.log_entry
         )
 
@@ -111,7 +111,7 @@ class TestBundle:
 
     def test_verification_materials_offline_no_checkpoint(self, signing_bundle):
         with pytest.raises(
-            InvalidBundle, match="expected checkpoint in inclusion proof"
+            InvalidBundle, match="entry must contain inclusion proof, with checkpoint"
         ):
             signing_bundle("bundle_no_checkpoint.txt")
 
@@ -123,3 +123,10 @@ class TestBundle:
         assert json.loads(Bundle.from_json(bundle.to_json()).to_json()) == json.loads(
             bundle.to_json()
         )
+
+
+class TestKnownBundleTypes:
+    def test_str(self):
+        for type_ in Bundle.BundleType:
+            assert str(type_) == type_.value
+            assert type_ in Bundle.BundleType

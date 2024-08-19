@@ -24,16 +24,21 @@ from typing import NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
+from rich.console import Console
 from rich.logging import RichHandler
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
+    Bundle as RawBundle,
+)
 
 from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
+from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
-from sigstore.models import Bundle
+from sigstore.models import Bundle, InvalidBundle
 from sigstore.oidc import (
     DEFAULT_OAUTH_ISSUER_URL,
     ExpiredIdentity,
@@ -47,7 +52,10 @@ from sigstore.verify import (
     policy,
 )
 
-logging.basicConfig(format="%(message)s", datefmt="[%X]", handlers=[RichHandler()])
+_console = Console(file=sys.stderr)
+logging.basicConfig(
+    format="%(message)s", datefmt="[%X]", handlers=[RichHandler(console=_console)]
+)
 _logger = logging.getLogger(__name__)
 
 # NOTE: We configure the top package logger, rather than the root logger,
@@ -56,7 +64,15 @@ _package_logger = logging.getLogger("sigstore")
 _package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
 
 
-def _die(args: argparse.Namespace, message: str) -> NoReturn:
+def _fatal(message: str) -> NoReturn:
+    """
+    Logs a fatal condition and exits.
+    """
+    _logger.fatal(message)
+    sys.exit(1)
+
+
+def _invalid_arguments(args: argparse.Namespace, message: str) -> NoReturn:
     """
     An `argparse` helper that fixes up the type hints on our use of
     `ArgumentParser.error`.
@@ -405,12 +421,54 @@ def _parser() -> argparse.ArgumentParser:
     )
     _add_shared_oidc_options(get_identity_token)
 
+    # `sigstore plumbing`
+    plumbing = subcommands.add_parser(
+        "plumbing",
+        help="developer-only plumbing operations",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
+    )
+    plumbing_subcommands = plumbing.add_subparsers(
+        required=True,
+        dest="plumbing_subcommand",
+        metavar="COMMAND",
+        help="the operation to perform",
+    )
+
+    # `sigstore plumbing fix-bundle`
+    fix_bundle = plumbing_subcommands.add_parser(
+        "fix-bundle",
+        help="fix (and optionally upgrade) older bundle formats",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
+    )
+    fix_bundle.add_argument(
+        "--bundle",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help=("The bundle to fix and/or upgrade"),
+    )
+    fix_bundle.add_argument(
+        "--upgrade-version",
+        action="store_true",
+        help="Upgrade the bundle to the latest bundle spec version",
+    )
+    fix_bundle.add_argument(
+        "--in-place",
+        action="store_true",
+        help="Overwrite the input bundle with its fix instead of emitting to stdout",
+    )
+
     return parser
 
 
-def main() -> None:
+def main(args: list[str] | None = None) -> None:
+    if not args:
+        args = sys.argv[1:]
+
     parser = _parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # Configure logging upfront, so that we don't miss anything.
     if args.verbose >= 1:
@@ -437,10 +495,12 @@ def main() -> None:
             if identity:
                 print(identity)
             else:
-                _die(args, "No identity token supplied or detected!")
-
+                _invalid_arguments(args, "No identity token supplied or detected!")
+        elif args.subcommand == "plumbing":
+            if args.plumbing_subcommand == "fix-bundle":
+                _fix_bundle(args)
         else:
-            _die(args, f"Unknown subcommand: {args.subcommand}")
+            _invalid_arguments(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
         e.log_and_exit(_logger, args.verbose >= 1)
 
@@ -453,19 +513,21 @@ def _sign(args: argparse.Namespace) -> None:
     # `--no-default-files` has no effect on `--bundle`, but we forbid it because
     # it indicates user confusion.
     if args.no_default_files and has_bundle:
-        _die(args, "--no-default-files may not be combined with --bundle.")
+        _invalid_arguments(
+            args, "--no-default-files may not be combined with --bundle."
+        )
 
     # Fail if `--signature` or `--certificate` is specified *and* we have more
     # than one input.
     if (has_sig or has_crt or has_bundle) and len(args.files) > 1:
-        _die(
+        _invalid_arguments(
             args,
             "Error: --signature, --certificate, and --bundle can't be used with "
             "explicit outputs for multiple inputs.",
         )
 
     if args.output_directory and (has_sig or has_crt or has_bundle):
-        _die(
+        _invalid_arguments(
             args,
             "Error: --signature, --certificate, and --bundle can't be used with "
             "an explicit output directory.",
@@ -473,14 +535,16 @@ def _sign(args: argparse.Namespace) -> None:
 
     # Fail if either `--signature` or `--certificate` is specified, but not both.
     if has_sig ^ has_crt:
-        _die(args, "Error: --signature and --certificate must be used together.")
+        _invalid_arguments(
+            args, "Error: --signature and --certificate must be used together."
+        )
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
     # so that we can fail early if overwriting without `--overwrite`.
     output_map: dict[Path, dict[str, Path | None]] = {}
     for file in args.files:
         if not file.is_file():
-            _die(args, f"Input must be a file: {file}")
+            _invalid_arguments(args, f"Input must be a file: {file}")
 
         sig, cert, bundle = (
             args.signature,
@@ -490,7 +554,9 @@ def _sign(args: argparse.Namespace) -> None:
 
         output_dir = args.output_directory if args.output_directory else file.parent
         if output_dir.exists() and not output_dir.is_dir():
-            _die(args, f"Output directory exists and is not a directory: {output_dir}")
+            _invalid_arguments(
+                args, f"Output directory exists and is not a directory: {output_dir}"
+            )
         output_dir.mkdir(parents=True, exist_ok=True)
 
         if not bundle and not args.no_default_files:
@@ -506,7 +572,7 @@ def _sign(args: argparse.Namespace) -> None:
                 extants.append(str(bundle))
 
             if extants:
-                _die(
+                _invalid_arguments(
                     args,
                     "Refusing to overwrite outputs without --overwrite: "
                     f"{', '.join(extants)}",
@@ -543,7 +609,7 @@ def _sign(args: argparse.Namespace) -> None:
         identity = _get_identity(args)
 
     if not identity:
-        _die(args, "No identity token supplied or detected!")
+        _invalid_arguments(args, "No identity token supplied or detected!")
 
     with signing_ctx.signer(identity) as signer:
         for file, outputs in output_map.items():
@@ -609,7 +675,7 @@ def _collect_verification_state(
     # Fail if --certificate, --signature, or --bundle is specified and we
     # have more than one input.
     if (args.certificate or args.signature or args.bundle) and len(args.files) > 1:
-        _die(
+        _invalid_arguments(
             args,
             "--certificate, --signature, or --bundle can only be used "
             "with a single input file",
@@ -617,18 +683,22 @@ def _collect_verification_state(
 
     # Fail if `--certificate` or `--signature` is used with `--bundle`.
     if args.bundle and (args.certificate or args.signature):
-        _die(args, "--bundle cannot be used with --certificate or --signature")
+        _invalid_arguments(
+            args, "--bundle cannot be used with --certificate or --signature"
+        )
 
     # Fail if `--certificate` or `--signature` is used with `--offline`.
     if args.offline and (args.certificate or args.signature):
-        _die(args, "--offline cannot be used with --certificate or --signature")
+        _invalid_arguments(
+            args, "--offline cannot be used with --certificate or --signature"
+        )
 
     # The converse of `sign`: we build up an expected input map and check
     # that we have everything so that we can fail early.
     input_map = {}
     for file in args.files:
         if not file.is_file():
-            _die(args, f"Input must be a file: {file}")
+            _invalid_arguments(args, f"Input must be a file: {file}")
 
         sig, cert, bundle = (
             args.signature,
@@ -656,7 +726,7 @@ def _collect_verification_state(
             elif bundle.is_file() and legacy_default_bundle.is_file():
                 # Don't allow the user to implicitly verify `{input}.sigstore.json` if
                 # `{input}.sigstore` is also present, since this implies user confusion.
-                _die(
+                _invalid_arguments(
                     args,
                     f"Conflicting inputs: {bundle} and {legacy_default_bundle}",
                 )
@@ -678,7 +748,7 @@ def _collect_verification_state(
             input_map[file] = {"bundle": bundle}
 
         if missing:
-            _die(
+            _invalid_arguments(
                 args,
                 f"Missing verification materials for {(file)}: {', '.join(missing)}",
             )
@@ -719,7 +789,9 @@ def _collect_verification_state(
                 _hashedrekord_from_parts(cert, signature, hashed)
             )
             if log_entry is None:
-                _die(args, f"No matching log entry for {file}'s verification materials")
+                _invalid_arguments(
+                    args, f"No matching log entry for {file}'s verification materials"
+                )
             bundle = Bundle.from_parts(cert, signature, log_entry)
 
         _logger.debug(f"Verifying contents from: {file}")
@@ -752,7 +824,7 @@ def _verify_github(args: argparse.Namespace) -> None:
     # We require at least one of `--cert-identity` or `--repository`,
     # to minimize the risk of user confusion about what's being verified.
     if not (args.cert_identity or args.workflow_repository):
-        _die(args, "--cert-identity or --repository is required")
+        _invalid_arguments(args, "--cert-identity or --repository is required")
 
     # No matter what the user configures above, we require the OIDC issuer to
     # be GitHub Actions.
@@ -852,3 +924,44 @@ def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
     )
 
     return token
+
+
+def _fix_bundle(args: argparse.Namespace) -> None:
+    # NOTE: We could support `--trusted-root` here in the future,
+    # for custom Rekor instances.
+    if args.staging:
+        rekor = RekorClient.staging()
+    else:
+        rekor = RekorClient.production()
+
+    raw_bundle = RawBundle().from_json(args.bundle.read_text())
+
+    if len(raw_bundle.verification_material.tlog_entries) != 1:
+        _fatal("unfixable bundle: must have exactly one log entry")
+
+    # Some old versions of sigstore-python (1.x) produce malformed
+    # bundles where the inclusion proof is present but without
+    # its checkpoint. We fix these by retrieving the complete entry
+    # from Rekor and replacing the incomplete entry.
+    tlog_entry = raw_bundle.verification_material.tlog_entries[0]
+    inclusion_proof = tlog_entry.inclusion_proof
+    if not inclusion_proof.checkpoint:
+        _logger.info("fixable: bundle's log entry is missing a checkpoint")
+        new_entry = rekor.log.entries.get(log_index=tlog_entry.log_index)._to_rekor()
+        raw_bundle.verification_material.tlog_entries = [new_entry]
+
+    # Try to create our invariant-preserving Bundle from the any changes above.
+    try:
+        bundle = Bundle(raw_bundle)
+    except InvalidBundle as e:
+        e.log_and_exit(_logger)
+
+    # Round-trip through the bundle's parts to induce a version upgrade,
+    # if requested.
+    if args.upgrade_version:
+        bundle = Bundle._from_parts(*bundle._to_parts())
+
+    if args.in_place:
+        args.bundle.write_text(bundle.to_json())
+    else:
+        print(bundle.to_json())
