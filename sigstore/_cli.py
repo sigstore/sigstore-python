@@ -33,7 +33,12 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
 
 from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
-from sigstore._internal.predicate import (
+from sigstore._internal.rekor import _hashedrekord_from_parts
+from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.trust import ClientTrustConfig
+from sigstore._utils import sha256_digest
+from sigstore.dsse import StatementBuilder, Subject
+from sigstore.dsse._predicate import (
     PREDICATE_TYPES_CLI_MAP,
     Predicate,
     PREDICATE_TYPE_SLSA_v0_2,
@@ -41,11 +46,6 @@ from sigstore._internal.predicate import (
     SLSAPredicateV0_2,
     SLSAPredicateV1_0,
 )
-from sigstore._internal.rekor import _hashedrekord_from_parts
-from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.trust import ClientTrustConfig
-from sigstore._utils import sha256_digest
-from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle, InvalidBundle
