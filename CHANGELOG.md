@@ -8,7 +8,7 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
-### Changed
+### Added
 
 * CLI: The `sigstore verify` command now outputs the inner in-toto statement
   when verifying DSSE envelopes. If verification is successful, the output
