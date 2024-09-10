@@ -135,7 +135,7 @@ check-readme:
 	    $(MAKE) -s run ARGS="sign --help" \
 	  )
 
-    # sigstore attest --help
+	# sigstore attest --help
 	@diff \
 	  <( \
 	    awk '/@begin-sigstore-attest-help@/{f=1;next} /@end-sigstore-attest-help@/{f=0} f' \

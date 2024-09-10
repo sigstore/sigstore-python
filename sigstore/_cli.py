@@ -39,7 +39,7 @@ from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
-    PREDICATE_TYPES_CLI_MAP,
+    SUPPORTED_PREDICATE_TYPES,
     Predicate,
     PREDICATE_TYPE_SLSA_v0_2,
     PREDICATE_TYPE_SLSA_v1_0,
@@ -264,10 +264,10 @@ def _parser() -> argparse.ArgumentParser:
     dsse_options.add_argument(
         "--predicate-type",
         metavar="TYPE",
-        choices=PREDICATE_TYPES_CLI_MAP,
+        choices=SUPPORTED_PREDICATE_TYPES,
         type=str,
         required=True,
-        help=f"Specify a predicate type ({'|'.join(PREDICATE_TYPES_CLI_MAP)})",
+        help=f"Specify a predicate type ({', '.join(SUPPORTED_PREDICATE_TYPES)})",
     )
 
     oidc_options = attest.add_argument_group("OpenID Connect options")
@@ -797,15 +797,14 @@ def _attest(args: argparse.Namespace) -> None:
 
     try:
         with open(predicate_path, "r") as f:
-            predicate_type = PREDICATE_TYPES_CLI_MAP[args.predicate_type]
-            if predicate_type == PREDICATE_TYPE_SLSA_v0_2:
+            if args.predicate_type == PREDICATE_TYPE_SLSA_v0_2:
                 predicate: Predicate = SLSAPredicateV0_2.model_validate_json(f.read())
-            elif predicate_type == PREDICATE_TYPE_SLSA_v1_0:
+            elif args.predicate_type == PREDICATE_TYPE_SLSA_v1_0:
                 predicate = SLSAPredicateV1_0.model_validate_json(f.read())
             else:
                 _invalid_arguments(
                     args,
-                    f'Unsupported predicate type "{args.predicate_type}". Predicate type must be one of: {PREDICATE_TYPES_CLI_MAP}',
+                    f'Unsupported predicate type "{args.predicate_type}". Predicate type must be one of: {SUPPORTED_PREDICATE_TYPES}',
                 )
     except ValidationError as e:
         _invalid_arguments(

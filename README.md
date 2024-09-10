@@ -180,6 +180,7 @@ Output options:
 ```
 <!-- @end-sigstore-sign-help@ -->
 
+
 ### Signing with DSSE envelopes
 
 <!-- @begin-sigstore-attest-help@ -->
@@ -205,7 +206,8 @@ DSSE options:
   --predicate FILE      Path to the predicate file (default: None)
   --predicate-type TYPE
                         Specify a predicate type
-                        (slsaprovenance0_2|slsaprovenance1_0) (default: None)
+                        (https://slsa.dev/provenance/v0.2,
+                        https://slsa.dev/provenance/v1) (default: None)
 
 OpenID Connect options:
   --identity-token TOKEN

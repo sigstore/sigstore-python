@@ -32,10 +32,7 @@ from sigstore.dsse import Digest
 PREDICATE_TYPE_SLSA_v0_2 = "https://slsa.dev/provenance/v0.2"
 PREDICATE_TYPE_SLSA_v1_0 = "https://slsa.dev/provenance/v1"
 
-PREDICATE_TYPES_CLI_MAP = {
-    "slsaprovenance0_2": PREDICATE_TYPE_SLSA_v0_2,
-    "slsaprovenance1_0": PREDICATE_TYPE_SLSA_v1_0,
-}
+SUPPORTED_PREDICATE_TYPES = [PREDICATE_TYPE_SLSA_v0_2, PREDICATE_TYPE_SLSA_v1_0]
 
 # Common models
 
