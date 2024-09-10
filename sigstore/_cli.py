@@ -746,7 +746,13 @@ def _sign_common(args: argparse.Namespace, predicate: Predicate | None) -> None:
                     statement_builder = StatementBuilder(
                         subjects=[subject],
                         predicate_type=predicate_type,
-                        predicate=predicate.model_dump(),
+                        # Dump by alias because while our Python models uses snake_case,
+                        # the spec uses camelCase, which we have aliases for.
+                        # We also exclude fields set to None, since it's how we model
+                        # optional fields that were not set.
+                        predicate=predicate.model_dump(
+                            by_alias=True, exclude_none=True
+                        ),
                     )
                     result = signer.sign_dsse(statement_builder.build())
             except ExpiredIdentity as exp_identity:

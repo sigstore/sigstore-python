@@ -19,13 +19,16 @@ Models for the predicates used in in-toto statements
 from typing import Any, Dict, List, Literal, Optional, TypeVar, Union
 
 from pydantic import (
+    AliasChoices,
     BaseModel,
+    ConfigDict,
     Field,
     RootModel,
     StrictBytes,
     StrictStr,
     model_validator,
 )
+from pydantic.alias_generators import to_camel
 
 from sigstore.dsse import Digest
 
@@ -54,10 +57,18 @@ class Predicate(BaseModel):
     pass
 
 
+class _SLSAConfigBase(BaseModel):
+    """
+    Base class used to configure the models
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel)
+
+
 # Models for SLSA Provenance v0.2
 
 
-class BuilderV0_1(BaseModel):
+class BuilderV0_1(_SLSAConfigBase):
     """
     The Builder object used by SLSAPredicateV0_2
     """
@@ -65,68 +76,74 @@ class BuilderV0_1(BaseModel):
     id: StrictStr
 
 
-class ConfigSource(BaseModel):
+class ConfigSource(_SLSAConfigBase):
     """
     The ConfigSource object used by Invocation in v0.2
     """
 
-    uri: Optional[StrictStr]
-    digest: Optional[DigestSetSource]
-    entry_point: Optional[StrictStr] = Field(None, alias="entryPoint")
+    uri: Optional[StrictStr] = None
+    digest: Optional[DigestSetSource] = None
+    entry_point: Optional[StrictStr] = None
 
 
-class Invocation(BaseModel):
+class Invocation(_SLSAConfigBase):
     """
     The Invocation object used by SLSAPredicateV0_2
     """
 
-    config_source: Optional[ConfigSource] = Field(None, alias="configSource")
-    parameters: Optional[Dict[str, Any]]
-    environment: Optional[Dict[str, Any]]
+    config_source: Optional[ConfigSource] = None
+    parameters: Optional[Dict[str, Any]] = None
+    environment: Optional[Dict[str, Any]] = None
 
 
-class Completeness(BaseModel):
+class Completeness(_SLSAConfigBase):
     """
     The Completeness object used by Metadata in v0.2
     """
 
-    parameters: Optional[bool]
-    environment: Optional[bool]
-    materials: Optional[bool]
+    parameters: Optional[bool] = None
+    environment: Optional[bool] = None
+    materials: Optional[bool] = None
 
 
-class Material(BaseModel):
+class Material(_SLSAConfigBase):
     """
     The Material object used by Metadata in v0.2
     """
 
-    uri: Optional[StrictStr]
-    digest: Optional[DigestSetSource]
+    uri: Optional[StrictStr] = None
+    digest: Optional[DigestSetSource] = None
 
 
-class Metadata(BaseModel):
+class Metadata(_SLSAConfigBase):
     """
     The Metadata object used by SLSAPredicateV0_2
     """
 
-    build_invocation_id: Optional[StrictStr] = Field(None, alias="buildInvocationId")
-    build_started_on: Optional[StrictStr] = Field(None, alias="buildStartedOn")
-    build_finished_on: Optional[StrictStr] = Field(None, alias="buildFinishedOn")
-    completeness: Optional[Completeness]
-    reproducible: Optional[bool]
+    # We add a manual alias here because some provenance generators
+    # (like `slsa-github-generator`) incorrectly use BuildInvocationID
+    # instead of BuildInvocationId (ID vs Id)
+    build_invocation_id: Optional[StrictStr] = Field(
+        default=None,
+        validation_alias=AliasChoices("buildInvocationId", "buildInvocationID"),
+    )
+    build_started_on: Optional[StrictStr] = None
+    build_finished_on: Optional[StrictStr] = None
+    completeness: Optional[Completeness] = None
+    reproducible: Optional[bool] = None
 
 
-class SLSAPredicateV0_2(Predicate):
+class SLSAPredicateV0_2(Predicate, _SLSAConfigBase):
     """
     Represents the predicate object corresponding to the type "https://slsa.dev/provenance/v0.2"
     """
 
     builder: BuilderV0_1
-    build_type: StrictStr = Field(..., alias="buildType")
-    invocation: Optional[Invocation]
-    metadata: Optional[Metadata]
-    build_config: Optional[Dict[str, Any]] = Field(None, alias="buildConfig")
-    materials: Optional[List[Material]]
+    build_type: StrictStr
+    invocation: Optional[Invocation] = None
+    metadata: Optional[Metadata] = None
+    build_config: Optional[Dict[str, Any]] = None
+    materials: Optional[List[Material]] = None
 
 
 # Models for SLSA Provenance v1.0
@@ -134,18 +151,18 @@ class SLSAPredicateV0_2(Predicate):
 Self = TypeVar("Self", bound="ResourceDescriptor")
 
 
-class ResourceDescriptor(BaseModel):
+class ResourceDescriptor(_SLSAConfigBase):
     """
     The ResourceDescriptor object defined defined by the in-toto attestations spec
     """
 
     name: Optional[StrictStr]
     uri: Optional[StrictStr]
-    digest: DigestSetSource = Field(...)
-    content: Optional[StrictBytes]
-    download_location: Optional[StrictStr] = Field(None, alias="downloadLocation")
-    media_type: Optional[StrictStr] = Field(None, alias="mediaType")
-    annotations: Optional[Dict[StrictStr, Any]]
+    digest: DigestSetSource
+    content: Optional[StrictBytes] = None
+    download_location: Optional[StrictStr] = None
+    media_type: Optional[StrictStr] = None
+    annotations: Optional[Dict[StrictStr, Any]] = None
 
     @model_validator(mode="after")
     def check_required_fields(self: Self) -> Self:
@@ -160,7 +177,7 @@ class ResourceDescriptor(BaseModel):
         return self
 
 
-class BuilderV1_0(BaseModel):
+class BuilderV1_0(_SLSAConfigBase):
     """
     The Builder object used by RunDetails in v1.0
     """
@@ -172,17 +189,17 @@ class BuilderV1_0(BaseModel):
     version: Dict[StrictStr, StrictStr]
 
 
-class BuildMetadata(BaseModel):
+class BuildMetadata(_SLSAConfigBase):
     """
     The BuildMetadata object used by RunDetails
     """
 
-    invocation_id: StrictStr = Field(..., alias="invocationId")
-    started_on: StrictStr = Field(..., alias="startedOn")
-    finished_on: StrictStr = Field(..., alias="finishedOn")
+    invocation_id: StrictStr
+    started_on: StrictStr
+    finished_on: StrictStr
 
 
-class RunDetails(BaseModel):
+class RunDetails(_SLSAConfigBase):
     """
     The RunDetails object used by SLSAPredicateV1_0
     """
@@ -192,23 +209,21 @@ class RunDetails(BaseModel):
     byproducts: List[ResourceDescriptor]
 
 
-class BuildDefinition(BaseModel):
+class BuildDefinition(_SLSAConfigBase):
     """
     The BuildDefinition object used by SLSAPredicateV1_0
     """
 
-    build_type: StrictStr = Field(..., alias="buildType")
-    external_parameters: Dict[StrictStr, Any] = Field(..., alias="externalParameters")
-    internal_parameters: Dict[str, Any] = Field(..., alias="internalParameters")
-    resolved_dependencies: List[ResourceDescriptor] = Field(
-        ..., alias="resolvedDependencies"
-    )
+    build_type: StrictStr
+    external_parameters: Dict[StrictStr, Any]
+    internal_parameters: Dict[str, Any]
+    resolved_dependencies: List[ResourceDescriptor]
 
 
-class SLSAPredicateV1_0(Predicate):
+class SLSAPredicateV1_0(Predicate, _SLSAConfigBase):
     """
     Represents the predicate object corresponding to the type "https://slsa.dev/provenance/v1"
     """
 
-    build_definition: BuildDefinition = Field(..., alias="buildDefinition")
-    run_details: RunDetails = Field(..., alias="runDetails")
+    build_definition: BuildDefinition
+    run_details: RunDetails
