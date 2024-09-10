@@ -8,6 +8,14 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Changed
+
+* CLI: The `sigstore verify` command now outputs the inner in-toto statement
+  when verifying DSSE envelopes. If verification is successful, the output
+  will be "OK: $FILENAME" followed by the inner in-toto statement. This allows
+  the user to see the statement's predicate, which `sigstore-python` does not
+  verify and should be verified by the user.
+
 ## [3.2.0]
 
 ### Added

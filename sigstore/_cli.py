@@ -811,8 +811,10 @@ def _verify_identity(args: argparse.Namespace) -> None:
         )
 
         try:
-            _verify_common(verifier, hashed, bundle, policy_)
+            statement = _verify_common(verifier, hashed, bundle, policy_)
             print(f"OK: {file}")
+            if statement is not None:
+                print(statement._contents.decode())
         except Error as exc:
             _logger.error(f"FAIL: {file}")
             exc.log_and_exit(_logger, args.verbose >= 1)
@@ -857,8 +859,10 @@ def _verify_github(args: argparse.Namespace) -> None:
     verifier, materials = _collect_verification_state(args)
     for file, hashed, bundle in materials:
         try:
-            _verify_common(verifier, hashed, bundle, policy_)
+            statement = _verify_common(verifier, hashed, bundle, policy_)
             print(f"OK: {file}")
+            if statement is not None:
+                print(statement._contents)
         except Error as exc:
             _logger.error(f"FAIL: {file}")
             exc.log_and_exit(_logger, args.verbose >= 1)
@@ -869,12 +873,14 @@ def _verify_common(
     hashed: Hashed,
     bundle: Bundle,
     policy_: policy.VerificationPolicy,
-) -> None:
+) -> dsse.Statement | None:
     """
     Common verification handling.
 
     This dispatches to either artifact or DSSE verification, depending on
     `bundle`'s inner type.
+    If verifying a DSSE envelope, return the wrapped in-toto statement if
+    verification succeeds
     """
 
     # If the bundle specifies a DSSE envelope, perform DSSE verification
@@ -890,12 +896,14 @@ def _verify_common(
             raise VerificationError(
                 f"in-toto statement has no subject for digest {hashed.digest.hex()}"
             )
+        return stmt
     else:
         verifier.verify_artifact(
             input_=hashed,
             bundle=bundle,
             policy=policy_,
         )
+        return None
 
 
 def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
