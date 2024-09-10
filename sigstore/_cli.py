@@ -24,6 +24,7 @@ from typing import NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
+from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
@@ -32,10 +33,19 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
 
 from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
+from sigstore._internal.predicate import (
+    PREDICATE_TYPES_CLI_MAP,
+    Predicate,
+    PREDICATE_TYPE_SLSA_v0_2,
+    PREDICATE_TYPE_SLSA_v1_0,
+    SLSAPredicateV0_2,
+    SLSAPredicateV1_0,
+)
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
+from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle, InvalidBundle
@@ -226,6 +236,102 @@ def _parser() -> argparse.ArgumentParser:
         dest="subcommand",
         metavar="COMMAND",
         help="the operation to perform",
+    )
+
+    # `sigstore attest`
+    attest = subcommands.add_parser(
+        "attest",
+        help="sign one or more inputs using DSSE",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
+    )
+    attest.add_argument(
+        "files",
+        metavar="FILE",
+        type=Path,
+        nargs="+",
+        help="The file to sign",
+    )
+
+    dsse_options = attest.add_argument_group("DSSE options")
+    dsse_options.add_argument(
+        "--predicate",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help="Path to the predicate file",
+    )
+    dsse_options.add_argument(
+        "--predicate-type",
+        metavar="TYPE",
+        choices=PREDICATE_TYPES_CLI_MAP,
+        type=str,
+        required=True,
+        help=f"Specify a predicate type ({'|'.join(PREDICATE_TYPES_CLI_MAP)})",
+    )
+
+    oidc_options = attest.add_argument_group("OpenID Connect options")
+    oidc_options.add_argument(
+        "--identity-token",
+        metavar="TOKEN",
+        type=str,
+        default=os.getenv("SIGSTORE_IDENTITY_TOKEN"),
+        help="the OIDC identity token to use",
+    )
+    _add_shared_oidc_options(oidc_options)
+
+    output_options = attest.add_argument_group("Output options")
+    output_options.add_argument(
+        "--no-default-files",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
+        help="Don't emit the default output files ({input}.sigstore.json)",
+    )
+    output_options.add_argument(
+        "--signature",
+        "--output-signature",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_SIGNATURE"),
+        help=(
+            "Write a single signature to the given file; does not work with multiple input files"
+        ),
+    )
+    output_options.add_argument(
+        "--certificate",
+        "--output-certificate",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_CERTIFICATE"),
+        help=(
+            "Write a single certificate to the given file; does not work with multiple input files"
+        ),
+    )
+    output_options.add_argument(
+        "--bundle",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_BUNDLE"),
+        help=(
+            "Write a single Sigstore bundle to the given file; does not work with multiple input "
+            "files"
+        ),
+    )
+    output_options.add_argument(
+        "--output-directory",
+        metavar="DIR",
+        type=Path,
+        default=os.getenv("SIGSTORE_OUTPUT_DIRECTORY"),
+        help=(
+            "Write default outputs to the given directory (conflicts with --signature, --certificate"
+            ", --bundle)"
+        ),
+    )
+    output_options.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_OVERWRITE"),
+        help="Overwrite preexisting signature and certificate outputs, if present",
     )
 
     # `sigstore sign`
@@ -485,6 +591,8 @@ def main(args: list[str] | None = None) -> None:
     try:
         if args.subcommand == "sign":
             _sign(args)
+        elif args.subcommand == "attest":
+            _attest(args)
         elif args.subcommand == "verify":
             if args.verify_subcommand == "identity":
                 _verify_identity(args)
@@ -505,7 +613,16 @@ def main(args: list[str] | None = None) -> None:
         e.log_and_exit(_logger, args.verbose >= 1)
 
 
-def _sign(args: argparse.Namespace) -> None:
+def _sign_common(args: argparse.Namespace, predicate: Predicate | None) -> None:
+    """
+    Signing logic for both `sigstore sign` and `sigstore attest`
+
+    Both `sign` and `attest` share the same signing logic, the only change is
+    whether they sign over a DSSE envelope or a hashedrekord.
+    This function differentiates between the two using the `predicate` argument. If
+    present, it will generate an in-toto statement and wrap it in a DSSE envelope. If
+    not, it will use a hashedrekord.
+    """
     has_sig = bool(args.signature)
     has_crt = bool(args.certificate)
     has_bundle = bool(args.bundle)
@@ -619,7 +736,19 @@ def _sign(args: argparse.Namespace) -> None:
                 # digest and sign the prehash rather than buffering it fully.
                 digest = sha256_digest(io)
             try:
-                result = signer.sign_artifact(input_=digest)
+                if predicate is None:
+                    result = signer.sign_artifact(input_=digest)
+                else:
+                    subject = Subject(
+                        name=file.name, digest={"sha256": digest.digest.hex()}
+                    )
+                    predicate_type = args.predicate_type
+                    statement_builder = StatementBuilder(
+                        subjects=[subject],
+                        predicate_type=predicate_type,
+                        predicate=predicate.model_dump(),
+                    )
+                    result = signer.sign_dsse(statement_builder.build())
             except ExpiredIdentity as exp_identity:
                 print("Signature failed: identity token has expired")
                 raise exp_identity
@@ -659,6 +788,35 @@ def _sign(args: argparse.Namespace) -> None:
                 with outputs["bundle"].open(mode="w") as io:
                     print(result.to_json(), file=io)
                 print(f"Sigstore bundle written to {outputs['bundle']}")
+
+
+def _attest(args: argparse.Namespace) -> None:
+    predicate_path = args.predicate
+    if not predicate_path.is_file():
+        _invalid_arguments(args, f"Predicate must be a file: {predicate_path}")
+
+    try:
+        with open(predicate_path, "r") as f:
+            predicate_type = PREDICATE_TYPES_CLI_MAP[args.predicate_type]
+            if predicate_type == PREDICATE_TYPE_SLSA_v0_2:
+                predicate: Predicate = SLSAPredicateV0_2.model_validate_json(f.read())
+            elif predicate_type == PREDICATE_TYPE_SLSA_v1_0:
+                predicate = SLSAPredicateV1_0.model_validate_json(f.read())
+            else:
+                _invalid_arguments(
+                    args,
+                    f'Unsupported predicate type "{args.predicate_type}". Predicate type must be one of: {PREDICATE_TYPES_CLI_MAP}',
+                )
+    except ValidationError as e:
+        _invalid_arguments(
+            args, f'Unable to parse predicate of type "{args.predicate_type}": {e}'
+        )
+
+    _sign_common(args, predicate=predicate)
+
+
+def _sign(args: argparse.Namespace) -> None:
+    _sign_common(args, predicate=None)
 
 
 def _collect_verification_state(

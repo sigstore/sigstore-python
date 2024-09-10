@@ -103,6 +103,7 @@ a tool for signing and verifying Python package distributions
 
 positional arguments:
   COMMAND              the operation to perform
+    attest             sign one or more inputs using DSSE
     sign               sign one or more inputs
     verify             verify one or more inputs
     get-identity-token
@@ -178,6 +179,70 @@ Output options:
                         outputs, if present (default: False)
 ```
 <!-- @end-sigstore-sign-help@ -->
+
+### Signing with DSSE envelopes
+
+<!-- @begin-sigstore-attest-help@ -->
+```
+usage: sigstore attest [-h] [-v] --predicate FILE --predicate-type TYPE
+                       [--identity-token TOKEN] [--oidc-client-id ID]
+                       [--oidc-client-secret SECRET]
+                       [--oidc-disable-ambient-providers] [--oidc-issuer URL]
+                       [--oauth-force-oob] [--no-default-files]
+                       [--signature FILE] [--certificate FILE] [--bundle FILE]
+                       [--output-directory DIR] [--overwrite]
+                       FILE [FILE ...]
+
+positional arguments:
+  FILE                  The file to sign
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --verbose         run with additional debug logging; supply multiple
+                        times to increase verbosity (default: 0)
+
+DSSE options:
+  --predicate FILE      Path to the predicate file (default: None)
+  --predicate-type TYPE
+                        Specify a predicate type
+                        (slsaprovenance0_2|slsaprovenance1_0) (default: None)
+
+OpenID Connect options:
+  --identity-token TOKEN
+                        the OIDC identity token to use (default: None)
+  --oidc-client-id ID   The custom OpenID Connect client ID to use during
+                        OAuth2 (default: sigstore)
+  --oidc-client-secret SECRET
+                        The custom OpenID Connect client secret to use during
+                        OAuth2 (default: None)
+  --oidc-disable-ambient-providers
+                        Disable ambient OpenID Connect credential detection
+                        (e.g. on GitHub Actions) (default: False)
+  --oidc-issuer URL     The OpenID Connect issuer to use (conflicts with
+                        --staging) (default: https://oauth2.sigstore.dev/auth)
+  --oauth-force-oob     Force an out-of-band OAuth flow and do not
+                        automatically start the default web browser (default:
+                        False)
+
+Output options:
+  --no-default-files    Don't emit the default output files
+                        ({input}.sigstore.json) (default: False)
+  --signature FILE, --output-signature FILE
+                        Write a single signature to the given file; does not
+                        work with multiple input files (default: None)
+  --certificate FILE, --output-certificate FILE
+                        Write a single certificate to the given file; does not
+                        work with multiple input files (default: None)
+  --bundle FILE         Write a single Sigstore bundle to the given file; does
+                        not work with multiple input files (default: None)
+  --output-directory DIR
+                        Write default outputs to the given directory
+                        (conflicts with --signature, --certificate, --bundle)
+                        (default: None)
+  --overwrite           Overwrite preexisting signature and certificate
+                        outputs, if present (default: False)
+```
+<!-- @end-sigstore-attest-help@ -->
 
 ### Verifying
 

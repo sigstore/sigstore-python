@@ -84,7 +84,7 @@ class Statement:
 
     This type deals with opaque bytes to ensure that the encoding does not
     change, but Statements are internally checked for conformance against
-    the JSON object layout defined in the in-toto attesation spec.
+    the JSON object layout defined in the in-toto attestation spec.
 
     See: <https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md>
     """
