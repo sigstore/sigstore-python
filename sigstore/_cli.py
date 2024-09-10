@@ -812,7 +812,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
 
         try:
             statement = _verify_common(verifier, hashed, bundle, policy_)
-            print(f"OK: {file}")
+            print(f"OK: {file}", file=sys.stderr)
             if statement is not None:
                 print(statement._contents.decode())
         except Error as exc:
@@ -860,7 +860,7 @@ def _verify_github(args: argparse.Namespace) -> None:
     for file, hashed, bundle in materials:
         try:
             statement = _verify_common(verifier, hashed, bundle, policy_)
-            print(f"OK: {file}")
+            print(f"OK: {file}", file=sys.stderr)
             if statement is not None:
                 print(statement._contents)
         except Error as exc:
