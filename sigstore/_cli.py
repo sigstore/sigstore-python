@@ -42,9 +42,7 @@ from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
-    SUPPORTED_PREDICATE_TYPES,
-    PREDICATE_TYPE_SLSA_v0_2,
-    PREDICATE_TYPE_SLSA_v1_0,
+    PredicateType,
     SLSAPredicateV0_2,
     SLSAPredicateV1_0,
 )
@@ -277,10 +275,10 @@ def _parser() -> argparse.ArgumentParser:
     dsse_options.add_argument(
         "--predicate-type",
         metavar="TYPE",
-        choices=SUPPORTED_PREDICATE_TYPES,
-        type=str,
+        choices=list(PredicateType),
+        type=PredicateType,
         required=True,
-        help=f"Specify a predicate type ({', '.join(SUPPORTED_PREDICATE_TYPES)})",
+        help=f"Specify a predicate type ({', '.join(list(PredicateType))})",
     )
 
     oidc_options = attest.add_argument_group("OpenID Connect options")
@@ -704,17 +702,17 @@ def _attest(args: argparse.Namespace) -> None:
             # Since most of the predicate fields are optional, this only checks that
             # the fields that are present and correctly spelled have the expected
             # type.
-            if args.predicate_type == PREDICATE_TYPE_SLSA_v0_2:
+            if args.predicate_type == PredicateType.SLSA_v0_2:
                 SLSAPredicateV0_2.model_validate(predicate)
-            elif args.predicate_type == PREDICATE_TYPE_SLSA_v1_0:
+            elif args.predicate_type == PredicateType.SLSA_v1_0:
                 SLSAPredicateV1_0.model_validate(predicate)
             else:
                 _invalid_arguments(
                     args,
-                    f'Unsupported predicate type "{args.predicate_type}". Predicate type must be one of: {SUPPORTED_PREDICATE_TYPES}',
+                    f'Unsupported predicate type "{args.predicate_type}". Predicate type must be one of: {list(PredicateType)}',
                 )
 
-    except ValidationError as e:
+    except (ValidationError, json.JSONDecodeError) as e:
         _invalid_arguments(
             args, f'Unable to parse predicate of type "{args.predicate_type}": {e}'
         )
