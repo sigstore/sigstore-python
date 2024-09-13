@@ -66,7 +66,7 @@ class _SLSAConfigBase(BaseModel):
     Base class used to configure the models
     """
 
-    model_config = ConfigDict(alias_generator=to_camel)
+    model_config = ConfigDict(alias_generator=to_camel, extra="forbid")
 
 
 # Models for SLSA Provenance v0.2
