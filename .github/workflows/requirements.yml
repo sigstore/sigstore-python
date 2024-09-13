@@ -23,7 +23,7 @@ jobs:
       SIGSTORE_REF: ${{ inputs.ref }}
     strategy:
       matrix:
-        python_version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: Populate reference from context
@@ -39,6 +39,7 @@ jobs:
         name: Install Python ${{ matrix.python_version }}
         with:
           python-version: ${{ matrix.python_version }}
+          allow-prereleases: true
           cache: "pip"
 
       - name: Run test install

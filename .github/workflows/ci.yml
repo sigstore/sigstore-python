@@ -22,11 +22,12 @@ jobs:
           - { py: "3.10", os: "ubuntu-latest" }
           - { py: "3.11", os: "ubuntu-latest" }
           - { py: "3.12", os: "ubuntu-latest" }
+          - { py: "3.13", os: "ubuntu-latest" }
           # NOTE: We only test Windows and macOS on the latest Python;
           # these primarily exist to ensure that we don't accidentally
           # introduce Linux-isms into the development tooling.
-          - { py: "3.12", os: "windows-latest" }
-          - { py: "3.12", os: "macos-latest" }
+          - { py: "3.13", os: "windows-latest" }
+          - { py: "3.13", os: "macos-latest" }
     runs-on: ${{ matrix.conf.os }}
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -34,6 +35,7 @@ jobs:
       - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: ${{ matrix.conf.py }}
+          allow-prereleases: true
           cache: "pip"
           cache-dependency-path: pyproject.toml
 
