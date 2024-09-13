@@ -16,6 +16,12 @@ All versions prior to 0.9.0 are untracked.
   statement's predicate, which `sigstore-python` does not verify and should be
   verified by the user.
 
+* CLI: The `sigstore attest` subcommand has been added. This command is
+  similar to `cosign attest` in that it signs over an artifact and a
+  predicate using a DSSE envelope. This commands requires the user to pass
+  a path to the file containing the predicate, and the predicate type.
+  Currently only the SLSA Provenance v0.2 and v1.0 types are supported.
+
 ## [3.2.0]
 
 ### Added

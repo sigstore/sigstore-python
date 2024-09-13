@@ -19,16 +19,19 @@ import base64
 import logging
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NoReturn, Optional, TextIO, Union
+from typing import Dict, NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
+from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle as RawBundle,
 )
+from typing_extensions import TypeAlias
 
 from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
@@ -36,6 +39,15 @@ from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
+from sigstore.dsse import StatementBuilder, Subject
+from sigstore.dsse._predicate import (
+    SUPPORTED_PREDICATE_TYPES,
+    Predicate,
+    PREDICATE_TYPE_SLSA_v0_2,
+    PREDICATE_TYPE_SLSA_v1_0,
+    SLSAPredicateV0_2,
+    SLSAPredicateV1_0,
+)
 from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle, InvalidBundle
@@ -62,6 +74,17 @@ _logger = logging.getLogger(__name__)
 # to avoid overly verbose logging in third-party code by default.
 _package_logger = logging.getLogger("sigstore")
 _package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
+
+
+@dataclass(frozen=True)
+class SigningOutputs:
+    signature: Optional[Path] = None
+    certificate: Optional[Path] = None
+    bundle: Optional[Path] = None
+
+
+# Map of inputs -> outputs for signing operations
+OutputMap: TypeAlias = Dict[Path, SigningOutputs]
 
 
 def _fatal(message: str) -> NoReturn:
@@ -226,6 +249,66 @@ def _parser() -> argparse.ArgumentParser:
         dest="subcommand",
         metavar="COMMAND",
         help="the operation to perform",
+    )
+
+    # `sigstore attest`
+    attest = subcommands.add_parser(
+        "attest",
+        help="sign one or more inputs using DSSE",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
+    )
+    attest.add_argument(
+        "files",
+        metavar="FILE",
+        type=Path,
+        nargs="+",
+        help="The file to sign",
+    )
+
+    dsse_options = attest.add_argument_group("DSSE options")
+    dsse_options.add_argument(
+        "--predicate",
+        metavar="FILE",
+        type=Path,
+        required=True,
+        help="Path to the predicate file",
+    )
+    dsse_options.add_argument(
+        "--predicate-type",
+        metavar="TYPE",
+        choices=SUPPORTED_PREDICATE_TYPES,
+        type=str,
+        required=True,
+        help=f"Specify a predicate type ({', '.join(SUPPORTED_PREDICATE_TYPES)})",
+    )
+
+    oidc_options = attest.add_argument_group("OpenID Connect options")
+    oidc_options.add_argument(
+        "--identity-token",
+        metavar="TOKEN",
+        type=str,
+        default=os.getenv("SIGSTORE_IDENTITY_TOKEN"),
+        help="the OIDC identity token to use",
+    )
+    _add_shared_oidc_options(oidc_options)
+
+    output_options = attest.add_argument_group("Output options")
+    output_options.add_argument(
+        "--bundle",
+        metavar="FILE",
+        type=Path,
+        default=os.getenv("SIGSTORE_BUNDLE"),
+        help=(
+            "Write a single Sigstore bundle to the given file; does not work with multiple input "
+            "files"
+        ),
+    )
+    output_options.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=_boolify_env("SIGSTORE_OVERWRITE"),
+        help="Overwrite preexisting bundle outputs, if present",
     )
 
     # `sigstore sign`
@@ -485,6 +568,8 @@ def main(args: list[str] | None = None) -> None:
     try:
         if args.subcommand == "sign":
             _sign(args)
+        elif args.subcommand == "attest":
+            _attest(args)
         elif args.subcommand == "verify":
             if args.verify_subcommand == "identity":
                 _verify_identity(args)
@@ -503,6 +588,157 @@ def main(args: list[str] | None = None) -> None:
             _invalid_arguments(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
         e.log_and_exit(_logger, args.verbose >= 1)
+
+
+def _sign_common(
+    args: argparse.Namespace, output_map: OutputMap, predicate: Predicate | None
+) -> None:
+    """
+    Signing logic for both `sigstore sign` and `sigstore attest`
+
+    Both `sign` and `attest` share the same signing logic, the only change is
+    whether they sign over a DSSE envelope or a hashedrekord.
+    This function differentiates between the two using the `predicate` argument. If
+    present, it will generate an in-toto statement and wrap it in a DSSE envelope. If
+    not, it will use a hashedrekord.
+    """
+    # Select the signing context to use.
+    if args.staging:
+        _logger.debug("sign: staging instances requested")
+        signing_ctx = SigningContext.staging()
+    elif args.trust_config:
+        trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
+        signing_ctx = SigningContext._from_trust_config(trust_config)
+    else:
+        # If the user didn't request the staging instance or pass in an
+        # explicit client trust config, we're using the public good (i.e.
+        # production) instance.
+        signing_ctx = SigningContext.production()
+
+    # The order of precedence for identities is as follows:
+    #
+    # 1) Explicitly supplied identity token
+    # 2) Ambient credential detected in the environment, unless disabled
+    # 3) Interactive OAuth flow
+    identity: IdentityToken | None
+    if args.identity_token:
+        identity = IdentityToken(args.identity_token)
+    else:
+        identity = _get_identity(args)
+
+    if not identity:
+        _invalid_arguments(args, "No identity token supplied or detected!")
+
+    with signing_ctx.signer(identity) as signer:
+        for file, outputs in output_map.items():
+            _logger.debug(f"signing for {file.name}")
+            with file.open(mode="rb") as io:
+                # The input can be indefinitely large, so we perform a streaming
+                # digest and sign the prehash rather than buffering it fully.
+                digest = sha256_digest(io)
+            try:
+                if predicate is None:
+                    result = signer.sign_artifact(input_=digest)
+                else:
+                    subject = Subject(
+                        name=file.name, digest={"sha256": digest.digest.hex()}
+                    )
+                    predicate_type = args.predicate_type
+                    statement_builder = StatementBuilder(
+                        subjects=[subject],
+                        predicate_type=predicate_type,
+                        # Dump by alias because while our Python models uses snake_case,
+                        # the spec uses camelCase, which we have aliases for.
+                        # We also exclude fields set to None, since it's how we model
+                        # optional fields that were not set.
+                        predicate=predicate.model_dump(
+                            by_alias=True, exclude_none=True
+                        ),
+                    )
+                    result = signer.sign_dsse(statement_builder.build())
+            except ExpiredIdentity as exp_identity:
+                print("Signature failed: identity token has expired")
+                raise exp_identity
+
+            except ExpiredCertificate as exp_certificate:
+                print("Signature failed: Fulcio signing certificate has expired")
+                raise exp_certificate
+
+            print("Using ephemeral certificate:")
+            cert = result.signing_certificate
+            cert_pem = cert.public_bytes(Encoding.PEM).decode()
+            print(cert_pem)
+
+            print(
+                f"Transparency log entry created at index: {result.log_entry.log_index}"
+            )
+
+            sig_output: TextIO
+            if outputs.signature is not None:
+                sig_output = outputs.signature.open("w")
+            else:
+                sig_output = sys.stdout
+
+            signature = base64.b64encode(
+                result._inner.message_signature.signature
+            ).decode()
+            print(signature, file=sig_output)
+            if outputs.signature is not None:
+                print(f"Signature written to {outputs.signature}")
+
+            if outputs.certificate is not None:
+                with outputs.certificate.open(mode="w") as io:
+                    print(cert_pem, file=io)
+                print(f"Certificate written to {outputs.certificate}")
+
+            if outputs.bundle is not None:
+                with outputs.bundle.open(mode="w") as io:
+                    print(result.to_json(), file=io)
+                print(f"Sigstore bundle written to {outputs.bundle}")
+
+
+def _attest(args: argparse.Namespace) -> None:
+    predicate_path = args.predicate
+    if not predicate_path.is_file():
+        _invalid_arguments(args, f"Predicate must be a file: {predicate_path}")
+
+    try:
+        with open(predicate_path, "r") as f:
+            if args.predicate_type == PREDICATE_TYPE_SLSA_v0_2:
+                predicate: Predicate = SLSAPredicateV0_2.model_validate_json(f.read())
+            elif args.predicate_type == PREDICATE_TYPE_SLSA_v1_0:
+                predicate = SLSAPredicateV1_0.model_validate_json(f.read())
+            else:
+                _invalid_arguments(
+                    args,
+                    f'Unsupported predicate type "{args.predicate_type}". Predicate type must be one of: {SUPPORTED_PREDICATE_TYPES}',
+                )
+    except ValidationError as e:
+        _invalid_arguments(
+            args, f'Unable to parse predicate of type "{args.predicate_type}": {e}'
+        )
+
+    # Build up the map of inputs -> outputs ahead of any signing operations,
+    # so that we can fail early if overwriting without `--overwrite`.
+    output_map: OutputMap = {}
+    for file in args.files:
+        if not file.is_file():
+            _invalid_arguments(args, f"Input must be a file: {file}")
+
+        bundle = args.bundle
+        output_dir = file.parent
+
+        if not bundle:
+            bundle = output_dir / f"{file.name}.sigstore.json"
+
+        if bundle and bundle.exists() and not args.overwrite:
+            _invalid_arguments(
+                args,
+                "Refusing to overwrite outputs without --overwrite: " f"{bundle}",
+            )
+        output_map[file] = SigningOutputs(bundle=bundle)
+
+    _sign_common(args, output_map=output_map, predicate=predicate)
 
 
 def _sign(args: argparse.Namespace) -> None:
@@ -541,7 +777,7 @@ def _sign(args: argparse.Namespace) -> None:
 
     # Build up the map of inputs -> outputs ahead of any signing operations,
     # so that we can fail early if overwriting without `--overwrite`.
-    output_map: dict[Path, dict[str, Path | None]] = {}
+    output_map: OutputMap = {}
     for file in args.files:
         if not file.is_file():
             _invalid_arguments(args, f"Input must be a file: {file}")
@@ -578,87 +814,11 @@ def _sign(args: argparse.Namespace) -> None:
                     f"{', '.join(extants)}",
                 )
 
-        output_map[file] = {
-            "cert": cert,
-            "sig": sig,
-            "bundle": bundle,
-        }
+        output_map[file] = SigningOutputs(
+            signature=sig, certificate=cert, bundle=bundle
+        )
 
-    # Select the signing context to use.
-    if args.staging:
-        _logger.debug("sign: staging instances requested")
-        signing_ctx = SigningContext.staging()
-    elif args.trust_config:
-        trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
-        signing_ctx = SigningContext._from_trust_config(trust_config)
-    else:
-        # If the user didn't request the staging instance or pass in an
-        # explicit client trust config, we're using the public good (i.e.
-        # production) instance.
-        signing_ctx = SigningContext.production()
-
-    # The order of precedence for identities is as follows:
-    #
-    # 1) Explicitly supplied identity token
-    # 2) Ambient credential detected in the environment, unless disabled
-    # 3) Interactive OAuth flow
-    identity: IdentityToken | None
-    if args.identity_token:
-        identity = IdentityToken(args.identity_token)
-    else:
-        identity = _get_identity(args)
-
-    if not identity:
-        _invalid_arguments(args, "No identity token supplied or detected!")
-
-    with signing_ctx.signer(identity) as signer:
-        for file, outputs in output_map.items():
-            _logger.debug(f"signing for {file.name}")
-            with file.open(mode="rb") as io:
-                # The input can be indefinitely large, so we perform a streaming
-                # digest and sign the prehash rather than buffering it fully.
-                digest = sha256_digest(io)
-            try:
-                result = signer.sign_artifact(input_=digest)
-            except ExpiredIdentity as exp_identity:
-                print("Signature failed: identity token has expired")
-                raise exp_identity
-
-            except ExpiredCertificate as exp_certificate:
-                print("Signature failed: Fulcio signing certificate has expired")
-                raise exp_certificate
-
-            print("Using ephemeral certificate:")
-            cert = result.signing_certificate
-            cert_pem = cert.public_bytes(Encoding.PEM).decode()
-            print(cert_pem)
-
-            print(
-                f"Transparency log entry created at index: {result.log_entry.log_index}"
-            )
-
-            sig_output: TextIO
-            if outputs["sig"] is not None:
-                sig_output = outputs["sig"].open("w")
-            else:
-                sig_output = sys.stdout
-
-            signature = base64.b64encode(
-                result._inner.message_signature.signature
-            ).decode()
-            print(signature, file=sig_output)
-            if outputs["sig"] is not None:
-                print(f"Signature written to {outputs['sig']}")
-
-            if outputs["cert"] is not None:
-                with outputs["cert"].open(mode="w") as io:
-                    print(cert_pem, file=io)
-                print(f"Certificate written to {outputs['cert']}")
-
-            if outputs["bundle"] is not None:
-                with outputs["bundle"].open(mode="w") as io:
-                    print(result.to_json(), file=io)
-                print(f"Sigstore bundle written to {outputs['bundle']}")
+    _sign_common(args, output_map=output_map, predicate=None)
 
 
 def _collect_verification_state(
