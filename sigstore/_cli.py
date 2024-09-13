@@ -19,8 +19,9 @@ import base64
 import logging
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NoReturn, Optional, TextIO, Union
+from typing import Dict, NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -30,6 +31,7 @@ from rich.logging import RichHandler
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle as RawBundle,
 )
+from typing_extensions import TypeAlias
 
 from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
@@ -72,6 +74,17 @@ _logger = logging.getLogger(__name__)
 # to avoid overly verbose logging in third-party code by default.
 _package_logger = logging.getLogger("sigstore")
 _package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
+
+
+@dataclass(frozen=True)
+class SigningOutputs:
+    signature: Optional[Path] = None
+    certificate: Optional[Path] = None
+    bundle: Optional[Path] = None
+
+
+# Map of inputs -> outputs for signing operations
+OutputMap: TypeAlias = Dict[Path, SigningOutputs]
 
 
 def _fatal(message: str) -> NoReturn:
@@ -282,32 +295,6 @@ def _parser() -> argparse.ArgumentParser:
 
     output_options = attest.add_argument_group("Output options")
     output_options.add_argument(
-        "--no-default-files",
-        action="store_true",
-        default=_boolify_env("SIGSTORE_NO_DEFAULT_FILES"),
-        help="Don't emit the default output files ({input}.sigstore.json)",
-    )
-    output_options.add_argument(
-        "--signature",
-        "--output-signature",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_OUTPUT_SIGNATURE"),
-        help=(
-            "Write a single signature to the given file; does not work with multiple input files"
-        ),
-    )
-    output_options.add_argument(
-        "--certificate",
-        "--output-certificate",
-        metavar="FILE",
-        type=Path,
-        default=os.getenv("SIGSTORE_OUTPUT_CERTIFICATE"),
-        help=(
-            "Write a single certificate to the given file; does not work with multiple input files"
-        ),
-    )
-    output_options.add_argument(
         "--bundle",
         metavar="FILE",
         type=Path,
@@ -318,20 +305,10 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     output_options.add_argument(
-        "--output-directory",
-        metavar="DIR",
-        type=Path,
-        default=os.getenv("SIGSTORE_OUTPUT_DIRECTORY"),
-        help=(
-            "Write default outputs to the given directory (conflicts with --signature, --certificate"
-            ", --bundle)"
-        ),
-    )
-    output_options.add_argument(
         "--overwrite",
         action="store_true",
         default=_boolify_env("SIGSTORE_OVERWRITE"),
-        help="Overwrite preexisting signature and certificate outputs, if present",
+        help="Overwrite preexisting bundle outputs, if present",
     )
 
     # `sigstore sign`
@@ -613,7 +590,9 @@ def main(args: list[str] | None = None) -> None:
         e.log_and_exit(_logger, args.verbose >= 1)
 
 
-def _sign_common(args: argparse.Namespace, predicate: Predicate | None) -> None:
+def _sign_common(
+    args: argparse.Namespace, output_map: OutputMap, predicate: Predicate | None
+) -> None:
     """
     Signing logic for both `sigstore sign` and `sigstore attest`
 
@@ -623,84 +602,6 @@ def _sign_common(args: argparse.Namespace, predicate: Predicate | None) -> None:
     present, it will generate an in-toto statement and wrap it in a DSSE envelope. If
     not, it will use a hashedrekord.
     """
-    has_sig = bool(args.signature)
-    has_crt = bool(args.certificate)
-    has_bundle = bool(args.bundle)
-
-    # `--no-default-files` has no effect on `--bundle`, but we forbid it because
-    # it indicates user confusion.
-    if args.no_default_files and has_bundle:
-        _invalid_arguments(
-            args, "--no-default-files may not be combined with --bundle."
-        )
-
-    # Fail if `--signature` or `--certificate` is specified *and* we have more
-    # than one input.
-    if (has_sig or has_crt or has_bundle) and len(args.files) > 1:
-        _invalid_arguments(
-            args,
-            "Error: --signature, --certificate, and --bundle can't be used with "
-            "explicit outputs for multiple inputs.",
-        )
-
-    if args.output_directory and (has_sig or has_crt or has_bundle):
-        _invalid_arguments(
-            args,
-            "Error: --signature, --certificate, and --bundle can't be used with "
-            "an explicit output directory.",
-        )
-
-    # Fail if either `--signature` or `--certificate` is specified, but not both.
-    if has_sig ^ has_crt:
-        _invalid_arguments(
-            args, "Error: --signature and --certificate must be used together."
-        )
-
-    # Build up the map of inputs -> outputs ahead of any signing operations,
-    # so that we can fail early if overwriting without `--overwrite`.
-    output_map: dict[Path, dict[str, Path | None]] = {}
-    for file in args.files:
-        if not file.is_file():
-            _invalid_arguments(args, f"Input must be a file: {file}")
-
-        sig, cert, bundle = (
-            args.signature,
-            args.certificate,
-            args.bundle,
-        )
-
-        output_dir = args.output_directory if args.output_directory else file.parent
-        if output_dir.exists() and not output_dir.is_dir():
-            _invalid_arguments(
-                args, f"Output directory exists and is not a directory: {output_dir}"
-            )
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        if not bundle and not args.no_default_files:
-            bundle = output_dir / f"{file.name}.sigstore.json"
-
-        if not args.overwrite:
-            extants = []
-            if sig and sig.exists():
-                extants.append(str(sig))
-            if cert and cert.exists():
-                extants.append(str(cert))
-            if bundle and bundle.exists():
-                extants.append(str(bundle))
-
-            if extants:
-                _invalid_arguments(
-                    args,
-                    "Refusing to overwrite outputs without --overwrite: "
-                    f"{', '.join(extants)}",
-                )
-
-        output_map[file] = {
-            "cert": cert,
-            "sig": sig,
-            "bundle": bundle,
-        }
-
     # Select the signing context to use.
     if args.staging:
         _logger.debug("sign: staging instances requested")
@@ -773,8 +674,8 @@ def _sign_common(args: argparse.Namespace, predicate: Predicate | None) -> None:
             )
 
             sig_output: TextIO
-            if outputs["sig"] is not None:
-                sig_output = outputs["sig"].open("w")
+            if outputs.signature is not None:
+                sig_output = outputs.signature.open("w")
             else:
                 sig_output = sys.stdout
 
@@ -782,18 +683,18 @@ def _sign_common(args: argparse.Namespace, predicate: Predicate | None) -> None:
                 result._inner.message_signature.signature
             ).decode()
             print(signature, file=sig_output)
-            if outputs["sig"] is not None:
-                print(f"Signature written to {outputs['sig']}")
+            if outputs.signature is not None:
+                print(f"Signature written to {outputs.signature}")
 
-            if outputs["cert"] is not None:
-                with outputs["cert"].open(mode="w") as io:
+            if outputs.certificate is not None:
+                with outputs.certificate.open(mode="w") as io:
                     print(cert_pem, file=io)
-                print(f"Certificate written to {outputs['cert']}")
+                print(f"Certificate written to {outputs.certificate}")
 
-            if outputs["bundle"] is not None:
-                with outputs["bundle"].open(mode="w") as io:
+            if outputs.bundle is not None:
+                with outputs.bundle.open(mode="w") as io:
                     print(result.to_json(), file=io)
-                print(f"Sigstore bundle written to {outputs['bundle']}")
+                print(f"Sigstore bundle written to {outputs.bundle}")
 
 
 def _attest(args: argparse.Namespace) -> None:
@@ -817,11 +718,107 @@ def _attest(args: argparse.Namespace) -> None:
             args, f'Unable to parse predicate of type "{args.predicate_type}": {e}'
         )
 
-    _sign_common(args, predicate=predicate)
+    # Build up the map of inputs -> outputs ahead of any signing operations,
+    # so that we can fail early if overwriting without `--overwrite`.
+    output_map: OutputMap = {}
+    for file in args.files:
+        if not file.is_file():
+            _invalid_arguments(args, f"Input must be a file: {file}")
+
+        bundle = args.bundle
+        output_dir = file.parent
+
+        if not bundle:
+            bundle = output_dir / f"{file.name}.sigstore.json"
+
+        if bundle and bundle.exists() and not args.overwrite:
+            _invalid_arguments(
+                args,
+                "Refusing to overwrite outputs without --overwrite: " f"{bundle}",
+            )
+        output_map[file] = SigningOutputs(bundle=bundle)
+
+    _sign_common(args, output_map=output_map, predicate=predicate)
 
 
 def _sign(args: argparse.Namespace) -> None:
-    _sign_common(args, predicate=None)
+    has_sig = bool(args.signature)
+    has_crt = bool(args.certificate)
+    has_bundle = bool(args.bundle)
+
+    # `--no-default-files` has no effect on `--bundle`, but we forbid it because
+    # it indicates user confusion.
+    if args.no_default_files and has_bundle:
+        _invalid_arguments(
+            args, "--no-default-files may not be combined with --bundle."
+        )
+
+    # Fail if `--signature` or `--certificate` is specified *and* we have more
+    # than one input.
+    if (has_sig or has_crt or has_bundle) and len(args.files) > 1:
+        _invalid_arguments(
+            args,
+            "Error: --signature, --certificate, and --bundle can't be used with "
+            "explicit outputs for multiple inputs.",
+        )
+
+    if args.output_directory and (has_sig or has_crt or has_bundle):
+        _invalid_arguments(
+            args,
+            "Error: --signature, --certificate, and --bundle can't be used with "
+            "an explicit output directory.",
+        )
+
+    # Fail if either `--signature` or `--certificate` is specified, but not both.
+    if has_sig ^ has_crt:
+        _invalid_arguments(
+            args, "Error: --signature and --certificate must be used together."
+        )
+
+    # Build up the map of inputs -> outputs ahead of any signing operations,
+    # so that we can fail early if overwriting without `--overwrite`.
+    output_map: OutputMap = {}
+    for file in args.files:
+        if not file.is_file():
+            _invalid_arguments(args, f"Input must be a file: {file}")
+
+        sig, cert, bundle = (
+            args.signature,
+            args.certificate,
+            args.bundle,
+        )
+
+        output_dir = args.output_directory if args.output_directory else file.parent
+        if output_dir.exists() and not output_dir.is_dir():
+            _invalid_arguments(
+                args, f"Output directory exists and is not a directory: {output_dir}"
+            )
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        if not bundle and not args.no_default_files:
+            bundle = output_dir / f"{file.name}.sigstore.json"
+
+        if not args.overwrite:
+            extants = []
+            if sig and sig.exists():
+                extants.append(str(sig))
+            if cert and cert.exists():
+                extants.append(str(cert))
+            if bundle and bundle.exists():
+                extants.append(str(bundle))
+
+            if extants:
+                _invalid_arguments(
+                    args,
+                    "Refusing to overwrite outputs without --overwrite: "
+                    f"{', '.join(extants)}",
+                )
+
+        output_map[file] = SigningOutputs(
+            signature=sig, certificate=cert, bundle=bundle
+        )
+
+    _sign_common(args, output_map=output_map, predicate=None)
 
 
 def _collect_verification_state(

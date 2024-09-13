@@ -19,7 +19,6 @@ Models for the predicates used in in-toto statements
 from typing import Any, Dict, List, Literal, Optional, TypeVar, Union
 
 from pydantic import (
-    AliasChoices,
     BaseModel,
     ConfigDict,
     Field,
@@ -120,13 +119,7 @@ class Metadata(_SLSAConfigBase):
     The Metadata object used by SLSAPredicateV0_2
     """
 
-    # We add a manual alias here because some provenance generators
-    # (like `slsa-github-generator`) incorrectly use BuildInvocationID
-    # instead of BuildInvocationId (ID vs Id)
-    build_invocation_id: Optional[StrictStr] = Field(
-        default=None,
-        validation_alias=AliasChoices("buildInvocationId", "buildInvocationID"),
-    )
+    build_invocation_id: Optional[StrictStr] = None
     build_started_on: Optional[StrictStr] = None
     build_finished_on: Optional[StrictStr] = None
     completeness: Optional[Completeness] = None

@@ -189,9 +189,7 @@ usage: sigstore attest [-h] [-v] --predicate FILE --predicate-type TYPE
                        [--identity-token TOKEN] [--oidc-client-id ID]
                        [--oidc-client-secret SECRET]
                        [--oidc-disable-ambient-providers] [--oidc-issuer URL]
-                       [--oauth-force-oob] [--no-default-files]
-                       [--signature FILE] [--certificate FILE] [--bundle FILE]
-                       [--output-directory DIR] [--overwrite]
+                       [--oauth-force-oob] [--bundle FILE] [--overwrite]
                        FILE [FILE ...]
 
 positional arguments:
@@ -227,22 +225,10 @@ OpenID Connect options:
                         False)
 
 Output options:
-  --no-default-files    Don't emit the default output files
-                        ({input}.sigstore.json) (default: False)
-  --signature FILE, --output-signature FILE
-                        Write a single signature to the given file; does not
-                        work with multiple input files (default: None)
-  --certificate FILE, --output-certificate FILE
-                        Write a single certificate to the given file; does not
-                        work with multiple input files (default: None)
   --bundle FILE         Write a single Sigstore bundle to the given file; does
                         not work with multiple input files (default: None)
-  --output-directory DIR
-                        Write default outputs to the given directory
-                        (conflicts with --signature, --certificate, --bundle)
-                        (default: None)
-  --overwrite           Overwrite preexisting signature and certificate
-                        outputs, if present (default: False)
+  --overwrite           Overwrite preexisting bundle outputs, if present
+                        (default: False)
 ```
 <!-- @end-sigstore-attest-help@ -->
 
