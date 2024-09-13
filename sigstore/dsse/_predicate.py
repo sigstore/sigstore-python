@@ -21,7 +21,6 @@ from typing import Any, Dict, List, Literal, Optional, TypeVar, Union
 from pydantic import (
     BaseModel,
     ConfigDict,
-    Field,
     RootModel,
     StrictBytes,
     StrictStr,
@@ -37,8 +36,8 @@ PREDICATE_TYPE_SLSA_v1_0 = "https://slsa.dev/provenance/v1"
 SUPPORTED_PREDICATE_TYPES = [PREDICATE_TYPE_SLSA_v0_2, PREDICATE_TYPE_SLSA_v1_0]
 
 # Common models
-
-DigestSetSource = RootModel[Dict[Union[Digest, Literal["sha1"]], str]]
+SourceDigest = Union[Literal["sha1"], Literal["gitCommit"]]
+DigestSetSource = RootModel[Dict[Union[Digest, SourceDigest], str]]
 """
 Same as `dsse.DigestSet` but with `sha1` added.
 
@@ -149,9 +148,9 @@ class ResourceDescriptor(_SLSAConfigBase):
     The ResourceDescriptor object defined defined by the in-toto attestations spec
     """
 
-    name: Optional[StrictStr]
-    uri: Optional[StrictStr]
-    digest: DigestSetSource
+    name: Optional[StrictStr] = None
+    uri: Optional[StrictStr] = None
+    digest: Optional[DigestSetSource] = None
     content: Optional[StrictBytes] = None
     download_location: Optional[StrictStr] = None
     media_type: Optional[StrictStr] = None
@@ -176,10 +175,8 @@ class BuilderV1_0(_SLSAConfigBase):
     """
 
     id: StrictStr
-    builder_dependencies: List[ResourceDescriptor] = Field(
-        ..., alias="builderDependencies"
-    )
-    version: Dict[StrictStr, StrictStr]
+    builder_dependencies: Optional[List[ResourceDescriptor]] = None
+    version: Optional[Dict[StrictStr, StrictStr]] = None
 
 
 class BuildMetadata(_SLSAConfigBase):
@@ -187,9 +184,9 @@ class BuildMetadata(_SLSAConfigBase):
     The BuildMetadata object used by RunDetails
     """
 
-    invocation_id: StrictStr
-    started_on: StrictStr
-    finished_on: StrictStr
+    invocation_id: Optional[StrictStr] = None
+    started_on: Optional[StrictStr] = None
+    finished_on: Optional[StrictStr] = None
 
 
 class RunDetails(_SLSAConfigBase):
@@ -198,8 +195,8 @@ class RunDetails(_SLSAConfigBase):
     """
 
     builder: BuilderV1_0
-    metadata: BuildMetadata
-    byproducts: List[ResourceDescriptor]
+    metadata: Optional[BuildMetadata] = None
+    byproducts: Optional[List[ResourceDescriptor]] = None
 
 
 class BuildDefinition(_SLSAConfigBase):
@@ -209,8 +206,8 @@ class BuildDefinition(_SLSAConfigBase):
 
     build_type: StrictStr
     external_parameters: Dict[StrictStr, Any]
-    internal_parameters: Dict[str, Any]
-    resolved_dependencies: List[ResourceDescriptor]
+    internal_parameters: Optional[Dict[str, Any]] = None
+    resolved_dependencies: Optional[List[ResourceDescriptor]] = None
 
 
 class SLSAPredicateV1_0(Predicate, _SLSAConfigBase):
