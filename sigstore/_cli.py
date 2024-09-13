@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import argparse
 import base64
+import json
 import logging
 import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, NoReturn, Optional, TextIO, Union
+from typing import Any, Dict, NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -42,7 +43,6 @@ from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
     SUPPORTED_PREDICATE_TYPES,
-    Predicate,
     PREDICATE_TYPE_SLSA_v0_2,
     PREDICATE_TYPE_SLSA_v1_0,
     SLSAPredicateV0_2,
@@ -591,7 +591,7 @@ def main(args: list[str] | None = None) -> None:
 
 
 def _sign_common(
-    args: argparse.Namespace, output_map: OutputMap, predicate: Predicate | None
+    args: argparse.Namespace, output_map: OutputMap, predicate: dict[str, Any] | None
 ) -> None:
     """
     Signing logic for both `sigstore sign` and `sigstore attest`
@@ -647,13 +647,7 @@ def _sign_common(
                     statement_builder = StatementBuilder(
                         subjects=[subject],
                         predicate_type=predicate_type,
-                        # Dump by alias because while our Python models uses snake_case,
-                        # the spec uses camelCase, which we have aliases for.
-                        # We also exclude fields set to None, since it's how we model
-                        # optional fields that were not set.
-                        predicate=predicate.model_dump(
-                            by_alias=True, exclude_none=True
-                        ),
+                        predicate=predicate,
                     )
                     result = signer.sign_dsse(statement_builder.build())
             except ExpiredIdentity as exp_identity:
@@ -704,15 +698,22 @@ def _attest(args: argparse.Namespace) -> None:
 
     try:
         with open(predicate_path, "r") as f:
+            predicate = json.load(f)
+            # We do a basic sanity check using our Pydantic models to see if the
+            # contents of the predicate file match the specified predicate type.
+            # Since most of the predicate fields are optional, this only checks that
+            # the fields that are present and correctly spelled have the expected
+            # type.
             if args.predicate_type == PREDICATE_TYPE_SLSA_v0_2:
-                predicate: Predicate = SLSAPredicateV0_2.model_validate_json(f.read())
+                SLSAPredicateV0_2.model_validate(predicate)
             elif args.predicate_type == PREDICATE_TYPE_SLSA_v1_0:
-                predicate = SLSAPredicateV1_0.model_validate_json(f.read())
+                SLSAPredicateV1_0.model_validate(predicate)
             else:
                 _invalid_arguments(
                     args,
                     f'Unsupported predicate type "{args.predicate_type}". Predicate type must be one of: {SUPPORTED_PREDICATE_TYPES}',
                 )
+
     except ValidationError as e:
         _invalid_arguments(
             args, f'Unable to parse predicate of type "{args.predicate_type}": {e}'
@@ -738,6 +739,10 @@ def _attest(args: argparse.Namespace) -> None:
             )
         output_map[file] = SigningOutputs(bundle=bundle)
 
+    # We sign the contents of the predicate file, rather than signing the Pydantic
+    # model's JSON dump. This is because doing a JSON -> Model -> JSON roundtrip might
+    # change the original predicate if it doesn't match exactly our Pydantic model
+    # (e.g.: if it has extra fields).
     _sign_common(args, output_map=output_map, predicate=predicate)
 
 
