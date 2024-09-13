@@ -16,6 +16,7 @@
 Models for the predicates used in in-toto statements
 """
 
+import enum
 from typing import Any, Dict, List, Literal, Optional, TypeVar, Union
 
 from pydantic import (
@@ -30,10 +31,15 @@ from pydantic.alias_generators import to_camel
 
 from sigstore.dsse import Digest
 
-PREDICATE_TYPE_SLSA_v0_2 = "https://slsa.dev/provenance/v0.2"
-PREDICATE_TYPE_SLSA_v1_0 = "https://slsa.dev/provenance/v1"
 
-SUPPORTED_PREDICATE_TYPES = [PREDICATE_TYPE_SLSA_v0_2, PREDICATE_TYPE_SLSA_v1_0]
+class PredicateType(str, enum.Enum):
+    """
+    Currently supported predicate types
+    """
+
+    SLSA_v0_2 = "https://slsa.dev/provenance/v0.2"
+    SLSA_v1_0 = "https://slsa.dev/provenance/v1"
+
 
 # Common models
 SourceDigest = Union[Literal["sha1"], Literal["gitCommit"]]
@@ -60,7 +66,7 @@ class _SLSAConfigBase(BaseModel):
     Base class used to configure the models
     """
 
-    model_config = ConfigDict(alias_generator=to_camel)
+    model_config = ConfigDict(alias_generator=to_camel, extra="forbid")
 
 
 # Models for SLSA Provenance v0.2
