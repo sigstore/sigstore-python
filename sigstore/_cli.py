@@ -32,6 +32,7 @@ from rich.logging import RichHandler
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle as RawBundle,
 )
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 from typing_extensions import TypeAlias
 
 from sigstore import __version__, dsse
@@ -80,6 +81,21 @@ class SigningOutputs:
     certificate: Optional[Path] = None
     bundle: Optional[Path] = None
 
+
+@dataclass(frozen=True)
+class VerificationUnbundledMaterials:
+    certificate: Path
+    signature: Path
+
+
+@dataclass(frozen=True)
+class VerificationBundledMaterials:
+    bundle: Path
+
+
+VerificationMaterials: TypeAlias = Union[
+    VerificationUnbundledMaterials, VerificationBundledMaterials
+]
 
 # Map of inputs -> outputs for signing operations
 OutputMap: TypeAlias = Dict[Path, SigningOutputs]
@@ -149,12 +165,25 @@ def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
         default=os.getenv("SIGSTORE_BUNDLE"),
         help=("The Sigstore bundle to verify with; not used with multiple inputs"),
     )
+
+    def file_or_digest(arg: str) -> Hashed | Path:
+        if arg.startswith("sha256:"):
+            digest = bytes.fromhex(arg[len("sha256:") :])
+            if len(digest) != 32:
+                raise ValueError()
+            return Hashed(
+                digest=digest,
+                algorithm=HashAlgorithm.SHA2_256,
+            )
+        else:
+            return Path(arg)
+
     group.add_argument(
-        "files",
-        metavar="FILE",
-        type=Path,
+        "files_or_digest",
+        metavar="FILE_OR_DIGEST",
+        type=file_or_digest,
         nargs="+",
-        help="The file to verify",
+        help="The file path or the digest to verify. The digest should start with the 'sha256:' prefix.",
     )
 
 
@@ -826,7 +855,7 @@ def _sign(args: argparse.Namespace) -> None:
 
 def _collect_verification_state(
     args: argparse.Namespace,
-) -> tuple[Verifier, list[tuple[Path, Hashed, Bundle]]]:
+) -> tuple[Verifier, list[tuple[Path | Hashed, Hashed, Bundle]]]:
     """
     Performs CLI functionality common across all `sigstore verify` subcommands.
 
@@ -835,13 +864,15 @@ def _collect_verification_state(
     pre-hashed input to the file being verified and `bundle` is the `Bundle` to verify with.
     """
 
-    # Fail if --certificate, --signature, or --bundle is specified and we
+    # Fail if --certificate, --signature, or --bundle is specified, and we
     # have more than one input.
-    if (args.certificate or args.signature or args.bundle) and len(args.files) > 1:
+    if (args.certificate or args.signature or args.bundle) and len(
+        args.files_or_digest
+    ) > 1:
         _invalid_arguments(
             args,
             "--certificate, --signature, or --bundle can only be used "
-            "with a single input file",
+            "with a single input file or digest",
         )
 
     # Fail if `--certificate` or `--signature` is used with `--bundle`.
@@ -849,6 +880,14 @@ def _collect_verification_state(
         _invalid_arguments(
             args, "--bundle cannot be used with --certificate or --signature"
         )
+
+    # Fail if digest input is not used with `--bundle` or both `--certificate` and `--signature`.
+    if any((isinstance(x, Hashed) for x in args.files_or_digest)):
+        if not args.bundle and not (args.certificate and args.signature):
+            _invalid_arguments(
+                args,
+                "verifying a digest input (sha256:*) needs either --bundle or both --certificate and --signature",
+            )
 
     # Fail if `--certificate` or `--signature` is used with `--offline`.
     if args.offline and (args.certificate or args.signature):
@@ -858,8 +897,8 @@ def _collect_verification_state(
 
     # The converse of `sign`: we build up an expected input map and check
     # that we have everything so that we can fail early.
-    input_map = {}
-    for file in args.files:
+    input_map: dict[Path | Hashed, VerificationMaterials] = {}
+    for file in (f for f in args.files_or_digest if isinstance(f, Path)):
         if not file.is_file():
             _invalid_arguments(args, f"Input must be a file: {file}")
 
@@ -900,7 +939,9 @@ def _collect_verification_state(
                 missing.append(str(sig))
             if not cert.is_file():
                 missing.append(str(cert))
-            input_map[file] = {"cert": cert, "sig": sig}
+            input_map[file] = VerificationUnbundledMaterials(
+                certificate=cert, signature=sig
+            )
         else:
             # If a user hasn't explicitly supplied `--signature` or `--certificate`,
             # we expect a bundle either supplied via `--bundle` or with the
@@ -908,13 +949,51 @@ def _collect_verification_state(
             if not bundle.is_file():
                 missing.append(str(bundle))
 
-            input_map[file] = {"bundle": bundle}
+            input_map[file] = VerificationBundledMaterials(bundle=bundle)
 
         if missing:
             _invalid_arguments(
                 args,
                 f"Missing verification materials for {(file)}: {', '.join(missing)}",
             )
+
+    if not input_map:
+        if len(args.files_or_digest) != 1:
+            # This should never happen, since if `input_map` is empty that means there
+            # were no file inputs, and therefore exactly one digest input should be
+            # present.
+            _invalid_arguments(
+                args, "Internal error: Found multiple digests in CLI arguments"
+            )
+        hashed = args.files_or_digest[0]
+        sig, cert, bundle = (
+            args.signature,
+            args.certificate,
+            args.bundle,
+        )
+        missing = []
+        if args.signature or args.certificate:
+            if not sig.is_file():
+                missing.append(str(sig))
+            if not cert.is_file():
+                missing.append(str(cert))
+            input_map[hashed] = VerificationUnbundledMaterials(
+                certificate=cert, signature=sig
+            )
+        else:
+            # If a user hasn't explicitly supplied `--signature` or `--certificate`,
+            # we expect a bundle supplied via `--bundle`
+            if not bundle.is_file():
+                missing.append(str(bundle))
+
+            input_map[hashed] = VerificationBundledMaterials(bundle=bundle)
+
+        if missing:
+            _invalid_arguments(
+                args,
+                f"Missing verification materials for {(hashed)}: {', '.join(missing)}",
+            )
+
     if args.staging:
         _logger.debug("verify: staging instances requested")
         verifier = Verifier.staging()
@@ -925,24 +1004,27 @@ def _collect_verification_state(
         verifier = Verifier.production()
 
     all_materials = []
-    for file, inputs in input_map.items():
-        with file.open(mode="rb") as io:
-            hashed = sha256_digest(io)
+    for file_or_hashed, materials in input_map.items():
+        if isinstance(file_or_hashed, Path):
+            with file_or_hashed.open(mode="rb") as io:
+                hashed = sha256_digest(io)
+        else:
+            hashed = file_or_hashed
 
-        if "bundle" in inputs:
+        if isinstance(materials, VerificationBundledMaterials):
             # Load the bundle
-            _logger.debug(f"Using bundle from: {inputs['bundle']}")
+            _logger.debug(f"Using bundle from: {materials.bundle}")
 
-            bundle_bytes = inputs["bundle"].read_bytes()
+            bundle_bytes = materials.bundle.read_bytes()
             bundle = Bundle.from_json(bundle_bytes)
         else:
             # Load the signing certificate
-            _logger.debug(f"Using certificate from: {inputs['cert']}")
-            cert = load_pem_x509_certificate(inputs["cert"].read_bytes())
+            _logger.debug(f"Using certificate from: {materials.certificate}")
+            cert = load_pem_x509_certificate(materials.certificate.read_bytes())
 
             # Load the signature
-            _logger.debug(f"Using signature from: {inputs['sig']}")
-            b64_signature = inputs["sig"].read_text()
+            _logger.debug(f"Using signature from: {materials.signature}")
+            b64_signature = materials.signature.read_text()
             signature = base64.b64decode(b64_signature)
 
             # When using "detached" materials, we *must* retrieve the log
@@ -953,13 +1035,14 @@ def _collect_verification_state(
             )
             if log_entry is None:
                 _invalid_arguments(
-                    args, f"No matching log entry for {file}'s verification materials"
+                    args,
+                    f"No matching log entry for {file_or_hashed}'s verification materials",
                 )
             bundle = Bundle.from_parts(cert, signature, log_entry)
 
-        _logger.debug(f"Verifying contents from: {file}")
+        _logger.debug(f"Verifying contents from: {file_or_hashed}")
 
-        all_materials.append((file, hashed, bundle))
+        all_materials.append((file_or_hashed, hashed, bundle))
 
     return (verifier, all_materials)
 
@@ -967,7 +1050,7 @@ def _collect_verification_state(
 def _verify_identity(args: argparse.Namespace) -> None:
     verifier, materials = _collect_verification_state(args)
 
-    for file, hashed, bundle in materials:
+    for file_or_digest, hashed, bundle in materials:
         policy_ = policy.Identity(
             identity=args.cert_identity,
             issuer=args.cert_oidc_issuer,
@@ -975,11 +1058,11 @@ def _verify_identity(args: argparse.Namespace) -> None:
 
         try:
             statement = _verify_common(verifier, hashed, bundle, policy_)
-            print(f"OK: {file}", file=sys.stderr)
+            print(f"OK: {file_or_digest}", file=sys.stderr)
             if statement is not None:
                 print(statement._contents.decode())
         except Error as exc:
-            _logger.error(f"FAIL: {file}")
+            _logger.error(f"FAIL: {file_or_digest}")
             exc.log_and_exit(_logger, args.verbose >= 1)
 
 
@@ -1020,14 +1103,14 @@ def _verify_github(args: argparse.Namespace) -> None:
     policy_ = policy.AllOf(inner_policies)
 
     verifier, materials = _collect_verification_state(args)
-    for file, hashed, bundle in materials:
+    for file_or_digest, hashed, bundle in materials:
         try:
             statement = _verify_common(verifier, hashed, bundle, policy_)
-            print(f"OK: {file}", file=sys.stderr)
+            print(f"OK: {file_or_digest}", file=sys.stderr)
             if statement is not None:
                 print(statement._contents)
         except Error as exc:
-            _logger.error(f"FAIL: {file}")
+            _logger.error(f"FAIL: {file_or_digest}")
             exc.log_and_exit(_logger, args.verbose >= 1)
 
 

@@ -22,6 +22,11 @@ All versions prior to 0.9.0 are untracked.
   a path to the file containing the predicate, and the predicate type.
   Currently only the SLSA Provenance v0.2 and v1.0 types are supported.
 
+* CLI: The `sigstore verify` command now supports verifying digests. This means
+  that the user can now pass a digest like `sha256:aaaa....` instead of the
+  path to an artifact, and `sigstore-python` will verify it as if it was the
+  artifact with that digest.
+
 ## [3.2.0]
 
 ### Added
