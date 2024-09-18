@@ -1,0 +1,36 @@
+{
+    "buildDefinition": {
+        "buildType": "https://actions.github.io/buildtypes/workflow/v1",
+        "externalParameters": {
+            "workflow": {
+                "ref": "refs/tags/1.21.0",
+                "repository": "https://github.com/octo-org/octo-repo",
+                "path": ".github/workflows/ci.yaml"
+            }
+        },
+        "internalParameters": {
+            "github": {
+                "event_name": "push",
+                "repository_id": "000000000",
+                "repository_owner_id": "0000000",
+                "runner_environment": "github-hosted"
+            }
+        },
+        "resolvedDependencies": [
+            {
+                "uri": "git+https://github.com/octo-org/octo-repo@refs/tags/1.21.0",
+                "digest": {
+                    "gitCommit": "1ac93ce21ee526b36fd154b9058d97dfaa424c50"
+                }
+            }
+        ]
+    },
+    "runDetails": {
+        "builder": {
+            "id": "https://github.com/octo-org/octo-repo/.github/workflows/docker.yaml@refs/heads/development"
+        },
+        "metadata": {
+            "invocationId": "https://github.com/octo-org/octo-repo/actions/runs/10313983218/attempts/2"
+        }
+    }
+}
