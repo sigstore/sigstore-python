@@ -25,7 +25,7 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 from sigstore.errors import Error
 
 
-class Hashed(BaseModel):
+class Hashed(BaseModel, frozen=True):
     """
     Represents a hashed value.
     """
@@ -55,3 +55,9 @@ class Hashed(BaseModel):
         if self.algorithm == HashAlgorithm.SHA2_256:
             return Prehashed(hashes.SHA256())
         raise Error(f"unknown hash algorithm: {self.algorithm}")
+
+    def __str__(self) -> str:
+        """
+        Returns a str representation of this `Hashed`.
+        """
+        return f"{self.algorithm.name}:{self.digest.hex()}"

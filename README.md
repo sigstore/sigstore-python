@@ -247,7 +247,7 @@ usage: sigstore verify identity [-h] [-v] [--certificate FILE]
                                 [--signature FILE] [--bundle FILE] [--offline]
                                 --cert-identity IDENTITY --cert-oidc-issuer
                                 URL
-                                FILE [FILE ...]
+                                FILE_OR_DIGEST [FILE_OR_DIGEST ...]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -262,7 +262,8 @@ Verification inputs:
                         multiple inputs (default: None)
   --bundle FILE         The Sigstore bundle to verify with; not used with
                         multiple inputs (default: None)
-  FILE                  The file to verify
+  FILE_OR_DIGEST        The file path or the digest to verify. The digest
+                        should start with the 'sha256:' prefix.
 
 Verification options:
   --offline             Perform offline verification; requires a Sigstore
@@ -290,7 +291,7 @@ usage: sigstore verify github [-h] [-v] [--certificate FILE]
                               [--cert-identity IDENTITY] [--trigger EVENT]
                               [--sha SHA] [--name NAME] [--repository REPO]
                               [--ref REF]
-                              FILE [FILE ...]
+                              FILE_OR_DIGEST [FILE_OR_DIGEST ...]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -305,7 +306,8 @@ Verification inputs:
                         multiple inputs (default: None)
   --bundle FILE         The Sigstore bundle to verify with; not used with
                         multiple inputs (default: None)
-  FILE                  The file to verify
+  FILE_OR_DIGEST        The file path or the digest to verify. The digest
+                        should start with the 'sha256:' prefix.
 
 Verification options:
   --offline             Perform offline verification; requires a Sigstore
@@ -419,6 +421,18 @@ Multiple files can be verified at once:
 $ python -m sigstore verify identity foo.txt bar.txt \
     --cert-identity 'hamilcar@example.com' \
     --cert-oidc-issuer 'https://github.com/login/oauth'
+```
+
+### Verifying a digest instead of a file
+
+`sigstore-python` supports verifying digests directly, without requiring the artifact to be
+present. The digest should be prefixed with the `sha256:` string:
+
+```console
+$ python -m sigstore verify identity sha256:ce8ab2822671752e201ea1e19e8c85e73d497e1c315bfd9c25f380b7625d1691 \
+    --cert-identity 'hamilcar@example.com' \
+    --cert-oidc-issuer 'https://github.com/login/oauth'
+    --bundle 'foo.txt.sigstore.json'
 ```
 
 ### Verifying signatures from GitHub Actions
