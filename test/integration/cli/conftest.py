@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from pathlib import Path
 from typing import Callable
 
@@ -19,14 +18,11 @@ import pytest
 
 from sigstore._cli import main
 
-_ASSETS = (Path(__file__).parent.parent.parent / "assets/integration").resolve()
-assert _ASSETS.is_dir()
-
 
 @pytest.fixture
-def asset():
+def asset_integration(asset):
     def _asset(name: str) -> Path:
-        return _ASSETS / name
+        return asset(f"integration/{name}")
 
     return _asset
 

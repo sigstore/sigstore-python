@@ -51,8 +51,8 @@ def get_cli_params(
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_success_default_output_bundle(capsys, sigstore, asset):
-    artifact = asset("a.txt")
+def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration):
+    artifact = asset_integration("a.txt")
     expected_output_bundle = artifact.with_name("a.txt.sigstore.json")
 
     assert not expected_output_bundle.exists()
@@ -82,8 +82,8 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_success_custom_outputs(capsys, sigstore, asset, tmp_path):
-    artifact = asset("a.txt")
+def test_sign_success_custom_outputs(capsys, sigstore, asset_integration, tmp_path):
+    artifact = asset_integration("a.txt")
     output_bundle = tmp_path / "bundle.json"
     output_cert = tmp_path / "cert.cert"
     output_signature = tmp_path / "signature.sig"
@@ -109,8 +109,8 @@ def test_sign_success_custom_outputs(capsys, sigstore, asset, tmp_path):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_success_custom_output_dir(capsys, sigstore, asset, tmp_path):
-    artifact = asset("a.txt")
+def test_sign_success_custom_output_dir(capsys, sigstore, asset_integration, tmp_path):
+    artifact = asset_integration("a.txt")
     expected_output_bundle = tmp_path / "a.txt.sigstore.json"
 
     sigstore(
@@ -130,8 +130,8 @@ def test_sign_success_custom_output_dir(capsys, sigstore, asset, tmp_path):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_success_no_default_files(capsys, sigstore, asset, tmp_path):
-    artifact = asset("a.txt")
+def test_sign_success_no_default_files(capsys, sigstore, asset_integration, tmp_path):
+    artifact = asset_integration("a.txt")
     default_output_bundle = tmp_path / "a.txt.sigstore.json"
     output_cert = tmp_path / "cert.cert"
     output_signature = tmp_path / "sig.sig"
@@ -156,8 +156,8 @@ def test_sign_success_no_default_files(capsys, sigstore, asset, tmp_path):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_overwrite_existing_bundle(capsys, sigstore, asset):
-    artifact = asset("a.txt")
+def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration):
+    artifact = asset_integration("a.txt")
     expected_output_bundle = artifact.with_name("a.txt.sigstore.json")
 
     assert not expected_output_bundle.exists()
@@ -194,8 +194,10 @@ def test_sign_overwrite_existing_bundle(capsys, sigstore, asset):
     expected_output_bundle.unlink()
 
 
-def test_sign_fails_with_default_files_and_bundle_options(capsys, sigstore, asset):
-    artifact = asset("a.txt")
+def test_sign_fails_with_default_files_and_bundle_options(
+    capsys, sigstore, asset_integration
+):
+    artifact = asset_integration("a.txt")
     output_bundle = artifact.with_name("a.txt.sigstore.json")
 
     with pytest.raises(SystemExit) as e:
@@ -214,8 +216,10 @@ def test_sign_fails_with_default_files_and_bundle_options(capsys, sigstore, asse
     )
 
 
-def test_sign_fails_with_multiple_inputs_and_custom_output(capsys, sigstore, asset):
-    artifact = asset("a.txt")
+def test_sign_fails_with_multiple_inputs_and_custom_output(
+    capsys, sigstore, asset_integration
+):
+    artifact = asset_integration("a.txt")
 
     with pytest.raises(SystemExit) as e:
         sigstore(
@@ -257,8 +261,10 @@ def test_sign_fails_with_multiple_inputs_and_custom_output(capsys, sigstore, ass
     )
 
 
-def test_sign_fails_with_output_dir_and_custom_output_files(capsys, sigstore, asset):
-    artifact = asset("a.txt")
+def test_sign_fails_with_output_dir_and_custom_output_files(
+    capsys, sigstore, asset_integration
+):
+    artifact = asset_integration("a.txt")
 
     with pytest.raises(SystemExit) as e:
         sigstore(
@@ -303,8 +309,10 @@ def test_sign_fails_with_output_dir_and_custom_output_files(capsys, sigstore, as
     )
 
 
-def test_sign_fails_without_both_output_cert_and_signature(capsys, sigstore, asset):
-    artifact = asset("a.txt")
+def test_sign_fails_without_both_output_cert_and_signature(
+    capsys, sigstore, asset_integration
+):
+    artifact = asset_integration("a.txt")
 
     with pytest.raises(SystemExit) as e:
         sigstore(

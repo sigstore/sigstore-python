@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from pathlib import Path
 
 import pytest
 from id import (
@@ -22,6 +23,17 @@ from id import (
 )
 
 from sigstore.oidc import _DEFAULT_AUDIENCE
+
+_ASSETS = (Path(__file__).parent / "assets").resolve()
+assert _ASSETS.is_dir()
+
+
+@pytest.fixture
+def asset():
+    def _asset(name: str) -> Path:
+        return _ASSETS / name
+
+    return _asset
 
 
 def _has_oidc_id():

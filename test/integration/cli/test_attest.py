@@ -56,10 +56,10 @@ def get_cli_params(
     ],
 )
 def test_attest_success_default_output_bundle(
-    capsys, sigstore, asset, predicate_type, predicate_filename
+    capsys, sigstore, asset_integration, predicate_type, predicate_filename
 ):
-    predicate_path = asset(f"attest/{predicate_filename}")
-    artifact = asset("a.txt")
+    predicate_path = asset_integration(f"attest/{predicate_filename}")
+    artifact = asset_integration("a.txt")
     expected_output_bundle = artifact.with_name("a.txt.sigstore.json")
 
     assert not expected_output_bundle.exists()
@@ -87,11 +87,13 @@ def test_attest_success_default_output_bundle(
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_attest_success_custom_output_bundle(capsys, sigstore, asset, tmp_path):
+def test_attest_success_custom_output_bundle(
+    capsys, sigstore, asset_integration, tmp_path
+):
     predicate_type = PredicateType.SLSA_v0_2
     predicate_filename = "slsa_predicate_v0_2.json"
-    predicate_path = asset(f"attest/{predicate_filename}")
-    artifact = asset("a.txt")
+    predicate_path = asset_integration(f"attest/{predicate_filename}")
+    artifact = asset_integration("a.txt")
 
     output_bundle = tmp_path / "bundle.json"
     assert not output_bundle.exists()
@@ -111,11 +113,13 @@ def test_attest_success_custom_output_bundle(capsys, sigstore, asset, tmp_path):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_attest_overwrite_existing_bundle(capsys, sigstore, asset, tmp_path):
+def test_attest_overwrite_existing_bundle(
+    capsys, sigstore, asset_integration, tmp_path
+):
     predicate_type = PredicateType.SLSA_v0_2
     predicate_filename = "slsa_predicate_v0_2.json"
-    predicate_path = asset(f"attest/{predicate_filename}")
-    artifact = asset("a.txt")
+    predicate_path = asset_integration(f"attest/{predicate_filename}")
+    artifact = asset_integration("a.txt")
 
     output_bundle = tmp_path / "bundle.json"
     assert not output_bundle.exists()
@@ -148,11 +152,11 @@ def test_attest_overwrite_existing_bundle(capsys, sigstore, asset, tmp_path):
     assert captures.out.endswith(f"Sigstore bundle written to {str(output_bundle)}\n")
 
 
-def test_attest_invalid_predicate_type(capsys, sigstore, asset, tmp_path):
+def test_attest_invalid_predicate_type(capsys, sigstore, asset_integration, tmp_path):
     predicate_type = "invalid_type"
     predicate_filename = "slsa_predicate_v0_2.json"
-    predicate_path = asset(f"attest/{predicate_filename}")
-    artifact = asset("a.txt")
+    predicate_path = asset_integration(f"attest/{predicate_filename}")
+    artifact = asset_integration("a.txt")
 
     output_bundle = tmp_path / "bundle.json"
     # On invalid argument errors we call `Argumentparser.error`, which prints
@@ -172,11 +176,11 @@ def test_attest_invalid_predicate_type(capsys, sigstore, asset, tmp_path):
     assert captures.err.endswith(f"invalid PredicateType value: '{predicate_type}'\n")
 
 
-def test_attest_mismatching_predicate(capsys, sigstore, asset, tmp_path):
+def test_attest_mismatching_predicate(capsys, sigstore, asset_integration, tmp_path):
     predicate_type = PredicateType.SLSA_v0_2
     predicate_filename = "slsa_predicate_v1_0.json"
-    predicate_path = asset(f"attest/{predicate_filename}")
-    artifact = asset("a.txt")
+    predicate_path = asset_integration(f"attest/{predicate_filename}")
+    artifact = asset_integration("a.txt")
 
     output_bundle = tmp_path / "bundle.json"
     # On invalid argument errors we call `Argumentparser.error`, which prints
@@ -196,11 +200,11 @@ def test_attest_mismatching_predicate(capsys, sigstore, asset, tmp_path):
     assert f'Unable to parse predicate of type "{predicate_type}":' in captures.err
 
 
-def test_attest_missing_predicate(capsys, sigstore, asset, tmp_path):
+def test_attest_missing_predicate(capsys, sigstore, asset_integration, tmp_path):
     predicate_type = PredicateType.SLSA_v0_2
     predicate_filename = "doesnt_exist.json"
-    predicate_path = asset(f"attest/{predicate_filename}")
-    artifact = asset("a.txt")
+    predicate_path = asset_integration(f"attest/{predicate_filename}")
+    artifact = asset_integration("a.txt")
 
     output_bundle = tmp_path / "bundle.json"
     # On invalid argument errors we call `Argumentparser.error`, which prints
@@ -220,10 +224,10 @@ def test_attest_missing_predicate(capsys, sigstore, asset, tmp_path):
     assert captures.err.endswith(f"Predicate must be a file: {predicate_path}\n")
 
 
-def test_attest_invalid_json_predicate(capsys, sigstore, asset, tmp_path):
+def test_attest_invalid_json_predicate(capsys, sigstore, asset_integration, tmp_path):
     predicate_type = PredicateType.SLSA_v0_2
-    predicate_path = asset("a.txt")
-    artifact = asset("a.txt")
+    predicate_path = asset_integration("a.txt")
+    artifact = asset_integration("a.txt")
 
     output_bundle = tmp_path / "bundle.json"
     # On invalid argument errors we call `Argumentparser.error`, which prints

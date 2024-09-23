@@ -42,25 +42,14 @@ from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
 from sigstore.sign import SigningContext
 from sigstore.verify.verifier import Verifier
 
-_ASSETS = (Path(__file__).parent.parent / "assets").resolve()
-assert _ASSETS.is_dir()
-
-_TUF_ASSETS = (_ASSETS / "staging-tuf").resolve()
+_TUF_ASSETS = (Path(__file__).parent.parent / "assets" / "staging-tuf").resolve()
 assert _TUF_ASSETS.is_dir()
 
 
 @pytest.fixture
-def asset():
-    def _asset(name: str) -> Path:
-        return _ASSETS / name
-
-    return _asset
-
-
-@pytest.fixture
-def x509_testcase():
+def x509_testcase(asset):
     def _x509_testcase(name: str) -> Certificate:
-        pem = (_ASSETS / "x509" / name).read_bytes()
+        pem = asset(f"x509/{name}").read_bytes()
         return load_pem_x509_certificate(pem)
 
     return _x509_testcase
@@ -99,13 +88,13 @@ def tuf_asset():
 
 
 @pytest.fixture
-def signing_materials() -> Callable[[str, RekorClient], tuple[Path, Bundle]]:
+def signing_materials(asset) -> Callable[[str, RekorClient], tuple[Path, Bundle]]:
     # NOTE: Unlike `signing_bundle`, `signing_materials` requires a
     # Rekor client to retrieve its entry with.
     def _signing_materials(name: str, client: RekorClient) -> tuple[Path, Bundle]:
-        file = _ASSETS / name
-        cert_path = _ASSETS / f"{name}.crt"
-        sig_path = _ASSETS / f"{name}.sig"
+        file = asset(name)
+        cert_path = asset(f"{name}.crt")
+        sig_path = asset(f"{name}.sig")
 
         cert = load_pem_x509_certificate(cert_path.read_bytes())
         sig = base64.b64decode(sig_path.read_text())
@@ -124,10 +113,10 @@ def signing_materials() -> Callable[[str, RekorClient], tuple[Path, Bundle]]:
 
 
 @pytest.fixture
-def signing_bundle():
+def signing_bundle(asset):
     def _signing_bundle(name: str) -> tuple[Path, Bundle]:
-        file = _ASSETS / name
-        bundle_path = _ASSETS / f"{name}.sigstore"
+        file = asset(name)
+        bundle_path = asset(f"{name}.sigstore")
         bundle = Bundle.from_json(bundle_path.read_bytes())
 
         return (file, bundle)
