@@ -358,12 +358,12 @@ provided below.
 
 ### Signing with ambient credentials
 
-For environments that support OpenID Connect, natively `sigstore` supports ambient credential
+For environments that support OpenID Connect, `sigstore` supports ambient credential
 detection. This includes many popular CI platforms and cloud providers. See the full list of
 supported environments [here](https://github.com/di/id#supported-environments).
 
 Sign a single file (`foo.txt`) using an ambient OpenID Connect credential,
-saving the bundle to `foo.txt.sigstore`:
+saving the bundle to `foo.txt.sigstore.json`:
 
 ```console
 $ python -m sigstore sign foo.txt
@@ -376,7 +376,7 @@ allowing you to request signing certificates that attest to control over
 that email.
 
 Sign a single file (`foo.txt`) using the OAuth2 flow, saving the
-bundle to `foo.txt.sigstore`:
+bundle to `foo.txt.sigstore.json`:
 
 ```console
 $ python -m sigstore sign foo.txt
@@ -404,11 +404,11 @@ namely the Fulcio's supported identity providers and the claims expected within 
 
 ### Verifying against a signature and certificate
 
-By default, `sigstore verify identity` will attempt to find a `<filename>.sigstore` in the
-same directory as the file being verified:
+By default, `sigstore verify identity` will attempt to find a `<filename>.sigstore.json`
+or `<filename>.sigstore` in the same directory as the file being verified:
 
 ```console
-# looks for foo.txt.sigstore
+# looks for foo.txt.sigstore.json
 $ python -m sigstore verify identity foo.txt \
     --cert-identity 'hamilcar@example.com' \
     --cert-oidc-issuer 'https://github.com/login/oauth'
@@ -417,7 +417,7 @@ $ python -m sigstore verify identity foo.txt \
 Multiple files can be verified at once:
 
 ```console
-# looks for {foo,bar}.txt.sigstore
+# looks for {foo,bar}.txt.sigstore.json
 $ python -m sigstore verify identity foo.txt bar.txt \
     --cert-identity 'hamilcar@example.com' \
     --cert-oidc-issuer 'https://github.com/login/oauth'
