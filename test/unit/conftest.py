@@ -27,8 +27,6 @@ import jwt
 import pytest
 from cryptography.x509 import Certificate, load_pem_x509_certificate
 from id import (
-    AmbientCredentialError,
-    GitHubOidcPermissionCredentialError,
     detect_credential,
 )
 from tuf.api.exceptions import DownloadHTTPError
@@ -44,103 +42,14 @@ from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
 from sigstore.sign import SigningContext
 from sigstore.verify.verifier import Verifier
 
-_ASSETS = (Path(__file__).parent.parent / "assets").resolve()
-assert _ASSETS.is_dir()
-
-_TUF_ASSETS = (_ASSETS / "staging-tuf").resolve()
+_TUF_ASSETS = (Path(__file__).parent.parent / "assets" / "staging-tuf").resolve()
 assert _TUF_ASSETS.is_dir()
 
 
-def _has_oidc_id():
-    # If there are tokens manually defined for us in the environment, use them.
-    if os.getenv("SIGSTORE_IDENTITY_TOKEN_production") or os.getenv(
-        "SIGSTORE_IDENTITY_TOKEN_staging"
-    ):
-        return True
-
-    try:
-        token = detect_credential(_DEFAULT_AUDIENCE)
-        if token is None:
-            return False
-    except GitHubOidcPermissionCredentialError:
-        # On GitHub Actions, forks do not have access to OIDC identities.
-        # We differentiate this case from other GitHub credential errors,
-        # since it's a case where we want to skip (i.e. return False).
-        if os.getenv("GITHUB_EVENT_NAME") == "pull_request":
-            return False
-        return True
-    except AmbientCredentialError:
-        # If ambient credential detection raises, then we *are* in an ambient
-        # environment but one that's been configured incorrectly. We
-        # pass this through, so that the CI fails appropriately rather than
-        # silently skipping the faulty tests.
-        return True
-
-    return True
-
-
-def pytest_addoption(parser):
-    parser.addoption(
-        "--skip-online",
-        action="store_true",
-        help="skip tests that require network connectivity",
-    )
-    parser.addoption(
-        "--skip-staging",
-        action="store_true",
-        help="skip tests that require Sigstore staging infrastructure",
-    )
-
-
-def pytest_runtest_setup(item):
-    # Do we need a network connection?
-    online = False
-    for mark in ["online", "staging", "production"]:
-        if mark in item.keywords:
-            online = True
-
-    if online and item.config.getoption("--skip-online"):
-        pytest.skip(
-            "skipping test that requires network connectivity due to `--skip-online` flag"
-        )
-    elif "ambient_oidc" in item.keywords and not _has_oidc_id():
-        pytest.skip("skipping test that requires an ambient OIDC credential")
-
-    if "staging" in item.keywords and item.config.getoption("--skip-staging"):
-        pytest.skip(
-            "skipping test that requires staging infrastructure due to `--skip-staging` flag"
-        )
-
-
-def pytest_configure(config):
-    config.addinivalue_line(
-        "markers", "staging: mark test as requiring Sigstore staging infrastructure"
-    )
-    config.addinivalue_line(
-        "markers",
-        "production: mark test as requiring Sigstore production infrastructure",
-    )
-    config.addinivalue_line(
-        "markers",
-        "online: mark test as requiring network connectivity (but not a specific Sigstore infrastructure)",
-    )
-    config.addinivalue_line(
-        "markers", "ambient_oidc: mark test as requiring an ambient OIDC identity"
-    )
-
-
 @pytest.fixture
-def asset():
-    def _asset(name: str) -> Path:
-        return _ASSETS / name
-
-    return _asset
-
-
-@pytest.fixture
-def x509_testcase():
+def x509_testcase(asset):
     def _x509_testcase(name: str) -> Certificate:
-        pem = (_ASSETS / "x509" / name).read_bytes()
+        pem = asset(f"x509/{name}").read_bytes()
         return load_pem_x509_certificate(pem)
 
     return _x509_testcase
@@ -179,13 +88,13 @@ def tuf_asset():
 
 
 @pytest.fixture
-def signing_materials() -> Callable[[str, RekorClient], tuple[Path, Bundle]]:
+def signing_materials(asset) -> Callable[[str, RekorClient], tuple[Path, Bundle]]:
     # NOTE: Unlike `signing_bundle`, `signing_materials` requires a
     # Rekor client to retrieve its entry with.
     def _signing_materials(name: str, client: RekorClient) -> tuple[Path, Bundle]:
-        file = _ASSETS / name
-        cert_path = _ASSETS / f"{name}.crt"
-        sig_path = _ASSETS / f"{name}.sig"
+        file = asset(name)
+        cert_path = asset(f"{name}.crt")
+        sig_path = asset(f"{name}.sig")
 
         cert = load_pem_x509_certificate(cert_path.read_bytes())
         sig = base64.b64decode(sig_path.read_text())
@@ -204,10 +113,10 @@ def signing_materials() -> Callable[[str, RekorClient], tuple[Path, Bundle]]:
 
 
 @pytest.fixture
-def signing_bundle():
+def signing_bundle(asset):
     def _signing_bundle(name: str) -> tuple[Path, Bundle]:
-        file = _ASSETS / name
-        bundle_path = _ASSETS / f"{name}.sigstore"
+        file = asset(name)
+        bundle_path = asset(f"{name}.sigstore")
         bundle = Bundle.from_json(bundle_path.read_bytes())
 
         return (file, bundle)

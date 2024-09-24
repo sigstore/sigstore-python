@@ -22,8 +22,8 @@ from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
 
 
-def test_fix_bundle_fixes_missing_checkpoint(capsys, sigstore, asset):
-    invalid_bundle = asset("Python-3.12.5.tgz.sigstore")
+def test_fix_bundle_fixes_missing_checkpoint(capsys, sigstore, asset_integration):
+    invalid_bundle = asset_integration("Python-3.12.5.tgz.sigstore")
 
     # The bundle is invalid, because it's missing a checkpoint
     # for its inclusion proof.
@@ -64,8 +64,8 @@ def test_fix_bundle_fixes_missing_checkpoint(capsys, sigstore, asset):
     )
 
 
-def test_fix_bundle_upgrades_bundle(capsys, sigstore, asset):
-    invalid_bundle = asset("Python-3.12.5.tgz.sigstore")
+def test_fix_bundle_upgrades_bundle(capsys, sigstore, asset_integration):
+    invalid_bundle = asset_integration("Python-3.12.5.tgz.sigstore")
 
     # Running `sigstore plumbing fix-bundle --upgrade-version`
     # emits a fixed bundle.
