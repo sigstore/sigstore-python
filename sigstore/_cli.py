@@ -996,12 +996,12 @@ def _collect_verification_state(
 
     if args.staging:
         _logger.debug("verify: staging instances requested")
-        verifier = Verifier.staging()
+        verifier = Verifier.staging(offline=args.offline)
     elif args.trust_config:
         trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
         verifier = Verifier._from_trust_config(trust_config)
     else:
-        verifier = Verifier.production()
+        verifier = Verifier.production(offline=args.offline)
 
     all_materials = []
     for file_or_hashed, materials in input_map.items():

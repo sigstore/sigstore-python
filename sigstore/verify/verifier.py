@@ -77,23 +77,23 @@ class Verifier:
         self._trusted_root = trusted_root
 
     @classmethod
-    def production(cls) -> Verifier:
+    def production(cls, *, offline: bool = False) -> Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's production-level services.
         """
         return cls(
             rekor=RekorClient.production(),
-            trusted_root=TrustedRoot.production(),
+            trusted_root=TrustedRoot.production(offline=offline),
         )
 
     @classmethod
-    def staging(cls) -> Verifier:
+    def staging(cls, *, offline: bool = False) -> Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's staging-level services.
         """
         return cls(
             rekor=RekorClient.staging(),
-            trusted_root=TrustedRoot.staging(),
+            trusted_root=TrustedRoot.staging(offline=offline),
         )
 
     @classmethod
