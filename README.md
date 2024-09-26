@@ -29,7 +29,9 @@ else!
   * [Signing with ambient credentials](#signing-with-ambient-credentials)
   * [Signing with an email identity](#signing-with-an-email-identity)
   * [Signing with an explicit identity token](#signing-with-an-explicit-identity-token)
-  * [Verifying against a signature and certificate](#verifying-against-a-signature-and-certificate)
+  * [Verifying against a bundle](#verifying-against-a-bundle)
+  * [Offline verification](#offline-verification)
+  * [Verifying a digest instead of a file](#verifying-a-digest-instead-of-a-file)
   * [Verifying signatures from GitHub Actions](#verifying-signatures-from-github-actions)
 * [Licensing](#licensing)
 * [Community](#community)
@@ -402,7 +404,7 @@ $ python -m sigstore sign --identity-token YOUR-LONG-JWT-HERE foo.txt
 Note that passing a custom identity token does not circumvent Fulcio's requirements,
 namely the Fulcio's supported identity providers and the claims expected within the token.
 
-### Verifying against a signature and certificate
+### Verifying against a bundle
 
 By default, `sigstore verify identity` will attempt to find a `<filename>.sigstore.json`
 or `<filename>.sigstore` in the same directory as the file being verified:
@@ -422,6 +424,50 @@ $ python -m sigstore verify identity foo.txt bar.txt \
     --cert-identity 'hamilcar@example.com' \
     --cert-oidc-issuer 'https://github.com/login/oauth'
 ```
+
+### Offline verification
+
+> [!IMPORTANT]
+> Because `--offline` disables trust root updates, `sigstore-python` falls back
+> to the latest cached trust root or, if none exists, the trust root baked
+> into `sigstore-python` itself. Like with any other offline verification,
+> this means that users may miss trust root changes (such as new root keys,
+> or revocations) unless they separately keep the trust root up-to-date.
+>
+> Users who need to operationalize offline verification may wish to do this
+> by distributing their own trust configuration; see
+> [Configuring a custom root of trust](#configuring-a-custom-root-of-trust-byo-pki).
+
+During verification, there are two kinds of network access that `sigstore-python`
+*can* perform:
+
+1. When verifying against "detached" materials (e.g. separate `.crt` and `.sig`
+   files), `sigstore-python` can perform an online transparency log lookup.
+2. By default, during all verifications, `sigstore-python` will attempt to
+   refresh the locally cached root of trust via a TUF update.
+
+When performing bundle verification (i.e. `.sigstore` or `.sigstore.json`),
+(1) does not apply. However, (2) can still result in online accesses.
+
+To perform **fully** offline verification, pass `--offline` to your
+`sigstore verify` subcommand:
+
+```bash
+$ python -m sigstore verify identity foo.txt \
+    --offline \
+    --cert-identity 'hamilcar@example.com' \
+    --cert-oidc-issuer 'https://github.com/login/oauth'
+```
+
+Alternatively, users may choose to bypass TUF entirely by passing
+an entire trust configuration to `sigstore-python` via `--trust-config`:
+
+```bash
+$ python -m sigstore --trust-config public.trustconfig.json verify identity ...
+```
+
+This will similarly result in fully offline operation, as the trust
+configuration contains a full trust root.
 
 ### Verifying a digest instead of a file
 
