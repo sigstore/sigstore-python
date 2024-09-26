@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Changed
+
+* CLI: When verifying, the `--offline` flag now fully disables all online
+  operations, including routine local TUF repository refreshes
+  ([#1143](https://github.com/sigstore/sigstore-python/pull/1143))
+
 ## [3.3.0]
 
 ### Added
