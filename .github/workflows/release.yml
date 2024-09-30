@@ -127,6 +127,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@897895f1e160c830e369f9779632ebc134688e1b # v1.10.2
         with:
           packages-dir: built-packages/
+          attestations: true
 
   release-github:
     needs: [build, generate-provenance]
@@ -147,7 +148,6 @@ jobs:
           # smoketest-artifacts/ contains the signatures and certificates.
           files: |
             built-packages/*
-            smoketest-artifacts/*
 
   # Trigger workflow to generate pinned requirements.txt.
   pin-requirements:
