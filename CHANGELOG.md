@@ -14,6 +14,13 @@ All versions prior to 0.9.0 are untracked.
   operations, including routine local TUF repository refreshes
   ([#1143](https://github.com/sigstore/sigstore-python/pull/1143))
 
+### Fixed
+
+* CLI: The `sigstore verify` subcommands now always check for a matching
+  input file, rather than unconditionally falling back to matching on a
+  valid `sha256:...` digest pattern
+  ([#1152](https://github.com/sigstore/sigstore-python/pull/1152))
+
 ## [3.3.0]
 
 ### Added
