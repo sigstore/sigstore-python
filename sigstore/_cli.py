@@ -167,16 +167,19 @@ def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
     )
 
     def file_or_digest(arg: str) -> Hashed | Path:
-        if arg.startswith("sha256:"):
+        path = Path(arg)
+        if path.is_file():
+            return path
+        elif arg.startswith("sha256"):
             digest = bytes.fromhex(arg[len("sha256:") :])
             if len(digest) != 32:
-                raise ValueError()
+                raise ValueError
             return Hashed(
                 digest=digest,
                 algorithm=HashAlgorithm.SHA2_256,
             )
         else:
-            return Path(arg)
+            raise ValueError
 
     group.add_argument(
         "files_or_digest",
