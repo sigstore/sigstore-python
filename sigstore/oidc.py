@@ -59,16 +59,6 @@ class _OpenIDConfiguration(BaseModel):
     token_endpoint: StrictStr
 
 
-# See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
-_KNOWN_OIDC_ISSUERS = {
-    "https://accounts.google.com": "email",
-    "https://oauth2.sigstore.dev/auth": "email",
-    "https://oauth2.sigstage.dev/auth": "email",
-    "https://token.actions.githubusercontent.com": "sub",
-}
-DEFAULT_AUDIENCE = "sigstore"
-
-
 class ExpiredIdentity(Exception):
     """An error raised when an identity token is expired."""
 
@@ -103,7 +93,7 @@ class IdentityToken:
                     # See: https://openid.net/specs/openid-connect-basic-1_0.html#IDToken
                     "require": ["aud", "sub", "iat", "exp", "iss"],
                 },
-                audience=DEFAULT_AUDIENCE,
+                audience=_DEFAULT_AUDIENCE,
                 # NOTE: This leeway shouldn't be strictly necessary, but is
                 # included to preempt any (small) skew between the host
                 # and the originating IdP.
