@@ -17,7 +17,6 @@ jobs:
     strategy:
       matrix:
         conf:
-          - { py: "3.8", os: "ubuntu-latest" }
           - { py: "3.9", os: "ubuntu-latest" }
           - { py: "3.10", os: "ubuntu-latest" }
           - { py: "3.11", os: "ubuntu-latest" }
