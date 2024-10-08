@@ -64,9 +64,10 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration)
 
     assert expected_output_bundle.exists()
     verifier = Verifier.staging()
-    with open(expected_output_bundle, "r") as bundle_file, open(
-        artifact, "rb"
-    ) as input_file:
+    with (
+        open(expected_output_bundle, "r") as bundle_file,
+        open(artifact, "rb") as input_file,
+    ):
         bundle = Bundle.from_json(bundle_file.read())
         verifier.verify_artifact(
             input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()

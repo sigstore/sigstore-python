@@ -14,6 +14,8 @@ All versions prior to 0.9.0 are untracked.
   operations, including routine local TUF repository refreshes
   ([#1143](https://github.com/sigstore/sigstore-python/pull/1143))
 
+* `sigstore-python`'s minimum supported Python version is now 3.9
+
 ### Fixed
 
 * CLI: The `sigstore verify` subcommands now always check for a matching
