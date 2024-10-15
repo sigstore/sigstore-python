@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import datetime
 import json
 import logging
 import os
@@ -39,7 +40,7 @@ from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.trust import ClientTrustConfig
+from sigstore._internal.trust import ClientTrustConfig, TrustedRoot
 from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
@@ -1236,9 +1237,13 @@ def _fix_bundle(args: argparse.Namespace) -> None:
 
 
 def _update_trust_root(args: argparse.Namespace) -> None:
-    # Simply creating the TrustUpdater in online mode is enough to perform
+    # Simply creating the TrustedRoot in online mode is enough to perform
     # a metadata update.
     if args.staging:
-        TrustUpdater(STAGING_TUF_URL, offline=False)
+        trusted_root = TrustedRoot.staging(offline=False)
     else:
-        TrustUpdater(DEFAULT_TUF_URL, offline=False)
+        trusted_root = TrustedRoot.production(offline=False)
+
+    _console.print(
+        f"Trust root updated: {len(trusted_root.get_fulcio_certs())} Fulcio certificates"
+    )
