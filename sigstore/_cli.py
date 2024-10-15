@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import base64
-import datetime
 import json
 import logging
 import os
@@ -41,7 +40,6 @@ from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.trust import ClientTrustConfig, TrustedRoot
-from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
