@@ -39,7 +39,7 @@ from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.trust import ClientTrustConfig
+from sigstore._internal.trust import ClientTrustConfig, TrustedRoot
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
@@ -573,6 +573,14 @@ def _parser() -> argparse.ArgumentParser:
         help="Overwrite the input bundle with its fix instead of emitting to stdout",
     )
 
+    # `sigstore plumbing update-trust-root`
+    plumbing_subcommands.add_parser(
+        "update-trust-root",
+        help="update the local trust root to the latest version via TUF",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
+    )
+
     return parser
 
 
@@ -614,6 +622,8 @@ def main(args: list[str] | None = None) -> None:
         elif args.subcommand == "plumbing":
             if args.plumbing_subcommand == "fix-bundle":
                 _fix_bundle(args)
+            elif args.plumbing_subcommand == "update-trust-root":
+                _update_trust_root(args)
         else:
             _invalid_arguments(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
@@ -1222,3 +1232,16 @@ def _fix_bundle(args: argparse.Namespace) -> None:
         args.bundle.write_text(bundle.to_json())
     else:
         print(bundle.to_json())
+
+
+def _update_trust_root(args: argparse.Namespace) -> None:
+    # Simply creating the TrustedRoot in online mode is enough to perform
+    # a metadata update.
+    if args.staging:
+        trusted_root = TrustedRoot.staging(offline=False)
+    else:
+        trusted_root = TrustedRoot.production(offline=False)
+
+    _console.print(
+        f"Trust root updated: {len(trusted_root.get_fulcio_certs())} Fulcio certificates"
+    )

@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* CLI: The `sigstore plumbing update-trust-root` command has been added.
+  Like other plumbing-level commands, this is considered unstable and
+  changes are not subject to our semver policy until explicitly noted
+  ([#1174](https://github.com/sigstore/sigstore-python/pull/1174))
+
 ## [3.4.0]
 
 ### Changed
