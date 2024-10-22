@@ -931,7 +931,14 @@ def _collect_verification_state(
             legacy_default_bundle = file.parent / f"{file.name}.sigstore"
             bundle = file.parent / f"{file.name}.sigstore.json"
 
-            if not bundle.is_file() and legacy_default_bundle.is_file():
+            if (
+                not bundle.is_file()
+                and legacy_default_bundle.is_file()
+                # NOTE(ww): Only show this warning if bare materials
+                # are not provided, since bare materials take precedence over
+                # a .sigstore bundle.
+                and not (cert or sig)
+            ):
                 _logger.warning(
                     f"{file}: {legacy_default_bundle} should be named {bundle}. "
                     "Support for discovering 'bare' .sigstore inputs will be deprecated in "
