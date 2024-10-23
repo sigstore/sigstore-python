@@ -15,6 +15,11 @@ All versions prior to 0.9.0 are untracked.
   changes are not subject to our semver policy until explicitly noted
   ([#1174](https://github.com/sigstore/sigstore-python/pull/1174))
 
+### Fixed
+
+* CLI: Fixed an incorrect warning when verifying detached `.crt`/`.sig`
+  inputs ([#1179](https://github.com/sigstore/sigstore-python/pull/1179))
+
 ## [3.4.0]
 
 ### Changed
