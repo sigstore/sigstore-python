@@ -43,9 +43,17 @@ from pydantic import (
 )
 from pydantic.dataclasses import dataclass
 from rekor_types import Dsse, Hashedrekord, ProposedEntry
+from rfc3161_client.base import decode_timestamp_response
+from rfc3161_client.tsp import TimeStampResponse
 from sigstore_protobuf_specs.dev.sigstore.bundle import v1 as bundle_v1
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle as _Bundle,
+)
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
+    TimestampVerificationData as _TimestampVerificationData,
+)
+from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
+    VerificationMaterial as _VerificationMaterial,
 )
 from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
 from sigstore_protobuf_specs.dev.sigstore.rekor import v1 as rekor_v1
@@ -328,6 +336,65 @@ class LogEntry:
             )
 
 
+class TimestampVerificationData:
+    """
+    Represents a TimestampVerificationData structure.
+    """
+
+    def __init__(self, inner: _TimestampVerificationData) -> None:
+        """Init method."""
+        self._inner = inner
+        self._verify()
+
+    def _verify(self) -> None:
+        """
+        Verifies the TimestampVerificationData.
+
+        It verifies that TimeStamp Responses embedded in the bundle are correctly
+        formed.
+        """
+        signed_ts: list[TimeStampResponse] = []
+        for rfc3161_signed_ts in self._inner.rfc3161_timestamps:
+            try:
+                signed_ts.append(
+                    decode_timestamp_response(rfc3161_signed_ts.signed_timestamp)
+                )
+            except ValueError:
+                raise VerificationError("Invalid Timestamp Response")
+
+        self._signed_ts = signed_ts
+
+    @property
+    def rfc3161_timestamps(self) -> list[TimeStampResponse]:
+        """Returns a list of signed timestamp."""
+        return self._signed_ts
+
+    @classmethod
+    def from_json(cls, raw: str | bytes) -> TimestampVerificationData:
+        """
+        Only used in tests.
+        """
+        inner = _TimestampVerificationData().from_json(raw)
+        return cls(inner)
+
+
+class VerificationMaterial:
+    """
+    Represents a VerificationMaterial structure.
+    """
+
+    def __init__(self, inner: _VerificationMaterial) -> None:
+        """Init method."""
+        self._inner = inner
+
+    @property
+    def timestamp_verification_data(self) -> TimestampVerificationData:
+        """
+        Returns the Timestamp Verification Data.
+        """
+        return TimestampVerificationData(self._inner.timestamp_verification_data)
+
+
 class InvalidBundle(Error):
     """
     Raised when the associated `Bundle` is invalid in some way.
@@ -502,6 +569,13 @@ class Bundle:
         if self._inner.dsse_envelope:
             return dsse.Envelope(self._inner.dsse_envelope)
         return None
+
+    @property
+    def verification_material(self) -> VerificationMaterial:
+        """
+        Returns the bundle's verification material.
+        """
+        return VerificationMaterial(self._inner.verification_material)
 
     @classmethod
     def from_json(cls, raw: bytes | str) -> Bundle:
