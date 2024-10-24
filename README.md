@@ -75,7 +75,7 @@ add it to your CI manually:
 jobs:
   sigstore-python:
     steps:
-      - uses: sigstore/gh-action-sigstore-python@v0.2.0
+      - uses: sigstore/gh-action-sigstore-python@v3.0.0
         with:
           inputs: foo.txt
 ```
