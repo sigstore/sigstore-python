@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Fixed a CLI parsing bug introduced in 3.5.0 when attempting
+  to suppress irrelevant warnings
+  ([#1192](https://github.com/sigstore/sigstore-python/pull/1192))
+
 ## [3.5.0]
 
 ### Added
