@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.5.1]
+
 ### Fixed
 
 * Fixed a CLI parsing bug introduced in 3.5.0 when attempting
@@ -537,7 +539,8 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.1...HEAD
+[3.5.1]: https://github.com/sigstore/sigstore-python/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/sigstore/sigstore-python/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/sigstore/sigstore-python/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/sigstore/sigstore-python/compare/v3.2.0...v3.3.0
