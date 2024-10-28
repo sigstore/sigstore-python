@@ -932,7 +932,7 @@ def _collect_verification_state(
             bundle = file.parent / f"{file.name}.sigstore.json"
 
             if not bundle.is_file() and legacy_default_bundle.is_file():
-                if not (cert or sig):
+                if not cert.is_file() or not sig.is_file():
                     # NOTE(ww): Only show this warning if bare materials
                     # are not provided, since bare materials take precedence over
                     # a .sigstore bundle.

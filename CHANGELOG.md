@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Fixed a CLI parsing bug introduced in 3.5.1 where a warning about
+  verifying legacy bundles was never shown 
+  ([#1198](https://github.com/sigstore/sigstore-python/pull/1198))
+
 ## [3.5.1]
 
 ### Fixed
