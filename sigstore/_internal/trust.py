@@ -279,6 +279,22 @@ class CertificateAuthority:
             return []
         return self._certificates
 
+    def certificates(self, *, allow_expired: bool) -> list[Certificate]:
+        """
+        Return a list of certificates in the authority chain.
+
+        The certificates are returned in order from leaf to root, with any
+        intermediate certificates in between.
+        """
+        if not _is_timerange_valid(self._inner.valid_for, allow_expired=allow_expired):
+            return []
+
+        return [
+            *([self.leaf] if self.leaf else []),
+            *self.intermediates,
+            *([self.root] if self.root else []),
+        ]
+
 
 class TrustedRoot:
     """
