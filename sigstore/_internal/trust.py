@@ -38,11 +38,13 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
-    CertificateAuthority,
-    TransparencyLogInstance,
+    CertificateAuthority as _CertificateAuthority,
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     ClientTrustConfig as _ClientTrustConfig,
+)
+from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    TransparencyLogInstance,
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     TrustedRoot as _TrustedRoot,
@@ -52,6 +54,7 @@ from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdate
 from sigstore._utils import (
     KeyID,
     PublicKey,
+    cert_is_root_ca,
     key_id,
     load_der_public_key,
 )
@@ -217,6 +220,80 @@ class KeyringPurpose(str, Enum):
         return self.value
 
 
+class CertificateAuthority:
+    """
+    Certificate Authority used in a Trusted Root configuration.
+    """
+
+    def __init__(self, inner: _CertificateAuthority):
+        """
+        Construct a new `CertificateAuthority`.
+
+        @api private
+        """
+        self._inner = inner
+        self._verify()
+
+    @classmethod
+    def from_json(cls, path: str) -> CertificateAuthority:
+        """
+        Create a CertificateAuthority directly from JSON.
+        """
+        inner = _CertificateAuthority().from_json(Path(path).read_bytes())
+        return cls(inner)
+
+    def _verify(self) -> None:
+        """
+        Verify and load the certificate authority.
+        """
+        chain_length = len(self._inner.cert_chain.certificates)
+        self._intermediates = []
+
+        for idx, cert in enumerate(self._inner.cert_chain.certificates):
+            certificate = load_der_x509_certificate(cert.raw_bytes)
+            if idx == 0 and not cert_is_root_ca(certificate):
+                self._leaf = certificate
+            elif idx < chain_length - 1:
+                self._intermediates.append(certificate)
+            elif idx == chain_length - 1:
+                self._root = certificate
+
+    @property
+    def validity_period_start(self) -> datetime | None:
+        """
+        Validity period start.
+        """
+        return self._inner.valid_for.start
+
+    @property
+    def validity_period_end(self) -> datetime | None:
+        """
+        Validity period end.
+        """
+        return self._inner.valid_for.end
+
+    @property
+    def root(self) -> Certificate | None:
+        """
+        Root certificate of the authority.
+        """
+        return self._root
+
+    @property
+    def intermediates(self) -> list[Certificate]:
+        """
+        List of intermediates certificates.
+        """
+        return self._intermediates
+
+    @property
+    def leaf(self) -> Certificate | None:
+        """
+        Leaf certificate of the authority.
+        """
+        return self._leaf
+
+
 class TrustedRoot:
     """
     The cryptographic root(s) of trust for a Sigstore instance.
@@ -319,7 +396,7 @@ class TrustedRoot:
 
     @staticmethod
     def _get_ca_keys(
-        cas: list[CertificateAuthority], *, allow_expired: bool
+        cas: list[_CertificateAuthority], *, allow_expired: bool
     ) -> Iterable[bytes]:
         """Return public key contents given certificate authorities."""
 
@@ -360,6 +437,19 @@ class TrustedRoot:
         if not certs:
             raise MetadataError("Fulcio certificates not found in trusted root")
         return certs
+
+    def get_timestamp_authorities(self) -> list[CertificateAuthority]:
+        """
+        Return the TSA present in the trusted root.
+
+        This list may be empty and in this case, no timestamp verification can be
+        performed.
+        """
+        certificate_authorities: list[CertificateAuthority] = [
+            CertificateAuthority(cert_chain)
+            for cert_chain in self._inner.timestamp_authorities
+        ]
+        return certificate_authorities
 
 
 class ClientTrustConfig:
