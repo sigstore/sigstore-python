@@ -136,7 +136,7 @@ class TestVerificationMaterial:
     """
 
     def test_valid_verification_material(self, asset):
-        bundle = Bundle.from_json(asset("hello.txt.bundle").read_bytes())
+        bundle = Bundle.from_json(asset("bundle.txt.sigstore").read_bytes())
 
         verification_material = VerificationMaterial(
             bundle._inner.verification_material
