@@ -54,7 +54,6 @@ from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdate
 from sigstore._utils import (
     KeyID,
     PublicKey,
-    cert_is_root_ca,
     key_id,
     load_der_public_key,
 )
@@ -232,9 +231,7 @@ class CertificateAuthority:
         @api private
         """
         self._inner = inner
-        self._leaf: Certificate | None = None
-        self._intermediates: list[Certificate] = []
-        self._root: Certificate | None = None
+        self._certificates: list[Certificate] = []
         self._verify()
 
     @classmethod
@@ -249,20 +246,13 @@ class CertificateAuthority:
         """
         Verify and load the certificate authority.
         """
-        chain_length = len(self._inner.cert_chain.certificates)
-        self._intermediates = []
+        self._certificates = [
+            load_der_x509_certificate(cert.raw_bytes)
+            for cert in self._inner.cert_chain.certificates
+        ]
 
-        for idx, cert in enumerate(self._inner.cert_chain.certificates):
-            certificate = load_der_x509_certificate(cert.raw_bytes)
-            if idx == 0 and not cert_is_root_ca(certificate):
-                self._leaf = certificate
-            elif idx < chain_length - 1:
-                self._intermediates.append(certificate)
-            elif idx == chain_length - 1 and cert_is_root_ca(certificate):
-                self._root = certificate
-
-        if not self._root:
-            raise Error("missing root certificate in CA")
+        if not self._certificates:
+            raise Error("missing a certificate in Certificate Authority")
 
     @property
     def validity_period_start(self) -> datetime | None:
@@ -278,27 +268,6 @@ class CertificateAuthority:
         """
         return self._inner.valid_for.end
 
-    @property
-    def root(self) -> Certificate | None:
-        """
-        Root certificate of the authority.
-        """
-        return self._root
-
-    @property
-    def intermediates(self) -> list[Certificate]:
-        """
-        List of intermediates certificates.
-        """
-        return self._intermediates
-
-    @property
-    def leaf(self) -> Certificate | None:
-        """
-        Leaf certificate of the authority.
-        """
-        return self._leaf
-
     def certificates(self, *, allow_expired: bool) -> list[Certificate]:
         """
         Return a list of certificates in the authority chain.
@@ -308,12 +277,7 @@ class CertificateAuthority:
         """
         if not _is_timerange_valid(self._inner.valid_for, allow_expired=allow_expired):
             return []
-
-        return [
-            *([self.leaf] if self.leaf else []),
-            *self.intermediates,
-            *([self.root] if self.root else []),
-        ]
+        return self._certificates
 
 
 class TrustedRoot:

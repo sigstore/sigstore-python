@@ -37,21 +37,12 @@ class TestCertificateAuthority:
         path = asset("trusted_root/certificate_authority.json")
         authority = CertificateAuthority.from_json(path)
 
-        assert (
-            authority.leaf.issuer.rfc4514_string()
-            == "CN=TSA intermediate,O=GitHub\\, Inc."
-        )
-        assert (
-            authority.root.issuer.rfc4514_string()
-            == "CN=Internal Services Root,O=GitHub\\, Inc."
-        )
-        assert len(authority.intermediates) == 1
-
+        assert len(authority.certificates(allow_expired=True)) == 3
         assert authority.validity_period_start < authority.validity_period_end
 
     def test_missing_root(self, asset):
-        path = asset("trusted_root/certificate_authority.missingroot.json")
-        with pytest.raises(Error, match="missing root"):
+        path = asset("trusted_root/certificate_authority.empty.json")
+        with pytest.raises(Error, match="missing a certificate"):
             CertificateAuthority.from_json(path)
 
 
