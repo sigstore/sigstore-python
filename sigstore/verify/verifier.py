@@ -123,8 +123,11 @@ class Verifier:
         Verify a Signed Timestamp using the TSA provided by the Trusted Root.
         """
         cert_authorities = self._trusted_root.get_timestamp_authorities()
-
         for certificate_authority in cert_authorities:
+            if not certificate_authority.leaf:
+                _logger.debug("Authority provided without a leaf certificate.")
+                continue
+
             builder = (
                 VerifierBuilder()
                 .tsa_certificate(certificate_authority.leaf)
@@ -162,6 +165,10 @@ class Verifier:
         raise ValidationError(msg)
 
     def _verify_timestamp_authority(self, bundle: Bundle):
+        """
+        Verify that the given bundle has been timestamped by a trusted timestamp authority
+        and that the timestamp is valid.
+        """
         timestamp_responses: list[TimeStampResponse] = (
             bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
         )
@@ -170,7 +177,7 @@ class Verifier:
             raise VerificationError(msg)
 
         if len(set(timestamp_responses)) != len(timestamp_responses):
-            msg = "Duplicate timestamp found."
+            msg = "Duplicate timestamp found"
             raise VerificationError(msg)
 
         # The Signer sends a hash of the signature as the messageImprint in a
@@ -240,7 +247,7 @@ class Verifier:
             if not self._trusted_root.get_timestamp_authorities():
                 msg = (
                     "No Timestamp Authorities have been provided to validate this "
-                    "bundle but it contains a signed timestamp."
+                    "bundle but it contains a signed timestamp"
                 )
                 raise ValidationError(msg)
 
