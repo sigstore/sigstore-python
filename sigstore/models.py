@@ -43,8 +43,7 @@ from pydantic import (
 )
 from pydantic.dataclasses import dataclass
 from rekor_types import Dsse, Hashedrekord, ProposedEntry
-from rfc3161_client.base import decode_timestamp_response
-from rfc3161_client.tsp import TimeStampResponse
+from rfc3161_client import TimeStampResponse, decode_timestamp_response
 from sigstore_protobuf_specs.dev.sigstore.bundle import v1 as bundle_v1
 from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle as _Bundle,
