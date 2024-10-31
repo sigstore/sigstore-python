@@ -23,6 +23,7 @@ from sigstore.errors import VerificationError
 from sigstore.models import Bundle
 from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
+from sigstore._internal.trust import CertificateAuthority
 
 
 @pytest.mark.production
@@ -192,17 +193,38 @@ def test_verifier_dsse_roundtrip(staging):
     assert payload == stmt._contents
 
 
-@pytest.mark.staging
-def test_verifier_verify_timestamp(asset, null_policy):
-    verifier = Verifier.staging(offline=True)
-    from sigstore._internal.trust import CertificateAuthority
+class TestVerifierWithTimestamp:
 
-    authority = CertificateAuthority.from_json(asset("tsa/ca.json").as_posix())
-    verifier._trusted_root._inner.timestamp_authorities = [authority._inner]
+    @pytest.fixture
+    def verifier(self, asset) -> Verifier:
+        """Returns a Verifier with Timestamp Authorities set."""
+        verifier = Verifier.staging(offline=True)
+        authority = CertificateAuthority.from_json(asset("tsa/ca.json").as_posix())
+        verifier._trusted_root._inner.timestamp_authorities = [authority._inner]
 
-    verifier.verify_timestamp = True
-    verifier.verify_artifact(
-        asset("hello.txt").read_bytes(),
-        Bundle.from_json(asset("hello.txt.bundle").read_bytes()),
-        null_policy,
-    )
+
+        return verifier
+
+    @pytest.mark.staging
+    def test_verifier_verify_timestamp(self, verifier, asset, null_policy):
+        verifier.verify_artifact(
+            asset("tsa/bundle.txt").read_bytes(),
+            Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
+            null_policy,
+        )
+
+    def test_verifier_too_many_timestamp(self, verifier, asset, null_policy):
+        with pytest.raises(VerificationError, match="Too many"):
+            verifier.verify_artifact(
+                asset("tsa/bundle.txt").read_bytes(),
+                Bundle.from_json(asset("tsa/bundle.many_timestamp.sigstore").read_bytes()),
+                null_policy,
+            )
+
+    def test_verifier_duplicate_timestamp(self, verifier, asset, null_policy):
+        with pytest.raises(VerificationError, match="Duplicate"):
+            verifier.verify_artifact(
+                asset("tsa/bundle.txt").read_bytes(),
+                Bundle.from_json(asset("tsa/bundle.duplicate.sigstore").read_bytes()),
+                null_policy,
+            )
