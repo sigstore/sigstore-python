@@ -49,6 +49,11 @@ class TestCertificateAuthority:
 
         assert authority.validity_period_start < authority.validity_period_end
 
+    def test_missing_root(self, asset):
+        path = asset("trusted_root/certificate_authority.missingroot.json")
+        with pytest.raises(Error, match="missing root"):
+            CertificateAuthority.from_json(path)
+
 
 class TestTrustedRoot:
     def test_good(self, asset):

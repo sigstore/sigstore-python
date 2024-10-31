@@ -232,6 +232,9 @@ class CertificateAuthority:
         @api private
         """
         self._inner = inner
+        self._leaf: Certificate | None = None
+        self._intermediates: list[Certificate] = []
+        self._root: Certificate | None = None
         self._verify()
 
     @classmethod
@@ -255,8 +258,11 @@ class CertificateAuthority:
                 self._leaf = certificate
             elif idx < chain_length - 1:
                 self._intermediates.append(certificate)
-            elif idx == chain_length - 1:
+            elif idx == chain_length - 1 and cert_is_root_ca(certificate):
                 self._root = certificate
+
+        if not self._root:
+            raise Error("missing root certificate in CA")
 
     @property
     def validity_period_start(self) -> datetime | None:
