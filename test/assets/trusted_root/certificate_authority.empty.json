@@ -1,0 +1,13 @@
+{
+  "subject": {
+    "organization": "GitHub, Inc.",
+    "commonName": "Internal Services Root"
+  },
+  "certChain": {
+    "certificates": []
+  },
+  "validFor": {
+    "start": "2023-04-14T00:00:00.000Z",
+    "end": "2024-04-14T00:00:00.000Z"
+  }
+}
