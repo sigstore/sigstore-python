@@ -36,6 +36,8 @@ from OpenSSL.crypto import (
     X509StoreFlags,
 )
 from pydantic import ValidationError
+from rfc3161_client import TimeStampResponse, VerifierBuilder
+from rfc3161_client import VerificationError as Rfc3161VerificationError
 
 from sigstore import dsse
 from sigstore._internal.rekor import _hashedrekord_from_parts
@@ -52,6 +54,10 @@ from sigstore.models import Bundle
 from sigstore.verify.policy import VerificationPolicy
 
 _logger = logging.getLogger(__name__)
+
+# Limit the number of timestamps to prevent DoS
+# From https://github.com/sigstore/sigstore-go/blob/e92142f0734064ebf6001f188b7330a1212245fe/pkg/verify/tsa.go#L29
+MAX_ALLOWED_TIMESTAMP: int = 32
 
 
 class Verifier:
@@ -75,6 +81,8 @@ class Verifier:
             for parent_cert in trusted_root.get_fulcio_certs()
         ]
         self._trusted_root = trusted_root
+
+        self.verify_timestamp_threshold: int = 1
 
     @classmethod
     def production(cls, *, offline: bool = False) -> Verifier:
@@ -107,6 +115,74 @@ class Verifier:
             rekor=RekorClient(trust_config._inner.signing_config.tlog_urls[0]),
             trusted_root=trust_config.trusted_root,
         )
+
+    def _verify_signed_timestamp(
+        self, timestamp_response: TimeStampResponse, signature: bytes
+    ) -> bool:
+        """
+        Verify a Signed Timestamp using the TSA provided by the Trusted Root.
+        """
+        cert_authorities = self._trusted_root.get_timestamp_authorities()
+
+        for certificate_authority in cert_authorities:
+            builder = (
+                VerifierBuilder()
+                .tsa_certificate(certificate_authority.leaf)
+                .add_root_certificate(certificate_authority.root)
+            )
+
+            for intermediate in certificate_authority.intermediates:
+                builder.add_intermediate_certificate(intermediate)
+
+            verifier = builder.build()
+            try:
+                verifier.verify(timestamp_response, signature)
+            except Rfc3161VerificationError as e:
+                _logger.debug("Unable to verify Timestamp with CA.")
+                _logger.exception(e)
+                continue
+
+            if (
+                certificate_authority.validity_period_start
+                and certificate_authority.validity_period_end
+            ):
+                if (
+                    not certificate_authority.validity_period_start
+                    <= timestamp_response.tst_info.gen_time
+                    < certificate_authority.validity_period_end
+                ):
+                    _logger.debug(
+                        "Unable to verify Timestamp because not in CA time range."
+                    )
+                    continue
+
+            return True
+
+        msg = "Unable to verify the Signed Timestamp"
+        raise ValidationError(msg)
+
+    def _verify_timestamp_authority(self, bundle: Bundle):
+        timestamp_responses: list[TimeStampResponse] = (
+            bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
+        )
+        if len(timestamp_responses) > MAX_ALLOWED_TIMESTAMP:
+            msg = f"Too many signed timestamp: {len(timestamp_responses)} > {MAX_ALLOWED_TIMESTAMP}"
+            raise VerificationError(msg)
+
+        if len(set(timestamp_responses)) != len(timestamp_responses):
+            msg = "Duplicate timestamp found."
+            raise VerificationError(msg)
+
+        # The Signer sends a hash of the signature as the messageImprint in a
+        # TimeStampReq to the Timestamping Service
+        signature_hash = sha256_digest(bundle.signature).digest
+        verified_timestamps = []
+        for tsr in timestamp_responses:
+            verified_timestamps.append(
+                self._verify_signed_timestamp(tsr, signature_hash)
+            )
+
+        return verified_timestamps
 
     def _verify_common_signing_cert(
         self, bundle: Bundle, policy: VerificationPolicy
@@ -153,6 +229,30 @@ class Verifier:
         store.set_flags(X509StoreFlags.X509_STRICT)
         for parent_cert_ossl in self._fulcio_certificate_chain:
             store.add_cert(parent_cert_ossl)
+
+        # (0): Establishing a Time for the Signature
+        # First, establish a time for the signature. This timestamp is required to
+        # validate the certificate chain, so this step comes first.
+        # While this step is optional and only performed if timestamp data has been
+        # provided within the bundle, providing a signed timestamp without a TSA to
+        # verify it result in a Validation Error.
+        if bundle.verification_material.timestamp_verification_data.rfc3161_timestamps:
+            if not self._trusted_root.get_timestamp_authorities():
+                msg = (
+                    "No Timestamp Authorities have been provided to validate this "
+                    "bundle but it contains a signed timestamp."
+                )
+                raise ValidationError(msg)
+
+            verified_timestamp = self._verify_timestamp_authority(bundle)
+            # The threshold is set to (1) by default but kept as a variable to allow
+            # this value to change
+            if len(verified_timestamp) < self.verify_timestamp_threshold:
+                msg = (
+                    f"Not enough Timestamp validated to meet the Validation "
+                    f"Threshold ({len(verified_timestamp)}/{self.verify_timestamp_threshold})"
+                )
+                raise ValidationError(msg)
 
         # (1): verify that the signing certificate is signed by the root
         #      certificate and that the signing certificate was valid at the
