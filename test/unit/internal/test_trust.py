@@ -22,6 +22,7 @@ from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
 from sigstore._internal.trust import (
+    CertificateAuthority,
     ClientTrustConfig,
     KeyringPurpose,
     TrustedRoot,
@@ -29,6 +30,24 @@ from sigstore._internal.trust import (
 )
 from sigstore._utils import load_pem_public_key
 from sigstore.errors import Error, RootError
+
+
+class TestCertificateAuthority:
+    def test_good(self, asset):
+        path = asset("trusted_root/certificate_authority.json")
+        authority = CertificateAuthority.from_json(path)
+
+        assert (
+            authority.leaf.issuer.rfc4514_string()
+            == "CN=TSA intermediate,O=GitHub\\, Inc."
+        )
+        assert (
+            authority.root.issuer.rfc4514_string()
+            == "CN=Internal Services Root,O=GitHub\\, Inc."
+        )
+        assert len(authority.intermediates) == 1
+
+        assert authority.validity_period_start < authority.validity_period_end
 
 
 class TestTrustedRoot:

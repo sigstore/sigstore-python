@@ -293,6 +293,22 @@ class CertificateAuthority:
         """
         return self._leaf
 
+    def certificates(self, *, allow_expired: bool) -> list[Certificate]:
+        """
+        Return a list of certificates in the authority chain.
+
+        The certificates are returned in order from leaf to root, with any
+        intermediate certificates in between.
+        """
+        if not _is_timerange_valid(self._inner.valid_for, allow_expired=allow_expired):
+            return []
+
+        return [
+            *([self.leaf] if self.leaf else []),
+            *self.intermediates,
+            *([self.root] if self.root else []),
+        ]
+
 
 class TrustedRoot:
     """
@@ -394,18 +410,6 @@ class TrustedRoot:
 
             yield tlog.public_key
 
-    @staticmethod
-    def _get_ca_keys(
-        cas: list[_CertificateAuthority], *, allow_expired: bool
-    ) -> Iterable[bytes]:
-        """Return public key contents given certificate authorities."""
-
-        for ca in cas:
-            if not _is_timerange_valid(ca.valid_for, allow_expired=allow_expired):
-                continue
-            for cert in ca.cert_chain.certificates:
-                yield cert.raw_bytes
-
     def rekor_keyring(self, purpose: KeyringPurpose) -> RekorKeyring:
         """Return keyring with keys for Rekor."""
 
@@ -424,16 +428,14 @@ class TrustedRoot:
     def get_fulcio_certs(self) -> list[Certificate]:
         """Return the Fulcio certificates."""
 
-        certs: list[Certificate]
+        certs: list[Certificate] = []
 
         # Return expired certificates too: they are expired now but may have
         # been active when the certificate was used to sign.
-        certs = [
-            load_der_x509_certificate(c)
-            for c in self._get_ca_keys(
-                self._inner.certificate_authorities, allow_expired=True
-            )
-        ]
+        for authority in self._inner.certificate_authorities:
+            certificate_authority = CertificateAuthority(authority)
+            certs.extend(certificate_authority.certificates(allow_expired=True))
+
         if not certs:
             raise MetadataError("Fulcio certificates not found in trusted root")
         return certs
