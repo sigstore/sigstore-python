@@ -228,6 +228,17 @@ class Envelope:
 
         return self._inner == other._inner
 
+    @property
+    def signature(self) -> bytes:
+        """Return the decoded bytes of the Envelope signature."""
+        if len(self._inner.signatures) == 0:
+            return b""
+
+        signature_bytes = self._inner.signatures[0].sig
+        if not signature_bytes:
+            return b""
+        return signature_bytes
+
 
 def _pae(type_: str, body: bytes) -> bytes:
     """
