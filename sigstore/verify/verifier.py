@@ -124,18 +124,12 @@ class Verifier:
         """
         cert_authorities = self._trusted_root.get_timestamp_authorities()
         for certificate_authority in cert_authorities:
-            if not certificate_authority.leaf:
-                _logger.debug("Authority provided without a leaf certificate.")
-                continue
+            certificates = certificate_authority.certificates(allow_expired=True)
 
-            builder = (
-                VerifierBuilder()
-                .tsa_certificate(certificate_authority.leaf)
-                .add_root_certificate(certificate_authority.root)
-            )
-
-            for intermediate in certificate_authority.intermediates:
-                builder.add_intermediate_certificate(intermediate)
+            builder =  VerifierBuilder()
+            for certificate in certificates[:-1]:
+                builder.add_intermediate_certificate(certificate)
+            builder.add_root_certificate(certificates[-1])
 
             verifier = builder.build()
             try:
@@ -150,19 +144,22 @@ class Verifier:
                 and certificate_authority.validity_period_end
             ):
                 if (
-                    not certificate_authority.validity_period_start
+                    certificate_authority.validity_period_start
                     <= timestamp_response.tst_info.gen_time
                     < certificate_authority.validity_period_end
                 ):
-                    _logger.debug(
-                        "Unable to verify Timestamp because not in CA time range."
-                    )
-                    continue
+                    return True
 
-            return True
+                _logger.debug(
+                    "Unable to verify Timestamp because not in CA time range."
+                )
+            else:
+                _logger.debug(
+                    "Unable to verify Timestamp because no validity provided."
+                )
 
         msg = "Unable to verify the Signed Timestamp"
-        raise ValidationError(msg)
+        raise VerificationError(msg)
 
     def _verify_timestamp_authority(self, bundle: Bundle):
         """
@@ -249,7 +246,7 @@ class Verifier:
                     "No Timestamp Authorities have been provided to validate this "
                     "bundle but it contains a signed timestamp"
                 )
-                raise ValidationError(msg)
+                raise VerificationError(msg)
 
             verified_timestamp = self._verify_timestamp_authority(bundle)
             # The threshold is set to (1) by default but kept as a variable to allow
@@ -259,7 +256,7 @@ class Verifier:
                     f"Not enough Timestamp validated to meet the Validation "
                     f"Threshold ({len(verified_timestamp)}/{self.verify_timestamp_threshold})"
                 )
-                raise ValidationError(msg)
+                raise VerificationError(msg)
 
         # (1): verify that the signing certificate is signed by the root
         #      certificate and that the signing certificate was valid at the

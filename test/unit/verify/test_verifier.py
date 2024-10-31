@@ -14,6 +14,8 @@
 
 
 import hashlib
+import logging
+from datetime import datetime, timezone
 
 import pretend
 import pytest
@@ -228,3 +230,31 @@ class TestVerifierWithTimestamp:
                 Bundle.from_json(asset("tsa/bundle.duplicate.sigstore").read_bytes()),
                 null_policy,
             )
+
+    def test_verifier_no_validity(self, caplog, verifier, asset, null_policy):
+        verifier._trusted_root.get_timestamp_authorities()[0]._inner.valid_for.end = None
+
+        with caplog.at_level(logging.DEBUG):
+            with pytest.raises(VerificationError, match="Unable to verify"):
+                verifier.verify_artifact(
+                    asset("tsa/bundle.txt").read_bytes(),
+                    Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
+                    null_policy
+                )
+
+        assert "Unable to verify Timestamp because no validity provided." in caplog.messages
+
+    def test_verifier_outside_validity_range(self, caplog, verifier, asset, null_policy):
+        # Set a date before the timestamp range
+        verifier._trusted_root.get_timestamp_authorities()[
+            0]._inner.valid_for.end = datetime(2024, 10, 31, tzinfo=timezone.utc)
+
+        with caplog.at_level(logging.DEBUG):
+            with pytest.raises(VerificationError, match="Unable to verify"):
+                verifier.verify_artifact(
+                    asset("tsa/bundle.txt").read_bytes(),
+                    Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
+                    null_policy
+                )
+
+        assert "Unable to verify Timestamp because not in CA time range." in caplog.messages
