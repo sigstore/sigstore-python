@@ -38,11 +38,13 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
-    CertificateAuthority,
-    TransparencyLogInstance,
+    CertificateAuthority as _CertificateAuthority,
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     ClientTrustConfig as _ClientTrustConfig,
+)
+from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    TransparencyLogInstance,
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     TrustedRoot as _TrustedRoot,
@@ -217,6 +219,67 @@ class KeyringPurpose(str, Enum):
         return self.value
 
 
+class CertificateAuthority:
+    """
+    Certificate Authority used in a Trusted Root configuration.
+    """
+
+    def __init__(self, inner: _CertificateAuthority):
+        """
+        Construct a new `CertificateAuthority`.
+
+        @api private
+        """
+        self._inner = inner
+        self._certificates: list[Certificate] = []
+        self._verify()
+
+    @classmethod
+    def from_json(cls, path: str) -> CertificateAuthority:
+        """
+        Create a CertificateAuthority directly from JSON.
+        """
+        inner = _CertificateAuthority().from_json(Path(path).read_bytes())
+        return cls(inner)
+
+    def _verify(self) -> None:
+        """
+        Verify and load the certificate authority.
+        """
+        self._certificates = [
+            load_der_x509_certificate(cert.raw_bytes)
+            for cert in self._inner.cert_chain.certificates
+        ]
+
+        if not self._certificates:
+            raise Error("missing a certificate in Certificate Authority")
+
+    @property
+    def validity_period_start(self) -> datetime | None:
+        """
+        Validity period start.
+        """
+        return self._inner.valid_for.start
+
+    @property
+    def validity_period_end(self) -> datetime | None:
+        """
+        Validity period end.
+        """
+        return self._inner.valid_for.end
+
+    def certificates(self, *, allow_expired: bool) -> list[Certificate]:
+        """
+        Return a list of certificates in the authority chain.
+
+        The certificates are returned in order from leaf to root, with any
+        intermediate certificates in between.
+        """
+        if not _is_timerange_valid(self._inner.valid_for, allow_expired=allow_expired):
+            return []
+        return self._certificates
+
+
 class TrustedRoot:
     """
     The cryptographic root(s) of trust for a Sigstore instance.
@@ -317,18 +380,6 @@ class TrustedRoot:
 
             yield tlog.public_key
 
-    @staticmethod
-    def _get_ca_keys(
-        cas: list[CertificateAuthority], *, allow_expired: bool
-    ) -> Iterable[bytes]:
-        """Return public key contents given certificate authorities."""
-
-        for ca in cas:
-            if not _is_timerange_valid(ca.valid_for, allow_expired=allow_expired):
-                continue
-            for cert in ca.cert_chain.certificates:
-                yield cert.raw_bytes
-
     def rekor_keyring(self, purpose: KeyringPurpose) -> RekorKeyring:
         """Return keyring with keys for Rekor."""
 
@@ -347,19 +398,30 @@ class TrustedRoot:
     def get_fulcio_certs(self) -> list[Certificate]:
         """Return the Fulcio certificates."""
 
-        certs: list[Certificate]
+        certs: list[Certificate] = []
 
         # Return expired certificates too: they are expired now but may have
         # been active when the certificate was used to sign.
-        certs = [
-            load_der_x509_certificate(c)
-            for c in self._get_ca_keys(
-                self._inner.certificate_authorities, allow_expired=True
-            )
-        ]
+        for authority in self._inner.certificate_authorities:
+            certificate_authority = CertificateAuthority(authority)
+            certs.extend(certificate_authority.certificates(allow_expired=True))
+
         if not certs:
             raise MetadataError("Fulcio certificates not found in trusted root")
         return certs
+
+    def get_timestamp_authorities(self) -> list[CertificateAuthority]:
+        """
+        Return the TSA present in the trusted root.
+
+        This list may be empty and in this case, no timestamp verification can be
+        performed.
+        """
+        certificate_authorities: list[CertificateAuthority] = [
+            CertificateAuthority(cert_chain)
+            for cert_chain in self._inner.timestamp_authorities
+        ]
+        return certificate_authorities
 
 
 class ClientTrustConfig:
