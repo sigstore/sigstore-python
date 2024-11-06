@@ -338,7 +338,7 @@ class LogEntry:
 class TimestampVerificationData:
     """
     Represents a TimestampVerificationData structure.
-    
+
     @private
     """
 
