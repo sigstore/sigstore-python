@@ -352,16 +352,13 @@ class TimestampVerificationData:
         It verifies that TimeStamp Responses embedded in the bundle are correctly
         formed.
         """
-        signed_ts: list[TimeStampResponse] = []
-        for rfc3161_signed_ts in self._inner.rfc3161_timestamps:
-            try:
-                signed_ts.append(
-                    decode_timestamp_response(rfc3161_signed_ts.signed_timestamp)
-                )
-            except ValueError:
-                raise VerificationError("Invalid Timestamp Response")
-
-        self._signed_ts = signed_ts
+        try:
+            self._signed_ts = [
+                decode_timestamp_response(ts.signed_timestamp)
+                for ts in self._inner.rfc3161_timestamps
+            ]
+        except ValueError:
+            raise VerificationError("Invalid Timestamp Response")
 
     @property
     def rfc3161_timestamps(self) -> list[TimeStampResponse]:
