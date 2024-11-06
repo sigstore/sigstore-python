@@ -124,7 +124,7 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
 
       - name: publish
-        uses: pypa/gh-action-pypi-publish@fb13cb306901256ace3dab689990e13a5550ffaa # v1.11.0
+        uses: pypa/gh-action-pypi-publish@1f5d4ec244f65dce93685ee3e98e77123f090866 # v1.12.1
         with:
           packages-dir: built-packages/
           attestations: true
