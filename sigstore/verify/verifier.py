@@ -126,7 +126,7 @@ class Verifier:
         for certificate_authority in cert_authorities:
             certificates = certificate_authority.certificates(allow_expired=True)
 
-            builder =  VerifierBuilder()
+            builder = VerifierBuilder()
             for certificate in certificates[:-1]:
                 builder.add_intermediate_certificate(certificate)
             builder.add_root_certificate(certificates[-1])
@@ -161,12 +161,12 @@ class Verifier:
         msg = "Unable to verify the Signed Timestamp"
         raise VerificationError(msg)
 
-    def _verify_timestamp_authority(self, bundle: Bundle):
+    def _verify_timestamp_authority(self, bundle: Bundle) -> List[bool]:
         """
         Verify that the given bundle has been timestamped by a trusted timestamp authority
         and that the timestamp is valid.
         """
-        timestamp_responses: list[TimeStampResponse] = (
+        timestamp_responses: List[TimeStampResponse] = (
             bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
         )
         if len(timestamp_responses) > MAX_ALLOWED_TIMESTAMP:
@@ -177,16 +177,13 @@ class Verifier:
             msg = "Duplicate timestamp found"
             raise VerificationError(msg)
 
-        # The Signer sends a hash of the signature as the messageImprint in a
-        # TimeStampReq to the Timestamping Service
+        # The Signer sends a hash of the signature as the messageImprint in a TimeStampReq
+        # to the Timestamping Service
         signature_hash = sha256_digest(bundle.signature).digest
-        verified_timestamps = []
-        for tsr in timestamp_responses:
-            verified_timestamps.append(
-                self._verify_signed_timestamp(tsr, signature_hash)
-            )
-
-        return verified_timestamps
+        return [
+            self._verify_signed_timestamp(tsr, signature_hash)
+            for tsr in timestamp_responses
+        ]
 
     def _verify_common_signing_cert(
         self, bundle: Bundle, policy: VerificationPolicy
@@ -239,7 +236,7 @@ class Verifier:
         # validate the certificate chain, so this step comes first.
         # While this step is optional and only performed if timestamp data has been
         # provided within the bundle, providing a signed timestamp without a TSA to
-        # verify it result in a Validation Error.
+        # verify it result in a VerificationError.
         if bundle.verification_material.timestamp_verification_data.rfc3161_timestamps:
             if not self._trusted_root.get_timestamp_authorities():
                 msg = (
