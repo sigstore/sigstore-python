@@ -368,7 +368,7 @@ class TimestampVerificationData:
     @classmethod
     def from_json(cls, raw: str | bytes) -> TimestampVerificationData:
         """
-        Only used in tests.
+        Deserialize the given timestamp verification data.
         """
         inner = _TimestampVerificationData().from_json(raw)
         return cls(inner)
