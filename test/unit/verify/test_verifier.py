@@ -290,6 +290,8 @@ class TestVerifierWithTimestamp:
 
     def test_verifier_no_authorities(self, asset, null_policy):
         verifier = Verifier.staging(offline=True)
+        verifier._trusted_root._inner.timestamp_authorities = []
+
         with pytest.raises(VerificationError, match="No Timestamp Authorities"):
             verifier.verify_artifact(
                 asset("tsa/bundle.txt").read_bytes(),
