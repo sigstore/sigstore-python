@@ -158,13 +158,14 @@ class Verifier:
                     "Unable to verify Timestamp because no validity provided."
                 )
 
-        msg = "Unable to verify the Signed Timestamp"
-        raise VerificationError(msg)
+        return False
 
-    def _verify_timestamp_authority(self, bundle: Bundle) -> List[bool]:
+    def _verify_timestamp_authority(self, bundle: Bundle) -> int:
         """
         Verify that the given bundle has been timestamped by a trusted timestamp authority
         and that the timestamp is valid.
+
+        Returns the number of valid signed timestamp in the bundle.
         """
         timestamp_responses: List[TimeStampResponse] = (
             bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
@@ -183,7 +184,7 @@ class Verifier:
         return [
             self._verify_signed_timestamp(tsr, signature_hash)
             for tsr in timestamp_responses
-        ]
+        ].count(True)
 
     def _verify_common_signing_cert(
         self, bundle: Bundle, policy: VerificationPolicy
@@ -248,10 +249,10 @@ class Verifier:
             verified_timestamp = self._verify_timestamp_authority(bundle)
             # The threshold is set to (1) by default but kept as a variable to allow
             # this value to change
-            if len(verified_timestamp) < self.verify_timestamp_threshold:
+            if verified_timestamp < self.verify_timestamp_threshold:
                 msg = (
                     f"Not enough Timestamp validated to meet the Validation "
-                    f"Threshold ({len(verified_timestamp)}/{self.verify_timestamp_threshold})"
+                    f"Threshold ({verified_timestamp}/{self.verify_timestamp_threshold})"
                 )
                 raise VerificationError(msg)
 

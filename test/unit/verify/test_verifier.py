@@ -236,7 +236,7 @@ class TestVerifierWithTimestamp:
         ]._inner.valid_for.end = None
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError, match="Unable to verify"):
+            with pytest.raises(VerificationError, match="Not enough Timestamp"):
                 verifier.verify_artifact(
                     asset("tsa/bundle.txt").read_bytes(),
                     Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
@@ -257,7 +257,7 @@ class TestVerifierWithTimestamp:
         ]._inner.valid_for.end = datetime(2024, 10, 31, tzinfo=timezone.utc)
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError, match="Unable to verify"):
+            with pytest.raises(VerificationError, match="Not enough Timestamp"):
                 verifier.verify_artifact(
                     asset("tsa/bundle.txt").read_bytes(),
                     Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
@@ -278,7 +278,7 @@ class TestVerifierWithTimestamp:
         monkeypatch.setattr(rfc3161_client.verify._Verifier, "verify", verify_function)
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError):
+            with pytest.raises(VerificationError, match="Not enough Timestamp"):
                 verifier.verify_artifact(
                     asset("tsa/bundle.txt").read_bytes(),
                     Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
