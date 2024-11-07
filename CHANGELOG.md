@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* Signed timestamps embedded in bundles are now automatically verified 
+  against Timestamp Authorities provided within the Trusted Root ([#1206]
+  (https://github.com/sigstore/sigstore-python/pull/1206))
+
 ### Fixed
 
 * Fixed a CLI parsing bug introduced in 3.5.1 where a warning about
