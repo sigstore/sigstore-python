@@ -64,6 +64,13 @@ def _has_oidc_id():
     return True
 
 
+def _has_timestamp_authority_configured() -> bool:
+    """
+    Check if there is a Timestamp Authority that has been configured
+    """
+    return os.getenv("SIGSTORE_TIMESTAMP_AUTHORITY_URL") is not None
+
+
 def pytest_addoption(parser):
     parser.addoption(
         "--skip-online",
@@ -96,6 +103,12 @@ def pytest_runtest_setup(item):
             "skipping test that requires staging infrastructure due to `--skip-staging` flag"
         )
 
+    if (
+        "timestamp_authority" in item.keywords
+        and not _has_timestamp_authority_configured()
+    ):
+        pytest.skip("skipping test that requires a Timestamp Authority")
+
 
 def pytest_configure(config):
     config.addinivalue_line(
@@ -111,4 +124,7 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "ambient_oidc: mark test as requiring an ambient OIDC identity"
+    )
+    config.addinivalue_line(
+        "markers", "timestamp_authority: mark test as requiring a timestamp authority"
     )

@@ -212,3 +212,9 @@ def dummy_jwt():
         return jwt.encode(claims, key="definitely not secure")
 
     return _dummy_jwt
+
+
+@pytest.fixture
+def tsa_url():
+    """Return the URL of the TSA"""
+    return os.getenv("SIGSTORE_TIMESTAMP_AUTHORITY_URL")

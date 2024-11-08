@@ -42,13 +42,14 @@ import base64
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Iterator, Optional
+from typing import Iterator, List, Optional
 
 import cryptography.x509 as x509
 import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
+from rfc3161_client import TimeStampResponse
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
     HashOutput,
     MessageSignature,
@@ -62,6 +63,7 @@ from sigstore._internal.fulcio import (
 )
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
+from sigstore._internal.timestamping import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
 from sigstore.models import Bundle
@@ -190,7 +192,17 @@ class Signer:
 
         _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
-        return Bundle._from_parts(cert, content, entry)
+        # If the user provided TSA urls, timestamps the response
+        signed_timestamp: List[TimeStampResponse] = []
+        for tsa_client in self._signing_ctx._tsa_clients:
+            try:
+                signed_timestamp.append(tsa_client.timestamps(content.signature))
+            except TimestampError as e:
+                _logger.warning(
+                    f"Unable to use {tsa_client.url} to timestamp the bundle. Failed with {e}"
+                )
+
+        return Bundle._from_parts(cert, content, entry, signed_timestamp)
 
     def sign_dsse(
         self,
@@ -296,7 +308,12 @@ class SigningContext:
     """
 
     def __init__(
-        self, *, fulcio: FulcioClient, rekor: RekorClient, trusted_root: TrustedRoot
+        self,
+        *,
+        fulcio: FulcioClient,
+        rekor: RekorClient,
+        trusted_root: TrustedRoot,
+        tsa_clients: Optional[List[TimestampAuthorityClient]] = None,
     ):
         """
         Create a new `SigningContext`.
@@ -310,6 +327,7 @@ class SigningContext:
         self._fulcio = fulcio
         self._rekor = rekor
         self._trusted_root = trusted_root
+        self._tsa_clients: List[TimestampAuthorityClient] = tsa_clients or []
 
     @classmethod
     def production(cls) -> SigningContext:
@@ -344,6 +362,10 @@ class SigningContext:
             fulcio=FulcioClient(trust_config._inner.signing_config.ca_url),
             rekor=RekorClient(trust_config._inner.signing_config.tlog_urls[0]),
             trusted_root=trust_config.trusted_root,
+            tsa_clients=[
+                TimestampAuthorityClient(tsa_url)
+                for tsa_url in trust_config._inner.signing_config.tsa_urls
+            ],
         )
 
     @contextmanager
