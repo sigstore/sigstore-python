@@ -59,6 +59,10 @@ _logger = logging.getLogger(__name__)
 # From https://github.com/sigstore/sigstore-go/blob/e92142f0734064ebf6001f188b7330a1212245fe/pkg/verify/tsa.go#L29
 MAX_ALLOWED_TIMESTAMP: int = 32
 
+# When verifying a timestamp, this threshold represents the minimum number of required
+# timestamps to consider a signature valid.
+VERIFY_TIMESTAMP_THRESHOLD: int = 1
+
 
 class Verifier:
     """
@@ -81,8 +85,6 @@ class Verifier:
             for parent_cert in trusted_root.get_fulcio_certs()
         ]
         self._trusted_root = trusted_root
-
-        self.verify_timestamp_threshold: int = 1
 
     @classmethod
     def production(cls, *, offline: bool = False) -> Verifier:
@@ -249,10 +251,10 @@ class Verifier:
             verified_timestamp = self._verify_timestamp_authority(bundle)
             # The threshold is set to (1) by default but kept as a variable to allow
             # this value to change
-            if verified_timestamp < self.verify_timestamp_threshold:
+            if verified_timestamp < VERIFY_TIMESTAMP_THRESHOLD:
                 msg = (
                     f"Not enough Timestamp validated to meet the Validation "
-                    f"Threshold ({verified_timestamp}/{self.verify_timestamp_threshold})"
+                    f"Threshold ({verified_timestamp}/{VERIFY_TIMESTAMP_THRESHOLD})"
                 )
                 raise VerificationError(msg)
 

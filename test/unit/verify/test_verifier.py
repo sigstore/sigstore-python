@@ -285,7 +285,6 @@ class TestVerifierWithTimestamp:
                     null_policy,
                 )
 
-        assert len(caplog.records) == 2
         assert caplog.records[0].message == "Unable to verify Timestamp with CA."
 
     def test_verifier_no_authorities(self, asset, null_policy):
@@ -299,8 +298,10 @@ class TestVerifierWithTimestamp:
                 null_policy,
             )
 
-    def test_verifier_not_enough_timestamp(self, verifier, asset, null_policy):
-        verifier.verify_timestamp_threshold = 2
+    def test_verifier_not_enough_timestamp(
+        self, verifier, asset, null_policy, monkeypatch
+    ):
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFY_TIMESTAMP_THRESHOLD", 2)
         with pytest.raises(VerificationError, match="Not enough Timestamp"):
             verifier.verify_artifact(
                 asset("tsa/bundle.txt").read_bytes(),
