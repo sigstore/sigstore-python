@@ -65,8 +65,8 @@ class TimestampAuthorityClient:
         """
         Timestamp the signature using the configured Timestamp Authority.
 
-        This method generates a RFC3161 Timestamp request, and then send it to a TSA.
-        The received response is then decoded to ensure it's valid but is *not* verified.
+        This method generates a RFC3161 Timestamp Request and sends it to a TSA.
+        The received response is parsed but *not* cryptographically verified.
 
         Raises a TimestampError on failure.
         """
@@ -79,7 +79,7 @@ class TimestampAuthorityClient:
             msg = f"Invalid Request: {error}"
             raise TimestampError(msg)
 
-        # Request a signature of the request
+        # Send it to the TSA for signing
         try:
             response = self.session.post(
                 self.url,
@@ -91,7 +91,7 @@ class TimestampAuthorityClient:
             msg = f"Invalid network: {error}"
             raise TimestampError(msg)
 
-        # Check that we can parse the response but does not *verify* it
+        # Check that we can parse the response but do not *verify* it
         try:
             timestamp_response = decode_timestamp_response(response.content)
         except ValueError as e:
