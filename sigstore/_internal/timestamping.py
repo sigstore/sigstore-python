@@ -25,6 +25,11 @@ from rfc3161_client import (
 
 from sigstore._internal import USER_AGENT
 
+CLIENT_TIMEOUT: int = 30
+"""
+Timeout used for Timestamp Signing requests
+"""
+
 
 class TimestampError(Exception):
     """
@@ -49,7 +54,6 @@ class TimestampAuthorityClient:
                 "User-Agent": USER_AGENT,
             }
         )
-        self.timeout: int = 30
 
     def __del__(self) -> None:
         """
@@ -80,7 +84,7 @@ class TimestampAuthorityClient:
             response = self.session.post(
                 self.url,
                 data=timestamp_request.as_bytes(),
-                timeout=self.timeout,
+                timeout=CLIENT_TIMEOUT,
             )
             response.raise_for_status()
         except requests.RequestException as error:
