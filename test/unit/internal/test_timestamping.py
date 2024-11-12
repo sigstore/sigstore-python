@@ -21,22 +21,22 @@ from sigstore._internal.timestamping import TimestampAuthorityClient, TimestampE
 class TestTimestampAuthorityClient:
     def test_sign_request(self, tsa_url: str):
         tsa = TimestampAuthorityClient(tsa_url)
-        response = tsa.timestamps(b"hello")
+        response = tsa.request_timestamp(b"hello")
         assert response
 
     def test_sign_request_invalid_url(self):
         tsa = TimestampAuthorityClient("http://fake-url")
-        with pytest.raises(TimestampError, match="Invalid network"):
-            tsa.timestamps(b"hello")
+        with pytest.raises(TimestampError, match="Error while sending"):
+            tsa.request_timestamp(b"hello")
 
     def test_sign_request_invalid_request(self, tsa_url):
         tsa = TimestampAuthorityClient(tsa_url)
         with pytest.raises(TimestampError, match="Invalid Request"):
-            tsa.timestamps(b"")  # empty value here
+            tsa.request_timestamp(b"")  # empty value here
 
     def test_invalid_response(self, tsa_url, monkeypatch):
         monkeypatch.setattr(requests.Response, "content", b"invalid-response")
 
         tsa = TimestampAuthorityClient(tsa_url)
         with pytest.raises(TimestampError, match="Invalid response"):
-            tsa.timestamps(b"hello")
+            tsa.request_timestamp(b"hello")

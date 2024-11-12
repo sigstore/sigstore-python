@@ -196,7 +196,7 @@ class Signer:
         signed_timestamp: List[TimeStampResponse] = []
         for tsa_client in self._signing_ctx._tsa_clients:
             try:
-                signed_timestamp.append(tsa_client.timestamps(content.signature))
+                signed_timestamp.append(tsa_client.request_timestamp(content.signature))
             except TimestampError as e:
                 _logger.warning(
                     f"Unable to use {tsa_client.url} to timestamp the bundle. Failed with {e}"

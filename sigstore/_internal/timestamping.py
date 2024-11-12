@@ -61,7 +61,7 @@ class TimestampAuthorityClient:
         """
         self.session.close()
 
-    def timestamps(self, signature: bytes) -> TimeStampResponse:
+    def request_timestamp(self, signature: bytes) -> TimeStampResponse:
         """
         Timestamp the signature using the configured Timestamp Authority.
 
@@ -88,7 +88,7 @@ class TimestampAuthorityClient:
             )
             response.raise_for_status()
         except requests.RequestException as error:
-            msg = f"Invalid network: {error}"
+            msg = f"Error while sending the request to the TSA: {error}"
             raise TimestampError(msg)
 
         # Check that we can parse the response but do not *verify* it
