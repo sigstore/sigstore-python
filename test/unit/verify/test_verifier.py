@@ -212,6 +212,17 @@ class TestVerifierWithTimestamp:
             null_policy,
         )
 
+    def test_verifier_without_timestamp(
+        self, verifier, asset, null_policy, monkeypatch
+    ):
+        monkeypatch.setattr(verifier, "_establish_time", lambda *args: [])
+        with pytest.raises(VerificationError, match="not enough sources"):
+            verifier.verify_artifact(
+                asset("tsa/bundle.txt").read_bytes(),
+                Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
+                null_policy,
+            )
+
     def test_verifier_too_many_timestamp(self, verifier, asset, null_policy):
         with pytest.raises(VerificationError, match="Too many"):
             verifier.verify_artifact(
@@ -236,7 +247,7 @@ class TestVerifierWithTimestamp:
         ]._inner.valid_for.end = None
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError, match="Not enough Timestamp"):
+            with pytest.raises(VerificationError, match="not enough timestamps"):
                 verifier.verify_artifact(
                     asset("tsa/bundle.txt").read_bytes(),
                     Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
@@ -257,7 +268,7 @@ class TestVerifierWithTimestamp:
         ]._inner.valid_for.end = datetime(2024, 10, 31, tzinfo=timezone.utc)
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError, match="Not enough Timestamp"):
+            with pytest.raises(VerificationError, match="not enough timestamps"):
                 verifier.verify_artifact(
                     asset("tsa/bundle.txt").read_bytes(),
                     Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
@@ -278,7 +289,7 @@ class TestVerifierWithTimestamp:
         monkeypatch.setattr(rfc3161_client.verify._Verifier, "verify", verify_function)
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError, match="Not enough Timestamp"):
+            with pytest.raises(VerificationError, match="not enough timestamps"):
                 verifier.verify_artifact(
                     asset("tsa/bundle.txt").read_bytes(),
                     Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
@@ -291,7 +302,7 @@ class TestVerifierWithTimestamp:
         verifier = Verifier.staging(offline=True)
         verifier._trusted_root._inner.timestamp_authorities = []
 
-        with pytest.raises(VerificationError, match="No Timestamp Authorities"):
+        with pytest.raises(VerificationError, match="no Timestamp Authorities"):
             verifier.verify_artifact(
                 asset("tsa/bundle.txt").read_bytes(),
                 Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
@@ -302,7 +313,7 @@ class TestVerifierWithTimestamp:
         self, verifier, asset, null_policy, monkeypatch
     ):
         monkeypatch.setattr("sigstore.verify.verifier.VERIFY_TIMESTAMP_THRESHOLD", 2)
-        with pytest.raises(VerificationError, match="Not enough Timestamp"):
+        with pytest.raises(VerificationError, match="not enough timestamps"):
             verifier.verify_artifact(
                 asset("tsa/bundle.txt").read_bytes(),
                 Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
