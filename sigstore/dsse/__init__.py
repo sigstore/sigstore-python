@@ -190,6 +190,12 @@ class StatementBuilder:
         return Statement(stmt)
 
 
+class InvalidEnvelope(Error):
+    """
+    Raised when the associated `Envelope` is invalid in some way.
+    """
+
+
 class Envelope:
     """
     Represents a DSSE envelope.
@@ -207,6 +213,19 @@ class Envelope:
         """
 
         self._inner = inner
+        self._verify()
+
+    def _verify(self) -> None:
+        """
+        Verify and load the Envelope.
+        """
+        if len(self._inner.signatures) != 1:
+            raise InvalidEnvelope("envelope must contain exactly one signature")
+
+        if not self._inner.signatures[0].sig:
+            raise InvalidEnvelope("envelope signature must be non-empty")
+
+        self._signature_bytes = self._inner.signatures[0].sig
 
     @classmethod
     def _from_json(cls, contents: bytes | str) -> Envelope:
@@ -227,6 +246,11 @@ class Envelope:
             return NotImplemented
 
         return self._inner == other._inner
+
+    @property
+    def signature(self) -> bytes:
+        """Return the decoded bytes of the Envelope signature."""
+        return self._signature_bytes
 
 
 def _pae(type_: str, body: bytes) -> bytes:

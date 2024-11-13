@@ -8,6 +8,14 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* API: The DSSE `Envelope` class now performs automatic validation 
+  ([#1211](https://github.com/sigstore/sigstore-python/pull/1211))
+
+* API: Added `signature` property to `Envelope` class for accessing raw 
+  signature bytes ([#1211](https://github.com/sigstore/sigstore-python/pull/1211))
+
 ### Fixed
 
 * Fixed a CLI parsing bug introduced in 3.5.1 where a warning about
