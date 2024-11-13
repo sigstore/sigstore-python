@@ -15,7 +15,10 @@
 import base64
 import json
 
+import pytest
+
 from sigstore import dsse
+from sigstore.dsse import InvalidEnvelope
 
 
 class TestEnvelope:
@@ -26,7 +29,6 @@ class TestEnvelope:
                 "payloadType": dsse.Envelope._TYPE,
                 "signatures": [
                     {"sig": base64.b64encode(b"lol").decode()},
-                    {"sig": base64.b64encode(b"lmao").decode()},
                 ],
             }
         )
@@ -34,8 +36,49 @@ class TestEnvelope:
 
         assert evp._inner.payload == b"foo"
         assert evp._inner.payload_type == dsse.Envelope._TYPE
-        assert [b"lol", b"lmao"] == [s.sig for s in evp._inner.signatures]
+        assert evp.signature == b"lol"
 
         serialized = evp.to_json()
         assert serialized == raw
         assert dsse.Envelope._from_json(serialized) == evp
+
+    def test_missing_signature(self):
+        raw = json.dumps(
+            {
+                "payload": base64.b64encode(b"foo").decode(),
+                "payloadType": dsse.Envelope._TYPE,
+                "signatures": [],
+            }
+        )
+
+        with pytest.raises(InvalidEnvelope, match="one signature"):
+            dsse.Envelope._from_json(raw)
+
+    def test_empty_signature(self):
+        raw = json.dumps(
+            {
+                "payload": base64.b64encode(b"foo").decode(),
+                "payloadType": dsse.Envelope._TYPE,
+                "signatures": [
+                    {"sig": ""},
+                ],
+            }
+        )
+
+        with pytest.raises(InvalidEnvelope, match="non-empty"):
+            dsse.Envelope._from_json(raw)
+
+    def test_multiple_signatures(self):
+        raw = json.dumps(
+            {
+                "payload": base64.b64encode(b"foo").decode(),
+                "payloadType": dsse.Envelope._TYPE,
+                "signatures": [
+                    {"sig": base64.b64encode(b"lol").decode()},
+                    {"sig": base64.b64encode(b"lmao").decode()},
+                ],
+            }
+        )
+
+        with pytest.raises(InvalidEnvelope, match="one signature"):
+            dsse.Envelope._from_json(raw)
