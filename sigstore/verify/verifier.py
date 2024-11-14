@@ -198,11 +198,11 @@ class Verifier:
 
     def _establish_time(self, bundle: Bundle) -> List[TimestampVerificationResult]:
         """
-        Establish timestamps source for the verification.
+        Establish the time for bundle verification.
 
-        We both source signed timestamp (per RFC3161) and Transparency Log timestamp as
-        time sources. As per the spec, if both are available, the Verifier performs
-        path validation twice. If either fails, verification fails.
+        This method uses timestamps from two possible sources:
+        1. RFC3161 signed timestamps from a Timestamping Authority (TSA)
+        2. Transparency Log timestamps
         """
         verified_timestamps: List[TimestampVerificationResult] = []
 
