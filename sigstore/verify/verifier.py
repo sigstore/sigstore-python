@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import logging
 from datetime import datetime, timezone
-from typing import List, Union, cast
+from typing import List, cast
 
 import rekor_types
 from cryptography.exceptions import InvalidSignature
@@ -121,7 +121,7 @@ class Verifier:
 
     def _verify_signed_timestamp(
         self, timestamp_response: TimeStampResponse, signature: bytes
-    ) -> Union[None, TimestampVerificationResult]:
+    ) -> TimestampVerificationResult | None:
         """
         Verify a Signed Timestamp using the TSA provided by the Trusted Root.
         """
@@ -175,7 +175,7 @@ class Verifier:
 
         Returns the number of valid signed timestamp in the bundle.
         """
-        timestamp_responses: List[TimeStampResponse] = (
+        timestamp_responses = (
             bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
         )
         if len(timestamp_responses) > MAX_ALLOWED_TIMESTAMP:
@@ -189,7 +189,7 @@ class Verifier:
         # The Signer sends a hash of the signature as the messageImprint in a TimeStampReq
         # to the Timestamping Service
         signature_hash = sha256_digest(bundle.signature).digest
-        verified_timestamps: List[TimestampVerificationResult] = []
+        verified_timestamps = []
         for tsr in timestamp_responses:
             if verified_timestamp := self._verify_signed_timestamp(tsr, signature_hash):
                 verified_timestamps.append(verified_timestamp)
@@ -204,7 +204,7 @@ class Verifier:
         1. RFC3161 signed timestamps from a Timestamping Authority (TSA)
         2. Transparency Log timestamps
         """
-        verified_timestamps: List[TimestampVerificationResult] = []
+        verified_timestamps = []
 
         # If a timestamp from the timestamping service is available, the Verifier MUST
         # perform path validation using the timestamp from the Timestamping Service.
