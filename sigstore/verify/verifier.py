@@ -46,12 +46,12 @@ from sigstore._internal.sct import (
     _get_precertificate_signed_certificate_timestamps,
     verify_sct,
 )
+from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle
-from sigstore.timestamp import TimestampSource, TimestampVerificationResult
 from sigstore.verify.policy import VerificationPolicy
 
 _logger = logging.getLogger(__name__)
@@ -241,7 +241,7 @@ class Verifier:
         self, certificate: X509, timestamp_result: TimestampVerificationResult
     ) -> List[X509]:
         """
-        Verify the validity of the certificate chain at the given tive.
+        Verify the validity of the certificate chain at the given time.
 
         Raises a VerificationError if the chain can't be built or be verified.
         """
@@ -281,6 +281,7 @@ class Verifier:
 
         # In order to verify an artifact, we need to achieve the following:
         #
+        # 0. Establish a time for the signature.
         # 1. Verify that the signing certificate chains to the root of trust
         #    and is valid at the time of signing.
         # 2. Verify the signing certificate's SCT.
@@ -296,7 +297,7 @@ class Verifier:
         # 8. Verify the transparency log entry's consistency against the other
         #    materials, to prevent variants of CVE-2022-36056.
         #
-        # This method performs steps (1) through (6) above. Its caller
+        # This method performs steps (0) through (6) above. Its caller
         # MUST perform steps (7) and (8) separately, since they vary based on
         # the kind of verification being performed (i.e. hashedrekord, DSSE, etc.)
 

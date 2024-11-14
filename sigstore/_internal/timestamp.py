@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Utilities to deal with Signed Timestamps.
+Utilities to deal with sources of signed time.
 """
 
 import enum
