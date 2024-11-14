@@ -40,7 +40,7 @@ dependencies = [
   "rfc3161-client == 0.0.3",
   # NOTE(ww): Both under active development, so strictly pinned.
   "sigstore-protobuf-specs == 0.3.2",
-  "sigstore-rekor-types == 0.0.13",
+  "sigstore-rekor-types == 0.0.17",
   "tuf ~= 5.0",
   "platformdirs ~= 4.2",
 ]
