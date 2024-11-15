@@ -130,9 +130,8 @@ class Verifier:
             certificates = certificate_authority.certificates(allow_expired=True)
 
             builder = VerifierBuilder()
-            for certificate in certificates[:-1]:
-                builder.add_intermediate_certificate(certificate)
-            builder.add_root_certificate(certificates[-1])
+            for certificate in certificates:
+                builder.add_root_certificate(certificate)
 
             verifier = builder.build()
             try:
