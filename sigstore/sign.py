@@ -49,7 +49,6 @@ import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
-from rfc3161_client import TimeStampResponse
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
     HashOutput,
     MessageSignature,
@@ -63,7 +62,7 @@ from sigstore._internal.fulcio import (
 )
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
-from sigstore._internal.timestamping import TimestampAuthorityClient, TimestampError
+from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
 from sigstore.models import Bundle
@@ -193,7 +192,7 @@ class Signer:
         _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         # If the user provided TSA urls, timestamps the response
-        signed_timestamp: List[TimeStampResponse] = []
+        signed_timestamp = []
         for tsa_client in self._signing_ctx._tsa_clients:
             try:
                 signed_timestamp.append(tsa_client.request_timestamp(content.signature))
@@ -313,7 +312,7 @@ class SigningContext:
         fulcio: FulcioClient,
         rekor: RekorClient,
         trusted_root: TrustedRoot,
-        tsa_clients: Optional[List[TimestampAuthorityClient]] = None,
+        tsa_clients: List[TimestampAuthorityClient] | None = None,
     ):
         """
         Create a new `SigningContext`.
@@ -327,7 +326,7 @@ class SigningContext:
         self._fulcio = fulcio
         self._rekor = rekor
         self._trusted_root = trusted_root
-        self._tsa_clients: List[TimestampAuthorityClient] = tsa_clients or []
+        self._tsa_clients = tsa_clients or []
 
     @classmethod
     def production(cls) -> SigningContext:

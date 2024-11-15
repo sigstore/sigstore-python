@@ -14,7 +14,7 @@
 import pytest
 import requests
 
-from sigstore._internal.timestamping import TimestampAuthorityClient, TimestampError
+from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 
 
 @pytest.mark.timestamp_authority

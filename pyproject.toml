@@ -37,7 +37,9 @@ dependencies = [
   "rich ~= 13.0",
   "rfc8785 ~= 0.1.2",
   # NOTE(dm): Under very active development, so strictly pinned.
-  "rfc3161-client == 0.0.3",
+  # "rfc3161-client == 0.0.3",
+  # TODO(dm) Use a release version but for the moment, we need the `as_bytes` method
+  "rfc3161-client @ git+https://github.com/trailofbits/rfc3161-client.git@26afadd45e842a29459a0b394f49542f6c554c54",
   # NOTE(ww): Both under active development, so strictly pinned.
   "sigstore-protobuf-specs == 0.3.2",
   "sigstore-rekor-types == 0.0.17",
