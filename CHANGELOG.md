@@ -10,6 +10,12 @@ All versions prior to 0.9.0 are untracked.
 
 ### Added
 
+* API: The DSSE `Envelope` class now performs automatic validation 
+  ([#1211](https://github.com/sigstore/sigstore-python/pull/1211))
+
+* API: Added `signature` property to `Envelope` class for accessing raw 
+  signature bytes ([#1211](https://github.com/sigstore/sigstore-python/pull/1211))
+
 * Signed timestamps embedded in bundles are now automatically verified 
   against Timestamp Authorities provided within the Trusted Root ([#1206]
   (https://github.com/sigstore/sigstore-python/pull/1206))

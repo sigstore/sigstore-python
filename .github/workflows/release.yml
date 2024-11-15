@@ -124,7 +124,7 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
 
       - name: publish
-        uses: pypa/gh-action-pypi-publish@1f5d4ec244f65dce93685ee3e98e77123f090866 # v1.12.1
+        uses: pypa/gh-action-pypi-publish@15c56dba361d8335944d31a2ecd17d700fc7bcbc # v1.12.2
         with:
           packages-dir: built-packages/
           attestations: true
@@ -143,7 +143,7 @@ jobs:
         # Confusingly, this action also supports updating releases, not
         # just creating them. This is what we want here, since we've manually
         # created the release that triggered the action.
-        uses: softprops/action-gh-release@e7a8f85e1c67a31e6ed99a94b41bd0b71bbee6b8 # v2.0.9
+        uses: softprops/action-gh-release@01570a1f39cb168c169c802c3bceb9e93fb10974 # v2.1.0
         with:
           # smoketest-artifacts/ contains the signatures and certificates.
           files: |
