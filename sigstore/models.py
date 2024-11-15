@@ -569,6 +569,18 @@ class Bundle:
         return None
 
     @property
+    def signature(self) -> bytes:
+        """
+        Returns the signature bytes of this bundle.
+        Either from the DSSE Envelope or from the message itself.
+        """
+        return (
+            self._dsse_envelope.signature
+            if self._dsse_envelope
+            else self._inner.message_signature.signature
+        )
+
+    @property
     def verification_material(self) -> VerificationMaterial:
         """
         Returns the bundle's verification material.

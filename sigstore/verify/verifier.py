@@ -36,6 +36,8 @@ from OpenSSL.crypto import (
     X509StoreFlags,
 )
 from pydantic import ValidationError
+from rfc3161_client import TimeStampResponse, VerifierBuilder
+from rfc3161_client import VerificationError as Rfc3161VerificationError
 
 from sigstore import dsse
 from sigstore._internal.rekor import _hashedrekord_from_parts
@@ -44,6 +46,7 @@ from sigstore._internal.sct import (
     _get_precertificate_signed_certificate_timestamps,
     verify_sct,
 )
+from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import VerificationError
@@ -52,6 +55,14 @@ from sigstore.models import Bundle
 from sigstore.verify.policy import VerificationPolicy
 
 _logger = logging.getLogger(__name__)
+
+# Limit the number of timestamps to prevent DoS
+# From https://github.com/sigstore/sigstore-go/blob/e92142f0734064ebf6001f188b7330a1212245fe/pkg/verify/tsa.go#L29
+MAX_ALLOWED_TIMESTAMP: int = 32
+
+# When verifying a timestamp, this threshold represents the minimum number of required
+# timestamps to consider a signature valid.
+VERIFY_TIMESTAMP_THRESHOLD: int = 1
 
 
 class Verifier:
@@ -108,6 +119,155 @@ class Verifier:
             trusted_root=trust_config.trusted_root,
         )
 
+    def _verify_signed_timestamp(
+        self, timestamp_response: TimeStampResponse, signature: bytes
+    ) -> TimestampVerificationResult | None:
+        """
+        Verify a Signed Timestamp using the TSA provided by the Trusted Root.
+        """
+        cert_authorities = self._trusted_root.get_timestamp_authorities()
+        for certificate_authority in cert_authorities:
+            certificates = certificate_authority.certificates(allow_expired=True)
+
+            builder = VerifierBuilder()
+            for certificate in certificates:
+                builder.add_root_certificate(certificate)
+
+            verifier = builder.build()
+            try:
+                verifier.verify(timestamp_response, signature)
+            except Rfc3161VerificationError as e:
+                _logger.debug("Unable to verify Timestamp with CA.")
+                _logger.exception(e)
+                continue
+
+            if (
+                certificate_authority.validity_period_start
+                and certificate_authority.validity_period_end
+            ):
+                if (
+                    certificate_authority.validity_period_start
+                    <= timestamp_response.tst_info.gen_time
+                    < certificate_authority.validity_period_end
+                ):
+                    return TimestampVerificationResult(
+                        source=TimestampSource.TIMESTAMP_AUTHORITY,
+                        time=timestamp_response.tst_info.gen_time,
+                    )
+
+                _logger.debug(
+                    "Unable to verify Timestamp because not in CA time range."
+                )
+            else:
+                _logger.debug(
+                    "Unable to verify Timestamp because no validity provided."
+                )
+
+        return None
+
+    def _verify_timestamp_authority(
+        self, bundle: Bundle
+    ) -> List[TimestampVerificationResult]:
+        """
+        Verify that the given bundle has been timestamped by a trusted timestamp authority
+        and that the timestamp is valid.
+
+        Returns the number of valid signed timestamp in the bundle.
+        """
+        timestamp_responses = (
+            bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
+        )
+        if len(timestamp_responses) > MAX_ALLOWED_TIMESTAMP:
+            msg = f"Too many signed timestamp: {len(timestamp_responses)} > {MAX_ALLOWED_TIMESTAMP}"
+            raise VerificationError(msg)
+
+        if len(set(timestamp_responses)) != len(timestamp_responses):
+            msg = "Duplicate timestamp found"
+            raise VerificationError(msg)
+
+        # The Signer sends a hash of the signature as the messageImprint in a TimeStampReq
+        # to the Timestamping Service
+        signature_hash = sha256_digest(bundle.signature).digest
+        verified_timestamps = []
+        for tsr in timestamp_responses:
+            if verified_timestamp := self._verify_signed_timestamp(tsr, signature_hash):
+                verified_timestamps.append(verified_timestamp)
+
+        return verified_timestamps
+
+    def _establish_time(self, bundle: Bundle) -> List[TimestampVerificationResult]:
+        """
+        Establish the time for bundle verification.
+
+        This method uses timestamps from two possible sources:
+        1. RFC3161 signed timestamps from a Timestamping Authority (TSA)
+        2. Transparency Log timestamps
+        """
+        verified_timestamps = []
+
+        # If a timestamp from the timestamping service is available, the Verifier MUST
+        # perform path validation using the timestamp from the Timestamping Service.
+        if bundle.verification_material.timestamp_verification_data.rfc3161_timestamps:
+            if not self._trusted_root.get_timestamp_authorities():
+                msg = (
+                    "no Timestamp Authorities have been provided to validate this "
+                    "bundle but it contains a signed timestamp"
+                )
+                raise VerificationError(msg)
+
+            timestamp_from_tsa = self._verify_timestamp_authority(bundle)
+            if len(timestamp_from_tsa) < VERIFY_TIMESTAMP_THRESHOLD:
+                msg = (
+                    f"not enough timestamps validated to meet the validation "
+                    f"threshold ({len(timestamp_from_tsa)}/{VERIFY_TIMESTAMP_THRESHOLD})"
+                )
+                raise VerificationError(msg)
+
+            verified_timestamps.extend(timestamp_from_tsa)
+
+        # If a timestamp from the Transparency Service is available, the Verifier MUST
+        # perform path validation using the timestamp from the Transparency Service.
+        if timestamp := bundle.log_entry.integrated_time:
+            verified_timestamps.append(
+                TimestampVerificationResult(
+                    source=TimestampSource.TRANSPARENCY_SERVICE,
+                    time=datetime.fromtimestamp(timestamp, tz=timezone.utc),
+                )
+            )
+        return verified_timestamps
+
+    def _verify_chain_at_time(
+        self, certificate: X509, timestamp_result: TimestampVerificationResult
+    ) -> List[X509]:
+        """
+        Verify the validity of the certificate chain at the given time.
+
+        Raises a VerificationError if the chain can't be built or be verified.
+        """
+        # NOTE: The `X509Store` object cannot have its time reset once the `set_time`
+        # method been called on it. To get around this, we construct a new one in each
+        # call.
+        store = X509Store()
+        # NOTE: By explicitly setting the flags here, we ensure that OpenSSL's
+        # PARTIAL_CHAIN default does not change on us. Enabling PARTIAL_CHAIN
+        # would be strictly more conformant of OpenSSL, but we currently
+        # *want* the "long" chain behavior of performing path validation
+        # down to a self-signed root.
+        store.set_flags(X509StoreFlags.X509_STRICT)
+        for parent_cert_ossl in self._fulcio_certificate_chain:
+            store.add_cert(parent_cert_ossl)
+
+        store.set_time(timestamp_result.time)
+
+        store_ctx = X509StoreContext(store, certificate)
+
+        try:
+            # get_verified_chain returns the full chain including the end-entity certificate
+            # and chain should contain only CA certificates
+            return store_ctx.get_verified_chain()[1:]
+        except X509StoreContextError as e:
+            raise VerificationError(f"failed to build chain: {e}")
+
     def _verify_common_signing_cert(
         self, bundle: Bundle, policy: VerificationPolicy
     ) -> None:
@@ -120,6 +280,7 @@ class Verifier:
 
         # In order to verify an artifact, we need to achieve the following:
         #
+        # 0. Establish a time for the signature.
         # 1. Verify that the signing certificate chains to the root of trust
         #    and is valid at the time of signing.
         # 2. Verify the signing certificate's SCT.
@@ -135,7 +296,7 @@ class Verifier:
         # 8. Verify the transparency log entry's consistency against the other
         #    materials, to prevent variants of CVE-2022-36056.
         #
-        # This method performs steps (1) through (6) above. Its caller
+        # This method performs steps (0) through (6) above. Its caller
         # MUST perform steps (7) and (8) separately, since they vary based on
         # the kind of verification being performed (i.e. hashedrekord, DSSE, etc.)
 
@@ -154,20 +315,23 @@ class Verifier:
         for parent_cert_ossl in self._fulcio_certificate_chain:
             store.add_cert(parent_cert_ossl)
 
+        # (0): Establishing a Time for the Signature
+        # First, establish a time for the signature. This timestamp is required to
+        # validate the certificate chain, so this step comes first.
+        # While this step is optional and only performed if timestamp data has been
+        # provided within the bundle, providing a signed timestamp without a TSA to
+        # verify it result in a VerificationError.
+        verified_timestamps = self._establish_time(bundle)
+        if not verified_timestamps:
+            raise VerificationError("not enough sources of verified time")
+
         # (1): verify that the signing certificate is signed by the root
         #      certificate and that the signing certificate was valid at the
         #      time of signing.
-        sign_date = cert.not_valid_before_utc
         cert_ossl = X509.from_cryptography(cert)
-
-        store.set_time(sign_date)
-        store_ctx = X509StoreContext(store, cert_ossl)
-        try:
-            # get_verified_chain returns the full chain including the end-entity certificate
-            # and chain should contain only CA certificates
-            chain = store_ctx.get_verified_chain()[1:]
-        except X509StoreContextError as e:
-            raise VerificationError(f"failed to build chain: {e}")
+        chain: list[X509] = []
+        for vts in verified_timestamps:
+            chain = self._verify_chain_at_time(cert_ossl, vts)
 
         # (2): verify the signing certificate's SCT.
         sct = _get_precertificate_signed_certificate_timestamps(cert)[0]
