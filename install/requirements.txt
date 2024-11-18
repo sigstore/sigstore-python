@@ -476,9 +476,9 @@ pygments==2.18.0 \
     --hash=sha256:786ff802f32e91311bff3889f6e9a86e81505fe99f2735bb6d60ae0c5004f199 \
     --hash=sha256:b8e6aca0523f3ab76fee51799c488e38782ac06eafcf95e7ba832985c8e7b13a
     # via rich
-pyjwt==2.9.0 \
-    --hash=sha256:3b02fb0f44517787776cf48f2ae25d8e14f300e6d7545a4315cee571a415e850 \
-    --hash=sha256:7e1e5b56cc735432a7369cbfa0efe50fa113ebecdc04ae6922deba8b84582d0c
+pyjwt==2.10.0 \
+    --hash=sha256:543b77207db656de204372350926bed5a86201c4cbff159f623f79c7bb487a15 \
+    --hash=sha256:7628a7eb7938959ac1b26e819a1df0fd3259505627b575e4bad6d08f76db695c
     # via sigstore
 pyopenssl==24.2.1 \
     --hash=sha256:4247f0dbe3748d560dcbb2ff3ea01af0f9a1a001ef5f7c4c647956ed8cbf0e95 \
