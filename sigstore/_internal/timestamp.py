@@ -29,7 +29,7 @@ from rfc3161_client import (
 
 from sigstore._internal import USER_AGENT
 
-CLIENT_TIMEOUT: int = 30
+CLIENT_TIMEOUT: int = 5
 
 
 class TimestampSource(enum.Enum):
