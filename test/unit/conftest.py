@@ -217,4 +217,4 @@ def dummy_jwt():
 @pytest.fixture
 def tsa_url():
     """Return the URL of the TSA"""
-    return os.getenv("SIGSTORE_TIMESTAMP_AUTHORITY_URL")
+    return os.getenv("TEST_SIGSTORE_TIMESTAMP_AUTHORITY_URL")
