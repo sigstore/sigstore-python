@@ -65,7 +65,7 @@ jobs:
           chmod +x /tmp/timestamp-server
           # Run the TSA in background
           /tmp/timestamp-server serve --port 3000 --disable-ntp-monitoring &
-          export SIGSTORE_TIMESTAMP_AUTHORITY_URL="http://localhost:3000/api/v1/timestamp"
+          export TEST_SIGSTORE_TIMESTAMP_AUTHORITY_URL="http://localhost:3000/api/v1/timestamp"
           make test TEST_ARGS="-m timestamp_authority"
         env:
           SIGSTORE_TIMESTAMP: "v1.2.3"
