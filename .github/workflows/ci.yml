@@ -66,6 +66,8 @@ jobs:
           # Run the TSA in background
           /tmp/timestamp-server serve --port 3000 --disable-ntp-monitoring &
           export TEST_SIGSTORE_TIMESTAMP_AUTHORITY_URL="http://localhost:3000/api/v1/timestamp"
+          # Ensure Timestamp Authority tests are not skipped by
+          # having pytest show skipped tests and verifying ours are running
           make test TEST_ARGS="-m timestamp_authority -rs" | tee output
           ! grep -q "skipping test that requires a Timestamp Authority" output || (echo "ERROR: Found skip message" && exit 1)
         env:
