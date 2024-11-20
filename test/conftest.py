@@ -68,7 +68,7 @@ def _has_timestamp_authority_configured() -> bool:
     """
     Check if there is a Timestamp Authority that has been configured
     """
-    return os.getenv("SIGSTORE_TIMESTAMP_AUTHORITY_URL") is not None
+    return os.getenv("TEST_SIGSTORE_TIMESTAMP_AUTHORITY_URL") is not None
 
 
 def pytest_addoption(parser):

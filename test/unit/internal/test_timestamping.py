@@ -26,17 +26,17 @@ class TestTimestampAuthorityClient:
 
     def test_sign_request_invalid_url(self):
         tsa = TimestampAuthorityClient("http://fake-url")
-        with pytest.raises(TimestampError, match="Error while sending"):
+        with pytest.raises(TimestampError, match="error while sending"):
             tsa.request_timestamp(b"hello")
 
     def test_sign_request_invalid_request(self, tsa_url):
         tsa = TimestampAuthorityClient(tsa_url)
-        with pytest.raises(TimestampError, match="Invalid Request"):
+        with pytest.raises(TimestampError, match="invalid request"):
             tsa.request_timestamp(b"")  # empty value here
 
     def test_invalid_response(self, tsa_url, monkeypatch):
         monkeypatch.setattr(requests.Response, "content", b"invalid-response")
 
         tsa = TimestampAuthorityClient(tsa_url)
-        with pytest.raises(TimestampError, match="Invalid response"):
+        with pytest.raises(TimestampError, match="invalid response"):
             tsa.request_timestamp(b"hello")
