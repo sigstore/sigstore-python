@@ -55,6 +55,7 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     VerificationMaterial as _VerificationMaterial,
 )
 from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
+from sigstore_protobuf_specs.dev.sigstore.common.v1 import Rfc3161SignedTimestamp
 from sigstore_protobuf_specs.dev.sigstore.rekor import v1 as rekor_v1
 from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
     InclusionProof,
@@ -635,6 +636,7 @@ class Bundle:
         cert: Certificate,
         content: common_v1.MessageSignature | dsse.Envelope,
         log_entry: LogEntry,
+        signed_timestamp: Optional[List[TimeStampResponse]] = None,
     ) -> Bundle:
         """
         @private
@@ -655,5 +657,15 @@ class Bundle:
 
         tlog_entry = log_entry._to_rekor()
         inner.verification_material.tlog_entries = [tlog_entry]
+
+        if signed_timestamp is not None:
+            inner.verification_material.timestamp_verification_data = (
+                bundle_v1.TimestampVerificationData(
+                    rfc3161_timestamps=[
+                        Rfc3161SignedTimestamp(signed_timestamp=response.as_bytes())
+                        for response in signed_timestamp
+                    ]
+                )
+            )
 
         return cls(inner)

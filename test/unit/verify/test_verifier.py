@@ -224,7 +224,7 @@ class TestVerifierWithTimestamp:
             )
 
     def test_verifier_too_many_timestamp(self, verifier, asset, null_policy):
-        with pytest.raises(VerificationError, match="Too many"):
+        with pytest.raises(VerificationError, match="too many"):
             verifier.verify_artifact(
                 asset("tsa/bundle.txt").read_bytes(),
                 Bundle.from_json(
@@ -234,7 +234,7 @@ class TestVerifierWithTimestamp:
             )
 
     def test_verifier_duplicate_timestamp(self, verifier, asset, null_policy):
-        with pytest.raises(VerificationError, match="Duplicate"):
+        with pytest.raises(VerificationError, match="duplicate"):
             verifier.verify_artifact(
                 asset("tsa/bundle.txt").read_bytes(),
                 Bundle.from_json(asset("tsa/bundle.duplicate.sigstore").read_bytes()),

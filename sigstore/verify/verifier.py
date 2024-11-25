@@ -178,11 +178,11 @@ class Verifier:
             bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
         )
         if len(timestamp_responses) > MAX_ALLOWED_TIMESTAMP:
-            msg = f"Too many signed timestamp: {len(timestamp_responses)} > {MAX_ALLOWED_TIMESTAMP}"
+            msg = f"too many signed timestamp: {len(timestamp_responses)} > {MAX_ALLOWED_TIMESTAMP}"
             raise VerificationError(msg)
 
         if len(set(timestamp_responses)) != len(timestamp_responses):
-            msg = "Duplicate timestamp found"
+            msg = "duplicate timestamp found"
             raise VerificationError(msg)
 
         # The Signer sends a hash of the signature as the messageImprint in a TimeStampReq

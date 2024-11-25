@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import hashlib
+import logging
 import secrets
 
 import pretend
@@ -20,6 +20,8 @@ import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 import sigstore.oidc
+from sigstore._internal.timestamp import TimestampAuthorityClient
+from sigstore._internal.trust import ClientTrustConfig
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
@@ -169,3 +171,79 @@ def test_sign_dsse(staging):
         bundle = signer.sign_dsse(stmt)
         # Ensures that all of our inner types serialize as expected.
         bundle.to_json()
+
+
+@pytest.mark.staging
+@pytest.mark.ambient_oidc
+@pytest.mark.timestamp_authority
+class TestSignWithTSA:
+    @pytest.fixture
+    def sig_ctx(self, asset, tsa_url) -> SigningContext:
+        trust_config = ClientTrustConfig.from_json(
+            asset("tsa/trust_config.json").read_text()
+        )
+
+        trust_config._inner.signing_config.tsa_urls[0] = tsa_url
+
+        return SigningContext._from_trust_config(trust_config)
+
+    @pytest.fixture
+    def identity(self, staging):
+        _, _, identity = staging
+        return identity
+
+    @pytest.fixture
+    def hashed(self) -> Hashed:
+        input_ = secrets.token_bytes(32)
+        return Hashed(
+            digest=hashlib.sha256(input_).digest(), algorithm=HashAlgorithm.SHA2_256
+        )
+
+    def test_sign_artifact(self, sig_ctx, identity, hashed):
+        with sig_ctx.signer(identity) as signer:
+            bundle = signer.sign_artifact(hashed)
+
+        assert bundle.to_json()
+        assert (
+            bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
+        )
+
+    def test_sign_dsse(self, sig_ctx, identity):
+        stmt = (
+            StatementBuilder()
+            .subjects(
+                [
+                    Subject(
+                        name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()}
+                    )
+                ]
+            )
+            .predicate_type("https://cosign.sigstore.dev/attestation/v1")
+            .predicate(
+                {
+                    "Data": "",
+                    "Timestamp": "2023-12-07T00:37:58Z",
+                }
+            )
+        ).build()
+
+        with sig_ctx.signer(identity) as signer:
+            bundle = signer.sign_dsse(stmt)
+
+        assert bundle.to_json()
+        assert (
+            bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
+        )
+
+    def test_with_timestamp_error(self, sig_ctx, identity, hashed, caplog):
+        # Simulate here an TSA that returns an invalid Timestamp
+        sig_ctx._tsa_clients.append(TimestampAuthorityClient("invalid-url"))
+
+        with caplog.at_level(logging.WARNING, logger="sigstore.sign"):
+            with sig_ctx.signer(identity) as signer:
+                bundle = signer.sign_artifact(hashed)
+
+        assert caplog.records[0].message.startswith("Unable to use invalid-url")
+        assert (
+            bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
+        )
