@@ -30,6 +30,18 @@ All versions prior to 0.9.0 are untracked.
   verifying legacy bundles was never shown
   ([#1198](https://github.com/sigstore/sigstore-python/pull/1198))
 
+## [3.5.3]
+
+### Fixed
+
+* Corrective release for [3.5.2]
+
+## [3.5.2]
+
+### Fixed
+
+* Pinned `cryptography` dependency strictly to prevent future breakage
+
 ## [3.5.1]
 
 ### Fixed
@@ -561,7 +573,9 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.1...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.3...HEAD
+[3.5.3]: https://github.com/sigstore/sigstore-python/compare/v3.5.2...v3.5.3
+[3.5.2]: https://github.com/sigstore/sigstore-python/compare/v3.5.1...v3.5.2
 [3.5.1]: https://github.com/sigstore/sigstore-python/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/sigstore/sigstore-python/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/sigstore/sigstore-python/compare/v3.3.0...v3.4.0
