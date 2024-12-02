@@ -165,11 +165,6 @@ class DetachedFulcioSCT(BaseModel):
         return self.digitally_signed[4:]
 
 
-# SignedCertificateTimestamp is an ABC, so register our DetachedFulcioSCT as
-# virtual subclass.
-SignedCertificateTimestamp.register(DetachedFulcioSCT)
-
-
 class ExpiredCertificate(Exception):
     """An error raised when the Certificate is expired."""
 
@@ -294,12 +289,7 @@ class FulcioSigningCert(_Endpoint):
                 )
 
             try:
-                sct_json = json.loads(base64.b64decode(sct_b64).decode())
-            except ValueError as exc:
-                raise FulcioClientError from exc
-
-            try:
-                sct = DetachedFulcioSCT.parse_obj(sct_json)
+                sct = DetachedFulcioSCT.model_validate_json(base64.b64decode(sct_b64))
             except Exception as exc:
                 # Ideally we'd catch something less generic here.
                 raise FulcioClientError from exc
