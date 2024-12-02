@@ -10,21 +10,37 @@ All versions prior to 0.9.0 are untracked.
 
 ### Added
 
-* API: The DSSE `Envelope` class now performs automatic validation 
+* API: The DSSE `Envelope` class now performs automatic validation
   ([#1211](https://github.com/sigstore/sigstore-python/pull/1211))
 
-* API: Added `signature` property to `Envelope` class for accessing raw 
+* API: Added `signature` property to `Envelope` class for accessing raw
   signature bytes ([#1211](https://github.com/sigstore/sigstore-python/pull/1211))
 
-* Signed timestamps embedded in bundles are now automatically verified 
+* Signed timestamps embedded in bundles are now automatically verified
   against Timestamp Authorities provided within the Trusted Root ([#1206]
   (https://github.com/sigstore/sigstore-python/pull/1206))
+
+* Bundles are now generated with signed timestamps when signing if the
+  Trusted Root contains one or more Timestamp Authorities
+  ([#1216](https://github.com/sigstore/sigstore-python/pull/1216))
 
 ### Fixed
 
 * Fixed a CLI parsing bug introduced in 3.5.1 where a warning about
-  verifying legacy bundles was never shown 
+  verifying legacy bundles was never shown
   ([#1198](https://github.com/sigstore/sigstore-python/pull/1198))
+
+## [3.5.3]
+
+### Fixed
+
+* Corrective release for [3.5.2]
+
+## [3.5.2]
+
+### Fixed
+
+* Pinned `cryptography` dependency strictly to prevent future breakage
 
 ## [3.5.1]
 
@@ -557,7 +573,9 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.1...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.3...HEAD
+[3.5.3]: https://github.com/sigstore/sigstore-python/compare/v3.5.2...v3.5.3
+[3.5.2]: https://github.com/sigstore/sigstore-python/compare/v3.5.1...v3.5.2
 [3.5.1]: https://github.com/sigstore/sigstore-python/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/sigstore/sigstore-python/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/sigstore/sigstore-python/compare/v3.3.0...v3.4.0
