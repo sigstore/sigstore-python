@@ -21,7 +21,6 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.x509.certificate_transparency import (
     LogEntryType,
     SignatureAlgorithm,
-    SignedCertificateTimestamp,
     Version,
 )
 from pydantic import ValidationError
@@ -48,9 +47,6 @@ class TestSCTHashAlgorithm:
 
 
 class TestDetachedFulcioSCT:
-    def test_fulcio_sct_virtual_subclass(self):
-        assert issubclass(client.DetachedFulcioSCT, SignedCertificateTimestamp)
-
     def test_fields(self):
         blob = enc(b"this is a base64-encoded blob")
         now = datetime.now(tz=timezone.utc)
