@@ -19,30 +19,21 @@ Client implementation for interacting with Fulcio.
 from __future__ import annotations
 
 import base64
-import datetime
 import json
 import logging
-import struct
 from abc import ABC
 from dataclasses import dataclass
-from enum import IntEnum
 from typing import List
 from urllib.parse import urljoin
 
 import requests
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import (
     Certificate,
     CertificateSigningRequest,
     load_pem_x509_certificate,
 )
-from cryptography.x509.certificate_transparency import (
-    LogEntryType,
-    SignatureAlgorithm,
-    SignedCertificateTimestamp,
-    Version,
-)
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from cryptography.x509.certificate_transparency import SignedCertificateTimestamp
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.sct import (
@@ -60,109 +51,12 @@ SIGNING_CERT_ENDPOINT = "/api/v2/signingCert"
 TRUST_BUNDLE_ENDPOINT = "/api/v2/trustBundle"
 
 
-class SCTHashAlgorithm(IntEnum):
-    """
-    Hash algorithms that are valid for SCTs.
-
-    These are exactly the same as the HashAlgorithm enum in RFC 5246 (TLS 1.2).
-
-    See: https://datatracker.ietf.org/doc/html/rfc5246#section-7.4.1.4.1
-    """
-
-    NONE = 0
-    MD5 = 1
-    SHA1 = 2
-    SHA224 = 3
-    SHA256 = 4
-    SHA384 = 5
-    SHA512 = 6
-
-    def to_cryptography(self) -> hashes.HashAlgorithm:
-        """
-        Converts this `SCTHashAlgorithm` into a `cryptography.hashes` object.
-        """
-        if self != SCTHashAlgorithm.SHA256:
-            raise FulcioSCTError(f"unexpected hash algorithm: {self!r}")
-
-        return hashes.SHA256()
-
-
 class FulcioSCTError(Exception):
     """
     Raised on errors when constructing a `FulcioSignedCertificateTimestamp`.
     """
 
     pass
-
-
-class DetachedFulcioSCT(BaseModel):
-    """
-    Represents a "detached" SignedCertificateTimestamp from Fulcio.
-    """
-
-    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
-
-    version: Version = Field(..., alias="sct_version")
-    log_id: bytes = Field(..., alias="id")
-    timestamp: datetime.datetime
-    digitally_signed: bytes = Field(..., alias="signature")
-    extension_bytes: bytes = Field(..., alias="extensions")
-
-    @field_validator("timestamp")
-    def _validate_timestamp(cls, v: datetime.datetime) -> datetime.datetime:
-        return v.replace(tzinfo=datetime.timezone.utc)
-
-    @field_validator("digitally_signed", mode="before")
-    def _validate_digitally_signed(cls, v: bytes) -> bytes:
-        digitally_signed = base64.b64decode(v)
-
-        if len(digitally_signed) <= 4:
-            raise ValueError("impossibly small digitally-signed struct")
-
-        return digitally_signed
-
-    @field_validator("log_id", mode="before")
-    def _validate_log_id(cls, v: bytes) -> bytes:
-        return base64.b64decode(v)
-
-    @field_validator("extension_bytes", mode="before")
-    def _validate_extensions(cls, v: bytes) -> bytes:
-        return base64.b64decode(v)
-
-    @property
-    def entry_type(self) -> LogEntryType:
-        """
-        Returns the kind of CT log entry this detached SCT is signing for.
-        """
-        return LogEntryType.X509_CERTIFICATE
-
-    @property
-    def signature_hash_algorithm(self) -> hashes.HashAlgorithm:
-        """
-        Returns the hash algorithm used in this detached SCT's signature.
-        """
-        hash_ = SCTHashAlgorithm(self.digitally_signed[0])
-        return hash_.to_cryptography()
-
-    @property
-    def signature_algorithm(self) -> SignatureAlgorithm:
-        """
-        Returns the signature algorithm used in this detached SCT's signature.
-        """
-        return SignatureAlgorithm(self.digitally_signed[1])
-
-    @property
-    def signature(self) -> bytes:
-        """
-        Returns the raw signature inside the detached SCT.
-        """
-        (sig_size,) = struct.unpack("!H", self.digitally_signed[2:4])
-        if len(self.digitally_signed[4:]) != sig_size:
-            raise FulcioSCTError(
-                f"signature size mismatch: expected {sig_size} bytes, "
-                f"got {len(self.digitally_signed[4:])}"
-            )
-        return self.digitally_signed[4:]
 
 
 class ExpiredCertificate(Exception):
@@ -238,22 +132,12 @@ class FulcioSigningCert(_Endpoint):
                     raise FulcioClientError(text["message"]) from http_error
             raise FulcioClientError from http_error
 
-        if resp.json().get("signedCertificateEmbeddedSct"):
-            sct_embedded = True
-            try:
-                certificates = resp.json()["signedCertificateEmbeddedSct"]["chain"][
-                    "certificates"
-                ]
-            except KeyError:
-                raise FulcioClientError("Fulcio response missing certificate chain")
-        else:
-            sct_embedded = False
-            try:
-                certificates = resp.json()["signedCertificateDetachedSct"]["chain"][
-                    "certificates"
-                ]
-            except KeyError:
-                raise FulcioClientError("Fulcio response missing certificate chain")
+        try:
+            certificates = resp.json()["signedCertificateEmbeddedSct"]["chain"][
+                "certificates"
+            ]
+        except KeyError:
+            raise FulcioClientError("Fulcio response missing certificate chain")
 
         # Cryptography doesn't have chain verification/building built in
         # https://github.com/pyca/cryptography/issues/2381
@@ -264,35 +148,12 @@ class FulcioSigningCert(_Endpoint):
         cert = load_pem_x509_certificate(certificates[0].encode())
         chain = [load_pem_x509_certificate(c.encode()) for c in certificates[1:]]
 
-        if sct_embedded:
-            try:
-                # The SignedCertificateTimestamp should be acessed by the index 0
-                sct = _get_precertificate_signed_certificate_timestamps(cert)[0]
+        try:
+            # The SignedCertificateTimestamp should be accessed by the index 0
+            sct = _get_precertificate_signed_certificate_timestamps(cert)[0]
 
-            except UnexpectedSctCountException as ex:
-                raise FulcioClientError(ex)
-
-        else:
-            # If we don't have any embedded SCTs, then we might be dealing
-            # with a Fulcio instance that provides detached SCTs.
-
-            # The detached SCT is a base64-encoded payload, which in turn
-            # is a JSON representation of the SignedCertificateTimestamp
-            # in RFC 6962 (subsec. 3.2).
-            try:
-                sct_b64 = resp.json()["signedCertificateDetachedSct"][
-                    "signedCertificateTimestamp"
-                ]
-            except KeyError:
-                raise FulcioClientError(
-                    "Fulcio response did not include a detached SCT"
-                )
-
-            try:
-                sct = DetachedFulcioSCT.model_validate_json(base64.b64decode(sct_b64))
-            except Exception as exc:
-                # Ideally we'd catch something less generic here.
-                raise FulcioClientError from exc
+        except UnexpectedSctCountException as ex:
+            raise FulcioClientError(ex)
 
         return FulcioCertificateSigningResponse(cert, chain, sct)
 
