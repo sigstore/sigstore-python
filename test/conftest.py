@@ -51,7 +51,14 @@ def _has_oidc_id():
         # On GitHub Actions, forks do not have access to OIDC identities.
         # We differentiate this case from other GitHub credential errors,
         # since it's a case where we want to skip (i.e. return False).
-        if os.getenv("GITHUB_EVENT_NAME") == "pull_request":
+        #
+        # We also skip when the repo isn't our own, since downstream
+        # regression testers (e.g. PyCA Cryptography) don't necessarily
+        # want to give our unit tests access to an OIDC identity.
+        if (
+            os.getenv("GITHUB_REPOSITORY") != "sigstore/sigstore-python"
+            or os.getenv("GITHUB_EVENT_NAME") == "pull_request"
+        ):
             return False
         return True
     except AmbientCredentialError:

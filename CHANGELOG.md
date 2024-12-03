@@ -24,6 +24,12 @@ All versions prior to 0.9.0 are untracked.
   Trusted Root contains one or more Timestamp Authorities
   ([#1216](https://github.com/sigstore/sigstore-python/pull/1216))
 
+### Removed
+
+* Support for "detached" SCTs has been fully removed, aligning
+  sigstore-python with other sigstore clients
+  ([#1236](https://github.com/sigstore/sigstore-python/pull/1236))
+
 ### Fixed
 
 * Fixed a CLI parsing bug introduced in 3.5.1 where a warning about
