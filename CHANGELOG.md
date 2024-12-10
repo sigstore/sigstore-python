@@ -36,6 +36,10 @@ All versions prior to 0.9.0 are untracked.
   verifying legacy bundles was never shown
   ([#1198](https://github.com/sigstore/sigstore-python/pull/1198))
 
+* Strengthened the requirement that an inclusion promise is present
+  *if* no other source of signed time is present
+  ([#1247](https://github.com/sigstore/sigstore-python/pull/1247))
+
 ## [3.5.3]
 
 ### Fixed

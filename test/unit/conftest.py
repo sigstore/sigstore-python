@@ -117,6 +117,8 @@ def signing_bundle(asset):
     def _signing_bundle(name: str) -> tuple[Path, Bundle]:
         file = asset(name)
         bundle_path = asset(f"{name}.sigstore")
+        if not bundle_path.is_file():
+            bundle_path = asset(f"{name}.sigstore.json")
         bundle = Bundle.from_json(bundle_path.read_bytes())
 
         return (file, bundle)
