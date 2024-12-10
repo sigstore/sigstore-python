@@ -183,7 +183,7 @@ class TestBundle:
     def test_bundle_missing_signed_time(self, signing_bundle):
         with pytest.raises(
             InvalidBundle,
-            match="bundle must contain an inclusion promise or signed timestamp\(s\)",
+            match=r"bundle must contain an inclusion promise or signed timestamp\(s\)",
         ):
             signing_bundle("bundle_v3_no_signed_time.txt")
 
