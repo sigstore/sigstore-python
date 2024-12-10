@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.6.0]
+
 ### Added
 
 * API: The DSSE `Envelope` class now performs automatic validation
@@ -583,7 +585,8 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.3...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.6.0...HEAD
+[3.6.0]: https://github.com/sigstore/sigstore-python/compare/v3.5.3...v3.6.0
 [3.5.3]: https://github.com/sigstore/sigstore-python/compare/v3.5.2...v3.5.3
 [3.5.2]: https://github.com/sigstore/sigstore-python/compare/v3.5.1...v3.5.2
 [3.5.1]: https://github.com/sigstore/sigstore-python/compare/v3.5.0...v3.5.1
