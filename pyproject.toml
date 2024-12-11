@@ -26,7 +26,7 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
-  "cryptography >= 42, < 44",
+  "cryptography >= 42, < 45",
   "id >= 1.1.0",
   "importlib_resources ~= 5.7; python_version < '3.11'",
   "pyasn1 ~= 0.6",
@@ -37,7 +37,7 @@ dependencies = [
   "rich ~= 13.0",
   "rfc8785 ~= 0.1.2",
   # NOTE(dm): Under very active development, so strictly pinned.
-  "rfc3161-client == 0.0.4",
+  "rfc3161-client == 0.1.1",
   # NOTE(ww): Both under active development, so strictly pinned.
   "sigstore-protobuf-specs == 0.3.2",
   "sigstore-rekor-types == 0.0.18",
