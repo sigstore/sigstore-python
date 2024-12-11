@@ -525,8 +525,11 @@ class Bundle:
         # * For 0.2+, an inclusion proof is required; the client MUST
         #   verify the inclusion proof. The inclusion prof MUST contain
         #   a checkpoint.
-        #   The inclusion promise is NOT required; if present, the client
-        #   SHOULD verify it.
+        #
+        #   The inclusion promise is NOT required if another source of signed
+        #   time (such as a signed timestamp) is present. If no other source
+        #   of signed time is present, then the inclusion promise MUST be
+        #   present.
         #
         # Before all of this, we require that the inclusion proof be present
         # (when constructing the LogEntry).
@@ -542,6 +545,14 @@ class Bundle:
         else:
             if not log_entry.inclusion_proof.checkpoint:
                 raise InvalidBundle("expected checkpoint in inclusion proof")
+
+            if (
+                not log_entry.inclusion_promise
+                and not self._inner.verification_material.timestamp_verification_data.rfc3161_timestamps
+            ):
+                raise InvalidBundle(
+                    "bundle must contain an inclusion promise or signed timestamp(s)"
+                )
 
         self._log_entry = log_entry
 

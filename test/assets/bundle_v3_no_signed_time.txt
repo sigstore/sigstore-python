@@ -1,0 +1,6 @@
+DO NOT MODIFY ME!
+
+this is the input for bundle_v3_no_signed_time, which ensures clients reject
+bundles that don't have a source of signed time.
+
+DO NOT MODIFY ME!
