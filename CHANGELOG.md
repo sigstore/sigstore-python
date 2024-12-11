@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Relaxed the transitive dependency on `cryptography` to allow v43 and v44
+  to be resolved
+  ([#1251](https://github.com/sigstore/sigstore-python/pull/1251))
+
 ## [3.6.0]
 
 ### Added
