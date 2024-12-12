@@ -3,7 +3,8 @@ SHELL := /bin/bash
 PY_MODULE := sigstore
 
 ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
-	$(shell find test -name '*.py')
+	$(shell find test -name '*.py') \
+	$(shell find scripts -name '*.py') \
 
 # Optionally overriden by the user, if they're using a virtual environment manager.
 VENV ?= env
@@ -97,7 +98,7 @@ gen-x509-testcases: $(VENV)/pyvenv.cfg
 .PHONY: doc
 doc: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
-		pdoc --output-directory html $(PY_MODULE)
+		mkdocs --site-dir html
 
 .PHONY: package
 package: $(VENV)/pyvenv.cfg

@@ -9,13 +9,40 @@ theme:
   name: material
   icon:
     repo: fontawesome/brands/github
+  logo: assets/images/logo.png
   features:
     - content.action.edit
     - header.autohide
     - navigation.instant
     - navigation.instant.progress
     - navigation.footer
-
+  palette:
+    primary: custom
+  font:
+    text: Inter
+extra_css:
+  - stylesheets/custom.css
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Signing: signing.md
+  - Verifying: verify.md
+  - Policy: policy.md
+  - Advanced:
+      - Custom Root of Trust: advanced/custom_trust.md
+      - Offline Verification: advanced/offline.md
+  # begin-api-section
+  - API:
+      - API/index.md
+      - Models: API/models.md
+      - Errors: API/errors.md
+      - Hashes: API/hashes.md
+      - OIDC: API/oidc.md
+      - Sign: API/sign.md
+      - Verify:
+          - Policy: API/verify/policy.md
+          - Verifier: API/verify/verifier.md
+  # end-api-section
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -38,3 +65,5 @@ extra:
   social:
     - icon: fontawesome/brands/slack
       link: https://sigstore.slack.com
+    - icon: fontawesome/brands/x-twitter
+      link: https://twitter.com/projectsigstore

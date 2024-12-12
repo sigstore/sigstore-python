@@ -20,7 +20,7 @@ $ sigstore --staging verify identity --cert-identity "a@tny.town" --cert-oidc-is
 
 ## Verifying from GitHub Actions
 
-If your signatures are coming from GitHub Actions (e.g., a workflow that uses its [ambient credentials](#signing-with-ambient-credentials)),
+If your signatures are coming from GitHub Actions (e.g., a workflow that uses its [ambient credentials](./signing.md#signing-with-ambient-credentials)),
 then you can use the `sigstore verify github` subcommand to verify
 claims more precisely than `sigstore verify identity` allows.
 

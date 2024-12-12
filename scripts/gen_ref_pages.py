@@ -11,25 +11,74 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import argparse
+import shutil
+import sys
 from pathlib import Path
 
 root = Path(__file__).parent.parent
 src = root / "sigstore"
+api_root = root / "docs" / "API"
 
-def main():
+
+def main(args: argparse.Namespace) -> None:
+    """Main script"""
+    if args.overwrite:
+        shutil.rmtree(api_root, ignore_errors=True)
+    elif not args.check and api_root.exists():
+        print(f"API root {api_root} already exists, skipping.")
+        sys.exit(0)
+
+    seen = set()
     for path in src.rglob("*.py"):
         module_path = path.relative_to(src).with_suffix("")
         doc_path = path.relative_to(src).with_suffix(".md")
-        full_doc_path = root / "docs" / "API" / doc_path.with_suffix(".md")
+        full_doc_path = api_root / doc_path.with_suffix(".md")
 
         parts = tuple(module_path.parts)
         if any(part.startswith("_") for part in parts):
             continue
 
+        if args.check:
+            if not full_doc_path.is_file():
+                sys.exit(1)
+
         full_doc_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(full_doc_path, "w") as f:
+        with full_doc_path.open("w") as f:
             f.write(f":::sigstore.{str(module_path).replace('/', '.')}\n ")
 
+        seen.add(full_doc_path)
+
+    # Add the root
+    with (api_root / "index.md").open("w") as f:
+        f.write("""!!! note
+
+    The API reference is automatically generated from the docstrings
+
+:::sigstore
+        """)
+
+    seen.add(api_root / "index.md")
+
+    if args.check:
+        if diff := set(api_root.rglob("*.md")).symmetric_difference(seen):
+            print(f"Found leftover documentation file: {diff}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        print("API doc generated - don't forget to update the nav section.")
+
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Generate the structure for the API documentation."
+    )
+    parser.add_argument("--overwrite", action="store_true", default=False)
+    parser.add_argument("--check", action="store_true", default=False)
+
+    arguments = parser.parse_args()
+
+    if arguments.check and arguments.overwrite:
+        print("You can't specify both --check and --overwrite.", file=sys.stderr)
+        sys.exit(1)
+
+    main(arguments)
