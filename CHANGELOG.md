@@ -8,6 +8,14 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Relaxed the transitive dependency on `cryptography` to allow v43 and v44
+  to be resolved
+  ([#1251](https://github.com/sigstore/sigstore-python/pull/1251))
+
+## [3.6.0]
+
 ### Added
 
 * API: The DSSE `Envelope` class now performs automatic validation
@@ -24,11 +32,21 @@ All versions prior to 0.9.0 are untracked.
   Trusted Root contains one or more Timestamp Authorities
   ([#1216](https://github.com/sigstore/sigstore-python/pull/1216))
 
+### Removed
+
+* Support for "detached" SCTs has been fully removed, aligning
+  sigstore-python with other sigstore clients
+  ([#1236](https://github.com/sigstore/sigstore-python/pull/1236))
+
 ### Fixed
 
 * Fixed a CLI parsing bug introduced in 3.5.1 where a warning about
   verifying legacy bundles was never shown
   ([#1198](https://github.com/sigstore/sigstore-python/pull/1198))
+
+* Strengthened the requirement that an inclusion promise is present
+  *if* no other source of signed time is present
+  ([#1247](https://github.com/sigstore/sigstore-python/pull/1247))
 
 ## [3.5.3]
 
@@ -573,7 +591,8 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.3...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.6.0...HEAD
+[3.6.0]: https://github.com/sigstore/sigstore-python/compare/v3.5.3...v3.6.0
 [3.5.3]: https://github.com/sigstore/sigstore-python/compare/v3.5.2...v3.5.3
 [3.5.2]: https://github.com/sigstore/sigstore-python/compare/v3.5.1...v3.5.2
 [3.5.1]: https://github.com/sigstore/sigstore-python/compare/v3.5.0...v3.5.1

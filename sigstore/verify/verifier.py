@@ -227,7 +227,12 @@ class Verifier:
 
         # If a timestamp from the Transparency Service is available, the Verifier MUST
         # perform path validation using the timestamp from the Transparency Service.
-        if timestamp := bundle.log_entry.integrated_time:
+        # NOTE: We only include this timestamp if it's accompanied by an inclusion
+        # promise that cryptographically binds it. We verify the inclusion promise
+        # itself later, as part of log entry verification.
+        if (
+            timestamp := bundle.log_entry.integrated_time
+        ) and bundle.log_entry.inclusion_promise:
             verified_timestamps.append(
                 TimestampVerificationResult(
                     source=TimestampSource.TRANSPARENCY_SERVICE,
