@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+
+site_name: sigstore-python
+site_url: https://sigstore.github.io/sigstore-python
+repo_url: https://github.com/sigstore/sigstore-python
+repo_name: sigstore-python
+edit_uri: edit/main/docs/
+theme:
+  name: material
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - content.action.edit
+    - header.autohide
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.footer
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+copyright: sigstore &copy; 2024
+plugins:
+  - search
+  - social
+  - mkdocstrings:
+      handlers:
+        python:
+          import:
+            - url: https://docs.python-requests.org/en/master/objects.inv
+              domains: [std, py]
+          options:
+            show_bases: true
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/slack
+      link: https://sigstore.slack.com

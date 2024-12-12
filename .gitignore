@@ -1,3 +1,4 @@
+.cache/
 env/
 pip-wheel-metadata/
 *.egg-info/
