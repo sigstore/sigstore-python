@@ -1,2 +1,0 @@
-:::sigstore.verify.policy
- 
