@@ -16,13 +16,13 @@ import shutil
 import sys
 from pathlib import Path
 
-root = Path(__file__).parent.parent
+root = Path(__file__).parent.parent.parent
 src = root / "sigstore"
-api_root = root / "docs" / "API"
+api_root = root / "docs" / "api"
 
 
 def main(args: argparse.Namespace) -> None:
-    """Main script"""
+    """Main script."""
     if args.overwrite:
         shutil.rmtree(api_root, ignore_errors=True)
     elif not args.check and api_root.exists():
@@ -32,11 +32,10 @@ def main(args: argparse.Namespace) -> None:
     seen = set()
     for path in src.rglob("*.py"):
         module_path = path.relative_to(src).with_suffix("")
-        doc_path = path.relative_to(src).with_suffix(".md")
-        full_doc_path = api_root / doc_path.with_suffix(".md")
+        full_doc_path = api_root / path.relative_to(src).with_suffix(".md")
 
-        parts = tuple(module_path.parts)
-        if any(part.startswith("_") for part in parts):
+        # Exclude private entries
+        if any(part.startswith("_") for part in module_path.parts):
             continue
 
         if args.check:
@@ -65,7 +64,7 @@ def main(args: argparse.Namespace) -> None:
             print(f"Found leftover documentation file: {diff}", file=sys.stderr)
             sys.exit(1)
     else:
-        print("API doc generated - don't forget to update the nav section.")
+        print("API doc generated.")
 
 
 if __name__ == "__main__":

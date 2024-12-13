@@ -11,7 +11,7 @@ else!
 * Support for keyless signature generation and verification with [Sigstore](https://www.sigstore.dev/)
 * Support for signing with ["ambient" OpenID Connect identities](./signing.md#signing-with-ambient-credentials)
 * A comprehensive [CLI](#using-sigstore) and corresponding
-  [importable Python API](./API/index.md)
+  [importable Python API](./api/index.md)
 
 ## Installing `sigstore`
 

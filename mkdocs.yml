@@ -3,6 +3,7 @@
 site_name: sigstore-python
 site_url: https://sigstore.github.io/sigstore-python
 repo_url: https://github.com/sigstore/sigstore-python
+site_description: sigstore-python, a Sigstore client written in Python
 repo_name: sigstore-python
 edit_uri: edit/main/docs/
 theme:
@@ -12,10 +13,13 @@ theme:
   logo: assets/images/logo.png
   features:
     - content.action.edit
+    - content.code.copy
     - header.autohide
     - navigation.instant
     - navigation.instant.progress
     - navigation.footer
+    - search.highlight
+    - search.suggest
   palette:
     primary: custom
   font:
@@ -33,15 +37,15 @@ nav:
       - Offline Verification: advanced/offline.md
   # begin-api-section
   - API:
-      - API/index.md
-      - Models: API/models.md
-      - Errors: API/errors.md
-      - Hashes: API/hashes.md
-      - OIDC: API/oidc.md
-      - Sign: API/sign.md
+      - api/index.md
+      - Models: api/models.md
+      - Errors: api/errors.md
+      - Hashes: api/hashes.md
+      - OIDC: api/oidc.md
+      - Sign: api/sign.md
       - Verify:
-          - Policy: API/verify/policy.md
-          - Verifier: API/verify/verifier.md
+          - Policy: api/verify/policy.md
+          - Verifier: api/verify/verifier.md
   # end-api-section
 markdown_extensions:
   - admonition
@@ -54,11 +58,21 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          import:
-            - url: https://docs.python-requests.org/en/master/objects.inv
-              domains: [std, py]
           options:
-            show_bases: true
+            members_order: source
+            unwrap_annotated: true
+            modernize_annotations: true
+            merge_init_into_class: true
+            docstring_section_style: spacy
+            signature_crossrefs: true
+            show_symbol_type_toc: true
+            filters:
+              - '!^_'
+validation:
+  omitted_files: warn
+  unrecognized_links: warn
+  anchors: warn
+  not_found: warn
 
 extra:
   generator: false
