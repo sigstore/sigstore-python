@@ -40,6 +40,7 @@ def main(args: argparse.Namespace) -> None:
 
         if args.check:
             if not full_doc_path.is_file():
+                print(f"File {full_doc_path} does not exist.", file=sys.stderr)
                 sys.exit(1)
 
         full_doc_path.parent.mkdir(parents=True, exist_ok=True)
