@@ -148,27 +148,28 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
     return issuer
 
 
-def get_signed_certificate_timestamp(
+def _get_signed_certificate_timestamp(
     certificate: Certificate,
 ) -> SignedCertificateTimestamp:
     """Retrieve the embedded SCT from the certificate.
 
-    Raise ValueError if certificate does not contain exactly one SCT
+    Raise VerificationError if certificate does not contain exactly one SCT
     """
     try:
         timestamps = certificate.extensions.get_extension_for_class(
             PrecertificateSignedCertificateTimestamps
         ).value
     except ExtensionNotFound:
-        raise ValueError(
+        raise VerificationError(
             "Certificate does not contain a signed certificate timestamp extension"
         )
 
     if len(timestamps) != 1:
-        raise ValueError(
-            f"Expected one certificate timestamp, found {len(timestamps)}."
+        raise VerificationError(
+            f"Expected one certificate timestamp, found {len(timestamps)}"
         )
-    return timestamps[0]
+    sct: SignedCertificateTimestamp = timestamps[0]
+    return sct
 
 
 def _cert_is_ca(cert: Certificate) -> bool:
@@ -182,7 +183,6 @@ def _cert_is_ca(cert: Certificate) -> bool:
 
 
 def verify_sct(
-    sct: SignedCertificateTimestamp,
     cert: Certificate,
     chain: List[Certificate],
     ct_keyring: CTKeyring,
@@ -195,6 +195,8 @@ def verify_sct(
     one of the keys present in the CT keyring (i.e., the keys used by the CT
     log to sign SCTs).
     """
+
+    sct = _get_signed_certificate_timestamp(cert)
 
     issuer_key_id = None
     if sct.entry_type == LogEntryType.PRE_CERTIFICATE:

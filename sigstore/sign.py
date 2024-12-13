@@ -161,21 +161,15 @@ class Signer:
                 certificate_request, self._identity_token
             )
 
-            # Verify the SCT
-            sct = certificate_response.sct
-            cert = certificate_response.cert
-            chain = certificate_response.chain
-
             verify_sct(
-                sct,
-                cert,
-                chain,
+                certificate_response.cert,
+                certificate_response.chain,
                 self._signing_ctx._trusted_root.ct_keyring(KeyringPurpose.SIGN),
             )
 
             _logger.debug("Successfully verified SCT...")
 
-            return cert
+            return certificate_response.cert
 
     def _finalize_sign(
         self,

@@ -33,10 +33,8 @@ from cryptography.x509 import (
     CertificateSigningRequest,
     load_pem_x509_certificate,
 )
-from cryptography.x509.certificate_transparency import SignedCertificateTimestamp
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.sct import get_signed_certificate_timestamp
 from sigstore._utils import B64Str
 from sigstore.oidc import IdentityToken
 
@@ -58,7 +56,6 @@ class FulcioCertificateSigningResponse:
 
     cert: Certificate
     chain: List[Certificate]
-    sct: SignedCertificateTimestamp
 
 
 @dataclass(frozen=True)
@@ -137,12 +134,7 @@ class FulcioSigningCert(_Endpoint):
         cert = load_pem_x509_certificate(certificates[0].encode())
         chain = [load_pem_x509_certificate(c.encode()) for c in certificates[1:]]
 
-        try:
-            sct = get_signed_certificate_timestamp(cert)
-        except ValueError as ex:
-            raise FulcioClientError(ex)
-
-        return FulcioCertificateSigningResponse(cert, chain, sct)
+        return FulcioCertificateSigningResponse(cert, chain)
 
 
 class FulcioTrustBundle(_Endpoint):
