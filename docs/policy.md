@@ -38,14 +38,17 @@ This step allows to attest of the signature time.
 
 ### Submission of Signing Metadata to Transparency Service
 
-_Warning_: this step is performed before the `Timestamping`
+The Transparency Service, [rekor], is used by `sigstore-python` to provide a
+public, immutable record of signing events. This step is crucial for ensuring
+the integrity and transparency of the signing process.
 
-The Transparency Service used by `sigstore-python` is [rekor].
-This step ends every signing workflow performed by `sigstore-python`.
+!!! warning
+
+    This step is performed before the `Timestamping` step in the worfklow.
 
 ### Signing Choices
 
-To summarize the choices:
+Here's a summary of the key choices in the `sigstore-python` signing process:
 
 | Option                        | `sigstore-python`            |
 |-------------------------------|------------------------------|
@@ -59,13 +62,13 @@ To summarize the choices:
 
 ## Verification
 
-`sigstore-python` supports configuring the verification process 
-using policies but this must be done at a programmatic level.
-By default, the CLI uses the `Identity` verification policy.
+`sigstore-python` supports configuring the verification process using policies
+but this must be done using the [api](./api/index.md). By default, the CLI uses
+the [`Identity`][sigstore.verify.policy] verification policy.
 
 ### Establishing a Time for the Signature
 
-If the Bundle contains one or more signed times from Timestamping Authorities,
+If the bundle contains one or more signed times from Timestamping Authorities,
 they will be used as the time source. In this case, a Timestamp Authority 
 configuration must be provided in the `ClientTrustConfig`. When verifying 
 Timestamp Authorities Responses, at least one must be valid.
@@ -77,13 +80,18 @@ The verification will fail if no sources of time are found.
 
 ### Certificate
 
-For a signature with a given certificate to be considered valid, it must 
-have a timestamp while every certificate in the chain up to the root is valid 
-(the so-called “hybrid model” of certificate verification per [Braun et al.]).
+For a signature to be considered valid, it must meet two key criteria:
 
-The validation is repeated for each source of time and must be valid for all 
-of them.
+- The signature must have an associated timestamp.
+- Every certificate in the chain, from the signing certificate up to the root
+  certificate, must be valid at the time of signing.
 
+This approach is known as the “hybrid model” of certificate verification, as
+described by [Braun et al.].
+
+This validation process is repeated for each available source of trusted time.
+The signature is only considered valid if it passes the validation checks
+against all of these time sources.
 
 #### SignedCertificateTimestamp
 
@@ -95,7 +103,6 @@ verified using the verification key from the Certificate Transparency Log.
 The system verifies that the signing certificate conforms to the Sigstore X. 509
 profile as well as `Identity Policy`.
 
-
 ### Transparency Log Entry
 
 The Verifier now verifies the inclusion proof and signed checkpoint for the 
@@ -105,24 +112,34 @@ If there is an inclusion promise, this is also verified.
 
 #### Time insertion check
 
-The transparency log entry insertion timestamp is verified to be generated
-during the certificate's validity period.
+The system verifies that the transparency log entry’s insertion timestamp falls
+within the certificate’s validity period.
+
+If the insertion timestamp is outside the certificate’s validity period, it
+could indicate potential backdating or use of an expired certificate, and the
+verification will fail.
 
 
 ### Signature Verification
 
-The signature itself is now verified.
+The next verification step is to verify the actual signature. This ensures
+that the signed content has not been tampered with and was indeed signed by the
+claimed entity.
 
-- DSSE: The envelope is used as the verification payload.
-- Artifacts: The raw bytes of the artifacts are used as the verification 
-  payload.
+The verification process differs slightly depending on the type of signed
+content:
+
+- DSSE: The entire envelope structure is used as the verification payload. 
+- Artifacts: The raw bytes of the artifacts serve as the verification payload.
 
 #### Final step
 
 Finally, a last consistency check is performed to verify that the constructed 
-payload is indeed the one that has been signed.
+payload is indeed the one that has been signed. This step is ussed to prevent
+variants of [CVE-2022-36056]. 
 
 [Sigstore: Client Spec]: https://docs.google.com/document/d/1kbhK2qyPPk8SLavHzYSDM8-Ueul9_oxIMVFuWMWKz0E/edit?usp=sharing
 [ECDSA]: https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
 [rekor]: https://github.com/sigstore/rekor
 [Braun et al.]: https://research.tue.nl/en/publications/how-to-avoid-the-breakdown-of-public-key-infrastructures-forward-
+[CVE-2022-36056]: https://github.com/sigstore/cosign/security/advisories/GHSA-8gw7-4j42-w388
