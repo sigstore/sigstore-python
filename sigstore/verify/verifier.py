@@ -43,7 +43,6 @@ from sigstore import dsse
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
-    get_signed_certificate_timestamp,
     verify_sct,
 )
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
@@ -341,12 +340,11 @@ class Verifier:
         # (2): verify the signing certificate's SCT.
         try:
             verify_sct(
-                get_signed_certificate_timestamp(cert),
                 cert,
                 [parent_cert.to_cryptography() for parent_cert in chain],
                 self._trusted_root.ct_keyring(KeyringPurpose.VERIFY),
             )
-        except (ValueError, VerificationError) as e:
+        except VerificationError as e:
             raise VerificationError(f"failed to verify SCT on signing certificate: {e}")
 
         # (3): verify the signing certificate against the Sigstore
