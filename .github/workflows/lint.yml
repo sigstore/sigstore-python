@@ -22,7 +22,8 @@ jobs:
 
       - name: deps
         run: make dev SIGSTORE_EXTRA=lint
-
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
       - name: lint
         run: make lint
 
