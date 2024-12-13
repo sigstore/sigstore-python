@@ -148,32 +148,27 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
     return issuer
 
 
-class UnexpectedSctCountException(Exception):
-    """
-    Number of percerts scts is wrong
-    """
-
-    pass
-
-
-def _get_precertificate_signed_certificate_timestamps(
+def get_signed_certificate_timestamp(
     certificate: Certificate,
-) -> PrecertificateSignedCertificateTimestamps:
-    # Try to retrieve the embedded SCTs within the cert.
+) -> SignedCertificateTimestamp:
+    """Retrieve the embedded SCT from the certificate.
+
+    Raise ValueError if certificate does not contain exactly one SCT
+    """
     try:
-        precert_scts_extension = certificate.extensions.get_extension_for_class(
+        timestamps = certificate.extensions.get_extension_for_class(
             PrecertificateSignedCertificateTimestamps
         ).value
     except ExtensionNotFound:
         raise ValueError(
-            "No PrecertificateSignedCertificateTimestamps found for the certificate"
+            "Certificate does not contain a signed certificate timestamp extension"
         )
 
-    if len(precert_scts_extension) != 1:
-        raise UnexpectedSctCountException(
-            f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
+    if len(timestamps) != 1:
+        raise ValueError(
+            f"Expected one certificate timestamp, found {len(timestamps)}."
         )
-    return precert_scts_extension
+    return timestamps[0]
 
 
 def _cert_is_ca(cert: Certificate) -> bool:

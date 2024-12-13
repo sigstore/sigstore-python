@@ -36,10 +36,7 @@ from cryptography.x509 import (
 from cryptography.x509.certificate_transparency import SignedCertificateTimestamp
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.sct import (
-    UnexpectedSctCountException,
-    _get_precertificate_signed_certificate_timestamps,
-)
+from sigstore._internal.sct import get_signed_certificate_timestamp
 from sigstore._utils import B64Str
 from sigstore.oidc import IdentityToken
 
@@ -49,14 +46,6 @@ DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
 STAGING_FULCIO_URL = "https://fulcio.sigstage.dev"
 SIGNING_CERT_ENDPOINT = "/api/v2/signingCert"
 TRUST_BUNDLE_ENDPOINT = "/api/v2/trustBundle"
-
-
-class FulcioSCTError(Exception):
-    """
-    Raised on errors when constructing a `FulcioSignedCertificateTimestamp`.
-    """
-
-    pass
 
 
 class ExpiredCertificate(Exception):
@@ -149,10 +138,8 @@ class FulcioSigningCert(_Endpoint):
         chain = [load_pem_x509_certificate(c.encode()) for c in certificates[1:]]
 
         try:
-            # The SignedCertificateTimestamp should be accessed by the index 0
-            sct = _get_precertificate_signed_certificate_timestamps(cert)[0]
-
-        except UnexpectedSctCountException as ex:
+            sct = get_signed_certificate_timestamp(cert)
+        except ValueError as ex:
             raise FulcioClientError(ex)
 
         return FulcioCertificateSigningResponse(cert, chain, sct)
