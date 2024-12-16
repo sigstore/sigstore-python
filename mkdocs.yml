@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+
+site_name: sigstore-python
+site_url: https://sigstore.github.io/sigstore-python
+repo_url: https://github.com/sigstore/sigstore-python
+site_description: sigstore-python, a Sigstore client written in Python
+repo_name: sigstore-python
+edit_uri: edit/main/docs/
+theme:
+  name: material
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/images/logo.png
+  features:
+    - content.action.edit
+    - content.code.copy
+    - header.autohide
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+  palette:
+    primary: custom
+  font:
+    text: Inter
+extra_css:
+  - stylesheets/custom.css
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Signing: signing.md
+  - Verifying: verify.md
+  - Policy: policy.md
+  - Advanced:
+      - Custom Root of Trust: advanced/custom_trust.md
+      - Offline Verification: advanced/offline.md
+  # begin-api-section
+  - API:
+      - api/index.md
+      - Models: api/models.md
+      - Errors: api/errors.md
+      - Hashes: api/hashes.md
+      - OIDC: api/oidc.md
+      - Sign: api/sign.md
+      - Verify:
+          - Policy: api/verify/policy.md
+          - Verifier: api/verify/verifier.md
+  # end-api-section
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+copyright: sigstore &copy; 2024
+plugins:
+  - search
+  - social
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            members_order: source
+            unwrap_annotated: true
+            modernize_annotations: true
+            merge_init_into_class: true
+            docstring_section_style: spacy
+            signature_crossrefs: true
+            show_symbol_type_toc: true
+            filters:
+              - '!^_'
+validation:
+  omitted_files: warn
+  unrecognized_links: warn
+  anchors: warn
+  not_found: warn
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/slack
+      link: https://sigstore.slack.com
+    - icon: fontawesome/brands/x-twitter
+      link: https://twitter.com/projectsigstore

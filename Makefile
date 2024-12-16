@@ -3,7 +3,8 @@ SHELL := /bin/bash
 PY_MODULE := sigstore
 
 ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
-	$(shell find test -name '*.py')
+	$(shell find test -name '*.py') \
+	$(shell find docs/scripts -name '*.py') \
 
 # Optionally overriden by the user, if they're using a virtual environment manager.
 VENV ?= env
@@ -67,7 +68,8 @@ lint: $(VENV)/pyvenv.cfg
 		ruff check $(ALL_PY_SRCS) && \
 		mypy $(PY_MODULE) && \
 		bandit -c pyproject.toml -r $(PY_MODULE) && \
-		interrogate --fail-under 100 -c pyproject.toml $(PY_MODULE)
+		interrogate --fail-under 100 -c pyproject.toml $(PY_MODULE) && \
+		python docs/scripts/gen_ref_pages.py --check
 
 .PHONY: reformat
 reformat: $(VENV)/pyvenv.cfg
@@ -97,7 +99,8 @@ gen-x509-testcases: $(VENV)/pyvenv.cfg
 .PHONY: doc
 doc: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
-		pdoc --output-directory html $(PY_MODULE)
+		python docs/scripts/gen_ref_pages.py --overwrite && \
+		mkdocs build --strict --site-dir html
 
 .PHONY: package
 package: $(VENV)/pyvenv.cfg
