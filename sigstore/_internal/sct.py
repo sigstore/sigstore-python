@@ -148,32 +148,28 @@ def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
     return issuer
 
 
-class UnexpectedSctCountException(Exception):
-    """
-    Number of percerts scts is wrong
-    """
-
-    pass
-
-
-def _get_precertificate_signed_certificate_timestamps(
+def _get_signed_certificate_timestamp(
     certificate: Certificate,
-) -> PrecertificateSignedCertificateTimestamps:
-    # Try to retrieve the embedded SCTs within the cert.
+) -> SignedCertificateTimestamp:
+    """Retrieve the embedded SCT from the certificate.
+
+    Raise VerificationError if certificate does not contain exactly one SCT
+    """
     try:
-        precert_scts_extension = certificate.extensions.get_extension_for_class(
+        timestamps = certificate.extensions.get_extension_for_class(
             PrecertificateSignedCertificateTimestamps
         ).value
     except ExtensionNotFound:
-        raise ValueError(
-            "No PrecertificateSignedCertificateTimestamps found for the certificate"
+        raise VerificationError(
+            "Certificate does not contain a signed certificate timestamp extension"
         )
 
-    if len(precert_scts_extension) != 1:
-        raise UnexpectedSctCountException(
-            f"Unexpected embedded SCT count in response: {len(precert_scts_extension)} != 1"
+    if len(timestamps) != 1:
+        raise VerificationError(
+            f"Expected one certificate timestamp, found {len(timestamps)}"
         )
-    return precert_scts_extension
+    sct: SignedCertificateTimestamp = timestamps[0]
+    return sct
 
 
 def _cert_is_ca(cert: Certificate) -> bool:
@@ -187,7 +183,6 @@ def _cert_is_ca(cert: Certificate) -> bool:
 
 
 def verify_sct(
-    sct: SignedCertificateTimestamp,
     cert: Certificate,
     chain: List[Certificate],
     ct_keyring: CTKeyring,
@@ -200,6 +195,8 @@ def verify_sct(
     one of the keys present in the CT keyring (i.e., the keys used by the CT
     log to sign SCTs).
     """
+
+    sct = _get_signed_certificate_timestamp(cert)
 
     issuer_key_id = None
     if sct.entry_type == LogEntryType.PRE_CERTIFICATE:
