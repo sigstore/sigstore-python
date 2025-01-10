@@ -75,7 +75,7 @@ def test_sha256_streaming(size):
 
 
 def test_load_pem_public_key_format():
-    keybytes = b"-----BEGIN PUBLIC KEY-----\n" b"bleh\n" b"-----END PUBLIC KEY-----"
+    keybytes = b"-----BEGIN PUBLIC KEY-----\nbleh\n-----END PUBLIC KEY-----"
     with pytest.raises(
         VerificationError, match="could not load PEM-formatted public key"
     ):

@@ -775,7 +775,7 @@ def _attest(args: argparse.Namespace) -> None:
         if bundle and bundle.exists() and not args.overwrite:
             _invalid_arguments(
                 args,
-                "Refusing to overwrite outputs without --overwrite: " f"{bundle}",
+                f"Refusing to overwrite outputs without --overwrite: {bundle}",
             )
         output_map[file] = SigningOutputs(bundle=bundle)
 
