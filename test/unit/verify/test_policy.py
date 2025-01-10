@@ -95,8 +95,7 @@ class TestAllOf:
         )
 
         reason = re.escape(
-            "Certificate does not contain OIDCIssuer "
-            "(1.3.6.1.4.1.57264.1.1) extension"
+            "Certificate does not contain OIDCIssuer (1.3.6.1.4.1.57264.1.1) extension"
         )
         with pytest.raises(VerificationError, match=reason):
             policy_.verify(cert_)
