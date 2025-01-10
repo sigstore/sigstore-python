@@ -489,7 +489,7 @@ class Verifier:
             signing_key = bundle.signing_certificate.public_key()
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
             signing_key.verify(
-                bundle._inner.message_signature.signature,
+                bundle._inner.message_signature.signature,  # type: ignore[union-attr]
                 hashed_input.digest,
                 ec.ECDSA(hashed_input._as_prehashed()),
             )
@@ -504,7 +504,7 @@ class Verifier:
 
         expected_body = _hashedrekord_from_parts(
             bundle.signing_certificate,
-            bundle._inner.message_signature.signature,
+            bundle._inner.message_signature.signature,  # type: ignore[union-attr]
             hashed_input,
         )
         actual_body = rekor_types.Hashedrekord.model_validate_json(

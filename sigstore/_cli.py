@@ -714,7 +714,7 @@ def _sign_common(
                 sig_output = sys.stdout
 
             signature = base64.b64encode(
-                result._inner.message_signature.signature
+                result._inner.message_signature.signature  # type: ignore[union-attr]
             ).decode()
             print(signature, file=sig_output)
             if outputs.signature is not None:

@@ -19,6 +19,7 @@ Common models shared between signing and verification.
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import typing
 from enum import Enum
@@ -466,6 +467,9 @@ class Bundle:
             Bundle.BundleType.BUNDLE_0_3_ALT,
         ):
             # For "v3" bundles, the signing certificate is the only one present.
+            if not self._inner.verification_material.certificate:
+                raise InvalidBundle("expected certificate in bundle")
+
             leaf_cert = load_der_x509_certificate(
                 self._inner.verification_material.certificate.raw_bytes
             )
@@ -473,11 +477,8 @@ class Bundle:
             # In older bundles, there is an entire pool (misleadingly called
             # a chain) of certificates, the first of which is the signing
             # certificate.
-            certs = (
-                self._inner.verification_material.x509_certificate_chain.certificates
-            )
-
-            if len(certs) == 0:
+            chain = self._inner.verification_material.x509_certificate_chain
+            if not chain or not chain.certificates:
                 raise InvalidBundle("expected non-empty certificate chain in bundle")
 
             # Per client policy in protobuf-specs: the first entry in the chain
@@ -489,7 +490,7 @@ class Bundle:
             # and intermediate CAs, so we issue warnings and not hard errors
             # in those cases.
             leaf_cert, *chain_certs = [
-                load_der_x509_certificate(cert.raw_bytes) for cert in certs
+                load_der_x509_certificate(cert.raw_bytes) for cert in chain.certificates
             ]
             if not cert_is_leaf(leaf_cert):
                 raise InvalidBundle(
@@ -589,7 +590,7 @@ class Bundle:
         return (
             self._dsse_envelope.signature
             if self._dsse_envelope
-            else self._inner.message_signature.signature
+            else self._inner.message_signature.signature  # type: ignore[union-attr]
         )
 
     @property
@@ -604,7 +605,7 @@ class Bundle:
         """
         Deserialize the given Sigstore bundle.
         """
-        inner = _Bundle().from_json(raw)
+        inner = _Bundle.from_dict(json.loads(raw))
         return cls(inner)
 
     def to_json(self) -> str:
@@ -626,7 +627,7 @@ class Bundle:
         if self._dsse_envelope:
             content = self._dsse_envelope
         else:
-            content = self._inner.message_signature
+            content = self._inner.message_signature  # type: ignore[assignment]
 
         return (self.signing_certificate, content, self.log_entry)
 
