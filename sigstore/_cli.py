@@ -1202,7 +1202,7 @@ def _fix_bundle(args: argparse.Namespace) -> None:
     # for custom Rekor instances.
     rekor = RekorClient.staging() if args.staging else RekorClient.production()
 
-    raw_bundle = RawBundle().from_json(args.bundle.read_text())
+    raw_bundle = RawBundle.from_dict(json.loads(args.bundle.read_bytes()))
 
     if len(raw_bundle.verification_material.tlog_entries) != 1:
         _fatal("unfixable bundle: must have exactly one log entry")

@@ -577,7 +577,7 @@ class Bundle:
 
         @private
         """
-        if self._inner.dsse_envelope:
+        if self._inner.is_set("dsse_envelope"):
             return dsse.Envelope(self._inner.dsse_envelope)
         return None
 
@@ -654,30 +654,31 @@ class Bundle:
         @private
         """
 
+        timestamp_verifcation_data = bundle_v1.TimestampVerificationData(
+            rfc3161_timestamps=[]
+        )
+        if signed_timestamp is not None:
+            timestamp_verifcation_data.rfc3161_timestamps.extend(
+                [
+                    Rfc3161SignedTimestamp(signed_timestamp=response.as_bytes())
+                    for response in signed_timestamp
+                ]
+            )
+
+        # Fill in the appropriate variants.
+        if isinstance(content, common_v1.MessageSignature):
+            content = {"message_signature": content}
+        else:
+            content = {"dsse_envelope": content._inner}
+
         inner = _Bundle(
             media_type=Bundle.BundleType.BUNDLE_0_3.value,
             verification_material=bundle_v1.VerificationMaterial(
                 certificate=common_v1.X509Certificate(cert.public_bytes(Encoding.DER)),
+                tlog_entries=[log_entry._to_rekor()],
+                timestamp_verification_data=timestamp_verifcation_data,
             ),
+            **content,
         )
-
-        # Fill in the appropriate variants.
-        if isinstance(content, common_v1.MessageSignature):
-            inner.message_signature = content
-        else:
-            inner.dsse_envelope = content._inner
-
-        tlog_entry = log_entry._to_rekor()
-        inner.verification_material.tlog_entries = [tlog_entry]
-
-        if signed_timestamp is not None:
-            inner.verification_material.timestamp_verification_data = (
-                bundle_v1.TimestampVerificationData(
-                    rfc3161_timestamps=[
-                        Rfc3161SignedTimestamp(signed_timestamp=response.as_bytes())
-                        for response in signed_timestamp
-                    ]
-                )
-            )
 
         return cls(inner)
