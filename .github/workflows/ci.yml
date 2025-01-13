@@ -48,6 +48,7 @@ jobs:
         run: |
           # Look at me. I am the captain now.
           sudo sysctl -w kernel.unprivileged_userns_clone=1
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
           # We use `unshare` to "un-share" the default networking namespace,
           # in effect running the tests as if the host is offline.
