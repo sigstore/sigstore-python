@@ -578,7 +578,7 @@ class Bundle:
         @private
         """
         if self._inner.is_set("dsse_envelope"):
-            return dsse.Envelope(self._inner.dsse_envelope)
+            return dsse.Envelope(self._inner.dsse_envelope)  # type: ignore[arg-type]
         return None
 
     @property
