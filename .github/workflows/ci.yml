@@ -62,19 +62,27 @@ jobs:
       - name: test
         run: make test TEST_ARGS="-vv --showlocals"
 
+      # TODO: Refactor this or remove it entirely once there's
+      # a suitable staging TSA instance.
       - name: test (timestamp-authority)
         if: ${{ matrix.conf.os == 'ubuntu-latest' }}
         run: |
-          SIGSTORE_TIMESTAMP_VERSION=$(grep "github.com/sigstore/timestamp-authority" .github/go.mod | awk '{print $3}')
+          # Fetch the latest sigstore/timestamp-authority build
+          SIGSTORE_TIMESTAMP_VERSION=$(gh api /repos/sigstore/timestamp-authority/tags --jq '.[0].name')
           wget https://github.com/sigstore/timestamp-authority/releases/download/${SIGSTORE_TIMESTAMP_VERSION}/timestamp-server-linux-amd64 -O /tmp/timestamp-server
           chmod +x /tmp/timestamp-server
+
           # Run the TSA in background
           /tmp/timestamp-server serve --port 3000 --disable-ntp-monitoring &
           export TEST_SIGSTORE_TIMESTAMP_AUTHORITY_URL="http://localhost:3000/api/v1/timestamp"
+
           # Ensure Timestamp Authority tests are not skipped by
           # having pytest show skipped tests and verifying ours are running
           make test TEST_ARGS="-m timestamp_authority -rs" | tee output
           ! grep -q "skipping test that requires a Timestamp Authority" output || (echo "ERROR: Found skip message" && exit 1)
+        env:
+          # Needed for `gh api` above.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: test (interactive)
         if: (github.event_name != 'pull_request') || !github.event.pull_request.head.repo.fork
