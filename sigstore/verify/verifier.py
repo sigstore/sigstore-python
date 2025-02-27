@@ -76,8 +76,8 @@ class Verifier:
         `rekor` is a `RekorClient` capable of connecting to a Rekor instance
         containing logs for the file(s) being verified.
 
-        `fulcio_certificate_chain` is a list of PEM-encoded X.509 certificates,
-        establishing the trust chain for the signing certificate and signature.
+        `trusted_root` is the `TrustedRoot` object containing the root of trust
+        for the verification process.
         """
         self._rekor = rekor
         self._fulcio_certificate_chain: List[X509] = [
@@ -90,6 +90,10 @@ class Verifier:
     def production(cls, *, offline: bool = False) -> Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's production-level services.
+
+        `offline` controls the Trusted Root refresh behavior: if `True`,
+        the verifier uses the Trusted Root in the local TUF cache. If `False`,
+        a TUF repository refresh is attempted.
         """
         return cls(
             rekor=RekorClient.production(),
@@ -100,6 +104,10 @@ class Verifier:
     def staging(cls, *, offline: bool = False) -> Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's staging-level services.
+
+        `offline` controls the Trusted Root refresh behavior: if `True`,
+        the verifier uses the Trusted Root in the local TUF cache. If `False`,
+        a TUF repository refresh is attempted.
         """
         return cls(
             rekor=RekorClient.staging(),
