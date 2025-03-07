@@ -87,18 +87,6 @@ class TrustUpdater:
         else:
             raise RootError
 
-        # Initialize metadata dir
-        self._metadata_dir.mkdir(parents=True, exist_ok=True)
-        tuf_root = self._metadata_dir / "root.json"
-
-        if not tuf_root.exists():
-            try:
-                root_json = read_embedded("root.json", rsrc_prefix)
-            except FileNotFoundError as e:
-                raise RootError from e
-
-            tuf_root.write_bytes(root_json)
-
         # Initialize targets cache dir
         self._targets_dir.mkdir(parents=True, exist_ok=True)
         trusted_root_target = self._targets_dir / "trusted_root.json"
@@ -121,12 +109,17 @@ class TrustUpdater:
             )
         else:
             # Initialize and update the toplevel TUF metadata
+            try:
+                root_json = read_embedded("root.json", rsrc_prefix)
+            except FileNotFoundError as e:
+                raise RootError from e
             self._updater = Updater(
                 metadata_dir=str(self._metadata_dir),
                 metadata_base_url=self._repo_url,
                 target_base_url=parse.urljoin(f"{self._repo_url}/", "targets/"),
                 target_dir=str(self._targets_dir),
                 config=UpdaterConfig(app_user_agent=f"sigstore-python/{__version__}"),
+                bootstrap=root_json,
             )
             try:
                 self._updater.refresh()

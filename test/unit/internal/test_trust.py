@@ -80,7 +80,13 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
 
     trust_root = TrustedRoot.staging()
     # metadata was "downloaded" from staging
-    expected = ["root.json", "snapshot.json", "targets.json", "timestamp.json"]
+    expected = [
+        "root.json",
+        "root_history",
+        "snapshot.json",
+        "targets.json",
+        "timestamp.json",
+    ]
     assert sorted(os.listdir(data_dir)) == expected
 
     # Expect requests of top-level metadata (and 404 for the next root version)
@@ -126,9 +132,8 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
 
     trust_root = TrustedRoot.staging(offline=True)
 
-    # Only the embedded root is in local TUF metadata, nothing is downloaded
-    expected = ["root.json"]
-    assert sorted(os.listdir(data_dir)) == expected
+    # local TUF metadata is not initialized, nothing is downloaded
+    assert not os.path.exists(data_dir)
     assert reqs == {}
     assert fail_reqs == {}
 
