@@ -98,7 +98,7 @@ AUTH_SUCCESS_HTML = """
     </script>
   </body>
 </html>
-"""  # noqa: E501
+"""
 
 
 class _OAuthFlow:
