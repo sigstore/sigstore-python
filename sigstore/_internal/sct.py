@@ -115,7 +115,7 @@ def _pack_digitally_signed(
     # Assemble a format string with the certificate length baked in and then pack the digitally
     # signed data
     # fmt: off
-    pattern = "!BBQH%dsH" % len(signed_entry)
+    pattern = f"!BBQH{len(signed_entry)}sH"
     timestamp = sct.timestamp.replace(tzinfo=timezone.utc)
     data = struct.pack(
         pattern,
