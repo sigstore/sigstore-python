@@ -138,7 +138,7 @@ class Signer:
         else:
             _logger.debug("Retrieving signed certificate...")
 
-            # Build an X.509 Certificiate Signing Request
+            # Build an X.509 Certificate Signing Request
             builder = (
                 x509.CertificateSigningRequestBuilder()
                 .subject_name(
