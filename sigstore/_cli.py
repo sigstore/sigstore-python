@@ -833,7 +833,7 @@ def _sign(args: argparse.Namespace) -> None:
             args.bundle,
         )
 
-        output_dir = args.output_directory if args.output_directory else file.parent
+        output_dir = args.output_directory or file.parent
         if output_dir.exists() and not output_dir.is_dir():
             _invalid_arguments(
                 args, f"Output directory exists and is not a directory: {output_dir}"
