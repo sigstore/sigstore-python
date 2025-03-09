@@ -17,7 +17,7 @@ Models for the predicates used in in-toto statements
 """
 
 import enum
-from typing import Any, Dict, List, Literal, Optional, TypeVar, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import (
     BaseModel,
@@ -28,6 +28,7 @@ from pydantic import (
     model_validator,
 )
 from pydantic.alias_generators import to_camel
+from typing_extensions import Self
 
 from sigstore.dsse import Digest
 
@@ -145,9 +146,6 @@ class SLSAPredicateV0_2(Predicate, _SLSAConfigBase):
 
 
 # Models for SLSA Provenance v1.0
-
-Self = TypeVar("Self", bound="ResourceDescriptor")
-
 
 class ResourceDescriptor(_SLSAConfigBase):
     """
