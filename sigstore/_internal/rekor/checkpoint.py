@@ -23,7 +23,6 @@ import re
 import struct
 import typing
 from dataclasses import dataclass
-from typing import List
 
 from pydantic import BaseModel, Field, StrictStr
 
@@ -65,7 +64,7 @@ class LogCheckpoint(BaseModel):
     origin: StrictStr
     log_size: int
     log_hash: StrictStr
-    other_content: List[str]
+    other_content: list[str]
 
     @classmethod
     def from_text(cls, text: str) -> LogCheckpoint:
@@ -229,5 +228,5 @@ def verify_checkpoint(rekor_keyring: RekorKeyring, entry: LogEntry) -> None:
     if checkpoint_hash != root_hash:
         raise VerificationError(
             "Inclusion proof contains invalid root hash signature: ",
-            f"expected {str(checkpoint_hash)} got {str(root_hash)}",
+            f"expected {checkpoint_hash} got {root_hash}",
         )

@@ -55,12 +55,10 @@ def _has_oidc_id():
         # We also skip when the repo isn't our own, since downstream
         # regression testers (e.g. PyCA Cryptography) don't necessarily
         # want to give our unit tests access to an OIDC identity.
-        if (
-            os.getenv("GITHUB_REPOSITORY") != "sigstore/sigstore-python"
-            or os.getenv("GITHUB_EVENT_NAME") == "pull_request"
-        ):
-            return False
-        return True
+        return (
+            os.getenv("GITHUB_REPOSITORY") == "sigstore/sigstore-python"
+            and os.getenv("GITHUB_EVENT_NAME") != "pull_request"
+        )
     except AmbientCredentialError:
         # If ambient credential detection raises, then we *are* in an ambient
         # environment but one that's been configured incorrectly. We

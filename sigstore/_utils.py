@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import sys
-from typing import IO, NewType, Type, Union
+from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -45,7 +45,7 @@ else:
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
-PublicKeyTypes = Union[Type[rsa.RSAPublicKey], Type[ec.EllipticCurvePublicKey]]
+PublicKeyTypes = Union[type[rsa.RSAPublicKey], type[ec.EllipticCurvePublicKey]]
 
 HexStr = NewType("HexStr", str)
 """

@@ -43,6 +43,7 @@ print(result)
 ```
 """
 
+from sigstore.verify import policy, verifier
 from sigstore.verify.verifier import Verifier
 
 __all__ = [

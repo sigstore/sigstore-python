@@ -114,7 +114,7 @@ class TrustUpdater:
         _logger.debug(f"TUF metadata: {self._metadata_dir}")
         _logger.debug(f"TUF targets cache: {self._targets_dir}")
 
-        self._updater: None | Updater = None
+        self._updater: Updater | None = None
         if offline:
             _logger.warning(
                 "TUF repository is loaded in offline mode; updates will not be performed"

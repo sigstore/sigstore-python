@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import pytest
 
@@ -22,14 +22,14 @@ from sigstore.verify.policy import UnsafeNoOp
 
 
 def get_cli_params(
-    artifact_paths: List[Path],
+    artifact_paths: list[Path],
     overwrite: bool = False,
     no_default_files: bool = False,
     output_directory: Optional[Path] = None,
     bundle_path: Optional[Path] = None,
     signature_path: Optional[Path] = None,
     certificate_path: Optional[Path] = None,
-) -> List[str]:
+) -> list[str]:
     cli_params = ["--staging", "sign"]
     if output_directory is not None:
         cli_params.extend(["--output-directory", str(output_directory)])
@@ -77,7 +77,7 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration)
 
     captures = capsys.readouterr()
     assert captures.out.endswith(
-        f"Sigstore bundle written to {str(expected_output_bundle)}\n"
+        f"Sigstore bundle written to {expected_output_bundle}\n"
     )
 
 
@@ -104,7 +104,7 @@ def test_sign_success_custom_outputs(capsys, sigstore, asset_integration, tmp_pa
 
     captures = capsys.readouterr()
     assert captures.out.endswith(
-        f"Signature written to {str(output_signature)}\nCertificate written to {str(output_cert)}\nSigstore bundle written to {str(output_bundle)}\n"
+        f"Signature written to {output_signature}\nCertificate written to {output_cert}\nSigstore bundle written to {output_bundle}\n"
     )
 
 
@@ -125,7 +125,7 @@ def test_sign_success_custom_output_dir(capsys, sigstore, asset_integration, tmp
 
     captures = capsys.readouterr()
     assert captures.out.endswith(
-        f"Sigstore bundle written to {str(expected_output_bundle)}\n"
+        f"Sigstore bundle written to {expected_output_bundle}\n"
     )
 
 
@@ -151,7 +151,7 @@ def test_sign_success_no_default_files(capsys, sigstore, asset_integration, tmp_
 
     captures = capsys.readouterr()
     assert captures.out.endswith(
-        f"Signature written to {str(output_signature)}\nCertificate written to {str(output_cert)}\n"
+        f"Signature written to {output_signature}\nCertificate written to {output_cert}\n"
     )
 
 
@@ -189,7 +189,7 @@ def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration):
 
     captures = capsys.readouterr()
     assert captures.err.endswith(
-        f"Refusing to overwrite outputs without --overwrite: {str(expected_output_bundle)}\n"
+        f"Refusing to overwrite outputs without --overwrite: {expected_output_bundle}\n"
     )
 
     expected_output_bundle.unlink()

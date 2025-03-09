@@ -34,7 +34,7 @@ class TestLogEntry:
         with pytest.raises(ValueError, match=r"inclusion_proof"):
             LogEntry(
                 uuid="fake",
-                body=b64encode("fake".encode()),
+                body=b64encode(b"fake"),
                 integrated_time=0,
                 log_id="1234",
                 log_index=1,

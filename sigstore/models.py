@@ -23,7 +23,7 @@ import logging
 import typing
 from enum import Enum
 from textwrap import dedent
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 import rfc8785
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -87,7 +87,7 @@ class LogInclusionProof(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     checkpoint: StrictStr = Field(..., alias="checkpoint")
-    hashes: List[StrictStr] = Field(..., alias="hashes")
+    hashes: list[StrictStr] = Field(..., alias="hashes")
     log_index: StrictInt = Field(..., alias="logIndex")
     root_hash: StrictStr = Field(..., alias="rootHash")
     tree_size: StrictInt = Field(..., alias="treeSize")
@@ -623,10 +623,7 @@ class Bundle:
         """
 
         content: common_v1.MessageSignature | dsse.Envelope
-        if self._dsse_envelope:
-            content = self._dsse_envelope
-        else:
-            content = self._inner.message_signature
+        content = self._dsse_envelope or self._inner.message_signature
 
         return (self.signing_certificate, content, self.log_entry)
 
@@ -647,7 +644,7 @@ class Bundle:
         cert: Certificate,
         content: common_v1.MessageSignature | dsse.Envelope,
         log_entry: LogEntry,
-        signed_timestamp: Optional[List[TimeStampResponse]] = None,
+        signed_timestamp: Optional[list[TimeStampResponse]] = None,
     ) -> Bundle:
         """
         @private

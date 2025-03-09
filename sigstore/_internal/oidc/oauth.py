@@ -26,7 +26,8 @@ import os
 import threading
 import urllib.parse
 import uuid
-from typing import Any, Dict, List, Optional, cast
+from types import TracebackType
+from typing import Any, Optional, cast
 
 from id import IdentityError
 
@@ -97,7 +98,7 @@ AUTH_SUCCESS_HTML = """
     </script>
   </body>
 </html>
-"""  # noqa: E501
+"""
 
 
 class _OAuthFlow:
@@ -118,7 +119,12 @@ class _OAuthFlow:
 
         return self._server
 
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self._server.shutdown()
         self._server_thread.join()
 
@@ -200,7 +206,7 @@ class _OAuthSession:
         params = self._auth_params(redirect_uri)
         return f"{self._issuer.oidc_config.authorization_endpoint}?{urllib.parse.urlencode(params)}"
 
-    def _auth_params(self, redirect_uri: str) -> Dict[str, Any]:
+    def _auth_params(self, redirect_uri: str) -> dict[str, Any]:
         return {
             "response_type": "code",
             "client_id": self._client_id,
@@ -218,7 +224,7 @@ class _OAuthRedirectServer(http.server.HTTPServer):
     def __init__(self, client_id: str, client_secret: str, issuer: Issuer) -> None:
         super().__init__(("localhost", 0), _OAuthRedirectHandler)
         self.oauth_session = _OAuthSession(client_id, client_secret, issuer)
-        self.auth_response: Optional[Dict[str, List[str]]] = None
+        self.auth_response: Optional[dict[str, list[str]]] = None
         self._is_out_of_band = False
 
     @property
