@@ -18,11 +18,12 @@ Client trust configuration and trust root management for sigstore-python.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, Iterable, NewType
+from typing import ClassVar, NewType
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature

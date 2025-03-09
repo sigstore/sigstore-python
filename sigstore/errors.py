@@ -17,8 +17,9 @@ Exceptions.
 """
 
 import sys
+from collections.abc import Mapping
 from logging import Logger
-from typing import Any, Mapping
+from typing import Any
 
 
 class Error(Exception):

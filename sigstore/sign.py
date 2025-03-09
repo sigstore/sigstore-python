@@ -40,9 +40,10 @@ from __future__ import annotations
 
 import base64
 import logging
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Iterator, Optional
+from typing import Optional
 
 import cryptography.x509 as x509
 import rekor_types
