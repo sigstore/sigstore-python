@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import pytest
 
@@ -22,14 +22,14 @@ from sigstore.verify.policy import UnsafeNoOp
 
 
 def get_cli_params(
-    artifact_paths: List[Path],
+    artifact_paths: list[Path],
     overwrite: bool = False,
     no_default_files: bool = False,
     output_directory: Optional[Path] = None,
     bundle_path: Optional[Path] = None,
     signature_path: Optional[Path] = None,
     certificate_path: Optional[Path] = None,
-) -> List[str]:
+) -> list[str]:
     cli_params = ["--staging", "sign"]
     if output_directory is not None:
         cli_params.extend(["--output-directory", str(output_directory)])

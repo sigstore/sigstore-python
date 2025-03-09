@@ -17,7 +17,7 @@ Models for the predicates used in in-toto statements
 """
 
 import enum
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from pydantic import (
     BaseModel,
@@ -44,7 +44,7 @@ class PredicateType(str, enum.Enum):
 
 # Common models
 SourceDigest = Literal["sha1", "gitCommit"]
-DigestSetSource = RootModel[Dict[Union[Digest, SourceDigest], str]]
+DigestSetSource = RootModel[dict[Union[Digest, SourceDigest], str]]
 """
 Same as `dsse.DigestSet` but with `sha1` added.
 
@@ -97,8 +97,8 @@ class Invocation(_SLSAConfigBase):
     """
 
     config_source: Optional[ConfigSource] = None
-    parameters: Optional[Dict[str, Any]] = None
-    environment: Optional[Dict[str, Any]] = None
+    parameters: Optional[dict[str, Any]] = None
+    environment: Optional[dict[str, Any]] = None
 
 
 class Completeness(_SLSAConfigBase):
@@ -141,8 +141,8 @@ class SLSAPredicateV0_2(Predicate, _SLSAConfigBase):
     build_type: StrictStr
     invocation: Optional[Invocation] = None
     metadata: Optional[Metadata] = None
-    build_config: Optional[Dict[str, Any]] = None
-    materials: Optional[List[Material]] = None
+    build_config: Optional[dict[str, Any]] = None
+    materials: Optional[list[Material]] = None
 
 
 # Models for SLSA Provenance v1.0
@@ -158,7 +158,7 @@ class ResourceDescriptor(_SLSAConfigBase):
     content: Optional[StrictBytes] = None
     download_location: Optional[StrictStr] = None
     media_type: Optional[StrictStr] = None
-    annotations: Optional[Dict[StrictStr, Any]] = None
+    annotations: Optional[dict[StrictStr, Any]] = None
 
     @model_validator(mode="after")
     def check_required_fields(self: Self) -> Self:
@@ -179,8 +179,8 @@ class BuilderV1_0(_SLSAConfigBase):
     """
 
     id: StrictStr
-    builder_dependencies: Optional[List[ResourceDescriptor]] = None
-    version: Optional[Dict[StrictStr, StrictStr]] = None
+    builder_dependencies: Optional[list[ResourceDescriptor]] = None
+    version: Optional[dict[StrictStr, StrictStr]] = None
 
 
 class BuildMetadata(_SLSAConfigBase):
@@ -200,7 +200,7 @@ class RunDetails(_SLSAConfigBase):
 
     builder: BuilderV1_0
     metadata: Optional[BuildMetadata] = None
-    byproducts: Optional[List[ResourceDescriptor]] = None
+    byproducts: Optional[list[ResourceDescriptor]] = None
 
 
 class BuildDefinition(_SLSAConfigBase):
@@ -209,9 +209,9 @@ class BuildDefinition(_SLSAConfigBase):
     """
 
     build_type: StrictStr
-    external_parameters: Dict[StrictStr, Any]
-    internal_parameters: Optional[Dict[str, Any]] = None
-    resolved_dependencies: Optional[List[ResourceDescriptor]] = None
+    external_parameters: dict[StrictStr, Any]
+    internal_parameters: Optional[dict[str, Any]] = None
+    resolved_dependencies: Optional[list[ResourceDescriptor]] = None
 
 
 class SLSAPredicateV1_0(Predicate, _SLSAConfigBase):

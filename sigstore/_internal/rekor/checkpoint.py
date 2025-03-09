@@ -23,7 +23,6 @@ import re
 import struct
 import typing
 from dataclasses import dataclass
-from typing import List
 
 from pydantic import BaseModel, Field, StrictStr
 
@@ -65,7 +64,7 @@ class LogCheckpoint(BaseModel):
     origin: StrictStr
     log_size: int
     log_hash: StrictStr
-    other_content: List[str]
+    other_content: list[str]
 
     @classmethod
     def from_text(cls, text: str) -> LogCheckpoint:

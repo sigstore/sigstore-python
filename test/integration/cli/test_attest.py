@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import pytest
 
@@ -28,7 +28,7 @@ def get_cli_params(
     artifact_path: Path,
     overwrite: bool = False,
     bundle_path: Optional[Path] = None,
-) -> List[str]:
+) -> list[str]:
     cli_params = [
         "--staging",
         "attest",

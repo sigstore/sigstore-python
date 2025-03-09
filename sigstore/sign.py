@@ -42,7 +42,7 @@ import base64
 import logging
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Iterator, List, Optional
+from typing import Iterator, Optional
 
 import cryptography.x509 as x509
 import rekor_types
@@ -306,7 +306,7 @@ class SigningContext:
         fulcio: FulcioClient,
         rekor: RekorClient,
         trusted_root: TrustedRoot,
-        tsa_clients: List[TimestampAuthorityClient] | None = None,
+        tsa_clients: list[TimestampAuthorityClient] | None = None,
     ):
         """
         Create a new `SigningContext`.

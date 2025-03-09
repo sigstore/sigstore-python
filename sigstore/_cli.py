@@ -22,7 +22,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, NoReturn, Optional, TextIO, Union
+from typing import Any, NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -98,7 +98,7 @@ VerificationMaterials: TypeAlias = Union[
 ]
 
 # Map of inputs -> outputs for signing operations
-OutputMap: TypeAlias = Dict[Path, SigningOutputs]
+OutputMap: TypeAlias = dict[Path, SigningOutputs]
 
 
 def _fatal(message: str) -> NoReturn:

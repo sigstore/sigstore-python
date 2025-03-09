@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, Iterable, List, NewType
+from typing import ClassVar, Iterable, NewType
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature
@@ -159,7 +159,7 @@ class Keyring:
     Represents a set of keys, each of which is a potentially valid verifier.
     """
 
-    def __init__(self, public_keys: List[_PublicKey] = []):
+    def __init__(self, public_keys: list[_PublicKey] = []):
         """
         Create a new `Keyring`, with `keys` as the initial set of verifying keys.
         """

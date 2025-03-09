@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import logging
 from datetime import datetime, timezone
-from typing import List, cast
+from typing import cast
 
 import rekor_types
 from cryptography.exceptions import InvalidSignature
@@ -80,7 +80,7 @@ class Verifier:
         for the verification process.
         """
         self._rekor = rekor
-        self._fulcio_certificate_chain: List[X509] = [
+        self._fulcio_certificate_chain: list[X509] = [
             X509.from_cryptography(parent_cert)
             for parent_cert in trusted_root.get_fulcio_certs()
         ]
@@ -174,7 +174,7 @@ class Verifier:
 
     def _verify_timestamp_authority(
         self, bundle: Bundle
-    ) -> List[TimestampVerificationResult]:
+    ) -> list[TimestampVerificationResult]:
         """
         Verify that the given bundle has been timestamped by a trusted timestamp authority
         and that the timestamp is valid.
@@ -205,7 +205,7 @@ class Verifier:
 
         return verified_timestamps
 
-    def _establish_time(self, bundle: Bundle) -> List[TimestampVerificationResult]:
+    def _establish_time(self, bundle: Bundle) -> list[TimestampVerificationResult]:
         """
         Establish the time for bundle verification.
 
@@ -253,7 +253,7 @@ class Verifier:
 
     def _verify_chain_at_time(
         self, certificate: X509, timestamp_result: TimestampVerificationResult
-    ) -> List[X509]:
+    ) -> list[X509]:
         """
         Verify the validity of the certificate chain at the given time.
 

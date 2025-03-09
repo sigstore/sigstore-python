@@ -27,7 +27,6 @@ import base64
 import hashlib
 import struct
 import typing
-from typing import List, Tuple
 
 from sigstore._utils import HexStr
 from sigstore.errors import VerificationError
@@ -40,7 +39,7 @@ _LEAF_HASH_PREFIX = 0
 _NODE_HASH_PREFIX = 1
 
 
-def _decomp_inclusion_proof(index: int, size: int) -> Tuple[int, int]:
+def _decomp_inclusion_proof(index: int, size: int) -> tuple[int, int]:
     """
     Breaks down inclusion proof for a leaf at the specified |index| in a tree of the specified
     |size| into 2 components. The splitting point between them is where paths to leaves |index| and
@@ -55,7 +54,7 @@ def _decomp_inclusion_proof(index: int, size: int) -> Tuple[int, int]:
     return inner, border
 
 
-def _chain_inner(seed: bytes, hashes: List[str], log_index: int) -> bytes:
+def _chain_inner(seed: bytes, hashes: list[str], log_index: int) -> bytes:
     """
     Computes a subtree hash for a node on or below the tree's right border. Assumes |proof| hashes
     are ordered from lower levels to upper, and |seed| is the initial subtree/leaf hash on the path
@@ -71,7 +70,7 @@ def _chain_inner(seed: bytes, hashes: List[str], log_index: int) -> bytes:
     return seed
 
 
-def _chain_border_right(seed: bytes, hashes: List[str]) -> bytes:
+def _chain_border_right(seed: bytes, hashes: list[str]) -> bytes:
     """
     Chains proof hashes along tree borders. This differs from inner chaining because |proof|
     contains only left-side subtree hashes.
