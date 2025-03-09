@@ -26,6 +26,7 @@ import os
 import threading
 import urllib.parse
 import uuid
+from types import TracebackType
 from typing import Any, Dict, List, Optional, cast
 
 from id import IdentityError
@@ -118,7 +119,12 @@ class _OAuthFlow:
 
         return self._server
 
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         self._server.shutdown()
         self._server_thread.join()
 
