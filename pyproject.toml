@@ -121,6 +121,9 @@ plugins = ["pydantic.mypy"]
 exclude_dirs = ["./test"]
 
 [tool.ruff.lint]
-# TODO: Enable "UP" here once Pydantic allows us to:
-# See: https://github.com/pydantic/pydantic/issues/4146
-extend-select = ["I"]
+extend-select = ["I", "UP"]
+ignore = [
+  "UP007",  # https://github.com/pydantic/pydantic/issues/4146
+  "UP011",
+  "UP015",
+]
