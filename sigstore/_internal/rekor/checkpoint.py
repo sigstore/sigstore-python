@@ -228,5 +228,5 @@ def verify_checkpoint(rekor_keyring: RekorKeyring, entry: LogEntry) -> None:
     if checkpoint_hash != root_hash:
         raise VerificationError(
             "Inclusion proof contains invalid root hash signature: ",
-            f"expected {str(checkpoint_hash)} got {str(root_hash)}",
+            f"expected {checkpoint_hash} got {root_hash}",
         )

@@ -81,7 +81,7 @@ def test_attest_success_default_output_bundle(
 
     captures = capsys.readouterr()
     assert captures.out.endswith(
-        f"Sigstore bundle written to {str(expected_output_bundle)}\n"
+        f"Sigstore bundle written to {expected_output_bundle}\n"
     )
 
 
@@ -108,7 +108,7 @@ def test_attest_success_custom_output_bundle(
 
     assert output_bundle.exists()
     captures = capsys.readouterr()
-    assert captures.out.endswith(f"Sigstore bundle written to {str(output_bundle)}\n")
+    assert captures.out.endswith(f"Sigstore bundle written to {output_bundle}\n")
 
 
 @pytest.mark.staging
@@ -142,14 +142,14 @@ def test_attest_overwrite_existing_bundle(
     assert output_bundle.exists()
     captures = capsys.readouterr()
     assert captures.err.endswith(
-        f"Refusing to overwrite outputs without --overwrite: {str(output_bundle)}\n"
+        f"Refusing to overwrite outputs without --overwrite: {output_bundle}\n"
     )
 
     cli_params.append("--overwrite")
     sigstore(*cli_params)
     assert output_bundle.exists()
 
-    assert captures.out.endswith(f"Sigstore bundle written to {str(output_bundle)}\n")
+    assert captures.out.endswith(f"Sigstore bundle written to {output_bundle}\n")
 
 
 def test_attest_invalid_predicate_type(capsys, sigstore, asset_integration, tmp_path):

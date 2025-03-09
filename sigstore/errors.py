@@ -107,7 +107,7 @@ class MetadataError(Error):
 
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""
-        return f"""{str(self)}."""
+        return f"""{self}."""
 
 
 class RootError(Error):
