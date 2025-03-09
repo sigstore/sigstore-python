@@ -44,7 +44,7 @@ the integrity and transparency of the signing process.
 
 !!! warning
 
-    This step is performed before the `Timestamping` step in the worfklow.
+    This step is performed before the `Timestamping` step in the workflow.
 
 ### Signing Choices
 

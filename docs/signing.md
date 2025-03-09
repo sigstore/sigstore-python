@@ -41,7 +41,7 @@ namely the Fulcio's supported identity providers and the claims expected within 
 
 !!! note
 
-    The examples in the section belows are using ambient credential detection.
+    The examples in the section below are using ambient credential detection.
     When no credentials are detected, it opens a browser to perform an interactive OAuth2 authentication flow.
 
 ## Signing an artifact

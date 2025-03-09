@@ -57,7 +57,7 @@ class LogCheckpoint(BaseModel):
     - an origin, e.g. "rekor.sigstage.dev - 8050909264565447525"
     - the size of the log,
     - the hash of the log,
-    - and any optional ancillary contants, e.g. "Timestamp: 1679349379012118479"
+    - and any optional ancillary constants, e.g. "Timestamp: 1679349379012118479"
 
     See: <https://github.com/transparency-dev/formats/blob/main/log/README.md>
     """

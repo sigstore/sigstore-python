@@ -99,7 +99,7 @@ def _pack_digitally_signed(
     blob, one that forms the signature body of the "digitally-signed" struct
     for an SCT.
 
-    The format of the digitaly signed data is described in IETF's RFC 6962.
+    The format of the digitally signed data is described in IETF's RFC 6962.
     """
 
     # No extensions are currently specified, so we treat the presence
