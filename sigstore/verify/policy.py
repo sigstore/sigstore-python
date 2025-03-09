@@ -94,10 +94,8 @@ class _SingleX509ExtPolicy(ABC):
             ext = cert.extensions.get_extension_for_oid(self.oid).value
         except ExtensionNotFound:
             raise VerificationError(
-                (
-                    f"Certificate does not contain {self.__class__.__name__} "
-                    f"({self.oid.dotted_string}) extension"
-                )
+                f"Certificate does not contain {self.__class__.__name__} "
+                f"({self.oid.dotted_string}) extension"
             )
 
         # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
@@ -105,10 +103,8 @@ class _SingleX509ExtPolicy(ABC):
         ext_value = ext.value.decode()  # type: ignore[attr-defined]
         if ext_value != self._value:
             raise VerificationError(
-                (
-                    f"Certificate's {self.__class__.__name__} does not match "
-                    f"(got '{ext_value}', expected '{self._value}')"
-                )
+                f"Certificate's {self.__class__.__name__} does not match "
+                f"(got '{ext_value}', expected '{self._value}')"
             )
 
 
@@ -129,10 +125,8 @@ class _SingleX509ExtPolicyV2(_SingleX509ExtPolicy):
             ext = cert.extensions.get_extension_for_oid(self.oid).value
         except ExtensionNotFound:
             raise VerificationError(
-                (
-                    f"Certificate does not contain {self.__class__.__name__} "
-                    f"({self.oid.dotted_string}) extension"
-                )
+                f"Certificate does not contain {self.__class__.__name__} "
+                f"({self.oid.dotted_string}) extension"
             )
 
         # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
@@ -140,10 +134,8 @@ class _SingleX509ExtPolicyV2(_SingleX509ExtPolicy):
         ext_value = der_decode(ext.value, UTF8String)[0].decode()  # type: ignore[attr-defined]
         if ext_value != self._value:
             raise VerificationError(
-                (
-                    f"Certificate's {self.__class__.__name__} does not match "
-                    f"(got {ext_value}, expected {self._value})"
-                )
+                f"Certificate's {self.__class__.__name__} does not match "
+                f"(got {ext_value}, expected {self._value})"
             )
 
 

@@ -895,7 +895,7 @@ def _collect_verification_state(
         )
 
     # Fail if digest input is not used with `--bundle` or both `--certificate` and `--signature`.
-    if any((isinstance(x, Hashed) for x in args.files_or_digest)):
+    if any(isinstance(x, Hashed) for x in args.files_or_digest):
         if not args.bundle and not (args.certificate and args.signature):
             _invalid_arguments(
                 args,
