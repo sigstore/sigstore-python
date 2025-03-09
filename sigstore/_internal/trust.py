@@ -182,10 +182,7 @@ class Keyring:
         """
 
         key = self._keyring.get(key_id)
-        if key is not None:
-            candidates = [key]
-        else:
-            candidates = list(self._keyring.values())
+        candidates = [key] if key is not None else list(self._keyring.values())
 
         # Try to verify each candidate key. In the happy case, this will
         # be exactly one candidate.

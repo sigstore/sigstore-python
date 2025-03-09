@@ -623,10 +623,7 @@ class Bundle:
         """
 
         content: common_v1.MessageSignature | dsse.Envelope
-        if self._dsse_envelope:
-            content = self._dsse_envelope
-        else:
-            content = self._inner.message_signature
+        content = self._dsse_envelope or self._inner.message_signature
 
         return (self.signing_certificate, content, self.log_entry)
 

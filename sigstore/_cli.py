@@ -1200,10 +1200,7 @@ def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
 def _fix_bundle(args: argparse.Namespace) -> None:
     # NOTE: We could support `--trusted-root` here in the future,
     # for custom Rekor instances.
-    if args.staging:
-        rekor = RekorClient.staging()
-    else:
-        rekor = RekorClient.production()
+    rekor = RekorClient.staging() if args.staging else RekorClient.production()
 
     raw_bundle = RawBundle().from_json(args.bundle.read_text())
 
