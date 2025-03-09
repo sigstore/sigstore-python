@@ -147,6 +147,7 @@ class SLSAPredicateV0_2(Predicate, _SLSAConfigBase):
 
 # Models for SLSA Provenance v1.0
 
+
 class ResourceDescriptor(_SLSAConfigBase):
     """
     The ResourceDescriptor object defined defined by the in-toto attestations spec
