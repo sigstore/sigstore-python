@@ -43,7 +43,7 @@ class PredicateType(str, enum.Enum):
 
 
 # Common models
-SourceDigest = Union[Literal["sha1"], Literal["gitCommit"]]
+SourceDigest = Literal["sha1", "gitCommit"]
 DigestSetSource = RootModel[Dict[Union[Digest, SourceDigest], str]]
 """
 Same as `dsse.DigestSet` but with `sha1` added.

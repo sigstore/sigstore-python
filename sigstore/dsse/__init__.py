@@ -19,7 +19,7 @@ Functionality for building and manipulating in-toto Statements and DSSE envelope
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -34,14 +34,7 @@ from sigstore.hashes import Hashed
 
 _logger = logging.getLogger(__name__)
 
-Digest = Union[
-    Literal["sha256"],
-    Literal["sha384"],
-    Literal["sha512"],
-    Literal["sha3_256"],
-    Literal["sha3_384"],
-    Literal["sha3_512"],
-]
+Digest = Literal["sha256", "sha384", "sha512", "sha3_256", "sha3_384", "sha3_512"]
 """
 NOTE: in-toto's DigestSet contains all kinds of hash algorithms that
 we intentionally do not support. This model is limited to common members of the
