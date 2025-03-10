@@ -108,6 +108,7 @@ ignore_missing_imports = true
 no_implicit_optional = true
 show_error_codes = true
 sqlite_cache = true
+strict = true
 strict_equality = true
 warn_no_return = true
 warn_redundant_casts = true
