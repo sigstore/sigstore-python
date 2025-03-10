@@ -38,10 +38,9 @@ def main(args: argparse.Namespace) -> None:
         if any(part.startswith("_") for part in module_path.parts):
             continue
 
-        if args.check:
-            if not full_doc_path.is_file():
-                print(f"File {full_doc_path} does not exist.", file=sys.stderr)
-                sys.exit(1)
+        if args.check and not full_doc_path.is_file():
+            print(f"File {full_doc_path} does not exist.", file=sys.stderr)
+            sys.exit(1)
 
         full_doc_path.parent.mkdir(parents=True, exist_ok=True)
         with full_doc_path.open("w") as f:
