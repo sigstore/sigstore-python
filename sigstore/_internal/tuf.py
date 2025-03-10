@@ -25,7 +25,7 @@ from urllib import parse
 
 import platformdirs
 from tuf.api import exceptions as TUFExceptions
-from tuf.ngclient import Updater, UpdaterConfig
+from tuf.ngclient import Updater, UpdaterConfig  # type: ignore[attr-defined]
 
 from sigstore import __version__
 from sigstore._utils import read_embedded
