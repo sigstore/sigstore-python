@@ -19,7 +19,7 @@ Functionality for building and manipulating in-toto Statements and DSSE envelope
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -34,14 +34,7 @@ from sigstore.hashes import Hashed
 
 _logger = logging.getLogger(__name__)
 
-Digest = Union[
-    Literal["sha256"],
-    Literal["sha384"],
-    Literal["sha512"],
-    Literal["sha3_256"],
-    Literal["sha3_384"],
-    Literal["sha3_512"],
-]
+Digest = Literal["sha256", "sha384", "sha512", "sha3_256", "sha3_384", "sha3_512"]
 """
 NOTE: in-toto's DigestSet contains all kinds of hash algorithms that
 we intentionally do not support. This model is limited to common members of the
@@ -50,7 +43,7 @@ SHA-2 and SHA-3 family that are at least as strong as SHA-256.
 See: <https://github.com/in-toto/attestation/blob/main/spec/v1/digest_set.md>
 """
 
-DigestSet = RootModel[Dict[Digest, str]]
+DigestSet = RootModel[dict[Digest, str]]
 """
 An internal validation model for in-toto subject digest sets.
 """
@@ -73,9 +66,9 @@ class _Statement(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     type_: Literal["https://in-toto.io/Statement/v1"] = Field(..., alias="_type")
-    subjects: List[Subject] = Field(..., min_length=1, alias="subject")
+    subjects: list[Subject] = Field(..., min_length=1, alias="subject")
     predicate_type: StrictStr = Field(..., alias="predicateType")
-    predicate: Optional[Dict[str, Any]] = Field(None, alias="predicate")
+    predicate: Optional[dict[str, Any]] = Field(None, alias="predicate")
 
 
 class Statement:
@@ -141,9 +134,9 @@ class StatementBuilder:
 
     def __init__(
         self,
-        subjects: Optional[List[Subject]] = None,
+        subjects: Optional[list[Subject]] = None,
         predicate_type: Optional[str] = None,
-        predicate: Optional[Dict[str, Any]] = None,
+        predicate: Optional[dict[str, Any]] = None,
     ):
         """
         Create a new `StatementBuilder`.
