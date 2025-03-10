@@ -47,7 +47,7 @@ class RekorLogInfo:
     tree_size: int
     signed_tree_head: str
     tree_id: str
-    raw_data: dict
+    raw_data: dict[str, Any]
 
     @classmethod
     def from_response(cls, dict_: dict[str, Any]) -> RekorLogInfo:
