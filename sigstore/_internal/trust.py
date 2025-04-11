@@ -333,8 +333,8 @@ class TrustedRoot:
         """Return keyring with keys for Rekor."""
 
         keys: list[_PublicKey] = list(self._get_tlog_keys(self._inner.tlogs, purpose))
-        if len(keys) != 1:
-            raise MetadataError("Did not find one Rekor key in trusted root")
+        if len(keys) == 0:
+            raise MetadataError("Did not find any Rekor keys in trusted root")
         return RekorKeyring(Keyring(keys))
 
     def ct_keyring(self, purpose: KeyringPurpose) -> CTKeyring:
