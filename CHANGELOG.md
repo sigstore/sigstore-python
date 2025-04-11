@@ -8,6 +8,10 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+* Fixed issue where a trust root with multiple rekor keys was not considered valid:
+  Now any rekor key listed in the trust root is considered good to verify entries
+  [#1350](https://github.com/sigstore/sigstore-python/pull/1350)
+
 ## [3.6.1]
 
 ### Fixed
