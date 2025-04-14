@@ -22,7 +22,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, NoReturn, Optional, TextIO, Union
+from typing import Any, NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -98,7 +98,7 @@ VerificationMaterials: TypeAlias = Union[
 ]
 
 # Map of inputs -> outputs for signing operations
-OutputMap: TypeAlias = Dict[Path, SigningOutputs]
+OutputMap: TypeAlias = dict[Path, SigningOutputs]
 
 
 def _fatal(message: str) -> NoReturn:
@@ -200,7 +200,7 @@ def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
 
 
 def _add_shared_oidc_options(
-    group: Union[argparse._ArgumentGroup, argparse.ArgumentParser],
+    group: argparse._ArgumentGroup | argparse.ArgumentParser,
 ) -> None:
     """
     Common OIDC options, shared between `sigstore sign` and `sigstore get-identity-token`.
@@ -833,7 +833,7 @@ def _sign(args: argparse.Namespace) -> None:
             args.bundle,
         )
 
-        output_dir = args.output_directory if args.output_directory else file.parent
+        output_dir = args.output_directory or file.parent
         if output_dir.exists() and not output_dir.is_dir():
             _invalid_arguments(
                 args, f"Output directory exists and is not a directory: {output_dir}"
@@ -895,7 +895,7 @@ def _collect_verification_state(
         )
 
     # Fail if digest input is not used with `--bundle` or both `--certificate` and `--signature`.
-    if any((isinstance(x, Hashed) for x in args.files_or_digest)):
+    if any(isinstance(x, Hashed) for x in args.files_or_digest):
         if not args.bundle and not (args.certificate and args.signature):
             _invalid_arguments(
                 args,
@@ -1200,10 +1200,7 @@ def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
 def _fix_bundle(args: argparse.Namespace) -> None:
     # NOTE: We could support `--trusted-root` here in the future,
     # for custom Rekor instances.
-    if args.staging:
-        rekor = RekorClient.staging()
-    else:
-        rekor = RekorClient.production()
+    rekor = RekorClient.staging() if args.staging else RekorClient.production()
 
     raw_bundle = RawBundle.from_dict(json.loads(args.bundle.read_bytes()))
 

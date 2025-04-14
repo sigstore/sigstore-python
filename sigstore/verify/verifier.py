@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import logging
 from datetime import datetime, timezone
-from typing import List, cast
+from typing import cast
 
 import rekor_types
 from cryptography.exceptions import InvalidSignature
@@ -76,11 +76,11 @@ class Verifier:
         `rekor` is a `RekorClient` capable of connecting to a Rekor instance
         containing logs for the file(s) being verified.
 
-        `fulcio_certificate_chain` is a list of PEM-encoded X.509 certificates,
-        establishing the trust chain for the signing certificate and signature.
+        `trusted_root` is the `TrustedRoot` object containing the root of trust
+        for the verification process.
         """
         self._rekor = rekor
-        self._fulcio_certificate_chain: List[X509] = [
+        self._fulcio_certificate_chain: list[X509] = [
             X509.from_cryptography(parent_cert)
             for parent_cert in trusted_root.get_fulcio_certs()
         ]
@@ -90,6 +90,10 @@ class Verifier:
     def production(cls, *, offline: bool = False) -> Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's production-level services.
+
+        `offline` controls the Trusted Root refresh behavior: if `True`,
+        the verifier uses the Trusted Root in the local TUF cache. If `False`,
+        a TUF repository refresh is attempted.
         """
         return cls(
             rekor=RekorClient.production(),
@@ -100,6 +104,10 @@ class Verifier:
     def staging(cls, *, offline: bool = False) -> Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's staging-level services.
+
+        `offline` controls the Trusted Root refresh behavior: if `True`,
+        the verifier uses the Trusted Root in the local TUF cache. If `False`,
+        a TUF repository refresh is attempted.
         """
         return cls(
             rekor=RekorClient.staging(),
@@ -166,7 +174,7 @@ class Verifier:
 
     def _verify_timestamp_authority(
         self, bundle: Bundle
-    ) -> List[TimestampVerificationResult]:
+    ) -> list[TimestampVerificationResult]:
         """
         Verify that the given bundle has been timestamped by a trusted timestamp authority
         and that the timestamp is valid.
@@ -187,14 +195,17 @@ class Verifier:
         # The Signer sends a hash of the signature as the messageImprint in a TimeStampReq
         # to the Timestamping Service
         signature_hash = sha256_digest(bundle.signature).digest
-        verified_timestamps = []
-        for tsr in timestamp_responses:
-            if verified_timestamp := self._verify_signed_timestamp(tsr, signature_hash):
-                verified_timestamps.append(verified_timestamp)
+        verified_timestamps = [
+            verified_timestamp
+            for tsr in timestamp_responses
+            if (
+                verified_timestamp := self._verify_signed_timestamp(tsr, signature_hash)
+            )
+        ]
 
         return verified_timestamps
 
-    def _establish_time(self, bundle: Bundle) -> List[TimestampVerificationResult]:
+    def _establish_time(self, bundle: Bundle) -> list[TimestampVerificationResult]:
         """
         Establish the time for bundle verification.
 
@@ -242,7 +253,7 @@ class Verifier:
 
     def _verify_chain_at_time(
         self, certificate: X509, timestamp_result: TimestampVerificationResult
-    ) -> List[X509]:
+    ) -> list[X509]:
         """
         Verify the validity of the certificate chain at the given time.
 

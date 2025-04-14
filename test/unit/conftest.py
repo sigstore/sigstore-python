@@ -18,9 +18,10 @@ import base64
 import os
 import re
 from collections import defaultdict
+from collections.abc import Iterator
 from io import BytesIO
 from pathlib import Path
-from typing import Callable, Iterator
+from typing import Callable
 from urllib.parse import urlparse
 
 import jwt
@@ -30,8 +31,7 @@ from id import (
     detect_credential,
 )
 from tuf.api.exceptions import DownloadHTTPError
-from tuf.ngclient import FetcherInterface
-from tuf.ngclient.updater import requests_fetcher
+from tuf.ngclient import FetcherInterface, updater
 
 from sigstore._internal import tuf
 from sigstore._internal.rekor import _hashedrekord_from_parts
@@ -156,9 +156,7 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
             failure[filename] += 1
             raise DownloadHTTPError("File not found", 404)
 
-    monkeypatch.setattr(
-        requests_fetcher, "RequestsFetcher", lambda app_user_agent: MockFetcher()
-    )
+    monkeypatch.setattr(updater, "Urllib3Fetcher", lambda app_user_agent: MockFetcher())
 
     return success, failure
 

@@ -19,7 +19,7 @@ Utilities for verifying signed certificate timestamps.
 import logging
 import struct
 from datetime import timezone
-from typing import List, Optional
+from typing import Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -99,7 +99,7 @@ def _pack_digitally_signed(
     blob, one that forms the signature body of the "digitally-signed" struct
     for an SCT.
 
-    The format of the digitaly signed data is described in IETF's RFC 6962.
+    The format of the digitally signed data is described in IETF's RFC 6962.
     """
 
     # No extensions are currently specified, so we treat the presence
@@ -115,7 +115,7 @@ def _pack_digitally_signed(
     # Assemble a format string with the certificate length baked in and then pack the digitally
     # signed data
     # fmt: off
-    pattern = "!BBQH%dsH" % len(signed_entry)
+    pattern = f"!BBQH{len(signed_entry)}sH"
     timestamp = sct.timestamp.replace(tzinfo=timezone.utc)
     data = struct.pack(
         pattern,
@@ -141,7 +141,7 @@ def _is_preissuer(issuer: Certificate) -> bool:
     return ExtendedKeyUsageOID.CERTIFICATE_TRANSPARENCY in ext_key_usage.value
 
 
-def _get_issuer_cert(chain: List[Certificate]) -> Certificate:
+def _get_issuer_cert(chain: list[Certificate]) -> Certificate:
     issuer = chain[0]
     if _is_preissuer(issuer):
         issuer = chain[1]
@@ -184,7 +184,7 @@ def _cert_is_ca(cert: Certificate) -> bool:
 
 def verify_sct(
     cert: Certificate,
-    chain: List[Certificate],
+    chain: list[Certificate],
     ct_keyring: CTKeyring,
 ) -> None:
     """

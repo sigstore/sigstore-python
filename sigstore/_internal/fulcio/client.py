@@ -23,7 +23,6 @@ import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
-from typing import List
 from urllib.parse import urljoin
 
 import requests
@@ -55,14 +54,14 @@ class FulcioCertificateSigningResponse:
     """Certificate response"""
 
     cert: Certificate
-    chain: List[Certificate]
+    chain: list[Certificate]
 
 
 @dataclass(frozen=True)
 class FulcioTrustBundleResponse:
     """Trust bundle response, containing a list of certificate chains"""
 
-    trust_bundle: List[List[Certificate]]
+    trust_bundle: list[list[Certificate]]
 
 
 class FulcioClientError(Exception):
@@ -151,9 +150,9 @@ class FulcioTrustBundle(_Endpoint):
             raise FulcioClientError from http_error
 
         trust_bundle_json = resp.json()
-        chains: List[List[Certificate]] = []
+        chains: list[list[Certificate]] = []
         for certificate_chain in trust_bundle_json["chains"]:
-            chain: List[Certificate] = []
+            chain: list[Certificate] = []
             for certificate in certificate_chain["certificates"]:
                 cert: Certificate = load_pem_x509_certificate(certificate.encode())
                 chain.append(cert)

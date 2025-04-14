@@ -1,0 +1,63 @@
+name: Check embedded root
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '13 13 * * 3'
+
+jobs:
+  check-embedded-root:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+        with:
+          python-version: "3.x"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - name: Setup environment
+        run: make dev
+
+      - name: Check if embedded root is up-to-date
+        run: |
+          make update-embedded-root
+          git diff --exit-code
+
+
+      - if: failure()
+        name: Create an issue if embedded root is not up-to-date
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const repo = context.repo.owner + "/" + context.repo.repo
+            const body = `
+            The Sigstore [TUF repository](https://tuf-repo-cdn.sigstore.dev/) contents have changed: the data embedded
+            in sigstore-python sources can be updated. This is not urgent but will improve cold-cache performance.
+            
+            Run \`make update-embedded-root\` to update the embedded data.
+            
+            This issue was filed by _${context.workflow}_ [workflow run](${context.serverUrl}/${repo}/actions/runs/${context.runId}).
+            `
+
+            const issues = await github.rest.search.issuesAndPullRequests({
+              q: "label:embedded-root-update+state:open+type:issue+repo:" + repo,
+            })
+            if (issues.data.total_count > 0) {
+              console.log("Issue for embedded root update exists already.")
+            } else {
+              github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: "Embedded TUF root is not up-to-date",
+                labels: ["embedded-root-update"],
+                body: body,
+              })
+              console.log("New issue created.")
+            }

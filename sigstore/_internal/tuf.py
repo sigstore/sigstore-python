@@ -25,7 +25,7 @@ from urllib import parse
 
 import platformdirs
 from tuf.api import exceptions as TUFExceptions
-from tuf.ngclient import Updater, UpdaterConfig
+from tuf.ngclient import Updater, UpdaterConfig  # type: ignore[attr-defined]
 
 from sigstore import __version__
 from sigstore._utils import read_embedded
@@ -87,18 +87,6 @@ class TrustUpdater:
         else:
             raise RootError
 
-        # Initialize metadata dir
-        self._metadata_dir.mkdir(parents=True, exist_ok=True)
-        tuf_root = self._metadata_dir / "root.json"
-
-        if not tuf_root.exists():
-            try:
-                root_json = read_embedded("root.json", rsrc_prefix)
-            except FileNotFoundError as e:
-                raise RootError from e
-
-            tuf_root.write_bytes(root_json)
-
         # Initialize targets cache dir
         self._targets_dir.mkdir(parents=True, exist_ok=True)
         trusted_root_target = self._targets_dir / "trusted_root.json"
@@ -114,19 +102,24 @@ class TrustUpdater:
         _logger.debug(f"TUF metadata: {self._metadata_dir}")
         _logger.debug(f"TUF targets cache: {self._targets_dir}")
 
-        self._updater: None | Updater = None
+        self._updater: Updater | None = None
         if offline:
             _logger.warning(
                 "TUF repository is loaded in offline mode; updates will not be performed"
             )
         else:
             # Initialize and update the toplevel TUF metadata
+            try:
+                root_json = read_embedded("root.json", rsrc_prefix)
+            except FileNotFoundError as e:
+                raise RootError from e
             self._updater = Updater(
                 metadata_dir=str(self._metadata_dir),
                 metadata_base_url=self._repo_url,
                 target_base_url=parse.urljoin(f"{self._repo_url}/", "targets/"),
                 target_dir=str(self._targets_dir),
                 config=UpdaterConfig(app_user_agent=f"sigstore-python/{__version__}"),
+                bootstrap=root_json,
             )
             try:
                 self._updater.refresh()

@@ -17,8 +17,9 @@ Exceptions.
 """
 
 import sys
+from collections.abc import Mapping
 from logging import Logger
-from typing import Any, Mapping
+from typing import Any
 
 
 class Error(Exception):
@@ -106,7 +107,7 @@ class MetadataError(Error):
 
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""
-        return f"""{str(self)}."""
+        return f"""{self}."""
 
 
 class RootError(Error):

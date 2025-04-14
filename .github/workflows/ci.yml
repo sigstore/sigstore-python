@@ -33,7 +33,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+      - uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: ${{ matrix.conf.py }}
           allow-prereleases: true
@@ -62,19 +62,27 @@ jobs:
       - name: test
         run: make test TEST_ARGS="-vv --showlocals"
 
+      # TODO: Refactor this or remove it entirely once there's
+      # a suitable staging TSA instance.
       - name: test (timestamp-authority)
         if: ${{ matrix.conf.os == 'ubuntu-latest' }}
         run: |
-          SIGSTORE_TIMESTAMP_VERSION=$(grep "github.com/sigstore/timestamp-authority" .github/go.mod | awk '{print $2}')
+          # Fetch the latest sigstore/timestamp-authority build
+          SIGSTORE_TIMESTAMP_VERSION=$(gh api /repos/sigstore/timestamp-authority/tags --jq '.[0].name')
           wget https://github.com/sigstore/timestamp-authority/releases/download/${SIGSTORE_TIMESTAMP_VERSION}/timestamp-server-linux-amd64 -O /tmp/timestamp-server
           chmod +x /tmp/timestamp-server
+
           # Run the TSA in background
           /tmp/timestamp-server serve --port 3000 --disable-ntp-monitoring &
           export TEST_SIGSTORE_TIMESTAMP_AUTHORITY_URL="http://localhost:3000/api/v1/timestamp"
+
           # Ensure Timestamp Authority tests are not skipped by
           # having pytest show skipped tests and verifying ours are running
           make test TEST_ARGS="-m timestamp_authority -rs" | tee output
           ! grep -q "skipping test that requires a Timestamp Authority" output || (echo "ERROR: Found skip message" && exit 1)
+        env:
+          # Needed for `gh api` above.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: test (interactive)
         if: (github.event_name != 'pull_request') || !github.event.pull_request.head.repo.fork
@@ -110,14 +118,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+      - uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
         with:
           python-version: '3.x'
 
       - run: pip install coverage[toml]
 
       - name: download coverage data
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           path: all-artifacts/
 

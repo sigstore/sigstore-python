@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import sys
-from typing import IO, NewType, Type, Union
+from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -45,7 +45,7 @@ else:
 
 PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
 
-PublicKeyTypes = Union[Type[rsa.RSAPublicKey], Type[ec.EllipticCurvePublicKey]]
+PublicKeyTypes = Union[type[rsa.RSAPublicKey], type[ec.EllipticCurvePublicKey]]
 
 HexStr = NewType("HexStr", str)
 """
@@ -187,10 +187,10 @@ def _sha256_streaming(io: IO[bytes]) -> bytes:
     # of systems in terms of minimizing syscall overhead.
     view = memoryview(bytearray(128 * 1024))
 
-    nbytes = io.readinto(view)  # type: ignore
+    nbytes = io.readinto(view)  # type: ignore[attr-defined]
     while nbytes:
         sha256.update(view[:nbytes])
-        nbytes = io.readinto(view)  # type: ignore
+        nbytes = io.readinto(view)  # type: ignore[attr-defined]
 
     return sha256.digest()
 
@@ -242,7 +242,7 @@ def cert_is_ca(cert: Certificate) -> bool:
                 "invalid X.509 certificate: non-critical BasicConstraints in CA"
             )
 
-        ca = basic_constraints.value.ca  # type: ignore
+        ca = basic_constraints.value.ca  # type: ignore[attr-defined]
     except ExtensionNotFound:
         # No BasicConstrains means that this can't possibly be a CA.
         return False
@@ -250,7 +250,7 @@ def cert_is_ca(cert: Certificate) -> bool:
     key_cert_sign = False
     try:
         key_usage = cert.extensions.get_extension_for_oid(ExtensionOID.KEY_USAGE)
-        key_cert_sign = key_usage.value.key_cert_sign  # type: ignore
+        key_cert_sign = key_usage.value.key_cert_sign  # type: ignore[attr-defined]
     except ExtensionNotFound:
         raise VerificationError("invalid X.509 certificate: missing KeyUsage")
 
@@ -322,7 +322,7 @@ def cert_is_leaf(cert: Certificate) -> bool:
         return False
 
     key_usage = cert.extensions.get_extension_for_oid(ExtensionOID.KEY_USAGE)
-    digital_signature = key_usage.value.digital_signature  # type: ignore
+    digital_signature = key_usage.value.digital_signature  # type: ignore[attr-defined]
 
     if not digital_signature:
         raise VerificationError(
@@ -337,6 +337,6 @@ def cert_is_leaf(cert: Certificate) -> bool:
             ExtensionOID.EXTENDED_KEY_USAGE
         )
 
-        return ExtendedKeyUsageOID.CODE_SIGNING in extended_key_usage.value  # type: ignore
+        return ExtendedKeyUsageOID.CODE_SIGNING in extended_key_usage.value  # type: ignore[operator]
     except ExtensionNotFound:
         raise VerificationError("invalid X.509 certificate: missing ExtendedKeyUsage")

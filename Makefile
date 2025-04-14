@@ -6,7 +6,7 @@ ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
 	$(shell find test -name '*.py') \
 	$(shell find docs/scripts -name '*.py') \
 
-# Optionally overriden by the user, if they're using a virtual environment manager.
+# Optionally overridden by the user, if they're using a virtual environment manager.
 VENV ?= env
 
 # On Windows, venv scripts/shims are under `Scripts` instead of `bin`.
@@ -34,7 +34,7 @@ ifneq ($(TESTS),)
 	COV_ARGS :=
 else
 	TEST_ARGS := $(TEST_ARGS)
-# TODO: Reenable coverage testing
+# TODO: Re-enable coverage testing
 #	COV_ARGS := --fail-under 100
 endif
 
@@ -172,3 +172,11 @@ check-readme:
 .PHONY: edit
 edit:
 	$(EDITOR) $(ALL_PY_SRCS)
+
+update-embedded-root: $(VENV)/pyvenv.cfg
+	. $(VENV_BIN)/activate && \
+		python -m sigstore plumbing update-trust-root
+	cp ~/.local/share/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/root.json \
+		sigstore/_store/prod/root.json
+	cp ~/.cache/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/trusted_root.json \
+		sigstore/_store/prod/trusted_root.json

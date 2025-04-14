@@ -18,11 +18,12 @@ Client trust configuration and trust root management for sigstore-python.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, Iterable, List, NewType
+from typing import ClassVar, NewType
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature
@@ -159,7 +160,7 @@ class Keyring:
     Represents a set of keys, each of which is a potentially valid verifier.
     """
 
-    def __init__(self, public_keys: List[_PublicKey] = []):
+    def __init__(self, public_keys: list[_PublicKey] = []):
         """
         Create a new `Keyring`, with `keys` as the initial set of verifying keys.
         """
@@ -182,10 +183,7 @@ class Keyring:
         """
 
         key = self._keyring.get(key_id)
-        if key is not None:
-            candidates = [key]
-        else:
-            candidates = list(self._keyring.values())
+        candidates = [key] if key is not None else list(self._keyring.values())
 
         # Try to verify each candidate key. In the happy case, this will
         # be exactly one candidate.
@@ -384,8 +382,8 @@ class TrustedRoot:
         """Return keyring with keys for Rekor."""
 
         keys: list[_PublicKey] = list(self._get_tlog_keys(self._inner.tlogs, purpose))
-        if len(keys) != 1:
-            raise MetadataError("Did not find one Rekor key in trusted root")
+        if len(keys) == 0:
+            raise MetadataError("Did not find any Rekor keys in trusted root")
         return RekorKeyring(Keyring(keys))
 
     def ct_keyring(self, purpose: KeyringPurpose) -> CTKeyring:

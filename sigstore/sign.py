@@ -40,9 +40,10 @@ from __future__ import annotations
 
 import base64
 import logging
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Iterator, List, Optional
+from typing import Optional
 
 import cryptography.x509 as x509
 import rekor_types
@@ -138,7 +139,7 @@ class Signer:
         else:
             _logger.debug("Retrieving signed certificate...")
 
-            # Build an X.509 Certificiate Signing Request
+            # Build an X.509 Certificate Signing Request
             builder = (
                 x509.CertificateSigningRequestBuilder()
                 .subject_name(
@@ -306,7 +307,7 @@ class SigningContext:
         fulcio: FulcioClient,
         rekor: RekorClient,
         trusted_root: TrustedRoot,
-        tsa_clients: List[TimestampAuthorityClient] | None = None,
+        tsa_clients: list[TimestampAuthorityClient] | None = None,
     ):
         """
         Create a new `SigningContext`.

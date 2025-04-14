@@ -22,7 +22,7 @@ import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from urllib.parse import urljoin
 
 import rekor_types
@@ -47,10 +47,10 @@ class RekorLogInfo:
     tree_size: int
     signed_tree_head: str
     tree_id: str
-    raw_data: dict
+    raw_data: dict[str, Any]
 
     @classmethod
-    def from_response(cls, dict_: Dict[str, Any]) -> RekorLogInfo:
+    def from_response(cls, dict_: dict[str, Any]) -> RekorLogInfo:
         """
         Create a new `RekorLogInfo` from the given API response.
         """
