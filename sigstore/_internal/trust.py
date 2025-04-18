@@ -93,14 +93,14 @@ class Key:
     key: PublicKey
     key_id: KeyID
 
-    _RSA_SHA_256_DETAILS: ClassVar[set[_PublicKeyDetails]] = {
+    _RSA_SHA_256_DETAILS: ClassVar = {
         _PublicKeyDetails.PKCS1_RSA_PKCS1V5,
         _PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256,
         _PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256,
         _PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256,
     }
 
-    _EC_DETAILS_TO_HASH: ClassVar[dict[_PublicKeyDetails, hashes.HashAlgorithm]] = {
+    _EC_DETAILS_TO_HASH: ClassVar = {
         _PublicKeyDetails.PKIX_ECDSA_P256_SHA_256: hashes.SHA256(),
         _PublicKeyDetails.PKIX_ECDSA_P384_SHA_384: hashes.SHA384(),
         _PublicKeyDetails.PKIX_ECDSA_P521_SHA_512: hashes.SHA512(),

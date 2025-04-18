@@ -667,9 +667,10 @@ class Bundle:
 
         # Fill in the appropriate variants.
         if isinstance(content, common_v1.MessageSignature):
-            content = {"message_signature": content}
+            # mypy will be mystified if types are specified here
+            content_dict: dict[str, Any] = {"message_signature": content}
         else:
-            content = {"dsse_envelope": content._inner}
+            content_dict = {"dsse_envelope": content._inner}
 
         inner = _Bundle(
             media_type=Bundle.BundleType.BUNDLE_0_3.value,
@@ -678,7 +679,7 @@ class Bundle:
                 tlog_entries=[log_entry._to_rekor()],
                 timestamp_verification_data=timestamp_verifcation_data,
             ),
-            **content,
+            **content_dict,
         )
 
         return cls(inner)
