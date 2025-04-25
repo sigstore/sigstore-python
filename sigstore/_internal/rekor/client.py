@@ -112,7 +112,8 @@ class RekorLog(_Endpoint):
         Returns a `RekorEntries` capable of accessing detailed information
         about individual log entries.
         """
-        return RekorEntries(urljoin(self.url, "entries/"), session=self.session)
+        # NOTE: not "entries/"
+        return RekorEntries(urljoin(self.url, "entries"), session=self.session)
 
 
 class RekorEntries(_Endpoint):
@@ -221,12 +222,13 @@ class RekorEntriesRetrieve(_Endpoint):
 
 class RekorClient:
     """The internal Rekor client"""
+    # NOTE: use "api/v2/"
 
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, path: str = "api/v2/") -> None:
         """
         Create a new `RekorClient` from the given URL.
         """
-        self.url = urljoin(url, "api/v1/")
+        self.url = urljoin(url, path)
         self.session = requests.Session()
         self.session.headers.update(
             {
