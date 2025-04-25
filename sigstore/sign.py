@@ -255,9 +255,16 @@ class Signer:
 
         cert = self._signing_cert()
 
+
         # Prepare inputs
+        # b64_cert = base64.b64encode(
+        #     cert.public_bytes(encoding=serialization.Encoding.PEM)
+        # )
         b64_cert = base64.b64encode(
-            cert.public_bytes(encoding=serialization.Encoding.PEM)
+            cert.public_key().public_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
         )
 
         # Sign artifact

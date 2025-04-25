@@ -1,0 +1,33 @@
+{
+    "mediaType": "application/vnd.dev.sigstore.clienttrustconfig.v0.1+json",
+    "trustedRoot": {
+        "mediaType": "application/vnd.dev.sigstore.trustedroot+json;version=0.1",
+        "tlogs": [],
+        "certificateAuthorities": [],
+        "ctlogs": [
+            {
+                "baseUrl": "https://ctfe.sigstore.dev/2022",
+                "hashAlgorithm": "SHA2_256",
+                "publicKey": {
+                    "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiPSlFi0CmFTfEjCUqF9HuCEcYXNKAaYalIJmBZ8yyezPjTqhxrKBpMnaocVtLJBI1eM3uXnQzQGAJdJ4gs9Fyw==",
+                    "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+                    "validFor": {
+                        "start": "2022-10-20T00:00:00.000Z"
+                    }
+                },
+                "logId": {
+                    "keyId": "3T0wasbHETJjGR4cmWc3AqJKXrjePK3/h4pygC8p7o4="
+                }
+            }
+        ]
+    },
+    "signingConfig": {
+        "caUrl": "https://fulcio.sigstore.dev",
+        "tlogUrls": [
+            "http://rpetgrave-1.c.googlers.com:3003"
+        ],
+        "tsaUrls": [
+            "http://rpetgrave-1.c.googlers.com:3004/api/v1/timestamp"
+        ]
+    }
+}

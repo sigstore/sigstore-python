@@ -155,7 +155,23 @@ class RekorEntries(_Endpoint):
 
         payload = proposed_entry.model_dump(mode="json", by_alias=True)
         _logger.debug(f"proposed: {json.dumps(payload)}")
-
+        # layout from rekor-tiles/docs/openapi/rekor_service.swagger.json
+        payloadV2 = {
+            'hashedRekordRequestV0_0_2': {
+                'digest': payload["spec"]['data']['hash']['value'],
+                'signature': {
+                    'content': payload["spec"]['signature']['content'],
+                    'verifier': {
+                        'public_key': {
+                            'rawBytes': payload["spec"]['signature']['publicKey']['content']
+                        },
+                        'key_details': "PKIX_ECDSA_P384_SHA_384"
+                    }
+                }
+            }
+        }
+        _logger.debug(f"proposed: {json.dumps(payloadV2)}")
+        payload = payloadV2
         resp: requests.Response = self.session.post(self.url, json=payload)
         try:
             resp.raise_for_status()
