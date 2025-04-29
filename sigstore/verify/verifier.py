@@ -69,22 +69,23 @@ class Verifier:
     The primary API for verification operations.
     """
 
-    def __init__(self, *, rekor: RekorClient, trusted_root: TrustedRoot):
+    def __init__(self, *, trusted_root: TrustedRoot):
         """
         Create a new `Verifier`.
-
-        `rekor` is a `RekorClient` capable of connecting to a Rekor instance
-        containing logs for the file(s) being verified.
 
         `trusted_root` is the `TrustedRoot` object containing the root of trust
         for the verification process.
         """
-        self._rekor = rekor
         self._fulcio_certificate_chain: list[X509] = [
             X509.from_cryptography(parent_cert)
             for parent_cert in trusted_root.get_fulcio_certs()
         ]
         self._trusted_root = trusted_root
+
+        # this is an ugly hack needed for verifying "detached" materials
+        # In reality we should be choosing the rekor instance based on the logid
+        url = trusted_root._inner.tlogs[0].base_url
+        self._rekor = RekorClient(url)
 
     @classmethod
     def production(cls, *, offline: bool = False) -> Verifier:
@@ -96,7 +97,6 @@ class Verifier:
         a TUF repository refresh is attempted.
         """
         return cls(
-            rekor=RekorClient.production(),
             trusted_root=TrustedRoot.production(offline=offline),
         )
 
@@ -110,7 +110,6 @@ class Verifier:
         a TUF repository refresh is attempted.
         """
         return cls(
-            rekor=RekorClient.staging(),
             trusted_root=TrustedRoot.staging(offline=offline),
         )
 
@@ -122,7 +121,6 @@ class Verifier:
         @api private
         """
         return cls(
-            rekor=RekorClient(trust_config._inner.signing_config.tlog_urls[0]),
             trusted_root=trust_config.trusted_root,
         )
 
