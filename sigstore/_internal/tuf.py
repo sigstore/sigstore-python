@@ -148,3 +148,26 @@ class TrustUpdater:
 
         _logger.debug("Found and verified trusted root")
         return path
+
+    @lru_cache()
+    def get_signing_config_path(self) -> str:
+        """Return local path to currently valid signing config file"""
+        if not self._updater:
+            _logger.debug("Using unverified signing config from cache")
+            return str(self._targets_dir / "signing_config.v0.2.json")
+
+        root_info = self._updater.get_targetinfo("signing_config.v0.2.json")
+        if root_info is None:
+            raise TUFError("Unsupported TUF configuration: no signing config")
+        path = self._updater.find_cached_target(root_info)
+        if path is None:
+            try:
+                path = self._updater.download_target(root_info)
+            except (
+                TUFExceptions.DownloadError,
+                TUFExceptions.RepositoryError,
+            ) as e:
+                raise TUFError("Failed to download trusted key bundle") from e
+
+        _logger.debug("Found and verified signing config")
+        return path

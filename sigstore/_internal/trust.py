@@ -62,8 +62,9 @@ from sigstore._utils import (
     PublicKey,
     key_id,
     load_der_public_key,
+    read_embedded,
 )
-from sigstore.errors import Error, MetadataError, VerificationError
+from sigstore.errors import Error, MetadataError, TUFError, VerificationError
 
 
 def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
@@ -558,6 +559,63 @@ class ClientTrustConfig:
         """
         inner = _ClientTrustConfig().from_json(raw)
         return cls(inner)
+
+    @classmethod
+    def production(
+        cls,
+        offline: bool = False,
+    ) -> ClientTrustConfig:
+        """Create new trust config from Sigstore production TUF repository.
+
+        If `offline`, will use data in local TUF cache. Otherwise will
+        update the data from remote TUF repository.
+        """
+        return cls.from_tuf(DEFAULT_TUF_URL, offline)
+
+    @classmethod
+    def staging(
+        cls,
+        offline: bool = False,
+    ) -> ClientTrustConfig:
+        """Create new trust config from Sigstore staging TUF repository.
+
+        If `offline`, will use data in local TUF cache. Otherwise will
+        update the data from remote TUF repository.
+        """
+        return cls.from_tuf(STAGING_TUF_URL, offline)
+
+    @classmethod
+    def from_tuf(
+        cls,
+        url: str,
+        offline: bool = False,
+    ) -> ClientTrustConfig:
+        """Create a new trust config from a TUF repository.
+
+        If `offline`, will use data in local TUF cache. Otherwise will
+        update the trust config from remote TUF repository.
+        """
+        updater = TrustUpdater(url, offline)
+
+        tr_path = updater.get_trusted_root_path()
+        inner_tr = _TrustedRoot().from_json(Path(tr_path).read_bytes())
+
+        try:
+            sc_path = updater.get_signing_config_path()
+            inner_sc = _SigningConfig().from_json(Path(sc_path).read_bytes())
+        except TUFError as e:
+            # TUF repo may not have signing config yet: hard code values for prod:
+            if url == DEFAULT_TUF_URL:
+                embedded = read_embedded("signing_config.v0.2.json", "prod")
+                inner_sc = _SigningConfig().from_json(embedded)
+            else:
+                raise e
+
+        return _ClientTrustConfig(
+            ClientTrustConfig.ClientTrustConfigType.CONFIG_0_1,
+            inner_tr,
+            inner_sc,
+        )
 
     def __init__(self, inner: _ClientTrustConfig) -> None:
         """
