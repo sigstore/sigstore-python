@@ -614,11 +614,7 @@ def main(args: list[str] | None = None) -> None:
             elif args.verify_subcommand == "github":
                 _verify_github(args)
         elif args.subcommand == "get-identity-token":
-            identity = _get_identity(args)
-            if identity:
-                print(identity)
-            else:
-                _invalid_arguments(args, "No identity token supplied or detected!")
+            _get_identity_token(args)
         elif args.subcommand == "plumbing":
             if args.plumbing_subcommand == "fix-bundle":
                 _fix_bundle(args)
@@ -628,6 +624,21 @@ def main(args: list[str] | None = None) -> None:
             _invalid_arguments(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
         e.log_and_exit(_logger, args.verbose >= 1)
+
+
+def _get_identity_token(args: argparse.Namespace) -> None:
+    """
+    Output the OIDC authentication token
+    """
+
+    trust_config: ClientTrustConfig | None = None
+    if args.trust_config:
+        trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
+    identity = _get_identity(args, trust_config)
+    if identity:
+        print(identity)
+    else:
+        _invalid_arguments(args, "No identity token supplied or detected!")
 
 
 def _sign_common(
@@ -643,16 +654,18 @@ def _sign_common(
     not, it will use a hashedrekord.
     """
     # Select the signing context to use.
-    if args.staging:
-        _logger.debug("sign: staging instances requested")
-        signing_ctx = SigningContext.staging()
-    elif args.trust_config:
+    if args.trust_config:
         trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
         signing_ctx = SigningContext._from_trust_config(trust_config)
+    elif args.staging:
+        _logger.debug("sign: staging instances requested")
+        trust_config = None  # signingconfig 0.2 is not in staging TUF yet
+        signing_ctx = SigningContext.staging()
     else:
         # If the user didn't request the staging instance or pass in an
         # explicit client trust config, we're using the public good (i.e.
         # production) instance.
+        trust_config = None  # signingconfig 0.2 is not in staging TUF yet
         signing_ctx = SigningContext.production()
 
     # The order of precedence for identities is as follows:
@@ -664,7 +677,7 @@ def _sign_common(
     if args.identity_token:
         identity = IdentityToken(args.identity_token)
     else:
-        identity = _get_identity(args)
+        identity = _get_identity(args, trust_config)
 
     if not identity:
         _invalid_arguments(args, "No identity token supplied or detected!")
@@ -1167,7 +1180,9 @@ def _verify_common(
         return None
 
 
-def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
+def _get_identity(
+    args: argparse.Namespace, trust_config: ClientTrustConfig | None
+) -> Optional[IdentityToken]:
     token = None
     if not args.oidc_disable_ambient_providers:
         token = detect_credential()
@@ -1176,6 +1191,8 @@ def _get_identity(args: argparse.Namespace) -> Optional[IdentityToken]:
     if token:
         return IdentityToken(token)
 
+    if trust_config is not None:
+        issuer = Issuer.from_trust_config(trust_config)
     if args.staging:
         issuer = Issuer.staging()
     elif args.oidc_issuer == DEFAULT_OAUTH_ISSUER_URL:

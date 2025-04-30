@@ -32,6 +32,7 @@ import requests
 from pydantic import BaseModel, StrictStr
 
 from sigstore._internal import USER_AGENT
+from sigstore._internal.trust import ClientTrustConfig
 from sigstore.errors import Error, NetworkError
 
 DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
@@ -284,6 +285,13 @@ class Issuer:
         Returns an `Issuer` configured against Sigstore's staging-level services.
         """
         return cls(STAGING_OAUTH_ISSUER_URL)
+
+    @classmethod
+    def from_trust_config(cls, trust_config: ClientTrustConfig) -> Issuer:
+        """
+        Return `Issuer` for given `ClientTrustConfig`.
+        """
+        return cls(trust_config.signing_config.get_oidc_url())
 
     def identity_token(  # nosec: B107
         self,
