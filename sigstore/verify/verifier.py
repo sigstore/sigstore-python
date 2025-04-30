@@ -46,7 +46,7 @@ from sigstore._internal.sct import (
     verify_sct,
 )
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
-from sigstore._internal.trust import KeyringPurpose, TrustedRoot
+from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
@@ -96,8 +96,9 @@ class Verifier:
         the verifier uses the Trusted Root in the local TUF cache. If `False`,
         a TUF repository refresh is attempted.
         """
+        config = ClientTrustConfig.production(offline=offline)
         return cls(
-            trusted_root=TrustedRoot.production(offline=offline),
+            trusted_root=config.trusted_root,
         )
 
     @classmethod
@@ -109,8 +110,9 @@ class Verifier:
         the verifier uses the Trusted Root in the local TUF cache. If `False`,
         a TUF repository refresh is attempted.
         """
+        config = ClientTrustConfig.staging(offline=offline)
         return cls(
-            trusted_root=TrustedRoot.staging(offline=offline),
+            trusted_root=config.trusted_root,
         )
 
     def _verify_signed_timestamp(

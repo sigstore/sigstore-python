@@ -96,7 +96,7 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
 
-    trust_root = TrustedRoot.staging()
+    trust_root = ClientTrustConfig.staging()
     # metadata was "downloaded" from staging
     expected = [
         "root.json",
@@ -126,7 +126,7 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     assert fail_reqs == expected_fail_reqs
 
     # New trust root (and TrustUpdater instance), same cache dirs
-    trust_root = TrustedRoot.staging()
+    trust_root = ClientTrustConfig.staging()
 
     # Expect new timestamp and root requests
     expected_requests["timestamp.json"] += 1
@@ -148,7 +148,7 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
 
-    trust_root = TrustedRoot.staging(offline=True)
+    trust_root = ClientTrustConfig.staging(offline=True)
 
     # local TUF metadata is not initialized, nothing is downloaded
     assert not os.path.exists(data_dir)
@@ -217,7 +217,7 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     ]
 
     # Assert that trust root from TUF contains the expected keys/certs
-    trust_root = TrustedRoot.staging()
+    trust_root = ClientTrustConfig.staging().trusted_root
     assert ctfe_keys[0] in get_public_bytes(
         [
             k.key
@@ -240,7 +240,7 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from offline TUF contains the expected keys/certs
-    trust_root = TrustedRoot.staging(offline=True)
+    trust_root = ClientTrustConfig.staging(offline=True).trust_root
     assert ctfe_keys[0] in get_public_bytes(
         [
             k.key
@@ -289,18 +289,18 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
 
 def test_trust_root_tuf_instance_error():
     with pytest.raises(RootError):
-        TrustedRoot.from_tuf("foo.bar")
+        ClientTrustConfig.from_tuf("foo.bar")
 
 
 def test_trust_root_tuf_ctfe_keys_error(monkeypatch):
-    trust_root = TrustedRoot.staging(offline=True)
+    trust_root = ClientTrustConfig.staging(offline=True).trusted_root
     monkeypatch.setattr(trust_root._inner, "ctlogs", [])
     with pytest.raises(Exception, match="CTFE keys not found in trusted root"):
         trust_root.ct_keyring(purpose=KeyringPurpose.VERIFY)
 
 
 def test_trust_root_fulcio_certs_error(tuf_asset, monkeypatch):
-    trust_root = TrustedRoot.staging(offline=True)
+    trust_root = ClientTrustConfig.staging(offline=True).trusted_root
     monkeypatch.setattr(trust_root._inner, "certificate_authorities", [])
     with pytest.raises(
         Exception, match="Fulcio certificates not found in trusted root"

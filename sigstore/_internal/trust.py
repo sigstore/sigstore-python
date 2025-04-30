@@ -438,44 +438,6 @@ class TrustedRoot:
         inner = _TrustedRoot().from_json(Path(path).read_bytes())
         return cls(inner)
 
-    @classmethod
-    def from_tuf(
-        cls,
-        url: str,
-        offline: bool = False,
-    ) -> TrustedRoot:
-        """Create a new trust root from a TUF repository.
-
-        If `offline`, will use trust root in local TUF cache. Otherwise will
-        update the trust root from remote TUF repository.
-        """
-        path = TrustUpdater(url, offline).get_trusted_root_path()
-        return cls.from_file(path)
-
-    @classmethod
-    def production(
-        cls,
-        offline: bool = False,
-    ) -> TrustedRoot:
-        """Create new trust root from Sigstore production TUF repository.
-
-        If `offline`, will use trust root in local TUF cache. Otherwise will
-        update the trust root from remote TUF repository.
-        """
-        return cls.from_tuf(DEFAULT_TUF_URL, offline)
-
-    @classmethod
-    def staging(
-        cls,
-        offline: bool = False,
-    ) -> TrustedRoot:
-        """Create new trust root from Sigstore staging TUF repository.
-
-        If `offline`, will use trust root in local TUF cache. Otherwise will
-        update the trust root from remote TUF repository.
-        """
-        return cls.from_tuf(STAGING_TUF_URL, offline)
-
     def _get_tlog_keys(
         self, tlogs: list[TransparencyLogInstance], purpose: KeyringPurpose
     ) -> Iterable[_PublicKey]:
