@@ -46,7 +46,7 @@ from sigstore._internal.sct import (
     verify_sct,
 )
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
-from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
+from sigstore._internal.trust import KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
@@ -111,17 +111,6 @@ class Verifier:
         """
         return cls(
             trusted_root=TrustedRoot.staging(offline=offline),
-        )
-
-    @classmethod
-    def _from_trust_config(cls, trust_config: ClientTrustConfig) -> Verifier:
-        """
-        Create a `Verifier` from the given `ClientTrustConfig`.
-
-        @api private
-        """
-        return cls(
-            trusted_root=trust_config.trusted_root,
         )
 
     def _verify_signed_timestamp(

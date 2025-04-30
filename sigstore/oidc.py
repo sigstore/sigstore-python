@@ -35,9 +35,6 @@ from sigstore._internal import USER_AGENT
 from sigstore._internal.trust import ClientTrustConfig
 from sigstore.errors import Error, NetworkError
 
-DEFAULT_OAUTH_ISSUER_URL = "https://oauth2.sigstore.dev/auth"
-STAGING_OAUTH_ISSUER_URL = "https://oauth2.sigstage.dev/auth"
-
 # See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
 _KNOWN_OIDC_ISSUERS = {
     "https://accounts.google.com": "email",
@@ -271,20 +268,6 @@ class Issuer:
             self.oidc_config = _OpenIDConfiguration.model_validate(resp.json())
         except ValueError as exc:
             raise IssuerError(f"OIDC issuer returned invalid configuration: {exc}")
-
-    @classmethod
-    def production(cls) -> Issuer:
-        """
-        Returns an `Issuer` configured against Sigstore's production-level services.
-        """
-        return cls(DEFAULT_OAUTH_ISSUER_URL)
-
-    @classmethod
-    def staging(cls) -> Issuer:
-        """
-        Returns an `Issuer` configured against Sigstore's staging-level services.
-        """
-        return cls(STAGING_OAUTH_ISSUER_URL)
 
     @classmethod
     def from_trust_config(cls, trust_config: ClientTrustConfig) -> Issuer:

@@ -33,4 +33,4 @@ def test_get_identity_token_bad_code(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda _: "hunter2")
 
     with pytest.raises(IdentityError, match=r"^Token request failed with .+$"):
-        Issuer.staging().identity_token(force_oob=True)
+        Issuer("https://oauth2.sigstage.dev/auth").identity_token(force_oob=True)

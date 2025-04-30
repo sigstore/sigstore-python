@@ -611,10 +611,12 @@ class ClientTrustConfig:
             else:
                 raise e
 
-        return _ClientTrustConfig(
-            ClientTrustConfig.ClientTrustConfigType.CONFIG_0_1,
-            inner_tr,
-            inner_sc,
+        return cls(
+            _ClientTrustConfig(
+                ClientTrustConfig.ClientTrustConfigType.CONFIG_0_1,
+                inner_tr,
+                inner_sc,
+            )
         )
 
     def __init__(self, inner: _ClientTrustConfig) -> None:

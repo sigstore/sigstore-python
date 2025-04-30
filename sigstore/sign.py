@@ -324,29 +324,7 @@ class SigningContext:
         self._tsa_clients = tsa_clients or []
 
     @classmethod
-    def production(cls) -> SigningContext:
-        """
-        Return a `SigningContext` instance configured against Sigstore's production-level services.
-        """
-        return cls(
-            fulcio=FulcioClient.production(),
-            rekor=RekorClient.production(),
-            trusted_root=TrustedRoot.production(),
-        )
-
-    @classmethod
-    def staging(cls) -> SigningContext:
-        """
-        Return a `SignerContext` instance configured against Sigstore's staging-level services.
-        """
-        return cls(
-            fulcio=FulcioClient.staging(),
-            rekor=RekorClient.staging(),
-            trusted_root=TrustedRoot.staging(),
-        )
-
-    @classmethod
-    def _from_trust_config(cls, trust_config: ClientTrustConfig) -> SigningContext:
+    def from_trust_config(cls, trust_config: ClientTrustConfig) -> SigningContext:
         """
         Create a `SigningContext` from the given `ClientTrustConfig`.
 

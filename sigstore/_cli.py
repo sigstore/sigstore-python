@@ -39,7 +39,7 @@ from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.trust import ClientTrustConfig, TrustedRoot
+from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
@@ -51,7 +51,6 @@ from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle, InvalidBundle
 from sigstore.oidc import (
-    DEFAULT_OAUTH_ISSUER_URL,
     ExpiredIdentity,
     IdentityToken,
     Issuer,
@@ -229,8 +228,8 @@ def _add_shared_oidc_options(
         "--oidc-issuer",
         metavar="URL",
         type=str,
-        default=os.getenv("SIGSTORE_OIDC_ISSUER", DEFAULT_OAUTH_ISSUER_URL),
-        help="The OpenID Connect issuer to use (conflicts with --staging)",
+        default=os.getenv("SIGSTORE_OIDC_ISSUER", None),
+        help="The OpenID Connect issuer to use",
     )
     group.add_argument(
         "--oauth-force-oob",
@@ -630,11 +629,7 @@ def _get_identity_token(args: argparse.Namespace) -> None:
     """
     Output the OIDC authentication token
     """
-
-    trust_config: ClientTrustConfig | None = None
-    if args.trust_config:
-        trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
-    identity = _get_identity(args, trust_config)
+    identity = _get_identity(args, _get_trust_config(args))
     if identity:
         print(identity)
     else:
@@ -654,19 +649,8 @@ def _sign_common(
     not, it will use a hashedrekord.
     """
     # Select the signing context to use.
-    if args.trust_config:
-        trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
-        signing_ctx = SigningContext._from_trust_config(trust_config)
-    elif args.staging:
-        _logger.debug("sign: staging instances requested")
-        trust_config = None  # signingconfig 0.2 is not in staging TUF yet
-        signing_ctx = SigningContext.staging()
-    else:
-        # If the user didn't request the staging instance or pass in an
-        # explicit client trust config, we're using the public good (i.e.
-        # production) instance.
-        trust_config = None  # signingconfig 0.2 is not in staging TUF yet
-        signing_ctx = SigningContext.production()
+    trust_config = _get_trust_config(args)
+    signing_ctx = SigningContext.from_trust_config(trust_config)
 
     # The order of precedence for identities is as follows:
     #
@@ -1022,14 +1006,8 @@ def _collect_verification_state(
                 f"Missing verification materials for {(hashed)}: {', '.join(missing)}",
             )
 
-    if args.staging:
-        _logger.debug("verify: staging instances requested")
-        verifier = Verifier.staging(offline=args.offline)
-    elif args.trust_config:
-        trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
-        verifier = Verifier._from_trust_config(trust_config)
-    else:
-        verifier = Verifier.production(offline=args.offline)
+    trust_config = _get_trust_config(args)
+    verifier = Verifier(trusted_root=trust_config.trusted_root)
 
     all_materials = []
     for file_or_hashed, materials in input_map.items():
@@ -1180,8 +1158,23 @@ def _verify_common(
         return None
 
 
+def _get_trust_config(args: argparse.Namespace) -> ClientTrustConfig:
+    """
+    Return the client trust configuration (Sigstore service URLs, key material and lifetimes)
+
+    The configuration may come from explicit argument (--trust-config) or from the TUF
+    repository of the used Sigstore instance.
+    """
+    if args.trust_config:
+        return ClientTrustConfig.from_json(args.trust_config.read_text())
+    elif args.staging:
+        return ClientTrustConfig.staging(offline=args.offline)
+    else:
+        return ClientTrustConfig.production(offline=args.offline)
+
+
 def _get_identity(
-    args: argparse.Namespace, trust_config: ClientTrustConfig | None
+    args: argparse.Namespace, trust_config: ClientTrustConfig
 ) -> Optional[IdentityToken]:
     token = None
     if not args.oidc_disable_ambient_providers:
@@ -1191,14 +1184,10 @@ def _get_identity(
     if token:
         return IdentityToken(token)
 
-    if trust_config is not None:
-        issuer = Issuer.from_trust_config(trust_config)
-    if args.staging:
-        issuer = Issuer.staging()
-    elif args.oidc_issuer == DEFAULT_OAUTH_ISSUER_URL:
-        issuer = Issuer.production()
-    else:
+    if args.oidc_issuer is not None:
         issuer = Issuer(args.oidc_issuer)
+    else:
+        issuer = Issuer.from_trust_config(trust_config)
 
     if args.oidc_client_secret is None:
         args.oidc_client_secret = ""  # nosec: B105
@@ -1215,6 +1204,7 @@ def _get_identity(
 def _fix_bundle(args: argparse.Namespace) -> None:
     # NOTE: We could support `--trusted-root` here in the future,
     # for custom Rekor instances.
+
     rekor = RekorClient.staging() if args.staging else RekorClient.production()
 
     raw_bundle = RawBundle.from_dict(json.loads(args.bundle.read_bytes()))
@@ -1251,13 +1241,10 @@ def _fix_bundle(args: argparse.Namespace) -> None:
 
 
 def _update_trust_root(args: argparse.Namespace) -> None:
-    # Simply creating the TrustedRoot in online mode is enough to perform
+    # Simply creating the TrustConfig in online mode is enough to perform
     # a metadata update.
-    if args.staging:
-        trusted_root = TrustedRoot.staging(offline=False)
-    else:
-        trusted_root = TrustedRoot.production(offline=False)
 
+    config = _get_trust_config(args)
     _console.print(
-        f"Trust root updated: {len(trusted_root.get_fulcio_certs())} Fulcio certificates"
+        f"Trust root & signing config updated: {len(config.trusted_root.get_fulcio_certs())} Fulcio certificates"
     )
