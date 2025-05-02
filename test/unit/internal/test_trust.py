@@ -30,7 +30,7 @@ from sigstore._internal.trust import (
     _is_timerange_valid,
 )
 from sigstore._utils import load_pem_public_key
-from sigstore.errors import Error, RootError
+from sigstore.errors import Error
 
 
 class TestCertificateAuthority:
@@ -96,7 +96,7 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
 
-    trust_root = ClientTrustConfig.staging()
+    trust_config = ClientTrustConfig.staging()
     # metadata was "downloaded" from staging
     expected = [
         "root.json",
@@ -111,31 +111,31 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # Don't expect trusted_root.json request as it's cached already
     expected_requests = {
         "timestamp.json": 1,
-        "4.snapshot.json": 1,
-        "4.targets.json": 1,
+        "13.snapshot.json": 1,
+        "13.targets.json": 1,
     }
-    expected_fail_reqs = {"5.root.json": 1}
+    expected_fail_reqs = {"12.root.json": 1}
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
-    trust_root.ct_keyring(KeyringPurpose.VERIFY)
-    trust_root.rekor_keyring(KeyringPurpose.VERIFY)
+    trust_config.trusted_root.ct_keyring(KeyringPurpose.VERIFY)
+    trust_config.trusted_root.rekor_keyring(KeyringPurpose.VERIFY)
 
     # no new requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
     # New trust root (and TrustUpdater instance), same cache dirs
-    trust_root = ClientTrustConfig.staging()
+    trust_config = ClientTrustConfig.staging()
 
     # Expect new timestamp and root requests
     expected_requests["timestamp.json"] += 1
-    expected_fail_reqs["5.root.json"] += 1
+    expected_fail_reqs["12.root.json"] += 1
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
 
-    trust_root.ct_keyring(purpose=KeyringPurpose.VERIFY)
-    trust_root.rekor_keyring(purpose=KeyringPurpose.VERIFY)
+    trust_config.trusted_root.ct_keyring(purpose=KeyringPurpose.VERIFY)
+    trust_config.trusted_root.rekor_keyring(purpose=KeyringPurpose.VERIFY)
     # Expect no requests
     assert reqs == expected_requests
     assert fail_reqs == expected_fail_reqs
@@ -148,15 +148,15 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
 
-    trust_root = ClientTrustConfig.staging(offline=True)
+    trust_config = ClientTrustConfig.staging(offline=True)
 
     # local TUF metadata is not initialized, nothing is downloaded
     assert not os.path.exists(data_dir)
     assert reqs == {}
     assert fail_reqs == {}
 
-    trust_root.ct_keyring(purpose=KeyringPurpose.VERIFY)
-    trust_root.rekor_keyring(purpose=KeyringPurpose.VERIFY)
+    trust_config.trusted_root.ct_keyring(purpose=KeyringPurpose.VERIFY)
+    trust_config.trusted_root.rekor_keyring(purpose=KeyringPurpose.VERIFY)
 
     # Still no requests
     assert reqs == {}
@@ -240,7 +240,7 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from offline TUF contains the expected keys/certs
-    trust_root = ClientTrustConfig.staging(offline=True).trust_root
+    trust_root = ClientTrustConfig.staging(offline=True).trusted_root
     assert ctfe_keys[0] in get_public_bytes(
         [
             k.key
@@ -288,7 +288,9 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
 
 
 def test_trust_root_tuf_instance_error():
-    with pytest.raises(RootError):
+    # Expect file not found since embedded root.json is not found and
+    # no local metadata is found
+    with pytest.raises(FileNotFoundError):
         ClientTrustConfig.from_tuf("foo.bar")
 
 

@@ -29,7 +29,7 @@ from tuf.ngclient import Updater, UpdaterConfig  # type: ignore[attr-defined]
 
 from sigstore import __version__
 from sigstore._utils import read_embedded
-from sigstore.errors import RootError, TUFError
+from sigstore.errors import TUFError
 
 _logger = logging.getLogger(__name__)
 
@@ -70,8 +70,9 @@ class TrustUpdater:
         """
         Create a new `TrustUpdater`, pulling from the given `url`.
 
-        The URL is expected to match one of `sigstore-python`'s known TUF
-        roots, i.e. for the production or staging Sigstore TUF repos.
+        TrustUpdater expects that either embedded data contains
+        a root.json for this url or that local data has been initialized
+        already.
 
         If not `offline`, TrustUpdater will update the TUF metadata from
         the remote repository.
@@ -79,25 +80,17 @@ class TrustUpdater:
         self._repo_url = url
         self._metadata_dir, self._targets_dir = _get_dirs(url)
 
-        rsrc_prefix: str
-        if self._repo_url == DEFAULT_TUF_URL:
-            rsrc_prefix = "prod"
-        elif self._repo_url == STAGING_TUF_URL:
-            rsrc_prefix = "staging"
-        else:
-            raise RootError
-
-        # Initialize targets cache dir
+        # Populate targets cache so we don't have to download these versions
         self._targets_dir.mkdir(parents=True, exist_ok=True)
-        trusted_root_target = self._targets_dir / "trusted_root.json"
 
-        if not trusted_root_target.exists():
-            try:
-                trusted_root_json = read_embedded("trusted_root.json", rsrc_prefix)
-            except FileNotFoundError as e:
-                raise RootError from e
-
-            trusted_root_target.write_bytes(trusted_root_json)
+        for artifact in ["trusted_root.json", "signing_config.v0.2.json"]:
+            artifact_path = self._targets_dir / artifact
+            if not artifact_path.exists():
+                try:
+                    data = read_embedded(artifact, url)
+                    artifact_path.write_bytes(data)
+                except FileNotFoundError:
+                    pass  # this is ok: e.g. signing_config is not in prod repository yet
 
         _logger.debug(f"TUF metadata: {self._metadata_dir}")
         _logger.debug(f"TUF targets cache: {self._targets_dir}")
@@ -110,9 +103,12 @@ class TrustUpdater:
         else:
             # Initialize and update the toplevel TUF metadata
             try:
-                root_json = read_embedded("root.json", rsrc_prefix)
-            except FileNotFoundError as e:
-                raise RootError from e
+                root_json = read_embedded("root.json", url)
+            except FileNotFoundError:
+                # embedded root not found: we can still initialize _if_ the local metadata
+                # exists already
+                root_json = None
+
             self._updater = Updater(
                 metadata_dir=str(self._metadata_dir),
                 metadata_base_url=self._repo_url,
@@ -121,6 +117,7 @@ class TrustUpdater:
                 config=UpdaterConfig(app_user_agent=f"sigstore-python/{__version__}"),
                 bootstrap=root_json,
             )
+
             try:
                 self._updater.refresh()
             except Exception as e:
@@ -167,7 +164,7 @@ class TrustUpdater:
                 TUFExceptions.DownloadError,
                 TUFExceptions.RepositoryError,
             ) as e:
-                raise TUFError("Failed to download trusted key bundle") from e
+                raise TUFError("Failed to download signing config") from e
 
         _logger.debug("Found and verified signing config")
         return path

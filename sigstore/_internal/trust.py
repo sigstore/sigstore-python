@@ -568,7 +568,7 @@ class ClientTrustConfig:
         except TUFError as e:
             # TUF repo may not have signing config yet: hard code values for prod:
             if url == DEFAULT_TUF_URL:
-                embedded = read_embedded("signing_config.v0.2.json", "prod")
+                embedded = read_embedded("signing_config.v0.2.json", url)
                 inner_sc = _SigningConfig().from_json(embedded)
             else:
                 raise e
