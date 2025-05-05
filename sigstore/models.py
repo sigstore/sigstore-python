@@ -262,15 +262,15 @@ class LogEntry:
         )
 
         # Fill in the appropriate kind
-        body_entry: ProposedEntry = TypeAdapter(ProposedEntry).validate_json(
-            tlog_entry.canonicalized_body
-        )
-        if not isinstance(body_entry, (Hashedrekord, Dsse)):
-            raise InvalidBundle("log entry is not of expected type")
+        # body_entry: ProposedEntry = TypeAdapter(ProposedEntry).validate_json(
+        #     tlog_entry.canonicalized_body
+        # )
+        # if not isinstance(body_entry, (Hashedrekord, Dsse)):
+        #     raise InvalidBundle("log entry is not of expected type")
 
-        tlog_entry.kind_version = rekor_v1.KindVersion(
-            kind=body_entry.kind, version=body_entry.api_version
-        )
+        # tlog_entry.kind_version = rekor_v1.KindVersion(
+        #     kind=body_entry.kind, version=body_entry.api_version
+        # )
 
         return tlog_entry
 

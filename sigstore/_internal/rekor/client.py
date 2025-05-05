@@ -165,7 +165,7 @@ class RekorEntries(_Endpoint):
                         'public_key': {
                             'rawBytes': payload["spec"]['signature']['publicKey']['content']
                         },
-                        'key_details': "PKIX_ECDSA_P384_SHA_384"
+                        'key_details': "PKIX_ECDSA_P384_SHA_256"
                     }
                 }
             }
@@ -180,7 +180,9 @@ class RekorEntries(_Endpoint):
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
-        return LogEntry._from_response(integrated_entry)
+        # return LogEntry._from_response(integrated_entry)
+        return LogEntry._from_dict_rekor(integrated_entry)
+
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:

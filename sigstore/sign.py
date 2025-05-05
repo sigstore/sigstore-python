@@ -274,6 +274,8 @@ class Signer:
             hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())
         )
 
+        b64_digest = base64.b64encode(hashed_input.digest).decode()
+
         content = MessageSignature(
             message_digest=HashOutput(
                 algorithm=hashed_input.algorithm,
@@ -294,7 +296,8 @@ class Signer:
                 data=rekor_types.hashedrekord.Data(
                     hash=rekor_types.hashedrekord.Hash(
                         algorithm=hashed_input._as_hashedrekord_algorithm(),
-                        value=hashed_input.digest.hex(),
+                        # value=hashed_input.digest.decode(),
+                        value=b64_digest
                     )
                 ),
             ),
