@@ -387,9 +387,7 @@ class SigningConfig:
         but may return more in future.
         """
         url = self._get_valid_service_url(self._inner.tsa_urls)
-        if not url:
-            raise Error("No valid Timestamp Authority found in signing config")
-        return [url]
+        return [] if url is None else [url]
 
 
 class TrustedRoot:
