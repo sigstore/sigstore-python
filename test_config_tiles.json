@@ -3,7 +3,6 @@
     "trustedRoot": {
         "mediaType": "application/vnd.dev.sigstore.trustedroot+json;version=0.1",
         "tlogs": [],
-        "certificateAuthorities": [],
         "ctlogs": [
             {
                 "baseUrl": "https://ctfe.sigstore.dev/2022",
@@ -17,6 +16,23 @@
                 },
                 "logId": {
                     "keyId": "3T0wasbHETJjGR4cmWc3AqJKXrjePK3/h4pygC8p7o4="
+                }
+            }
+        ],
+        "certificateAuthorities": [
+            {
+                "subject": {
+                    "organization": "sigstore"
+                },
+                "certChain": {
+                    "certificates": [
+                        {
+                            "rawBytes": "MIICGDCCAb2gAwIBAgIUGmDPyjHNmBovOIehfnpFqtErprMwCgYIKoZIzj0EAwIwaDEMMAoGA1UEBhMDVVNBMQswCQYDVQQIEwJXQTERMA8GA1UEBxMIS2lya2xhbmQxFTATBgNVBAkTDDc2NyA2dGggU3QgUzEOMAwGA1UEERMFOTgwMzMxETAPBgNVBAoTCHNpZ3N0b3JlMB4XDTI1MDUwNTAxNTYzNVoXDTM1MDUwNTAxNTYzNVowaDEMMAoGA1UEBhMDVVNBMQswCQYDVQQIEwJXQTERMA8GA1UEBxMIS2lya2xhbmQxFTATBgNVBAkTDDc2NyA2dGggU3QgUzEOMAwGA1UEERMFOTgwMzMxETAPBgNVBAoTCHNpZ3N0b3JlMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE6F1/yazNuKwk5mM1806HIrOQly+RfphoKT+JfwIXq5hkXMoN4mRw3KnYVvlL4SJTHru4R+hMg9rs/Y8jJT/0wqNFMEMwDgYDVR0PAQH/BAQDAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQEwHQYDVR0OBBYEFHIeBqzKwE0jtruNyuKAfmwVkURWMAoGCCqGSM49BAMCA0kAMEYCIQCgsaOL+r+h7xFTzoUi6jdzMjZrtmromhkJW8mugHbNXQIhAIg1tI2zcxkXnXknRxj5ewg+As/PrxMrpndcheb729ew"
+                        }
+                    ]
+                },
+                "validFor": {
+                    "start": "2025-05-05T01:56:35Z"
                 }
             }
         ]

@@ -112,8 +112,7 @@ class RekorLog(_Endpoint):
         Returns a `RekorEntries` capable of accessing detailed information
         about individual log entries.
         """
-        # NOTE: not "entries/"
-        return RekorEntries(urljoin(self.url, "entries"), session=self.session)
+        return RekorEntries(urljoin(self.url, "entries/"), session=self.session)
 
 
 class RekorEntries(_Endpoint):
@@ -172,7 +171,8 @@ class RekorEntries(_Endpoint):
         }
         _logger.debug(f"proposed: {json.dumps(payloadV2)}")
         payload = payloadV2
-        resp: requests.Response = self.session.post(self.url, json=payload)
+        # NOTE: not "entries/"
+        resp: requests.Response = self.session.post(self.url.rstrip("/"), json=payload)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
