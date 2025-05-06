@@ -32,7 +32,6 @@ import requests
 from pydantic import BaseModel, StrictStr
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.trust import ClientTrustConfig
 from sigstore.errors import Error, NetworkError
 
 # See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
@@ -268,13 +267,6 @@ class Issuer:
             self.oidc_config = _OpenIDConfiguration.model_validate(resp.json())
         except ValueError as exc:
             raise IssuerError(f"OIDC issuer returned invalid configuration: {exc}")
-
-    @classmethod
-    def from_trust_config(cls, trust_config: ClientTrustConfig) -> Issuer:
-        """
-        Return `Issuer` for given `ClientTrustConfig`.
-        """
-        return cls(trust_config.signing_config.get_oidc_url())
 
     def identity_token(  # nosec: B107
         self,

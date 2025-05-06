@@ -1190,7 +1190,7 @@ def _get_identity(
     if args.oidc_issuer is not None:
         issuer = Issuer(args.oidc_issuer)
     else:
-        issuer = Issuer.from_trust_config(trust_config)
+        issuer = Issuer(trust_config.signing_config.get_oidc_url())
 
     if args.oidc_client_secret is None:
         args.oidc_client_secret = ""  # nosec: B105
