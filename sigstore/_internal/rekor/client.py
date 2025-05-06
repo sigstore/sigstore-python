@@ -155,7 +155,7 @@ class RekorEntries(_Endpoint):
         payload = proposed_entry.model_dump(mode="json", by_alias=True)
         _logger.debug(f"proposed: {json.dumps(payload)}")
 
-        resp: requests.Response = self.session.post(self.url, json=payload)
+        resp: requests.Response = self.session.post(self.url.rstrip("/"), json=payload)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
