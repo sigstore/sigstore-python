@@ -59,26 +59,6 @@
                     "start": "2025-05-05T01:51:33Z",
                     "end": "2035-03-28T09:14:06Z"
                 }
-            },
-            {
-                "subject": {
-                    "organization": "sigstore.dev",
-                    "commonName": "sigstore-tsa-selfsigned"
-                },
-                "certChain": {
-                    "certificates": [
-                        {
-                            "rawBytes": "MIICDzCCAZagAwIBAgIUCjWhBmHV4kFzxomWp/J98n4DfKcwCgYIKoZIzj0EAwMwOTEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MSAwHgYDVQQDExdzaWdzdG9yZS10c2Etc2VsZnNpZ25lZDAeFw0yNTAzMjgwOTE0MDZaFw0zNTAzMjYwODE0MDZaMC4xFTATBgNVBAoTDHNpZ3N0b3JlLmRldjEVMBMGA1UEAxMMc2lnc3RvcmUtdHNhMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEx1v5F3HpD9egHuknpBFlRz7QBRDJu4aeVzt9zJLRY0lvmx1lF7WBM2c9AN8ZGPQsmDqHlJN2R/7+RxLkvlLzkc19IOx38t7mGGEcB7agUDdCF/Ky3RTLSK0Xo/0AgHQdo2owaDAOBgNVHQ8BAf8EBAMCB4AwHQYDVR0OBBYEFKj8ZPYo3i7mO3NPVIxSxOGc3VOlMB8GA1UdIwQYMBaAFDsgRlletTJNRzDObmPuc3RH8gR9MBYGA1UdJQEB/wQMMAoGCCsGAQUFBwMIMAoGCCqGSM49BAMDA2cAMGQCMESvVS6GGtF33+J19TfwENWJXjRv4i0/HQFwLUSkX6TfV7g0nG8VnqNHJLvEpAtOjQIwUD3uywTXorQP1DgbV09rF9Yen+CEqs/iEpieJWPst280SSOZ5Na+dyPVk9/8SFk6"
-                        },
-                        {
-                            "rawBytes": "MIIB9zCCAXygAwIBAgIUCPExEFKiQh0dP4sp5ltmSYSSkFUwCgYIKoZIzj0EAwMwOTEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MSAwHgYDVQQDExdzaWdzdG9yZS10c2Etc2VsZnNpZ25lZDAeFw0yNTAzMjgwOTE0MDZaFw0zNTAzMjYwODE0MDZaMDkxFTATBgNVBAoTDHNpZ3N0b3JlLmRldjEgMB4GA1UEAxMXc2lnc3RvcmUtdHNhLXNlbGZzaWduZWQwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAATt0tIDWyo4ARfL9BaSo0W5bJQEbKJTU/u7llvdjSI5aTkOAJa8tixn2+LEfPG4dMFdsMPtsIuU1qn2OqFiuMk6vHv/c+az25RQVY1oo50iMb0jIL3N4FgwhPFpZnCbQPOjRTBDMA4GA1UdDwEB/wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1UdDgQWBBQ7IEZZXrUyTUcwzm5j7nN0R/IEfTAKBggqhkjOPQQDAwNpADBmAjEA2MI1VXgbf3dUOSc95hSRypBKOab18eh2xzQtxUsHvWeY+1iFgyMluUuNR6taoSmFAjEA31m2czguZhKYX+4JSKu5pRYhBTXAd8KKQ3xdPRX/qCaLvT2qJAEQ1YQM3EJRrtI7"
-                        }
-                    ]
-                },
-                "validFor": {
-                    "start": "2025-03-28T09:14:06Z",
-                    "end": "2035-03-28T09:14:06Z"
-                }
             }
         ]
     },
@@ -88,8 +68,7 @@
             "http://rpetgrave-1.c.googlers.com:3003"
         ],
         "tsaUrls": [
-            "http://rpetgrave-1.c.googlers.com:3004/api/v1/timestamp",
-            "https://timestamp.sigstage.dev/api/v1/timestamp"
+            "http://rpetgrave-1.c.googlers.com:3004/api/v1/timestamp"
         ]
     }
 }

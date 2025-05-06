@@ -195,6 +195,7 @@ class Verifier:
         # The Signer sends a hash of the signature as the messageImprint in a TimeStampReq
         # to the Timestamping Service
         signature_hash = sha256_digest(bundle.signature).digest
+
         verified_timestamps = [
             verified_timestamp
             for tsr in timestamp_responses
