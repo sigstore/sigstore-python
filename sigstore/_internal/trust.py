@@ -75,7 +75,7 @@ def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> boo
 
     # Active: if the current time is before the starting period, we are not yet
     # valid.
-    if now < period.start:
+    if not period.start or now < period.start:
         return False
 
     # If we want Expired keys, the key is valid at this point. Otherwise, check
