@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+* Fixed the POST path for "/entries" to not have a trailing slash.
+
 ## [3.6.2]
 
 ### Fixed
