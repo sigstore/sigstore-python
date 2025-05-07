@@ -149,19 +149,19 @@ class Verifier:
                 continue
 
             if (
-                certificate_authority.validity_period_start <= timestamp_response.tst_info.gen_time
+                certificate_authority.validity_period_start
+                <= timestamp_response.tst_info.gen_time
             ) and (
                 not certificate_authority.validity_period_end
-                or timestamp_response.tst_info.gen_time < certificate_authority.validity_period_end
+                or timestamp_response.tst_info.gen_time
+                < certificate_authority.validity_period_end
             ):
                 return TimestampVerificationResult(
                     source=TimestampSource.TIMESTAMP_AUTHORITY,
                     time=timestamp_response.tst_info.gen_time,
                 )
 
-            _logger.debug(
-                "Unable to verify Timestamp because not in CA time range."
-            )
+            _logger.debug("Unable to verify Timestamp because not in CA time range.")
 
         return None
 
