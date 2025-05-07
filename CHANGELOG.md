@@ -8,6 +8,9 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+* Fixed the certificate calidity period check for Timestamp Authorities (TSA).
+  Certificates need not have and end date, while still requiring a start date.
+
 ## [3.6.2]
 
 ### Fixed
