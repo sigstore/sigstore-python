@@ -112,7 +112,7 @@ class RekorLog(_Endpoint):
         Returns a `RekorEntries` capable of accessing detailed information
         about individual log entries.
         """
-        return RekorEntries(urljoin(self.url, "entries/"), session=self.session)
+        return RekorEntries(urljoin(self.url, "entries"), session=self.session)
 
 
 class RekorEntries(_Endpoint):
@@ -134,7 +134,7 @@ class RekorEntries(_Endpoint):
         resp: requests.Response
 
         if uuid is not None:
-            resp = self.session.get(urljoin(self.url, uuid))
+            resp = self.session.get(urljoin(f"{self.url}/", uuid))
         else:
             resp = self.session.get(self.url, params={"logIndex": log_index})
 
@@ -155,7 +155,7 @@ class RekorEntries(_Endpoint):
         payload = proposed_entry.model_dump(mode="json", by_alias=True)
         _logger.debug(f"proposed: {json.dumps(payload)}")
 
-        resp: requests.Response = self.session.post(self.url.rstrip("/"), json=payload)
+        resp: requests.Response = self.session.post(self.url, json=payload)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
@@ -171,7 +171,7 @@ class RekorEntries(_Endpoint):
         Returns a `RekorEntriesRetrieve` capable of retrieving entries.
         """
         return RekorEntriesRetrieve(
-            urljoin(self.url, "retrieve/"), session=self.session
+            urljoin(f"{self.url}/", "retrieve/"), session=self.session
         )
 
 
