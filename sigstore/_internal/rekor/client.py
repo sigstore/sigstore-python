@@ -169,9 +169,7 @@ class RekorEntries(_Endpoint):
         """
         Returns a `RekorEntriesRetrieve` capable of retrieving entries.
         """
-        return RekorEntriesRetrieve(
-            f"{self.url}/retrieve/", session=self.session
-        )
+        return RekorEntriesRetrieve(f"{self.url}/retrieve/", session=self.session)
 
 
 class RekorEntriesRetrieve(_Endpoint):
