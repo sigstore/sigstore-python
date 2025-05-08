@@ -8,8 +8,11 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
 * Fixed the certificate calidity period check for Timestamp Authorities (TSA).
   Certificates need not have and end date, while still requiring a start date.
+  [#1368](https://github.com/sigstore/sigstore-python/pull/1368)
 
 ## [3.6.2]
 
