@@ -10,6 +10,8 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+* TSA: Changed the Timestamp Authority requests to explicitly use sha256 for message digests.
+
 * API: Make Rekor APIs compatible with Rekor v2 by removing trailing slashes
   from endpoints ([#1366](https://github.com/sigstore/sigstore-python/pull/1366))
 
