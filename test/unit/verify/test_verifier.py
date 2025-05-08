@@ -212,6 +212,16 @@ class TestVerifierWithTimestamp:
             null_policy,
         )
 
+    def test_verifier_no_validity_end(self, verifier, asset, null_policy):
+        verifier._trusted_root.get_timestamp_authorities()[
+            0
+        ]._inner.valid_for.end = None
+        verifier.verify_artifact(
+            asset("tsa/bundle.txt").read_bytes(),
+            Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
+            null_policy,
+        )
+
     def test_verifier_without_timestamp(
         self, verifier, asset, null_policy, monkeypatch
     ):
@@ -240,24 +250,6 @@ class TestVerifierWithTimestamp:
                 Bundle.from_json(asset("tsa/bundle.duplicate.sigstore").read_bytes()),
                 null_policy,
             )
-
-    def test_verifier_no_validity(self, caplog, verifier, asset, null_policy):
-        verifier._trusted_root.get_timestamp_authorities()[
-            0
-        ]._inner.valid_for.end = None
-
-        with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError, match="not enough timestamps"):
-                verifier.verify_artifact(
-                    asset("tsa/bundle.txt").read_bytes(),
-                    Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
-                    null_policy,
-                )
-
-        assert (
-            "Unable to verify Timestamp because no validity provided."
-            == caplog.records[0].message
-        )
 
     def test_verifier_outside_validity_range(
         self, caplog, verifier, asset, null_policy

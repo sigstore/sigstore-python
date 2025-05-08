@@ -492,9 +492,9 @@ class Bundle:
             # We expect some old bundles to violate the rules around root
             # and intermediate CAs, so we issue warnings and not hard errors
             # in those cases.
-            leaf_cert, *chain_certs = [
+            leaf_cert, *chain_certs = (
                 load_der_x509_certificate(cert.raw_bytes) for cert in certs
-            ]
+            )
             if not cert_is_leaf(leaf_cert):
                 raise InvalidBundle(
                     "bundle contains an invalid leaf or non-leaf certificate in the leaf position"
