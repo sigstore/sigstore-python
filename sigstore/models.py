@@ -205,7 +205,8 @@ class LogEntry:
             ),
             inclusion_promise=entry["verification"]["signedEntryTimestamp"],
             kind_version=KindVersion(
-                kind=body_entry.kind, version=body_entry.api_version)
+                kind=body_entry.kind, version=body_entry.api_version
+            ),
         )
 
     @classmethod
