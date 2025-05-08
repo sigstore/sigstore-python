@@ -26,6 +26,7 @@ from rfc3161_client import (
     TimeStampResponse,
     decode_timestamp_response,
 )
+from rfc3161_client.base import HashAlgorithm
 
 from sigstore._internal import USER_AGENT
 
@@ -93,7 +94,11 @@ class TimestampAuthorityClient:
         # Build the timestamp request
         try:
             timestamp_request = (
-                TimestampRequestBuilder().data(signature).nonce(nonce=True).build()
+                TimestampRequestBuilder()
+                .hash_algorithm(HashAlgorithm.SHA256)
+                .data(signature)
+                .nonce(nonce=True)
+                .build()
             )
         except ValueError as error:
             msg = f"invalid request: {error}"
