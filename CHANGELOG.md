@@ -12,6 +12,7 @@ All versions prior to 0.9.0 are untracked.
 
 * Added `LogEntry.kind_version`, which is now parsed earlier upon receipt from the rekor API,
   either from the root of the response, or from the reponse's inner base64-encoded JSON `body`.
+  [#1370](https://github.com/sigstore/sigstore-python/pull/1370)
 
 ## [3.6.2]
 
