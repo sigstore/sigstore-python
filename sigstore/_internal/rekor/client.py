@@ -23,7 +23,6 @@ import logging
 from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Optional
-from urllib.parse import urljoin
 
 import rekor_types
 import requests
@@ -112,7 +111,7 @@ class RekorLog(_Endpoint):
         Returns a `RekorEntries` capable of accessing detailed information
         about individual log entries.
         """
-        return RekorEntries(urljoin(self.url, "entries/"), session=self.session)
+        return RekorEntries(f"{self.url}/entries", session=self.session)
 
 
 class RekorEntries(_Endpoint):
@@ -134,7 +133,7 @@ class RekorEntries(_Endpoint):
         resp: requests.Response
 
         if uuid is not None:
-            resp = self.session.get(urljoin(self.url, uuid))
+            resp = self.session.get(f"{self.url}/{uuid}")
         else:
             resp = self.session.get(self.url, params={"logIndex": log_index})
 
@@ -189,9 +188,7 @@ class RekorEntries(_Endpoint):
         """
         Returns a `RekorEntriesRetrieve` capable of retrieving entries.
         """
-        return RekorEntriesRetrieve(
-            urljoin(self.url, "retrieve/"), session=self.session
-        )
+        return RekorEntriesRetrieve(f"{self.url}/retrieve/", session=self.session)
 
 
 class RekorEntriesRetrieve(_Endpoint):
@@ -246,7 +243,7 @@ class RekorClient:
         """
         Create a new `RekorClient` from the given URL.
         """
-        self.url = urljoin(url, path)
+        self.url = f"{url}/api/v1"
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -283,4 +280,4 @@ class RekorClient:
         """
         Returns a `RekorLog` adapter for making requests to a Rekor log.
         """
-        return RekorLog(urljoin(self.url, "log/"), session=self.session)
+        return RekorLog(f"{self.url}/log", session=self.session)
