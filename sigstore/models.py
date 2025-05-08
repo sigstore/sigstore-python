@@ -215,14 +215,14 @@ class LogEntry:
         if not inclusion_proof or not inclusion_proof.checkpoint.envelope:
             raise InvalidBundle("entry must contain inclusion proof, with checkpoint")
 
+        _logger.info(inclusion_proof.root_hash)
         parsed_inclusion_proof = LogInclusionProof(
             checkpoint=inclusion_proof.checkpoint.envelope,
             hashes=[h.hex() for h in inclusion_proof.hashes],
             log_index=inclusion_proof.log_index,
-            root_hash=inclusion_proof.root_hash.hex(),
+            root_hash=inclusion_proof.root_hash.decode(),
             tree_size=inclusion_proof.tree_size,
         )
-
         return LogEntry(
             uuid=None,
             body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
@@ -252,7 +252,7 @@ class LogEntry:
 
         inclusion_proof = rekor_v1.InclusionProof(
             log_index=self.inclusion_proof.log_index,
-            root_hash=bytes.fromhex(self.inclusion_proof.root_hash),
+            root_hash=self.inclusion_proof.root_hash.encode(),
             tree_size=self.inclusion_proof.tree_size,
             hashes=[bytes.fromhex(hash_) for hash_ in self.inclusion_proof.hashes],
             checkpoint=rekor_v1.Checkpoint(envelope=self.inclusion_proof.checkpoint),
@@ -484,9 +484,9 @@ class Bundle:
             # We expect some old bundles to violate the rules around root
             # and intermediate CAs, so we issue warnings and not hard errors
             # in those cases.
-            leaf_cert, *chain_certs = (
+            leaf_cert, *chain_certs = [
                 load_der_x509_certificate(cert.raw_bytes) for cert in certs
-            )
+            ]
             if not cert_is_leaf(leaf_cert):
                 raise InvalidBundle(
                     "bundle contains an invalid leaf or non-leaf certificate in the leaf position"

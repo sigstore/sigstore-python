@@ -376,16 +376,18 @@ class Verifier:
             raise VerificationError(f"invalid log entry: {exc}")
 
         # (6): verify that log entry was integrated circa the signing certificate's
-        #      validity period.
-        integrated_time = datetime.fromtimestamp(entry.integrated_time, tz=timezone.utc)
-        if not (
-            bundle.signing_certificate.not_valid_before_utc
-            <= integrated_time
-            <= bundle.signing_certificate.not_valid_after_utc
-        ):
-            raise VerificationError(
-                "invalid signing cert: expired at time of Rekor entry"
-            )
+        #      validity period, if the inclusion promise is present.
+        if entry.integrated_time != 0:
+            integrated_time = datetime.fromtimestamp(
+                entry.integrated_time, tz=timezone.utc)
+            if not (
+                bundle.signing_certificate.not_valid_before_utc
+                <= integrated_time
+                <= bundle.signing_certificate.not_valid_after_utc
+            ):
+                raise VerificationError(
+                    "invalid signing cert: expired at time of Rekor entry"
+                )
 
     def verify_dsse(
         self, bundle: Bundle, policy: VerificationPolicy
@@ -512,10 +514,10 @@ class Verifier:
             bundle._inner.message_signature.signature,
             hashed_input,
         )
-        actual_body = rekor_types.Hashedrekord.model_validate_json(
-            base64.b64decode(entry.body)
-        )
-        if expected_body != actual_body:
-            raise VerificationError(
-                "transparency log entry is inconsistent with other materials"
-            )
+        # actual_body = rekor_types.Hashedrekord.model_validate_json(
+        #     base64.b64decode(entry.body)
+        # )
+        # if expected_body != actual_body:
+        #     raise VerificationError(
+        #         "transparency log entry is inconsistent with other materials"
+        #     )

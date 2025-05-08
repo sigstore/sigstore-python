@@ -171,7 +171,8 @@ class RekorEntries(_Endpoint):
         _logger.debug(f"proposed: {json.dumps(payloadV2)}")
         payload = payloadV2
         # NOTE: not "entries/"
-        resp: requests.Response = self.session.post(self.url.rstrip("/"), json=payload)
+        print(self.url)
+        resp: requests.Response = self.session.post(self.url, json=payload)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
@@ -237,13 +238,13 @@ class RekorEntriesRetrieve(_Endpoint):
 
 class RekorClient:
     """The internal Rekor client"""
-    # NOTE: use "api/v2/"
 
-    def __init__(self, url: str, path: str = "api/v2/") -> None:
+    def __init__(self, url: str) -> None:
         """
         Create a new `RekorClient` from the given URL.
         """
-        self.url = f"{url}/api/v1"
+        # NOTE: use "api/v2/"
+        self.url = f"{url}/api/v2"
         self.session = requests.Session()
         self.session.headers.update(
             {

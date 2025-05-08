@@ -23,12 +23,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, NewType
+from typing import ClassVar, NewType, Optional
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, rsa, ed25519
 from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
@@ -89,7 +89,7 @@ class Key:
     Represents a key in a `Keyring`.
     """
 
-    hash_algorithm: hashes.HashAlgorithm
+    hash_algorithm: Optional[hashes.HashAlgorithm]
     key: PublicKey
     key_id: KeyID
 
@@ -125,6 +125,10 @@ class Key:
             key = load_der_public_key(
                 public_key.raw_bytes, types=(ec.EllipticCurvePublicKey,)
             )
+        elif public_key.key_details == _PublicKeyDetails.PKIX_ED25519:
+            hash_algorithm = None
+            key = load_der_public_key(
+                public_key.raw_bytes, types=(ed25519.Ed25519PublicKey,))
         else:
             raise VerificationError(f"unsupported key type: {public_key.key_details}")
 
@@ -149,6 +153,11 @@ class Key:
                 signature=signature,
                 data=data,
                 signature_algorithm=ec.ECDSA(self.hash_algorithm),
+            )
+        elif isinstance(self.key, ed25519.Ed25519PublicKey):
+            self.key.verify(
+                signature=signature,
+                data=data,
             )
         else:
             # Unreachable without API misuse.
