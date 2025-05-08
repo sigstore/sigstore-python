@@ -16,7 +16,6 @@ import requests
 
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._utils import sha256_digest
-from cryptography.hazmat.primitives.hashes import SHA256
 
 
 @pytest.mark.timestamp_authority
