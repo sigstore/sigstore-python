@@ -11,6 +11,7 @@ All versions prior to 0.9.0 are untracked.
 ### Added
 
 * Added support for ed25519 keys.
+  [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
 
 ### Fixed
 
