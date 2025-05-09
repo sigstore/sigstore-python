@@ -30,7 +30,7 @@ from sigstore.models import (
 
 
 class TestLogEntry:
-    @pytest.mark.parametrize('integrated_time', [0, 1746819403])
+    @pytest.mark.parametrize("integrated_time", [0, 1746819403])
     def test_missing_inclusion_proof(self, integrated_time: int):
         with pytest.raises(ValueError, match=r"inclusion_proof"):
             LogEntry(
