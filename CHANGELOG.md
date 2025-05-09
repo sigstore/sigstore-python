@@ -25,6 +25,10 @@ All versions prior to 0.9.0 are untracked.
 * API: Make Rekor APIs compatible with Rekor v2 by removing trailing slashes
   from endpoints ([#1366](https://github.com/sigstore/sigstore-python/pull/1366))
 
+* CI: Timestamp Authority tests use latest release, not latest tag, of
+  [sigstore/timestamp-authority](https://github.com/sigstore/timestamp-authority)
+  [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
+
 ### Changed
 
 * `--trust-config` now requires a file with SigningConfig v0.2, and is able to fully
