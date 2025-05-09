@@ -10,6 +10,10 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+### Added
+
+* Added support for ed25519 keys.
+
 * Fixed the certificate calidity period check for Timestamp Authorities (TSA).
   Certificates need not have and end date, while still requiring a start date.
   [#1368](https://github.com/sigstore/sigstore-python/pull/1368)
