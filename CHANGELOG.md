@@ -20,6 +20,11 @@ All versions prior to 0.9.0 are untracked.
 * API: Make Rekor APIs compatible with Rekor v2 by removing trailing slashes
   from endpoints ([#1366](https://github.com/sigstore/sigstore-python/pull/1366))
 
+### Changed
+
+* `--trust-config` now requires a file with SigningConfig v0.2, and is able to fully
+  configure the used Sigstore instance [#1358]/(https://github.com/sigstore/sigstore-python/pull/1358)
+
 ## [3.6.2]
 
 ### Fixed
