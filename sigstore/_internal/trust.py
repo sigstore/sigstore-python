@@ -121,7 +121,7 @@ class Key:
         if not public_key.raw_bytes:
             raise VerificationError("public key is empty")
 
-        hash_algorithm: hashes.HashAlgorithm
+        hash_algorithm: Optional[hashes.HashAlgorithm]
         if public_key.key_details in self._RSA_SHA_256_DETAILS:
             hash_algorithm = hashes.SHA256()
             key = load_der_public_key(public_key.raw_bytes, types=(rsa.RSAPublicKey,))
@@ -146,7 +146,7 @@ class Key:
         """
         Verifies the given `data` against `signature` using the current key.
         """
-        if isinstance(self.key, rsa.RSAPublicKey):
+        if isinstance(self.key, rsa.RSAPublicKey) and self.hash_algorithm is not None:
             self.key.verify(
                 signature=signature,
                 data=data,
@@ -154,13 +154,19 @@ class Key:
                 padding=padding.PKCS1v15(),
                 algorithm=self.hash_algorithm,
             )
-        elif isinstance(self.key, ec.EllipticCurvePublicKey):
+        elif (
+            isinstance(self.key, ec.EllipticCurvePublicKey)
+            and self.hash_algorithm is not None
+        ):
             self.key.verify(
                 signature=signature,
                 data=data,
                 signature_algorithm=ec.ECDSA(self.hash_algorithm),
             )
-        elif isinstance(self.key, ed25519.Ed25519PublicKey):
+        elif (
+            isinstance(self.key, ed25519.Ed25519PublicKey)
+            and self.hash_algorithm is None
+        ):
             self.key.verify(
                 signature=signature,
                 data=data,
