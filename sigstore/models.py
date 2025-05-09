@@ -19,6 +19,7 @@ Common models shared between signing and verification.
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import typing
 from enum import Enum
@@ -462,6 +463,9 @@ class Bundle:
             Bundle.BundleType.BUNDLE_0_3_ALT,
         ):
             # For "v3" bundles, the signing certificate is the only one present.
+            if not self._inner.verification_material.certificate:
+                raise InvalidBundle("expected certificate in bundle")
+
             leaf_cert = load_der_x509_certificate(
                 self._inner.verification_material.certificate.raw_bytes
             )
@@ -469,11 +473,8 @@ class Bundle:
             # In older bundles, there is an entire pool (misleadingly called
             # a chain) of certificates, the first of which is the signing
             # certificate.
-            certs = (
-                self._inner.verification_material.x509_certificate_chain.certificates
-            )
-
-            if len(certs) == 0:
+            chain = self._inner.verification_material.x509_certificate_chain
+            if not chain or not chain.certificates:
                 raise InvalidBundle("expected non-empty certificate chain in bundle")
 
             # Per client policy in protobuf-specs: the first entry in the chain
@@ -484,9 +485,9 @@ class Bundle:
             # We expect some old bundles to violate the rules around root
             # and intermediate CAs, so we issue warnings and not hard errors
             # in those cases.
-            leaf_cert, *chain_certs = [
-                load_der_x509_certificate(cert.raw_bytes) for cert in certs
-            ]
+            leaf_cert, *chain_certs = (
+                load_der_x509_certificate(cert.raw_bytes) for cert in chain.certificates
+            )
             if not cert_is_leaf(leaf_cert):
                 raise InvalidBundle(
                     "bundle contains an invalid leaf or non-leaf certificate in the leaf position"
@@ -572,8 +573,8 @@ class Bundle:
 
         @private
         """
-        if self._inner.dsse_envelope:
-            return dsse.Envelope(self._inner.dsse_envelope)
+        if self._inner.is_set("dsse_envelope"):
+            return dsse.Envelope(self._inner.dsse_envelope)  # type: ignore[arg-type]
         return None
 
     @property
@@ -585,7 +586,7 @@ class Bundle:
         return (
             self._dsse_envelope.signature
             if self._dsse_envelope
-            else self._inner.message_signature.signature
+            else self._inner.message_signature.signature  # type: ignore[union-attr]
         )
 
     @property
@@ -600,7 +601,7 @@ class Bundle:
         """
         Deserialize the given Sigstore bundle.
         """
-        inner = _Bundle().from_json(raw)
+        inner = _Bundle.from_dict(json.loads(raw))
         return cls(inner)
 
     def to_json(self) -> str:
@@ -619,7 +620,10 @@ class Bundle:
         """
 
         content: common_v1.MessageSignature | dsse.Envelope
-        content = self._dsse_envelope or self._inner.message_signature
+        if self._dsse_envelope:
+            content = self._dsse_envelope
+        else:
+            content = self._inner.message_signature  # type: ignore[assignment]
 
         return (self.signing_certificate, content, self.log_entry)
 
@@ -646,30 +650,32 @@ class Bundle:
         @private
         """
 
+        timestamp_verifcation_data = bundle_v1.TimestampVerificationData(
+            rfc3161_timestamps=[]
+        )
+        if signed_timestamp is not None:
+            timestamp_verifcation_data.rfc3161_timestamps.extend(
+                [
+                    Rfc3161SignedTimestamp(signed_timestamp=response.as_bytes())
+                    for response in signed_timestamp
+                ]
+            )
+
+        # Fill in the appropriate variants.
+        if isinstance(content, common_v1.MessageSignature):
+            # mypy will be mystified if types are specified here
+            content_dict: dict[str, Any] = {"message_signature": content}
+        else:
+            content_dict = {"dsse_envelope": content._inner}
+
         inner = _Bundle(
             media_type=Bundle.BundleType.BUNDLE_0_3.value,
             verification_material=bundle_v1.VerificationMaterial(
                 certificate=common_v1.X509Certificate(cert.public_bytes(Encoding.DER)),
+                tlog_entries=[log_entry._to_rekor()],
+                timestamp_verification_data=timestamp_verifcation_data,
             ),
+            **content_dict,
         )
-
-        # Fill in the appropriate variants.
-        if isinstance(content, common_v1.MessageSignature):
-            inner.message_signature = content
-        else:
-            inner.dsse_envelope = content._inner
-
-        tlog_entry = log_entry._to_rekor()
-        inner.verification_material.tlog_entries = [tlog_entry]
-
-        if signed_timestamp is not None:
-            inner.verification_material.timestamp_verification_data = (
-                bundle_v1.TimestampVerificationData(
-                    rfc3161_timestamps=[
-                        Rfc3161SignedTimestamp(signed_timestamp=response.as_bytes())
-                        for response in signed_timestamp
-                    ]
-                )
-            )
 
         return cls(inner)

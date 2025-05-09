@@ -45,7 +45,12 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     ClientTrustConfig as _ClientTrustConfig,
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    Service,
+    ServiceSelector,
     TransparencyLogInstance,
+)
+from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    SigningConfig as _SigningConfig,
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     TrustedRoot as _TrustedRoot,
@@ -93,14 +98,14 @@ class Key:
     key: PublicKey
     key_id: KeyID
 
-    _RSA_SHA_256_DETAILS: ClassVar[set[_PublicKeyDetails]] = {
+    _RSA_SHA_256_DETAILS: ClassVar = {
         _PublicKeyDetails.PKCS1_RSA_PKCS1V5,
         _PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256,
         _PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256,
         _PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256,
     }
 
-    _EC_DETAILS_TO_HASH: ClassVar[dict[_PublicKeyDetails, hashes.HashAlgorithm]] = {
+    _EC_DETAILS_TO_HASH: ClassVar = {
         _PublicKeyDetails.PKIX_ECDSA_P256_SHA_256: hashes.SHA256(),
         _PublicKeyDetails.PKIX_ECDSA_P384_SHA_384: hashes.SHA384(),
         _PublicKeyDetails.PKIX_ECDSA_P521_SHA_512: hashes.SHA512(),
@@ -285,6 +290,114 @@ class CertificateAuthority:
         if not _is_timerange_valid(self._inner.valid_for, allow_expired=allow_expired):
             return []
         return self._certificates
+
+
+class SigningConfig:
+    """
+    Signing configuration for a Sigstore instance.
+    """
+
+    class SigningConfigType(str, Enum):
+        """
+        Known Sigstore signing config media types.
+        """
+
+        SIGNING_CONFIG_0_2 = "application/vnd.dev.sigstore.signingconfig.v0.2+json"
+
+        def __str__(self) -> str:
+            """Returns the variant's string value."""
+            return self.value
+
+    def __init__(self, inner: _SigningConfig):
+        """
+        Construct a new `SigningConfig`.
+
+        @api private
+        """
+        self._inner = inner
+        self._verify()
+
+    def _verify(self) -> None:
+        """
+        Performs various feats of heroism to ensure that the signing config
+        is well-formed.
+        """
+
+        # must have a recognized media type.
+        try:
+            SigningConfig.SigningConfigType(self._inner.media_type)
+        except ValueError:
+            raise Error(f"unsupported signing config format: {self._inner.media_type}")
+
+        # currently not supporting other select modes
+        # TODO: Support other modes ensuring tsa_urls() and tlog_urls() work
+        if self._inner.rekor_tlog_config.selector != ServiceSelector.ANY:
+            raise Error(
+                f"unsupported tlog selector {self._inner.rekor_tlog_config.selector}"
+            )
+        if self._inner.tsa_config.selector != ServiceSelector.ANY:
+            raise Error(f"unsupported TSA selector {self._inner.tsa_config.selector}")
+
+    @classmethod
+    def from_file(
+        cls,
+        path: str,
+    ) -> SigningConfig:
+        """Create a new signing config from file"""
+        inner = _SigningConfig().from_json(Path(path).read_bytes())
+        return cls(inner)
+
+    @staticmethod
+    def _get_valid_service_url(services: list[Service]) -> str | None:
+        for service in services:
+            if service.major_api_version != 1:
+                continue
+
+            if not _is_timerange_valid(service.valid_for, allow_expired=False):
+                continue
+            return service.url
+        return None
+
+    def get_tlog_urls(self) -> list[str]:
+        """
+        Returns the rekor transparency logs that client should sign with.
+        Currently only returns a single one but could in future return several
+        """
+
+        url = self._get_valid_service_url(self._inner.rekor_tlog_urls)
+        if not url:
+            raise Error("No valid Rekor transparency log found in signing config")
+        return [url]
+
+    def get_fulcio_url(self) -> str:
+        """
+        Returns url for the fulcio instance that client should use to get a
+        signing certificate from
+        """
+        url = self._get_valid_service_url(self._inner.ca_urls)
+        if not url:
+            raise Error("No valid Fulcio CA found in signing config")
+        return url
+
+    def get_oidc_url(self) -> str:
+        """
+        Returns url for the OIDC provider that client should use to interactively
+        authenticate.
+        """
+        url = self._get_valid_service_url(self._inner.oidc_urls)
+        if not url:
+            raise Error("No valid OIDC provider found in signing config")
+        return url
+
+    def get_tsa_urls(self) -> list[str]:
+        """
+        Returns timestamp authority API end points. Currently returns a single one
+        but may return more in future.
+        """
+        url = self._get_valid_service_url(self._inner.tsa_urls)
+        if not url:
+            raise Error("No valid Timestamp Authority found in signing config")
+        return [url]
 
 
 class TrustedRoot:
@@ -482,3 +595,10 @@ class ClientTrustConfig:
         Return the interior root of trust, as a `TrustedRoot`.
         """
         return TrustedRoot(self._inner.trusted_root)
+
+    @property
+    def signing_config(self) -> SigningConfig:
+        """
+        Return the interior root of trust, as a `SigningConfig`.
+        """
+        return SigningConfig(self._inner.signing_config)

@@ -1,0 +1,60 @@
+{
+  "mediaType": "application/vnd.dev.sigstore.signingconfig.v0.2+json",
+  "caUrls": [
+    {
+      "url": "https://fulcio.example.com",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2023-04-14T21:38:40Z"
+      }
+    },
+    {
+      "url": "https://fulcio-old.example.com",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2022-04-14T21:38:40Z",
+        "end": "2023-04-14T21:38:40Z"
+      }
+    }
+  ],
+  "oidcUrls": [
+    {
+      "url": "https://oauth2.example.com/auth",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2025-04-16T00:00:00Z"
+      }
+    }
+  ],
+  "rekorTlogUrls": [
+    {
+      "url": "https://rekor.example.com",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2021-01-12T11:53:27Z"
+      }
+    },
+    {
+      "url": "https://rekor-v2.example.com",
+      "majorApiVersion": 2,
+      "validFor": {
+        "start": "2021-01-12T11:53:27Z"
+      }
+    }
+  ],
+  "tsaUrls": [
+    {
+      "url": "https://timestamp.example.com/api/v1/timestamp",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2025-04-09T00:00:00Z"
+      }
+    }
+  ],
+  "rekorTlogConfig": {
+    "selector": "ANY"
+  },
+  "tsaConfig": {
+    "selector": "ANY"
+  }
+}

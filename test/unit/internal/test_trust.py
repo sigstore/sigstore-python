@@ -25,6 +25,7 @@ from sigstore._internal.trust import (
     CertificateAuthority,
     ClientTrustConfig,
     KeyringPurpose,
+    SigningConfig,
     TrustedRoot,
     _is_timerange_valid,
 )
@@ -44,6 +45,23 @@ class TestCertificateAuthority:
         path = asset("trusted_root/certificate_authority.empty.json")
         with pytest.raises(Error, match="missing a certificate"):
             CertificateAuthority.from_json(path)
+
+
+class TestSigningcconfig:
+    def test_good(self, asset):
+        path = asset("signing_config/signingconfig.v2.json")
+        signing_config = SigningConfig.from_file(path)
+
+        assert (
+            signing_config._inner.media_type
+            == SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value
+        )
+        assert signing_config.get_fulcio_url() == "https://fulcio.example.com"
+        assert signing_config.get_oidc_url() == "https://oauth2.example.com/auth"
+        assert signing_config.get_tlog_urls() == ["https://rekor.example.com"]
+        assert signing_config.get_tsa_urls() == [
+            "https://timestamp.example.com/api/v1/timestamp"
+        ]
 
 
 class TestTrustedRoot:
@@ -295,10 +313,7 @@ class TestClientTrustConfig:
         path = asset("trust_config/config.v1.json")
         config = ClientTrustConfig.from_json(path.read_text())
 
-        assert config._inner.signing_config.ca_url == "https://fakeca.example.com"
-        assert config._inner.signing_config.oidc_url == "https://fakeoidc.example.com"
-        assert config._inner.signing_config.tlog_urls == ["https://fakelog.example.com"]
-        assert config._inner.signing_config.tsa_urls == ["https://faketsa.example.com"]
+        assert isinstance(config.signing_config, SigningConfig)
         assert isinstance(config.trusted_root, TrustedRoot)
 
     def test_bad_media_type(self, asset):
