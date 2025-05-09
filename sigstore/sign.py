@@ -352,13 +352,13 @@ class SigningContext:
 
         @api private
         """
+        signing_config = trust_config.signing_config
         return cls(
-            fulcio=FulcioClient(trust_config._inner.signing_config.ca_url),
-            rekor=RekorClient(trust_config._inner.signing_config.tlog_urls[0]),
+            fulcio=FulcioClient(signing_config.get_fulcio_url()),
+            rekor=RekorClient(signing_config.get_tlog_urls()[0]),
             trusted_root=trust_config.trusted_root,
             tsa_clients=[
-                TimestampAuthorityClient(tsa_url)
-                for tsa_url in trust_config._inner.signing_config.tsa_urls
+                TimestampAuthorityClient(url) for url in signing_config.get_tsa_urls()
             ],
         )
 
