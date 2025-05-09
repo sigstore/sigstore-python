@@ -258,7 +258,7 @@ class CertificateAuthority:
             raise Error("missing a certificate in Certificate Authority")
 
     @property
-    def validity_period_start(self) -> datetime | None:
+    def validity_period_start(self) -> datetime:
         """
         Validity period start.
         """
