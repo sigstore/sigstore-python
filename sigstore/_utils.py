@@ -24,7 +24,7 @@ import sys
 from typing import IO, NewType, Union
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
 from cryptography.x509 import (
     Certificate,
     ExtensionNotFound,
@@ -43,9 +43,13 @@ else:
     from importlib import resources
 
 
-PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey]
+PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey, ed25519.Ed25519PublicKey]
 
-PublicKeyTypes = Union[type[rsa.RSAPublicKey], type[ec.EllipticCurvePublicKey]]
+PublicKeyTypes = Union[
+    type[rsa.RSAPublicKey],
+    type[ec.EllipticCurvePublicKey],
+    type[ed25519.Ed25519PublicKey],
+]
 
 HexStr = NewType("HexStr", str)
 """
@@ -64,7 +68,11 @@ A newtype for `bytes` objects that contain a key id.
 def load_pem_public_key(
     key_pem: bytes,
     *,
-    types: tuple[PublicKeyTypes, ...] = (rsa.RSAPublicKey, ec.EllipticCurvePublicKey),
+    types: tuple[PublicKeyTypes, ...] = (
+        rsa.RSAPublicKey,
+        ec.EllipticCurvePublicKey,
+        ed25519.Ed25519PublicKey,
+    ),
 ) -> PublicKey:
     """
     A specialization of `cryptography`'s `serialization.load_pem_public_key`
@@ -86,7 +94,11 @@ def load_pem_public_key(
 def load_der_public_key(
     key_der: bytes,
     *,
-    types: tuple[PublicKeyTypes, ...] = (rsa.RSAPublicKey, ec.EllipticCurvePublicKey),
+    types: tuple[PublicKeyTypes, ...] = (
+        rsa.RSAPublicKey,
+        ec.EllipticCurvePublicKey,
+        ed25519.Ed25519PublicKey,
+    ),
 ) -> PublicKey:
     """
     The `load_pem_public_key` specialization, but DER.

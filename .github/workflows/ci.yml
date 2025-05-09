@@ -68,7 +68,7 @@ jobs:
         if: ${{ matrix.conf.os == 'ubuntu-latest' }}
         run: |
           # Fetch the latest sigstore/timestamp-authority build
-          SIGSTORE_TIMESTAMP_VERSION=$(gh api /repos/sigstore/timestamp-authority/tags --jq '.[0].name')
+          SIGSTORE_TIMESTAMP_VERSION=$(gh api /repos/sigstore/timestamp-authority/releases --jq '.[0].tag_name')
           wget https://github.com/sigstore/timestamp-authority/releases/download/${SIGSTORE_TIMESTAMP_VERSION}/timestamp-server-linux-amd64 -O /tmp/timestamp-server
           chmod +x /tmp/timestamp-server
 
