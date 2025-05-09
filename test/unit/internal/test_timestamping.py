@@ -15,6 +15,7 @@ import pytest
 import requests
 
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
+from sigstore._utils import sha256_digest
 
 
 @pytest.mark.timestamp_authority
@@ -23,6 +24,13 @@ class TestTimestampAuthorityClient:
         tsa = TimestampAuthorityClient(tsa_url)
         response = tsa.request_timestamp(b"hello")
         assert response
+        assert (
+            response.tst_info.message_imprint.message == sha256_digest(b"hello").digest
+        )
+        assert (
+            response.tst_info.message_imprint.hash_algorithm.dotted_string
+            == "2.16.840.1.101.3.4.2.1"
+        )  # SHA256 OID
 
     def test_sign_request_invalid_url(self):
         tsa = TimestampAuthorityClient("http://fake-url")
