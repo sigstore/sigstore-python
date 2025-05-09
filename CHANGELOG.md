@@ -22,8 +22,8 @@ All versions prior to 0.9.0 are untracked.
 
 * Timestamps: Verify the signature date against the validity period of both the
   Timestamp Authority or the Transperency Service, if either of such timestamps
-  are present in the Bundle. We still require at lease one of such timestamps
-  [#PRLINK][PRLINK]
+  are present in the Bundle. We still require at lease one of such timestamps.
+  [#1381](https://github.com/sigstore/sigstore-python/pull/1381)
 
 ### Changed
 
