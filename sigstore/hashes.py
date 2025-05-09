@@ -60,4 +60,4 @@ class Hashed(BaseModel, frozen=True):
         """
         Returns a str representation of this `Hashed`.
         """
-        return f"{self.algorithm.name}:{self.digest.hex()}"
+        return f"{HashAlgorithm(self.algorithm)}:{self.digest.hex()}"
