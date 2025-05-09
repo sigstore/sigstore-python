@@ -24,6 +24,8 @@ All versions prior to 0.9.0 are untracked.
 
 * `--trust-config` now requires a file with SigningConfig v0.2, and is able to fully
   configure the used Sigstore instance [#1358]/(https://github.com/sigstore/sigstore-python/pull/1358)
+* By default (when `--trust-config` is not used) signing configuration now comes from
+  the TUF repository just like the trust root
 
 ## [3.6.2]
 

@@ -96,8 +96,9 @@ class Verifier:
         the verifier uses the Trusted Root in the local TUF cache. If `False`,
         a TUF repository refresh is attempted.
         """
+        config = ClientTrustConfig.production(offline=offline)
         return cls(
-            trusted_root=TrustedRoot.production(offline=offline),
+            trusted_root=config.trusted_root,
         )
 
     @classmethod
@@ -109,19 +110,9 @@ class Verifier:
         the verifier uses the Trusted Root in the local TUF cache. If `False`,
         a TUF repository refresh is attempted.
         """
+        config = ClientTrustConfig.staging(offline=offline)
         return cls(
-            trusted_root=TrustedRoot.staging(offline=offline),
-        )
-
-    @classmethod
-    def _from_trust_config(cls, trust_config: ClientTrustConfig) -> Verifier:
-        """
-        Create a `Verifier` from the given `ClientTrustConfig`.
-
-        @api private
-        """
-        return cls(
-            trusted_root=trust_config.trusted_root,
+            trusted_root=config.trusted_root,
         )
 
     def _verify_signed_timestamp(

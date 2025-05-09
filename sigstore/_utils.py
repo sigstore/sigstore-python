@@ -22,6 +22,7 @@ import base64
 import hashlib
 import sys
 from typing import IO, NewType, Union
+from urllib import parse
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -195,12 +196,13 @@ def _sha256_streaming(io: IO[bytes]) -> bytes:
     return sha256.digest()
 
 
-def read_embedded(name: str, prefix: str) -> bytes:
+def read_embedded(name: str, url: str) -> bytes:
     """
-    Read a resource embedded in this distribution of sigstore-python,
-    returning its contents as bytes.
+    Read a resource for a given TUF repository embedded in this distribution
+    of sigstore-python, returning its contents as bytes.
     """
-    b: bytes = resources.files("sigstore._store").joinpath(prefix, name).read_bytes()
+    embed_dir = parse.quote(url, safe="")
+    b: bytes = resources.files("sigstore._store").joinpath(embed_dir, name).read_bytes()
     return b
 
 
