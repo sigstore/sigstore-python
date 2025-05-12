@@ -223,9 +223,9 @@ class LogEntry:
         if tlog_entry.inclusion_promise:
             inclusion_promise = B64Str(
                 base64.b64encode(
-                    tlog_entry.inclusion_promise.signed_entry_timestamp).decode()
+                    tlog_entry.inclusion_promise.signed_entry_timestamp
+                ).decode()
             )
-
 
         return LogEntry(
             uuid=None,

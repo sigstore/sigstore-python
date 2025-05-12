@@ -43,19 +43,18 @@ class TestLogEntry:
             )
 
     def test_missing_inclusion_promise_round_trip(self, signing_bundle):
-        '''
+        """
         Ensures that LogEntry._to_rekor() succeeds even without an inclusion_promise.
-        '''
+        """
         bundle: Bundle
         _, bundle = signing_bundle("bundle.txt")
         _dict = bundle.log_entry._to_rekor().to_dict()
         print(_dict)
-        del _dict['inclusionPromise']
+        del _dict["inclusionPromise"]
         entry = LogEntry._from_dict_rekor(_dict)
         assert entry.inclusion_promise is None
         assert entry._to_rekor() is not None
-        assert (LogEntry._from_dict_rekor(
-            entry._to_rekor().to_dict()) == entry)
+        assert LogEntry._from_dict_rekor(entry._to_rekor().to_dict()) == entry
 
     def test_logentry_roundtrip(self, signing_bundle):
         _, bundle = signing_bundle("bundle.txt")
