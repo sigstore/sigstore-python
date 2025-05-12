@@ -113,7 +113,7 @@ def signing_materials(asset) -> Callable[[str, RekorClient], tuple[Path, Bundle]
 
 
 @pytest.fixture
-def signing_bundle(asset):
+def signing_bundle(asset) -> Callable[[str], tuple[Path, Bundle]]:
     def _signing_bundle(name: str) -> tuple[Path, Bundle]:
         file = asset(name)
         bundle_path = asset(f"{name}.sigstore")

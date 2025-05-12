@@ -219,6 +219,14 @@ class LogEntry:
             tree_size=inclusion_proof.tree_size,
         )
 
+        inclusion_promise: Optional[B64Str] = None
+        if tlog_entry.inclusion_promise:
+            inclusion_promise = B64Str(
+                base64.b64encode(
+                    tlog_entry.inclusion_promise.signed_entry_timestamp).decode()
+            )
+
+
         return LogEntry(
             uuid=None,
             body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
@@ -226,11 +234,7 @@ class LogEntry:
             log_id=tlog_entry.log_id.key_id.hex(),
             log_index=tlog_entry.log_index,
             inclusion_proof=parsed_inclusion_proof,
-            inclusion_promise=B64Str(
-                base64.b64encode(
-                    tlog_entry.inclusion_promise.signed_entry_timestamp
-                ).decode()
-            ),
+            inclusion_promise=inclusion_promise,
         )
 
     def _to_rekor(self) -> rekor_v1.TransparencyLogEntry:
