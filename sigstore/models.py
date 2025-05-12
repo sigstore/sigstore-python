@@ -243,12 +243,6 @@ class LogEntry:
 
         @private
         """
-        inclusion_promise: rekor_v1.InclusionPromise | None = None
-        if self.inclusion_promise:
-            inclusion_promise = rekor_v1.InclusionPromise(
-                signed_entry_timestamp=base64.b64decode(self.inclusion_promise)
-            )
-
         inclusion_proof = rekor_v1.InclusionProof(
             log_index=self.inclusion_proof.log_index,
             root_hash=bytes.fromhex(self.inclusion_proof.root_hash),
@@ -261,10 +255,14 @@ class LogEntry:
             log_index=self.log_index,
             log_id=common_v1.LogId(key_id=bytes.fromhex(self.log_id)),
             integrated_time=self.integrated_time,
-            inclusion_promise=inclusion_promise,  # type: ignore[arg-type]
             inclusion_proof=inclusion_proof,
             canonicalized_body=base64.b64decode(self.body),
         )
+        if self.inclusion_promise:
+            inclusion_promise = rekor_v1.InclusionPromise(
+                signed_entry_timestamp=base64.b64decode(self.inclusion_promise)
+            )
+            tlog_entry.inclusion_promise = inclusion_promise
 
         # Fill in the appropriate kind
         body_entry: ProposedEntry = TypeAdapter(ProposedEntry).validate_json(
