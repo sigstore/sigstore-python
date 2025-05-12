@@ -59,7 +59,7 @@ from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import Rfc3161SignedTimestamp
 from sigstore_protobuf_specs.dev.sigstore.rekor import v1 as rekor_v1
 from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
-    InclusionProof, KindVersion
+    InclusionProof,
 )
 
 from sigstore import dsse
@@ -173,11 +173,6 @@ class LogEntry:
     log entry.
     """
 
-    kind_version: KindVersion
-    """
-    The kind and version of the log entry.
-    """
-
     @classmethod
     def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:
         """
@@ -244,7 +239,6 @@ class LogEntry:
                     tlog_entry.inclusion_promise.signed_entry_timestamp
                 ).decode()
             ),
-            kind_version=tlog_entry.kind_version,
         )
 
     def _to_rekor(self) -> rekor_v1.TransparencyLogEntry:
@@ -274,8 +268,30 @@ class LogEntry:
             integrated_time=self.integrated_time,
             inclusion_promise=inclusion_promise,  # type: ignore[arg-type]
             inclusion_proof=inclusion_proof,
-            kind_version=self.kind_version,
             canonicalized_body=base64.b64decode(self.body),
+        )
+
+        # NOTE fix the canonicalized_body
+        import json
+        tlog_entry.canonicalized_body = bytes(json.dumps({
+            # **json.loads(tlog_entry.canonicalized_body),
+            'kind': 'hashedrekord',
+            'api_version': '0.0.2',
+            'spec': {
+                'signature': json.loads(tlog_entry.canonicalized_body)['signature'],
+                'data': json.loads(tlog_entry.canonicalized_body)['data']
+            }
+        }), encoding='utf-8')
+
+        # Fill in the appropriate kind
+        body_entry: ProposedEntry = TypeAdapter(ProposedEntry).validate_json(
+            tlog_entry.canonicalized_body
+        )
+        if not isinstance(body_entry, (Hashedrekord, Dsse)):
+            raise InvalidBundle("log entry is not of expected type")
+
+        tlog_entry.kind_version = rekor_v1.KindVersion(
+            kind=body_entry.kind, version=body_entry.api_version
         )
 
         return tlog_entry
