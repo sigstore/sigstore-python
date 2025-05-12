@@ -372,9 +372,8 @@ class Verifier:
         except VerificationError as exc:
             raise VerificationError(f"invalid log entry: {exc}")
 
-        # (6): verify the log entry was signed circa circa the signing certificate's
-        #      validity period, via the verified timestamps. In the case of timestamps from
-        #      the transparency service, the integrated time will have been used. See `_establish_time()`.
+        # (6): verify our established times (timestamps or the log integration time) are
+        # within signing certificate validity period.
         for vts in verified_timestamps:
             if not (
                 bundle.signing_certificate.not_valid_before_utc

@@ -20,9 +20,9 @@ All versions prior to 0.9.0 are untracked.
 * API: Make Rekor APIs compatible with Rekor v2 by removing trailing slashes
   from endpoints ([#1366](https://github.com/sigstore/sigstore-python/pull/1366))
 
-* Timestamps: Verify the signature date against the validity period of both the
-  Timestamp Authority or the Transperency Service, if either of such timestamps
-  are present in the Bundle. We still require at lease one of such timestamps.
+* Verify: verify that all established times (timestamps or the log integration time)
+  are within the signing certificate validity period. At least one established time is
+  still required.
   [#1381](https://github.com/sigstore/sigstore-python/pull/1381)
 
 ### Changed
