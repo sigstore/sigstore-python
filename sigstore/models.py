@@ -216,20 +216,12 @@ class LogEntry:
         if not inclusion_proof or not inclusion_proof.checkpoint.envelope:
             raise InvalidBundle("entry must contain inclusion proof, with checkpoint")
 
-        # RekorV1 will hex-encode, but RekorV2 will not.
-        # See https://github.com/sigstore/rekor/blob/140f622a85d9eeb72677f6ab7de21744954eb4cc/pkg/api/entries.go#L446-L448.
-        try:
-            root_hash = inclusion_proof.root_hash.decode()
-        except UnicodeDecodeError as exc:
-            _logger.warning(exc)
-            root_hash = inclusion_proof.root_hash.hex()
-
         _logger.info(inclusion_proof.root_hash)
         parsed_inclusion_proof = LogInclusionProof(
             checkpoint=inclusion_proof.checkpoint.envelope,
             hashes=[h.hex() for h in inclusion_proof.hashes],
             log_index=inclusion_proof.log_index,
-            root_hash=root_hash,
+            root_hash=inclusion_proof.root_hash.decode(),
             tree_size=inclusion_proof.tree_size,
         )
         return LogEntry(
@@ -253,11 +245,11 @@ class LogEntry:
 
         @private
         """
-        # inclusion_promise: rekor_v1.InclusionPromise | None = None
-        # if self.inclusion_promise:
-        inclusion_promise = rekor_v1.InclusionPromise(
-            signed_entry_timestamp=base64.b64decode(self.inclusion_promise)
-        )
+        inclusion_promise: rekor_v1.InclusionPromise | None = None
+        if self.inclusion_promise:
+            inclusion_promise = rekor_v1.InclusionPromise(
+                signed_entry_timestamp=base64.b64decode(self.inclusion_promise)
+            )
 
         inclusion_proof = rekor_v1.InclusionProof(
             log_index=self.inclusion_proof.log_index,
@@ -267,7 +259,6 @@ class LogEntry:
             checkpoint=rekor_v1.Checkpoint(envelope=self.inclusion_proof.checkpoint),
         )
 
-        _logger.info(inclusion_promise)
         tlog_entry = rekor_v1.TransparencyLogEntry(
             log_index=self.log_index,
             log_id=common_v1.LogId(key_id=bytes.fromhex(self.log_id)),
