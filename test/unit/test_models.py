@@ -56,8 +56,6 @@ class TestLogEntry:
         assert entry._to_rekor() is not None
         assert (LogEntry._from_dict_rekor(
             entry._to_rekor().to_dict()) == entry)
-        assert False
-
 
     def test_logentry_roundtrip(self, signing_bundle):
         _, bundle = signing_bundle("bundle.txt")
