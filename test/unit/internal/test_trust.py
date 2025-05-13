@@ -69,7 +69,7 @@ class TestTrustedRoot:
         "file",
         [
             "trusted_root/trustedroot.v1.json",
-            "trusted_root/trustedroot.v1.local_tlog_ed25519json",
+            "trusted_root/trustedroot.v1.local_tlog_ed25519_rekor-tiles.json",
         ],
     )
     def test_good(self, asset, file):
