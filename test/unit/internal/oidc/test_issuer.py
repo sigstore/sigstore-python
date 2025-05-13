@@ -30,7 +30,7 @@ def test_init_url():
 
 @pytest.mark.online
 def test_get_identity_token_bad_code(monkeypatch):
+    # Send token request to oauth2.sigstage.dev but provide a bogus authorization code
     monkeypatch.setattr("builtins.input", lambda _: "hunter2")
-
     with pytest.raises(IdentityError, match=r"^Token request failed with .+$"):
         Issuer("https://oauth2.sigstage.dev/auth").identity_token(force_oob=True)
