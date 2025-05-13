@@ -65,8 +65,9 @@ class TestSigningcconfig:
 
 
 class TestTrustedRoot:
-    def test_good(self, asset):
-        path = asset("trusted_root/trustedroot.v1.json")
+    @pytest.mark.parametrize("file", ["trusted_root/trustedroot.v1.json", "trusted_root/trustedroot.v1.local_tlog_ed25519json"])
+    def test_good(self, asset, file):
+        path = asset(file)
         root = TrustedRoot.from_file(path)
 
         assert (
@@ -76,6 +77,11 @@ class TestTrustedRoot:
         assert len(root._inner.certificate_authorities) == 2
         assert len(root._inner.ctlogs) == 2
         assert len(root._inner.timestamp_authorities) == 1
+        assert root.rekor_keyring(KeyringPurpose.VERIFY) is not None
+        assert root.ct_keyring(KeyringPurpose.VERIFY) is not None
+        assert root.get_fulcio_certs() is not None
+        assert root.get_timestamp_authorities() is not None
+
 
     def test_bad_media_type(self, asset):
         path = asset("trusted_root/trustedroot.badtype.json")
