@@ -67,6 +67,9 @@ class TestSigningcconfig:
 class TestTrustedRoot:
     @pytest.mark.parametrize("file", ["trusted_root/trustedroot.v1.json", "trusted_root/trustedroot.v1.local_tlog_ed25519json"])
     def test_good(self, asset, file):
+        """
+        Ensures that the trusted_roots are well-formed and that the embedded keys are supported.
+        """
         path = asset(file)
         root = TrustedRoot.from_file(path)
 
