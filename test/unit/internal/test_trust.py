@@ -65,7 +65,13 @@ class TestSigningcconfig:
 
 
 class TestTrustedRoot:
-    @pytest.mark.parametrize("file", ["trusted_root/trustedroot.v1.json", "trusted_root/trustedroot.v1.local_tlog_ed25519json"])
+    @pytest.mark.parametrize(
+        "file",
+        [
+            "trusted_root/trustedroot.v1.json",
+            "trusted_root/trustedroot.v1.local_tlog_ed25519json",
+        ],
+    )
     def test_good(self, asset, file):
         """
         Ensures that the trusted_roots are well-formed and that the embedded keys are supported.
@@ -84,7 +90,6 @@ class TestTrustedRoot:
         assert root.ct_keyring(KeyringPurpose.VERIFY) is not None
         assert root.get_fulcio_certs() is not None
         assert root.get_timestamp_authorities() is not None
-
 
     def test_bad_media_type(self, asset):
         path = asset("trusted_root/trustedroot.badtype.json")
