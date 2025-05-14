@@ -24,7 +24,7 @@ import rfc3161_client
 from sigstore._internal.trust import CertificateAuthority
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import VerificationError
-from sigstore.models import Bundle
+from sigstore.models import Bundle, LogEntry
 from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
 
@@ -219,6 +219,35 @@ class TestVerifierWithTimestamp:
         verifier.verify_artifact(
             asset("tsa/bundle.txt").read_bytes(),
             Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
+            null_policy,
+        )
+
+    @pytest.mark.parametrize(
+        "fields_to_delete",
+        (
+            [],
+            ["inclusionPromise"],
+            # integratedTime is required to verify the inclusionPromise.
+            pytest.param(["integratedTime"], marks=pytest.mark.xfail),
+            ["inclusionPromise", "integratedTime"],
+        ),
+    )
+    def test_vierifier_verify_no_inclusion_promise_and_integrated_time(
+        self, verifier, asset, null_policy, fields_to_delete
+    ):
+        """
+        Ensure that we can still verify a Bundle with a rfc3161 timestamp if the SET can't be verified or isn't present.
+        There is one exception: When inclusionPromise is present, but integratedTime is not, then we expect a failure
+        because the integratedTime is required to verify the inclusionPromise.
+        """
+        bundle = Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes())
+        _dict = bundle.log_entry._to_rekor().to_dict()
+        for field in fields_to_delete:
+            del _dict[field]
+        bundle._log_entry = LogEntry._from_dict_rekor(_dict)
+        verifier.verify_artifact(
+            asset("tsa/bundle.txt").read_bytes(),
+            bundle,
             null_policy,
         )
 
