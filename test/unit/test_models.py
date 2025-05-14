@@ -42,15 +42,16 @@ class TestLogEntry:
                 inclusion_promise=None,
             )
 
-    def test_missing_inclusion_promise_round_trip(self, signing_bundle):
+    def test_missing_inclusion_promise_and_integrated_time_round_trip(self, signing_bundle):
         """
-        Ensures that LogEntry._to_rekor() succeeds even without an inclusion_promise.
+        Ensures that LogEntry._to_rekor() succeeds even without an inclusion_promise and integrated_time.
         """
         bundle: Bundle
         _, bundle = signing_bundle("bundle.txt")
         _dict = bundle.log_entry._to_rekor().to_dict()
         print(_dict)
         del _dict["inclusionPromise"]
+        del _dict["integratedTime"]
         entry = LogEntry._from_dict_rekor(_dict)
         assert entry.inclusion_promise is None
         assert entry._to_rekor() is not None
