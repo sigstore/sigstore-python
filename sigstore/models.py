@@ -171,7 +171,7 @@ class LogEntry:
     log entry.
     """
 
-    kind_version: KindVersion
+    _kind_version: KindVersion
     """
     The kind and version of the log entry.
     """
@@ -205,7 +205,7 @@ class LogEntry:
                 entry["verification"]["inclusionProof"]
             ),
             inclusion_promise=entry["verification"]["signedEntryTimestamp"],
-            kind_version=KindVersion(
+            _kind_version=KindVersion(
                 kind=body_entry.kind, version=body_entry.api_version
             ),
         )
@@ -244,7 +244,7 @@ class LogEntry:
                     tlog_entry.inclusion_promise.signed_entry_timestamp
                 ).decode()
             ),
-            kind_version=tlog_entry.kind_version,
+            _kind_version=tlog_entry.kind_version,
         )
 
     def _to_rekor(self) -> rekor_v1.TransparencyLogEntry:
@@ -273,7 +273,7 @@ class LogEntry:
             integrated_time=self.integrated_time,
             inclusion_promise=inclusion_promise,  # type: ignore[arg-type]
             inclusion_proof=inclusion_proof,
-            kind_version=self.kind_version,
+            kind_version=self._kind_version,
             canonicalized_body=base64.b64decode(self.body),
         )
 
