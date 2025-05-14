@@ -14,6 +14,9 @@ All versions prior to 0.9.0 are untracked.
   either from the root of the response, or from the reponse's inner base64-encoded JSON `body`.
   [#1370](https://github.com/sigstore/sigstore-python/pull/1370)
 
+* Added support for ed25519 keys.
+  [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
+
 ### Fixed
 
 * TSA: Changed the Timestamp Authority requests to explicitly use sha256 for message digests.
@@ -25,6 +28,10 @@ All versions prior to 0.9.0 are untracked.
 
 * API: Make Rekor APIs compatible with Rekor v2 by removing trailing slashes
   from endpoints ([#1366](https://github.com/sigstore/sigstore-python/pull/1366))
+
+* CI: Timestamp Authority tests use latest release, not latest tag, of
+  [sigstore/timestamp-authority](https://github.com/sigstore/timestamp-authority)
+  [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
 
 ### Changed
 
