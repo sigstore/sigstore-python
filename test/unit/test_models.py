@@ -42,7 +42,9 @@ class TestLogEntry:
                 inclusion_promise=None,
             )
 
-    def test_missing_inclusion_promise_and_integrated_time_round_trip(self, signing_bundle):
+    def test_missing_inclusion_promise_and_integrated_time_round_trip(
+        self, signing_bundle
+    ):
         """
         Ensures that LogEntry._to_rekor() succeeds even without an inclusion_promise and integrated_time.
         """
