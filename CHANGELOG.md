@@ -20,6 +20,10 @@ All versions prior to 0.9.0 are untracked.
 * TSA: Changed the Timestamp Authority requests to explicitly use sha256 for message digests.
   [#1373](https://github.com/sigstore/sigstore-python/pull/1373)
 
+* TSA: Correctly verify timestamps with hashes other than SHA-256. Currently supported
+  algorithms are SHA-256, SHA-384, SHA-512.
+  [#1373](https://github.com/sigstore/sigstore-python/pull/1373)
+
 * Fixed the certificate calidity period check for Timestamp Authorities (TSA).
   Certificates need not have and end date, while still requiring a start date.
   [#1368](https://github.com/sigstore/sigstore-python/pull/1368)
