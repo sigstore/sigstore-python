@@ -3,10 +3,18 @@
 # plugin: python-betterproto
 # This file has been @generated
 
-from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from dataclasses import dataclass
+else:
+    from pydantic.dataclasses import dataclass
+
 from typing import List
 
 import betterproto
+from pydantic.dataclasses import rebuild_dataclass
 
 
 @dataclass(eq=False, repr=False)
@@ -52,3 +60,6 @@ class Signature(betterproto.Message):
     *Unauthenticated* hint identifying which public key was used.
      OPTIONAL.
     """
+
+
+rebuild_dataclass(Envelope)  # type: ignore

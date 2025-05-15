@@ -3,11 +3,23 @@
 # plugin: python-betterproto
 # This file has been @generated
 
-from dataclasses import dataclass
-from typing import List
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from dataclasses import dataclass
+else:
+    from pydantic.dataclasses import dataclass
+
+from typing import (
+    List,
+    Optional,
+)
 
 import betterproto
-import betterproto.lib.google.protobuf as betterproto_lib_google_protobuf
+import betterproto.lib.pydantic.google.protobuf as betterproto_lib_pydantic_google_protobuf
+from pydantic import model_validator
+from pydantic.dataclasses import rebuild_dataclass
 
 
 class FieldBehavior(betterproto.Enum):
@@ -90,6 +102,12 @@ class FieldBehavior(betterproto.Enum):
      is optional and unused, while for Update methods it is required). Instead
      of method-specific annotations, only `IDENTIFIER` is required.
     """
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source_type, _handler):
+        from pydantic_core import core_schema
+
+        return core_schema.int_schema(ge=0)
 
 
 @dataclass(eq=False, repr=False)
@@ -395,27 +413,29 @@ class HttpRule(betterproto.Message):
      details.
     """
 
-    get: str = betterproto.string_field(2, group="pattern")
+    get: Optional[str] = betterproto.string_field(2, optional=True, group="pattern")
     """
     Maps to HTTP GET. Used for listing and getting information about
      resources.
     """
 
-    put: str = betterproto.string_field(3, group="pattern")
+    put: Optional[str] = betterproto.string_field(3, optional=True, group="pattern")
     """Maps to HTTP PUT. Used for replacing a resource."""
 
-    post: str = betterproto.string_field(4, group="pattern")
+    post: Optional[str] = betterproto.string_field(4, optional=True, group="pattern")
     """
     Maps to HTTP POST. Used for creating a resource or performing an action.
     """
 
-    delete: str = betterproto.string_field(5, group="pattern")
+    delete: Optional[str] = betterproto.string_field(5, optional=True, group="pattern")
     """Maps to HTTP DELETE. Used for deleting a resource."""
 
-    patch: str = betterproto.string_field(6, group="pattern")
+    patch: Optional[str] = betterproto.string_field(6, optional=True, group="pattern")
     """Maps to HTTP PATCH. Used for updating a resource."""
 
-    custom: "CustomHttpPattern" = betterproto.message_field(8, group="pattern")
+    custom: Optional["CustomHttpPattern"] = betterproto.message_field(
+        8, optional=True, group="pattern"
+    )
     """
     The custom pattern is used for specifying an HTTP method that is not
      included in the `pattern` field, such as HEAD, or "*" to leave the
@@ -449,6 +469,10 @@ class HttpRule(betterproto.Message):
      not contain an `additional_bindings` field themselves (that is,
      the nesting may only be one level deep).
     """
+
+    @model_validator(mode="after")
+    def check_oneof(cls, values):
+        return cls._validate_field_groups(values)
 
 
 @dataclass(eq=False, repr=False)
@@ -518,10 +542,15 @@ class HttpBody(betterproto.Message):
     data: bytes = betterproto.bytes_field(2)
     """The HTTP request/response body as raw binary."""
 
-    extensions: List["betterproto_lib_google_protobuf.Any"] = betterproto.message_field(
-        3
+    extensions: List["betterproto_lib_pydantic_google_protobuf.Any"] = (
+        betterproto.message_field(3)
     )
     """
     Application specific response metadata. Must be set in the first response
      for streaming APIs.
     """
+
+
+rebuild_dataclass(Http)  # type: ignore
+rebuild_dataclass(HttpRule)  # type: ignore
+rebuild_dataclass(HttpBody)  # type: ignore

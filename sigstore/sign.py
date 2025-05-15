@@ -303,6 +303,28 @@ class Signer:
             ),
         )
 
+        from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
+        from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
+        proposed_entry = v2.CreateEntryRequest(
+            hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
+                digest=base64.b64encode(hashed_input.digest),
+                signature=v2.Signature(
+                    content=base64.b64encode(artifact_signature),
+                    verifier=v2.Verifier(
+                        public_key=v2.PublicKey(
+                            raw_bytes=base64.b64encode(
+                                cert.public_key().public_bytes(
+                                    encoding=serialization.Encoding.DER,
+                                    format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                                )
+                            ),
+                        ),
+                        key_details=v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
+                    ),
+                )
+            )
+        )
+
         return self._finalize_sign(cert, content, proposed_entry)
 
 

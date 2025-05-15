@@ -3,29 +3,31 @@
 # plugin: python-betterproto
 # This file has been @generated
 
-from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from dataclasses import dataclass
+else:
+    from pydantic.dataclasses import dataclass
+
 from typing import (
-    TYPE_CHECKING,
     Dict,
     List,
     Optional,
 )
 
 import betterproto
-import betterproto.lib.google.protobuf as betterproto_lib_google_protobuf
+import betterproto.lib.pydantic.google.protobuf as betterproto_lib_pydantic_google_protobuf
 import grpclib
 from betterproto.grpc.grpclib_server import ServiceBase
+from pydantic import model_validator
+from pydantic.dataclasses import rebuild_dataclass
 
 from .....google import api as ____google_api__
 from .....io import intoto as ____io_intoto__
 from ...common import v1 as __common_v1__
 from .. import v1 as _v1__
-
-
-if TYPE_CHECKING:
-    import grpclib.server
-    from betterproto.grpc.grpclib_client import MetadataLike
-    from grpclib.metadata import Deadline
 
 
 @dataclass(eq=False, repr=False)
@@ -42,18 +44,24 @@ class Verifier(betterproto.Message):
     Either a public key or a X.509 cerificiate with an embedded public key
     """
 
-    public_key: "PublicKey" = betterproto.message_field(1, group="verifier")
+    public_key: Optional["PublicKey"] = betterproto.message_field(
+        1, optional=True, group="verifier"
+    )
     """
     DER-encoded public key. Encoding method is specified by the key_details attribute
     """
 
-    x509_certificate: "__common_v1__.X509Certificate" = betterproto.message_field(
-        2, group="verifier"
+    x509_certificate: Optional["__common_v1__.X509Certificate"] = (
+        betterproto.message_field(2, optional=True, group="verifier")
     )
     """DER-encoded certificate"""
 
     key_details: "__common_v1__.PublicKeyDetails" = betterproto.enum_field(3)
     """Key encoding and signature algorithm to use for this key"""
+
+    @model_validator(mode="after")
+    def check_oneof(cls, values):
+        return cls._validate_field_groups(values)
 
 
 @dataclass(eq=False, repr=False)
@@ -132,20 +140,32 @@ class Entry(betterproto.Message):
 class Spec(betterproto.Message):
     """Spec contains one of the Rekor entry types."""
 
-    hashed_rekord_v0_0_2: "HashedRekordLogEntryV002" = betterproto.message_field(
-        1, group="spec"
+    hashed_rekord_v0_0_2: Optional["HashedRekordLogEntryV002"] = (
+        betterproto.message_field(1, optional=True, group="spec")
     )
-    dsse_v0_0_2: "DsseLogEntryV002" = betterproto.message_field(2, group="spec")
+    dsse_v0_0_2: Optional["DsseLogEntryV002"] = betterproto.message_field(
+        2, optional=True, group="spec"
+    )
+
+    @model_validator(mode="after")
+    def check_oneof(cls, values):
+        return cls._validate_field_groups(values)
 
 
 @dataclass(eq=False, repr=False)
 class CreateEntryRequest(betterproto.Message):
     """Create a new HashedRekord or DSSE"""
 
-    hashed_rekord_request_v0_0_2: "HashedRekordRequestV002" = betterproto.message_field(
-        1, group="spec"
+    hashed_rekord_request_v0_0_2: Optional["HashedRekordRequestV002"] = (
+        betterproto.message_field(1, optional=True, group="spec")
     )
-    dsse_request_v0_0_2: "DsseRequestV002" = betterproto.message_field(2, group="spec")
+    dsse_request_v0_0_2: Optional["DsseRequestV002"] = betterproto.message_field(
+        2, optional=True, group="spec"
+    )
+
+    @model_validator(mode="after")
+    def check_oneof(cls, values):
+        return cls._validate_field_groups(values)
 
 
 @dataclass(eq=False, repr=False)
@@ -229,7 +249,7 @@ class RekorStub(betterproto.ServiceStub):
 
     async def get_checkpoint(
         self,
-        betterproto_lib_google_protobuf_empty: "betterproto_lib_google_protobuf.Empty",
+        betterproto_lib_pydantic_google_protobuf_empty: "betterproto_lib_pydantic_google_protobuf.Empty",
         *,
         timeout: Optional[float] = None,
         deadline: Optional["Deadline"] = None,
@@ -237,7 +257,7 @@ class RekorStub(betterproto.ServiceStub):
     ) -> "____google_api__.HttpBody":
         return await self._unary_unary(
             "/dev.sigstore.rekor.v2.Rekor/GetCheckpoint",
-            betterproto_lib_google_protobuf_empty,
+            betterproto_lib_pydantic_google_protobuf_empty,
             ____google_api__.HttpBody,
             timeout=timeout,
             deadline=deadline,
@@ -264,7 +284,7 @@ class RekorBase(ServiceBase):
 
     async def get_checkpoint(
         self,
-        betterproto_lib_google_protobuf_empty: "betterproto_lib_google_protobuf.Empty",
+        betterproto_lib_pydantic_google_protobuf_empty: "betterproto_lib_pydantic_google_protobuf.Empty",
     ) -> "____google_api__.HttpBody":
         raise grpclib.GRPCError(grpclib.const.Status.UNIMPLEMENTED)
 
@@ -293,7 +313,7 @@ class RekorBase(ServiceBase):
 
     async def __rpc_get_checkpoint(
         self,
-        stream: "grpclib.server.Stream[betterproto_lib_google_protobuf.Empty, ____google_api__.HttpBody]",
+        stream: "grpclib.server.Stream[betterproto_lib_pydantic_google_protobuf.Empty, ____google_api__.HttpBody]",
     ) -> None:
         request = await stream.recv_message()
         response = await self.get_checkpoint(request)
@@ -322,7 +342,18 @@ class RekorBase(ServiceBase):
             "/dev.sigstore.rekor.v2.Rekor/GetCheckpoint": grpclib.const.Handler(
                 self.__rpc_get_checkpoint,
                 grpclib.const.Cardinality.UNARY_UNARY,
-                betterproto_lib_google_protobuf.Empty,
+                betterproto_lib_pydantic_google_protobuf.Empty,
                 ____google_api__.HttpBody,
             ),
         }
+
+
+rebuild_dataclass(Verifier)  # type: ignore
+rebuild_dataclass(Signature)  # type: ignore
+rebuild_dataclass(HashedRekordRequestV002)  # type: ignore
+rebuild_dataclass(HashedRekordLogEntryV002)  # type: ignore
+rebuild_dataclass(DsseRequestV002)  # type: ignore
+rebuild_dataclass(DsseLogEntryV002)  # type: ignore
+rebuild_dataclass(Entry)  # type: ignore
+rebuild_dataclass(Spec)  # type: ignore
+rebuild_dataclass(CreateEntryRequest)  # type: ignore

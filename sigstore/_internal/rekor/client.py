@@ -28,6 +28,7 @@ import rekor_types
 import requests
 
 from sigstore._internal import USER_AGENT
+from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
 from sigstore.models import LogEntry
 
 _logger = logging.getLogger(__name__)
@@ -145,31 +146,34 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
+        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse | v2.CreateEntryRequest
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
 
-        payload = proposed_entry.model_dump(mode="json", by_alias=True)
+        if isinstance(proposed_entry, v2.CreateEntryRequest):
+            payload = proposed_entry.to_dict(include_default_values=True)
+        else:
+            payload = proposed_entry.model_dump(mode="json", by_alias=True)
         _logger.debug(f"proposed: {json.dumps(payload)}")
         # layout from rekor-tiles/docs/openapi/rekor_service.swagger.json
-        payloadV2 = {
-            'hashedRekordRequestV0_0_2': {
-                'digest': payload["spec"]['data']['hash']['value'],
-                'signature': {
-                    'content': payload["spec"]['signature']['content'],
-                    'verifier': {
-                        'public_key': {
-                            'rawBytes': payload["spec"]['signature']['publicKey']['content']
-                        },
-                        'key_details': "PKIX_ECDSA_P384_SHA_256"
-                    }
-                }
-            }
-        }
-        _logger.debug(f"proposed: {json.dumps(payloadV2)}")
-        payload = payloadV2
+        # payloadV2 = {
+        #     'hashedRekordRequestV0_0_2': {
+        #         'digest': payload["spec"]['data']['hash']['value'],
+        #         'signature': {
+        #             'content': payload["spec"]['signature']['content'],
+        #             'verifier': {
+        #                 'public_key': {
+        #                     'rawBytes': payload["spec"]['signature']['publicKey']['content']
+        #                 },
+        #                 'key_details': "PKIX_ECDSA_P384_SHA_256"
+        #             }
+        #         }
+        #     }
+        # }
+        # _logger.debug(f"proposed: {json.dumps(payloadV2)}")
+        # payload = payloadV2
         # NOTE: not "entries/"
         print(self.url)
         resp: requests.Response = self.session.post(self.url, json=payload)

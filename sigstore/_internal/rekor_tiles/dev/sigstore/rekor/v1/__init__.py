@@ -3,10 +3,18 @@
 # plugin: python-betterproto
 # This file has been @generated
 
-from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from dataclasses import dataclass
+else:
+    from pydantic.dataclasses import dataclass
+
 from typing import List
 
 import betterproto
+from pydantic.dataclasses import rebuild_dataclass
 
 from ...common import v1 as __common_v1__
 
@@ -168,3 +176,7 @@ class TransparencyLogEntry(betterproto.Message):
      If not set, clients are responsible for constructing an equivalent
      payload from other sources to verify the signature.
     """
+
+
+rebuild_dataclass(InclusionProof)  # type: ignore
+rebuild_dataclass(TransparencyLogEntry)  # type: ignore

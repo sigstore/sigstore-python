@@ -357,7 +357,7 @@ class SigningConfig:
     @staticmethod
     def _get_valid_service_url(services: list[Service]) -> str | None:
         for service in services:
-            if service.major_api_version != 1:
+            if service.major_api_version not in [1, 2]:
                 continue
 
             if not _is_timerange_valid(service.valid_for, allow_expired=False):

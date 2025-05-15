@@ -3,7 +3,14 @@
 # plugin: python-betterproto
 # This file has been @generated
 
-from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from dataclasses import dataclass
+else:
+    from pydantic.dataclasses import dataclass
+
 from datetime import datetime
 from typing import (
     List,
@@ -11,6 +18,8 @@ from typing import (
 )
 
 import betterproto
+from pydantic import model_validator
+from pydantic.dataclasses import rebuild_dataclass
 
 
 class HashAlgorithm(betterproto.Enum):
@@ -30,6 +39,12 @@ class HashAlgorithm(betterproto.Enum):
     SHA2_512 = 3
     SHA3_256 = 4
     SHA3_384 = 5
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source_type, _handler):
+        from pydantic_core import core_schema
+
+        return core_schema.int_schema(ge=0)
 
 
 class PublicKeyDetails(betterproto.Enum):
@@ -105,6 +120,12 @@ class PublicKeyDetails(betterproto.Enum):
 
     LMOTS_SHA256 = 15
 
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source_type, _handler):
+        from pydantic_core import core_schema
+
+        return core_schema.int_schema(ge=0)
+
 
 class SubjectAlternativeNameType(betterproto.Enum):
     UNSPECIFIED = 0
@@ -116,6 +137,12 @@ class SubjectAlternativeNameType(betterproto.Enum):
      See https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md#1361415726417--othername-san
      for more details.
     """
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source_type, _handler):
+        from pydantic_core import core_schema
+
+        return core_schema.int_schema(ge=0)
 
 
 @dataclass(eq=False, repr=False)
@@ -242,14 +269,18 @@ class X509Certificate(betterproto.Message):
 @dataclass(eq=False, repr=False)
 class SubjectAlternativeName(betterproto.Message):
     type: "SubjectAlternativeNameType" = betterproto.enum_field(1)
-    regexp: str = betterproto.string_field(2, group="identity")
+    regexp: Optional[str] = betterproto.string_field(2, optional=True, group="identity")
     """
     A regular expression describing the expected value for
      the SAN.
     """
 
-    value: str = betterproto.string_field(3, group="identity")
+    value: Optional[str] = betterproto.string_field(3, optional=True, group="identity")
     """The exact value to match against."""
+
+    @model_validator(mode="after")
+    def check_oneof(cls, values):
+        return cls._validate_field_groups(values)
 
 
 @dataclass(eq=False, repr=False)
@@ -283,3 +314,12 @@ class TimeRange(betterproto.Message):
 
     start: datetime = betterproto.message_field(1)
     end: Optional[datetime] = betterproto.message_field(2, optional=True)
+
+
+rebuild_dataclass(HashOutput)  # type: ignore
+rebuild_dataclass(MessageSignature)  # type: ignore
+rebuild_dataclass(PublicKey)  # type: ignore
+rebuild_dataclass(ObjectIdentifierValuePair)  # type: ignore
+rebuild_dataclass(SubjectAlternativeName)  # type: ignore
+rebuild_dataclass(X509CertificateChain)  # type: ignore
+rebuild_dataclass(TimeRange)  # type: ignore
