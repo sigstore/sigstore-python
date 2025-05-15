@@ -14,6 +14,7 @@
 
 
 import hashlib
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -24,7 +25,7 @@ import rfc3161_client
 from sigstore._internal.trust import CertificateAuthority
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import VerificationError
-from sigstore.models import Bundle, LogEntry
+from sigstore.models import Bundle
 from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
 
@@ -240,11 +241,12 @@ class TestVerifierWithTimestamp:
         There is one exception: When inclusionPromise is present, but integratedTime is not, then we expect a failure
         because the integratedTime is required to verify the inclusionPromise.
         """
-        bundle = Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes())
-        _dict = bundle.log_entry._to_rekor().to_dict()
+        bundle_dict = json.loads(asset("tsa/bundle.txt.sigstore").read_bytes())
+        (entry_dict,) = bundle_dict["verificationMaterial"]["tlogEntries"]
         for field in fields_to_delete:
-            del _dict[field]
-        bundle._log_entry = LogEntry._from_dict_rekor(_dict)
+            del entry_dict[field]
+        # Bundle.from_json() also validates the bundle's layout.
+        bundle = Bundle.from_json(json.dumps(bundle_dict))
         verifier.verify_artifact(
             asset("tsa/bundle.txt").read_bytes(),
             bundle,
