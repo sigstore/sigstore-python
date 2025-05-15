@@ -5,6 +5,7 @@
 #   version:   0.30.1
 
 from __future__ import annotations
+from sigstore_protobuf_specs.dev.sigstore.common import v1
 
 from enum import Enum
 from typing import Any, List, Optional
@@ -480,6 +481,8 @@ class V2DSSERequestV002(BaseModel):
     )
 
 
+# Custom Code
+
 class V2HashedRekordRequestV002(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
@@ -500,3 +503,38 @@ class V2CreateEntryRequest(BaseModel):
         alias="hashedRekordRequestV0_0_2",
     )
     dsse_request_v0_0_2: V2DSSERequestV002 = Field(..., alias="dsseRequestV0_0_2")
+
+
+class Entry(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
+    kind: StrictStr = Field()
+    api_version: StrictStr = Field(..., alias="apiVersion")
+    spec: SpecRoot
+
+
+class SpecRoot(RootModel):
+    root: HashedRekordLogEntryV002Root | DSSELogEntryV002Root
+
+
+class HashedRekordLogEntryV002Root(BaseModel):
+    hashed_rekord_v0_0_2: HashedRekordLogEntryV002 = Field(
+        ...,
+        alias="hashedRekordV0_0_2",
+    )
+
+
+class HashedRekordLogEntryV002(BaseModel):
+    data: v1.HashOutput
+    signature: Rekorv2Signature
+    pass
+
+
+class DSSELogEntryV002Root(BaseModel):
+    dsse_v0_0_2: DSSELogEntryV002 = Field(
+        ..., alias="dsseV0_0_2")
+
+
+class DSSELogEntryV002(BaseModel):
+    pass

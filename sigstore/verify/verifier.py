@@ -19,6 +19,7 @@ Verification API machinery.
 from __future__ import annotations
 
 import base64
+import json
 import logging
 from datetime import datetime, timezone
 from typing import cast
@@ -505,15 +506,41 @@ class Verifier:
         #      the other bundle materials (and input being verified).
         entry = bundle.log_entry
 
-        expected_body = _hashedrekord_from_parts(
-            bundle.signing_certificate,
-            bundle._inner.message_signature.signature,  # type: ignore[union-attr]
-            hashed_input,
-        )
-        # actual_body = rekor_types.Hashedrekord.model_validate_json(
-        #     base64.b64decode(entry.body)
-        # )
-        # if expected_body != actual_body:
-        #     raise VerificationError(
-        #         "transparency log entry is inconsistent with other materials"
-        #     )
+        print((base64.b64decode(entry.body)))
+        if entry.kind_version.version == '0.0.2':
+            entry_body = json.loads(base64.b64decode(entry.body))
+            from sigstore import rekorv2
+            parsed_body = rekorv2.Entry.model_validate(
+                entry_body)
+            print(parsed_body)
+            # restructured_body = {
+            #     **entry_body,
+            #     "spec": {
+            #         **entry_body["spec"]["hashedRekordV0_0_2"],
+            #         "signature": {
+            #             "content": entry_body["spec"]["hashedRekordV0_0_2"]["signature"]["content"],
+            #             "verifier":
+            #         }
+            #     }
+            # }
+            # actual_body = rekor_types.Hashedrekord.model_validate(
+            #     restructured_body
+            # )
+            # from pprint import pprint
+            # pprint(restructured_body)
+            # pprint(actual_body)
+            # pass
+        else:
+            expected_body = _hashedrekord_from_parts(
+                bundle.signing_certificate,
+                # type: ignore[union-attr]
+                bundle._inner.message_signature.signature,
+                hashed_input,
+            )
+            actual_body = rekor_types.Hashedrekord.model_validate_json(
+                base64.b64decode(entry.body)
+            )
+            if expected_body != actual_body:
+                raise VerificationError(
+                    "transparency log entry is inconsistent with other materials"
+                )
