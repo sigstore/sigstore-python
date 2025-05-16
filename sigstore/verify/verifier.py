@@ -39,13 +39,11 @@ from OpenSSL.crypto import (
 from pydantic import ValidationError
 from rfc3161_client import TimeStampResponse, VerifierBuilder
 from rfc3161_client import VerificationError as Rfc3161VerificationError
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
-    HashOutput,
-)
 
 from sigstore import dsse, models
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
 from sigstore._internal.sct import (
     verify_sct,
@@ -516,7 +514,7 @@ class Verifier:
                 api_version=entry._kind_version.version,
                 spec=v2.Spec(
                     hashed_rekord_v0_0_2=v2.HashedRekordLogEntryV002(
-                        data=HashOutput(
+                        data=v1.HashOutput(
                             algorithm=bundle._inner.message_signature.message_digest.algorithm,
                             digest=bundle._inner.message_signature.message_digest.digest,
                         ),
