@@ -166,6 +166,7 @@ class RekorEntries(_Endpoint):
                 payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
         else:
             payload = proposed_entry.model_dump(mode="json", by_alias=True)
+        _logger.debug(f"proposed: {json.dumps(payload)}")
         resp: requests.Response = self.session.post(self.url, json=payload)
         try:
             resp.raise_for_status()

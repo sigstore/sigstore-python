@@ -48,8 +48,9 @@ from typing import Optional
 import cryptography.x509 as x509
 import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509.oid import NameOID
+from sigstore.errors import Error
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
     HashOutput,
     MessageSignature,
@@ -72,6 +73,16 @@ from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
 from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 
 _logger = logging.getLogger(__name__)
+
+
+def key_to_details(key: ec.EllipticCurvePrivateKey | rsa.RSAPrivateKey) -> v1.PublicKeyDetails:
+    '''
+    Converts a key to a PublicKeyDetails. Although, the key type is currently hardcoded to PKIX_ECDSA_P384_SHA_256.
+    '''
+    if isinstance(key, ec.EllipticCurvePrivateKey) and isinstance(key.curve, ec.SECP256R1):
+        return v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
+    else:
+        raise Exception("unsupported key type")
 
 
 class Signer:
@@ -276,6 +287,22 @@ class Signer:
             ),
             signature=artifact_signature,
         )
+        proposed_entry = rekor_types.Hashedrekord(
+            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                signature=rekor_types.hashedrekord.Signature(
+                    content=base64.b64encode(artifact_signature).decode(),
+                    public_key=rekor_types.hashedrekord.PublicKey(
+                        content=b64_cert.decode()
+                    ),
+                ),
+                data=rekor_types.hashedrekord.Data(
+                    hash=rekor_types.hashedrekord.Hash(
+                        algorithm=hashed_input._as_hashedrekord_algorithm(),
+                        value=hashed_input.digest.hex(),
+                    )
+                ),
+            ),
+        )
 
         # Create the proposed hashedrekord entry
         if self._signing_ctx._rekor.major_api_version == REKOR_V1_API_MAJOR_VERSION:
@@ -308,7 +335,7 @@ class Signer:
                                     format=serialization.PublicFormat.SubjectPublicKeyInfo,
                                 )
                             ),
-                            key_details=v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
+                            key_details=key_to_details(self._private_key)
                         ),
                     )
                 )

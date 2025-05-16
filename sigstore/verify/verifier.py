@@ -29,6 +29,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import ExtendedKeyUsage, KeyUsage
 from cryptography.x509.oid import ExtendedKeyUsageOID
+from cryptography.hazmat.primitives import serialization
 from OpenSSL.crypto import (
     X509,
     X509Store,
@@ -41,6 +42,7 @@ from rfc3161_client import TimeStampResponse, VerifierBuilder
 from rfc3161_client import VerificationError as Rfc3161VerificationError
 
 from sigstore import dsse
+from sigstore import models
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
@@ -53,7 +55,8 @@ from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle
 from sigstore.verify.policy import VerificationPolicy
-
+from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 _logger = logging.getLogger(__name__)
 
 # Limit the number of timestamps to prevent DoS
@@ -63,7 +66,6 @@ MAX_ALLOWED_TIMESTAMP: int = 32
 # When verifying a timestamp, this threshold represents the minimum number of required
 # timestamps to consider a signature valid.
 VERIFY_TIMESTAMP_THRESHOLD: int = 1
-
 
 class Verifier:
     """
@@ -506,30 +508,32 @@ class Verifier:
         #      the other bundle materials (and input being verified).
         entry = bundle.log_entry
 
-        print((base64.b64decode(entry.body)))
         if entry.kind_version.version == '0.0.2':
-            entry_body = json.loads(base64.b64decode(entry.body))
-            from sigstore import rekorv2
-            parsed_body = rekorv2.Entry.model_validate(
-                entry_body)
-            print(parsed_body)
-            # restructured_body = {
-            #     **entry_body,
-            #     "spec": {
-            #         **entry_body["spec"]["hashedRekordV0_0_2"],
-            #         "signature": {
-            #             "content": entry_body["spec"]["hashedRekordV0_0_2"]["signature"]["content"],
-            #             "verifier":
-            #         }
-            #     }
-            # }
-            # actual_body = rekor_types.Hashedrekord.model_validate(
-            #     restructured_body
-            # )
-            # from pprint import pprint
-            # pprint(restructured_body)
-            # pprint(actual_body)
-            # pass
+            actual_body = v2.Entry().from_json(base64.b64decode(entry.body))
+            expected_body = v2.Entry(
+                kind=entry.kind_version.kind,
+                api_version=entry.kind_version.version,
+                spec=v2.Spec(
+                    hashed_rekord_v0_0_2=v2.HashedRekordLogEntryV002(
+                        data=v1.HashOutput(
+                            algorithm=bundle._inner.message_signature.message_digest.algorithm,
+                            digest=bundle._inner.message_signature.message_digest.digest
+                        ),
+                        signature=v2.Signature(
+                            content=bundle._inner.message_signature.signature,
+                            verifier=v2.Verifier(
+                                public_key=v2.PublicKey(
+                                    raw_bytes=bundle.signing_certificate.public_key().public_bytes(
+                                        encoding=serialization.Encoding.DER,
+                                        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                                    )
+                                ),
+                                key_details=models.DEFAULT_KEY_DETAILS
+                            )
+                        )
+                    )
+                )
+            )
         else:
             expected_body = _hashedrekord_from_parts(
                 bundle.signing_certificate,
@@ -540,7 +544,7 @@ class Verifier:
             actual_body = rekor_types.Hashedrekord.model_validate_json(
                 base64.b64decode(entry.body)
             )
-            if expected_body != actual_body:
-                raise VerificationError(
-                    "transparency log entry is inconsistent with other materials"
-                )
+        if expected_body != actual_body:
+            raise VerificationError(
+                "transparency log entry is inconsistent with other materials"
+            )

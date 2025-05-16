@@ -72,9 +72,12 @@ from sigstore._utils import (
     cert_is_root_ca,
 )
 from sigstore.errors import Error, VerificationError
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 
 if typing.TYPE_CHECKING:
     from sigstore._internal.trust import RekorKeyring
+
+DEFAULT_KEY_DETAILS = v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
 
 
 _logger = logging.getLogger(__name__)
