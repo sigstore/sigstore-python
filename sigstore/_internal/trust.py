@@ -581,6 +581,7 @@ class ClientTrustConfig:
             inner_sc = _SigningConfig().from_json(Path(sc_path).read_bytes())
         except TUFError as e:
             # TUF repo may not have signing config yet: hard code values for prod:
+            # https://github.com/sigstore/sigstore-python/issues/1388
             if url == DEFAULT_TUF_URL:
                 embedded = read_embedded("signing_config.v0.2.json", url)
                 inner_sc = _SigningConfig().from_json(embedded)
