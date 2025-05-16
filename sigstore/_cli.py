@@ -22,7 +22,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn, Optional, TextIO, TypeAlias, Union
+from typing import Any, NoReturn, Optional, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -33,6 +33,7 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
     Bundle as RawBundle,
 )
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
+from typing_extensions import TypeAlias
 
 from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
