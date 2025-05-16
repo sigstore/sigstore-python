@@ -82,14 +82,14 @@ def key_to_details(
     key: ec.EllipticCurvePrivateKey | rsa.RSAPrivateKey,
 ) -> v1.PublicKeyDetails:
     """
-    Converts a key to a PublicKeyDetails. Although, the key type is currently hardcoded to PKIX_ECDSA_P384_SHA_256.
+    Converts a key to a PublicKeyDetails. Although, the key type is currently hardcoded to a single type.
     """
     if isinstance(key, ec.EllipticCurvePrivateKey) and isinstance(
         key.curve, ec.SECP256R1
     ):
         return v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
     else:
-        raise Exception("unsupported key type")
+        raise Exception(f"unsupported key type {key}")
 
 
 class Signer:
@@ -299,22 +299,6 @@ class Signer:
                 digest=hashed_input.digest,
             ),
             signature=artifact_signature,
-        )
-        proposed_entry = rekor_types.Hashedrekord(
-            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                signature=rekor_types.hashedrekord.Signature(
-                    content=base64.b64encode(artifact_signature).decode(),
-                    public_key=rekor_types.hashedrekord.PublicKey(
-                        content=b64_cert.decode()
-                    ),
-                ),
-                data=rekor_types.hashedrekord.Data(
-                    hash=rekor_types.hashedrekord.Hash(
-                        algorithm=hashed_input._as_hashedrekord_algorithm(),
-                        value=hashed_input.digest.hex(),
-                    )
-                ),
-            ),
         )
 
         # Create the proposed hashedrekord entry

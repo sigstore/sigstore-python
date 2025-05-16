@@ -26,7 +26,7 @@ from typing import Any, Optional
 
 import rekor_types
 import requests
-from sigstore_protobuf_specs.dev.sigstore.rekor import v1 as rekor_v1
+from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import TransparencyLogEntry
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
@@ -290,9 +290,7 @@ class RekorV2Client:
         """
         self.session.close()
 
-    def create_entry(
-        self, request: v2.CreateEntryRequest
-    ) -> rekor_v1.TransparencyLogEntry:
+    def create_entry(self, request: v2.CreateEntryRequest) -> TransparencyLogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
