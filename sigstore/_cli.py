@@ -1165,8 +1165,8 @@ def _get_trust_config(args: argparse.Namespace) -> ClientTrustConfig:
     The configuration may come from explicit argument (--trust-config) or from the TUF
     repository of the used Sigstore instance.
     """
-    # Some commands do not have offline argument, parse carefully
-    offline = args.offline if "offline" in args else False
+    # Not all commands provide --offline
+    offline = getattr(args, "offline", False)
 
     if args.trust_config:
         return ClientTrustConfig.from_json(args.trust_config.read_text())
