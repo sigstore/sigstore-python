@@ -26,6 +26,7 @@ from typing import Any, Optional
 
 import rekor_types
 import requests
+from sigstore_protobuf_specs.dev.sigstore.rekor import v1 as rekor_v1
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
@@ -148,25 +149,12 @@ class RekorEntries(_Endpoint):
         return LogEntry._from_response(resp.json())
 
     def post(
-        self,
-        proposed_entry: rekor_types.Hashedrekord
-        | rekor_types.Dsse
-        | v2.CreateEntryRequest,
+        self, proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
-        # There may be a bug in betterproto, where the V_0_0_2 is changed to V002.
-        if isinstance(proposed_entry, v2.CreateEntryRequest):
-            payload = proposed_entry.to_dict()
-            if "hashedRekordRequestV002" in payload:
-                payload["hashedRekordRequestV0_0_2"] = payload.pop(
-                    "hashedRekordRequestV002"
-                )
-            if "dsseRequestV002" in payload:
-                payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
-        else:
-            payload = proposed_entry.model_dump(mode="json", by_alias=True)
+        payload = proposed_entry.model_dump(mode="json", by_alias=True)
         _logger.debug(f"proposed: {json.dumps(payload)}")
         resp: requests.Response = self.session.post(self.url, json=payload)
         try:
@@ -176,10 +164,7 @@ class RekorEntries(_Endpoint):
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
-        if isinstance(proposed_entry, v2.CreateEntryRequest):
-            return LogEntry._from_dict_rekor(integrated_entry)
-        else:
-            return LogEntry._from_response(integrated_entry)
+        return LogEntry._from_response(integrated_entry)
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:
@@ -236,14 +221,11 @@ class RekorEntriesRetrieve(_Endpoint):
 class RekorClient:
     """The internal Rekor client"""
 
-    def __init__(
-        self, url: str, major_api_version: int = REKOR_V1_API_MAJOR_VERSION
-    ) -> None:
+    def __init__(self, url: str) -> None:
         """
         Create a new `RekorClient` from the given URL.
         """
-        self.url = f"{url}/api/v{major_api_version}"
-        self.major_api_version = major_api_version
+        self.url = f"{url}/api/v1"
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -281,3 +263,71 @@ class RekorClient:
         Returns a `RekorLog` adapter for making requests to a Rekor log.
         """
         return RekorLog(f"{self.url}/log", session=self.session)
+
+
+class RekorV2Client:
+    """The internal Rekor client for the v2 API"""
+
+    # TODO: implement get_tile, get_entry_bundle, get_checkpoint.
+
+    def __init__(self, base_url: str) -> None:
+        """
+        Create a new `RekorV2Client` from the given URL.
+        """
+        self.url = f"{base_url}/api/v2"
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            }
+        )
+
+    def __del__(self) -> None:
+        """
+        Terminates the underlying network session.
+        """
+        self.session.close()
+
+    def create_entry(
+        self, request: v2.CreateEntryRequest
+    ) -> rekor_v1.TransparencyLogEntry:
+        """
+        Submit a new entry for inclusion in the Rekor log.
+        """
+        # There may be a bug in betterproto, where the V_0_0_2 is changed to V002.
+        payload = request.to_dict()
+        if "hashedRekordRequestV002" in payload:
+            payload["hashedRekordRequestV0_0_2"] = payload.pop(
+                "hashedRekordRequestV002"
+            )
+        if "dsseRequestV002" in payload:
+            payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
+        _logger.debug(f"request: {json.dumps(payload)}")
+        resp = self.session.post(f"{self.url}/log/entries", json=payload)
+
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as http_error:
+            raise RekorClientError(http_error)
+
+        integrated_entry = resp.json()
+        _logger.debug(f"integrated: {integrated_entry}")
+        return LogEntry._from_dict_rekor(integrated_entry)
+
+    @classmethod
+    def production(cls) -> RekorClient:
+        """
+        Returns a `RekorClient` populated with the default Rekor production instance.
+        """
+        return cls(
+            DEFAULT_REKOR_URL,
+        )
+
+    @classmethod
+    def staging(cls) -> RekorClient:
+        """
+        Returns a `RekorClient` populated with the default Rekor staging instance.
+        """
+        return cls(STAGING_REKOR_URL)

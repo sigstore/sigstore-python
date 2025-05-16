@@ -64,6 +64,7 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor.client import (
     REKOR_V1_API_MAJOR_VERSION,
     RekorClient,
+    RekorV2Client,
 )
 from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
@@ -195,13 +196,19 @@ class Signer:
         self,
         cert: x509.Certificate,
         content: MessageSignature | dsse.Envelope,
-        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
+        proposed_entry: rekor_types.Hashedrekord
+        | rekor_types.Dsse
+        | v2.CreateEntryRequest,
     ) -> Bundle:
         """
         Perform the common "finalizing" steps in a Sigstore signing flow.
         """
         # Submit the proposed entry to the transparency log
-        entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
+        client = self._signing_ctx._rekor
+        if isinstance(client, RekorV2Client):
+            entry = client.create_entry(proposed_entry)
+        else:
+            entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
 
         _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
@@ -311,24 +318,7 @@ class Signer:
         )
 
         # Create the proposed hashedrekord entry
-        if self._signing_ctx._rekor.major_api_version == REKOR_V1_API_MAJOR_VERSION:
-            proposed_entry = rekor_types.Hashedrekord(
-                spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                    signature=rekor_types.hashedrekord.Signature(
-                        content=base64.b64encode(artifact_signature).decode(),
-                        public_key=rekor_types.hashedrekord.PublicKey(
-                            content=b64_cert.decode()
-                        ),
-                    ),
-                    data=rekor_types.hashedrekord.Data(
-                        hash=rekor_types.hashedrekord.Hash(
-                            algorithm=hashed_input._as_hashedrekord_algorithm(),
-                            value=hashed_input.digest.hex(),
-                        )
-                    ),
-                ),
-            )
-        else:
+        if isinstance(self._signing_ctx._rekor, RekorV2Client):
             proposed_entry = v2.CreateEntryRequest(
                 hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
                     digest=hashed_input.digest,
@@ -346,7 +336,23 @@ class Signer:
                     ),
                 )
             )
-
+        else:
+            proposed_entry = rekor_types.Hashedrekord(
+                spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                    signature=rekor_types.hashedrekord.Signature(
+                        content=base64.b64encode(artifact_signature).decode(),
+                        public_key=rekor_types.hashedrekord.PublicKey(
+                            content=b64_cert.decode()
+                        ),
+                    ),
+                    data=rekor_types.hashedrekord.Data(
+                        hash=rekor_types.hashedrekord.Hash(
+                            algorithm=hashed_input._as_hashedrekord_algorithm(),
+                            value=hashed_input.digest.hex(),
+                        )
+                    ),
+                ),
+            )
         return self._finalize_sign(cert, content, proposed_entry)
 
 
@@ -359,7 +365,7 @@ class SigningContext:
         self,
         *,
         fulcio: FulcioClient,
-        rekor: RekorClient,
+        rekor: RekorClient | RekorV2Client,
         trusted_root: TrustedRoot,
         tsa_clients: list[TimestampAuthorityClient] | None = None,
     ):
@@ -407,12 +413,18 @@ class SigningContext:
         @api private
         """
         signing_config = trust_config.signing_config
+        if (
+            signing_config._inner.rekor_tlog_urls[0].major_api_version
+            == REKOR_V1_API_MAJOR_VERSION
+        ):
+            rekor_client = RekorClient(
+                signing_config.get_tlog_urls()[0],
+            )
+        else:
+            rekor_client = RekorV2Client(signing_config.get_tlog_urls()[0])
         return cls(
             fulcio=FulcioClient(signing_config.get_fulcio_url()),
-            rekor=RekorClient(
-                signing_config.get_tlog_urls()[0],
-                signing_config._inner.rekor_tlog_urls[0].major_api_version,
-            ),
+            rekor=rekor_client,
             trusted_root=trust_config.trusted_root,
             tsa_clients=[
                 TimestampAuthorityClient(url) for url in signing_config.get_tsa_urls()
