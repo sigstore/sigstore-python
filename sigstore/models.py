@@ -234,6 +234,15 @@ class LogEntry:
             root_hash=inclusion_proof.root_hash.hex(),
             tree_size=inclusion_proof.tree_size,
         )
+
+        inclusion_promise: Optional[B64Str] = None
+        if tlog_entry.inclusion_promise:
+            inclusion_promise = B64Str(
+                base64.b64encode(
+                    tlog_entry.inclusion_promise.signed_entry_timestamp
+                ).decode()
+            )
+
         return LogEntry(
             uuid=None,
             body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
@@ -241,6 +250,7 @@ class LogEntry:
             log_id=tlog_entry.log_id.key_id.hex(),
             log_index=tlog_entry.log_index,
             inclusion_proof=parsed_inclusion_proof,
+            inclusion_promise=inclusion_promise,
             inclusion_promise=B64Str(
                 base64.b64encode(
                     tlog_entry.inclusion_promise.signed_entry_timestamp
@@ -271,6 +281,11 @@ class LogEntry:
             kind_version=self._kind_version,
             canonicalized_body=base64.b64decode(self.body),
         )
+        if self.inclusion_promise:
+            inclusion_promise = rekor_v1.InclusionPromise(
+                signed_entry_timestamp=base64.b64decode(self.inclusion_promise)
+            )
+            tlog_entry.inclusion_promise = inclusion_promise
 
         return tlog_entry
 
