@@ -281,11 +281,6 @@ class Signer:
 
         cert = self._signing_cert()
 
-        # Prepare inputs
-        b64_cert = base64.b64encode(
-            cert.public_bytes(encoding=serialization.Encoding.PEM)
-        )
-
         # Sign artifact
         hashed_input = sha256_digest(input_)
 
