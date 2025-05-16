@@ -46,8 +46,8 @@ All versions prior to 0.9.0 are untracked.
     `Issuer()` instead with relevant URL. The current public good production and
     staging URLs are available via the `ClientTrustConfig` object.
     [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
-  * `Signingcontext.production()` and `Signingcontext.staging()` have been removed:
-    Use `Signingcontext.from_trust_config()` instead.
+  * `SigningContext.production()` and `SigningContext.staging()` have been removed:
+    Use `SigningContext.from_trust_config()` instead.
     [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
 
 
