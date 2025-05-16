@@ -177,6 +177,6 @@ update-embedded-root: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
 		python -m sigstore plumbing update-trust-root
 	cp ~/.local/share/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/root.json \
-		sigstore/_store/prod/root.json
+		sigstore/_store/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/root.json
 	cp ~/.cache/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/trusted_root.json \
-		sigstore/_store/prod/trusted_root.json
+		sigstore/_store/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/trusted_root.json

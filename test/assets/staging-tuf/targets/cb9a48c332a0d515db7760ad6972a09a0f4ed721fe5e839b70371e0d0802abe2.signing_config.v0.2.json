@@ -1,0 +1,45 @@
+{
+  "mediaType": "application/vnd.dev.sigstore.signingconfig.v0.2+json",
+  "caUrls": [
+    {
+      "url": "https://fulcio.sigstage.dev",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2022-04-14T21:38:40Z"
+      }
+    }
+  ],
+  "oidcUrls": [
+    {
+      "url": "https://oauth2.sigstage.dev/auth",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2025-04-16T00:00:00Z"
+      }
+    }
+  ],
+  "rekorTlogUrls": [
+    {
+      "url": "https://rekor.sigstage.dev",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2021-01-12T11:53:27Z"
+      }
+    }
+  ],
+  "tsaUrls": [
+    {
+      "url": "https://timestamp.sigstage.dev/api/v1/timestamp",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2025-04-09T00:00:00Z"
+      }
+    }
+  ],
+  "rekorTlogConfig": {
+    "selector": "ANY"
+  },
+  "tsaConfig": {
+    "selector": "ANY"
+  }
+}
