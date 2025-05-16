@@ -11,6 +11,10 @@ else:
     from pydantic.dataclasses import dataclass
 
 from datetime import datetime
+from typing import (
+    List,
+    Optional,
+)
 
 import betterproto
 from pydantic import model_validator
@@ -200,7 +204,7 @@ class Rfc3161SignedTimestamp(betterproto.Message):
 
 @dataclass(eq=False, repr=False)
 class PublicKey(betterproto.Message):
-    raw_bytes: "bytes | None" = betterproto.bytes_field(1, optional=True)
+    raw_bytes: Optional[bytes] = betterproto.bytes_field(1, optional=True)
     """
     DER-encoded public key, encoding method is specified by the
      key_details attribute.
@@ -209,7 +213,7 @@ class PublicKey(betterproto.Message):
     key_details: "PublicKeyDetails" = betterproto.enum_field(2)
     """Key encoding and signature algorithm to use for this key."""
 
-    valid_for: "TimeRange | None" = betterproto.message_field(3, optional=True)
+    valid_for: Optional["TimeRange"] = betterproto.message_field(3, optional=True)
     """Optional validity period for this key, *inclusive* of the endpoints."""
 
 
@@ -238,7 +242,7 @@ class PublicKeyIdentifier(betterproto.Message):
 class ObjectIdentifier(betterproto.Message):
     """An ASN.1 OBJECT IDENTIFIER"""
 
-    id: "list[int]" = betterproto.int32_field(1)
+    id: List[int] = betterproto.int32_field(1)
 
 
 @dataclass(eq=False, repr=False)
@@ -264,13 +268,13 @@ class X509Certificate(betterproto.Message):
 @dataclass(eq=False, repr=False)
 class SubjectAlternativeName(betterproto.Message):
     type: "SubjectAlternativeNameType" = betterproto.enum_field(1)
-    regexp: "str | None" = betterproto.string_field(2, optional=True, group="identity")
+    regexp: Optional[str] = betterproto.string_field(2, optional=True, group="identity")
     """
     A regular expression describing the expected value for
      the SAN.
     """
 
-    value: "str | None" = betterproto.string_field(3, optional=True, group="identity")
+    value: Optional[str] = betterproto.string_field(3, optional=True, group="identity")
     """The exact value to match against."""
 
     @model_validator(mode="after")
@@ -288,7 +292,7 @@ class X509CertificateChain(betterproto.Message):
      the purpose of chain building.
     """
 
-    certificates: "list[X509Certificate]" = betterproto.message_field(1)
+    certificates: List["X509Certificate"] = betterproto.message_field(1)
     """
     One or more DER-encoded certificates.
     
@@ -308,7 +312,7 @@ class TimeRange(betterproto.Message):
     """
 
     start: datetime = betterproto.message_field(1)
-    end: "datetime | None" = betterproto.message_field(2, optional=True)
+    end: Optional[datetime] = betterproto.message_field(2, optional=True)
 
 
 rebuild_dataclass(HashOutput)  # type: ignore

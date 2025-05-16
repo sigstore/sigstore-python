@@ -10,6 +10,12 @@ if TYPE_CHECKING:
 else:
     from pydantic.dataclasses import dataclass
 
+from typing import (
+    Dict,
+    List,
+    Optional,
+)
+
 import betterproto
 import betterproto.lib.pydantic.google.protobuf as betterproto_lib_pydantic_google_protobuf
 import grpclib
@@ -37,14 +43,14 @@ class Verifier(betterproto.Message):
     Either a public key or a X.509 cerificiate with an embedded public key
     """
 
-    public_key: "PublicKey | None" = betterproto.message_field(
+    public_key: Optional["PublicKey"] = betterproto.message_field(
         1, optional=True, group="verifier"
     )
     """
     DER-encoded public key. Encoding method is specified by the key_details attribute
     """
 
-    x509_certificate: "__common_v1__.X509Certificate | None" = (
+    x509_certificate: Optional["__common_v1__.X509Certificate"] = (
         betterproto.message_field(2, optional=True, group="verifier")
     )
     """DER-encoded certificate"""
@@ -96,7 +102,7 @@ class DsseRequestV002(betterproto.Message):
     envelope: "____io_intoto__.Envelope" = betterproto.message_field(1)
     """A DSSE envelope"""
 
-    verifiers: "list[Verifier]" = betterproto.message_field(2)
+    verifiers: List["Verifier"] = betterproto.message_field(2)
     """
     All necessary verification material to verify all signatures embedded in the envelope
     """
@@ -107,7 +113,7 @@ class DsseLogEntryV002(betterproto.Message):
     payload_hash: "__common_v1__.HashOutput" = betterproto.message_field(1)
     """The hash of the DSSE payload"""
 
-    signatures: "list[Signature]" = betterproto.message_field(2)
+    signatures: List["Signature"] = betterproto.message_field(2)
     """
     Signatures and their associated verification material used to verify the payload
     """
@@ -133,10 +139,10 @@ class Entry(betterproto.Message):
 class Spec(betterproto.Message):
     """Spec contains one of the Rekor entry types."""
 
-    hashed_rekord_v0_0_2: "HashedRekordLogEntryV002 | None" = betterproto.message_field(
-        1, optional=True, group="spec"
+    hashed_rekord_v0_0_2: Optional["HashedRekordLogEntryV002"] = (
+        betterproto.message_field(1, optional=True, group="spec")
     )
-    dsse_v0_0_2: "DsseLogEntryV002 | None" = betterproto.message_field(
+    dsse_v0_0_2: Optional["DsseLogEntryV002"] = betterproto.message_field(
         2, optional=True, group="spec"
     )
 
@@ -149,10 +155,10 @@ class Spec(betterproto.Message):
 class CreateEntryRequest(betterproto.Message):
     """Create a new HashedRekord or DSSE"""
 
-    hashed_rekord_request_v0_0_2: "HashedRekordRequestV002 | None" = (
+    hashed_rekord_request_v0_0_2: Optional["HashedRekordRequestV002"] = (
         betterproto.message_field(1, optional=True, group="spec")
     )
-    dsse_request_v0_0_2: "DsseRequestV002 | None" = betterproto.message_field(
+    dsse_request_v0_0_2: Optional["DsseRequestV002"] = betterproto.message_field(
         2, optional=True, group="spec"
     )
 
@@ -193,9 +199,9 @@ class RekorStub(betterproto.ServiceStub):
         self,
         create_entry_request: "CreateEntryRequest",
         *,
-        timeout: "float | None" = None,
-        deadline: "Deadline | None" = None,
-        metadata: "MetadataLike | None" = None,
+        timeout: Optional[float] = None,
+        deadline: Optional["Deadline"] = None,
+        metadata: Optional["MetadataLike"] = None,
     ) -> "_v1__.TransparencyLogEntry":
         return await self._unary_unary(
             "/dev.sigstore.rekor.v2.Rekor/CreateEntry",
@@ -210,9 +216,9 @@ class RekorStub(betterproto.ServiceStub):
         self,
         tile_request: "TileRequest",
         *,
-        timeout: "float | None" = None,
-        deadline: "Deadline | None" = None,
-        metadata: "MetadataLike | None" = None,
+        timeout: Optional[float] = None,
+        deadline: Optional["Deadline"] = None,
+        metadata: Optional["MetadataLike"] = None,
     ) -> "____google_api__.HttpBody":
         return await self._unary_unary(
             "/dev.sigstore.rekor.v2.Rekor/GetTile",
@@ -227,9 +233,9 @@ class RekorStub(betterproto.ServiceStub):
         self,
         entry_bundle_request: "EntryBundleRequest",
         *,
-        timeout: "float | None" = None,
-        deadline: "Deadline | None" = None,
-        metadata: "MetadataLike | None" = None,
+        timeout: Optional[float] = None,
+        deadline: Optional["Deadline"] = None,
+        metadata: Optional["MetadataLike"] = None,
     ) -> "____google_api__.HttpBody":
         return await self._unary_unary(
             "/dev.sigstore.rekor.v2.Rekor/GetEntryBundle",
@@ -244,9 +250,9 @@ class RekorStub(betterproto.ServiceStub):
         self,
         betterproto_lib_pydantic_google_protobuf_empty: "betterproto_lib_pydantic_google_protobuf.Empty",
         *,
-        timeout: "float | None" = None,
-        deadline: "Deadline | None" = None,
-        metadata: "MetadataLike | None" = None,
+        timeout: Optional[float] = None,
+        deadline: Optional["Deadline"] = None,
+        metadata: Optional["MetadataLike"] = None,
     ) -> "____google_api__.HttpBody":
         return await self._unary_unary(
             "/dev.sigstore.rekor.v2.Rekor/GetCheckpoint",
@@ -311,7 +317,7 @@ class RekorBase(ServiceBase):
         response = await self.get_checkpoint(request)
         await stream.send_message(response)
 
-    def __mapping__(self) -> "dict[str, grpclib.const.Handler]":
+    def __mapping__(self) -> Dict[str, grpclib.const.Handler]:
         return {
             "/dev.sigstore.rekor.v2.Rekor/CreateEntry": grpclib.const.Handler(
                 self.__rpc_create_entry,

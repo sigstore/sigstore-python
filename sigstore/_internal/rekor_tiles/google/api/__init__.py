@@ -10,6 +10,11 @@ if TYPE_CHECKING:
 else:
     from pydantic.dataclasses import dataclass
 
+from typing import (
+    List,
+    Optional,
+)
+
 import betterproto
 import betterproto.lib.pydantic.google.protobuf as betterproto_lib_pydantic_google_protobuf
 from pydantic import model_validator
@@ -112,7 +117,7 @@ class Http(betterproto.Message):
      to one or more HTTP REST API methods.
     """
 
-    rules: "list[HttpRule]" = betterproto.message_field(1)
+    rules: List["HttpRule"] = betterproto.message_field(1)
     """
     A list of HTTP configuration rules that apply to individual API methods.
     
@@ -407,27 +412,27 @@ class HttpRule(betterproto.Message):
      details.
     """
 
-    get: "str | None" = betterproto.string_field(2, optional=True, group="pattern")
+    get: Optional[str] = betterproto.string_field(2, optional=True, group="pattern")
     """
     Maps to HTTP GET. Used for listing and getting information about
      resources.
     """
 
-    put: "str | None" = betterproto.string_field(3, optional=True, group="pattern")
+    put: Optional[str] = betterproto.string_field(3, optional=True, group="pattern")
     """Maps to HTTP PUT. Used for replacing a resource."""
 
-    post: "str | None" = betterproto.string_field(4, optional=True, group="pattern")
+    post: Optional[str] = betterproto.string_field(4, optional=True, group="pattern")
     """
     Maps to HTTP POST. Used for creating a resource or performing an action.
     """
 
-    delete: "str | None" = betterproto.string_field(5, optional=True, group="pattern")
+    delete: Optional[str] = betterproto.string_field(5, optional=True, group="pattern")
     """Maps to HTTP DELETE. Used for deleting a resource."""
 
-    patch: "str | None" = betterproto.string_field(6, optional=True, group="pattern")
+    patch: Optional[str] = betterproto.string_field(6, optional=True, group="pattern")
     """Maps to HTTP PATCH. Used for updating a resource."""
 
-    custom: "CustomHttpPattern | None" = betterproto.message_field(
+    custom: Optional["CustomHttpPattern"] = betterproto.message_field(
         8, optional=True, group="pattern"
     )
     """
@@ -457,7 +462,7 @@ class HttpRule(betterproto.Message):
      message type.
     """
 
-    additional_bindings: "list[HttpRule]" = betterproto.message_field(11)
+    additional_bindings: List["HttpRule"] = betterproto.message_field(11)
     """
     Additional HTTP bindings for the selector. Nested bindings must
      not contain an `additional_bindings` field themselves (that is,
@@ -536,7 +541,7 @@ class HttpBody(betterproto.Message):
     data: bytes = betterproto.bytes_field(2)
     """The HTTP request/response body as raw binary."""
 
-    extensions: "list[betterproto_lib_pydantic_google_protobuf.Any]" = (
+    extensions: List["betterproto_lib_pydantic_google_protobuf.Any"] = (
         betterproto.message_field(3)
     )
     """
