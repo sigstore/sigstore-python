@@ -5,7 +5,6 @@
 
 from typing import TYPE_CHECKING
 
-
 if TYPE_CHECKING:
     from dataclasses import dataclass
 else:
@@ -202,7 +201,7 @@ class RekorStub(betterproto.ServiceStub):
         *,
         timeout: Optional[float] = None,
         deadline: Optional["Deadline"] = None,
-        metadata: Optional["MetadataLike"] = None
+        metadata: Optional["MetadataLike"] = None,
     ) -> "_v1__.TransparencyLogEntry":
         return await self._unary_unary(
             "/dev.sigstore.rekor.v2.Rekor/CreateEntry",
@@ -219,7 +218,7 @@ class RekorStub(betterproto.ServiceStub):
         *,
         timeout: Optional[float] = None,
         deadline: Optional["Deadline"] = None,
-        metadata: Optional["MetadataLike"] = None
+        metadata: Optional["MetadataLike"] = None,
     ) -> "____google_api__.HttpBody":
         return await self._unary_unary(
             "/dev.sigstore.rekor.v2.Rekor/GetTile",
@@ -236,7 +235,7 @@ class RekorStub(betterproto.ServiceStub):
         *,
         timeout: Optional[float] = None,
         deadline: Optional["Deadline"] = None,
-        metadata: Optional["MetadataLike"] = None
+        metadata: Optional["MetadataLike"] = None,
     ) -> "____google_api__.HttpBody":
         return await self._unary_unary(
             "/dev.sigstore.rekor.v2.Rekor/GetEntryBundle",
@@ -253,7 +252,7 @@ class RekorStub(betterproto.ServiceStub):
         *,
         timeout: Optional[float] = None,
         deadline: Optional["Deadline"] = None,
-        metadata: Optional["MetadataLike"] = None
+        metadata: Optional["MetadataLike"] = None,
     ) -> "____google_api__.HttpBody":
         return await self._unary_unary(
             "/dev.sigstore.rekor.v2.Rekor/GetCheckpoint",
@@ -266,7 +265,6 @@ class RekorStub(betterproto.ServiceStub):
 
 
 class RekorBase(ServiceBase):
-
     async def create_entry(
         self, create_entry_request: "CreateEntryRequest"
     ) -> "_v1__.TransparencyLogEntry":

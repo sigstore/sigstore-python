@@ -5,12 +5,12 @@
 #   version:   0.30.1
 
 from __future__ import annotations
-from sigstore_protobuf_specs.dev.sigstore.common import v1
 
 from enum import Enum
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StrictStr
+from sigstore_protobuf_specs.dev.sigstore.common import v1
 
 
 class Model(RootModel[Any]):
@@ -321,7 +321,9 @@ class V1TransparencyLogEntry(BaseModel):
         alias="logIndex",
         description="The global index of the entry, used when querying the log by index.",
     )
-    log_id: V1LogId = Field(..., alias="logId", description="The unique identifier of the log.")
+    log_id: V1LogId = Field(
+        ..., alias="logId", description="The unique identifier of the log."
+    )
     kind_version: V1KindVersion = Field(
         ...,
         alias="kindVersion",
@@ -353,7 +355,9 @@ class V1X509Certificate(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
-    raw_bytes: str = Field(..., alias="rawBytes", description="DER-encoded X.509 certificate.")
+    raw_bytes: str = Field(
+        ..., alias="rawBytes", description="DER-encoded X.509 certificate."
+    )
 
 
 class V2Verifier(BaseModel):
@@ -483,6 +487,7 @@ class V2DSSERequestV002(BaseModel):
 
 # Custom Code
 
+
 class V2HashedRekordRequestV002(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
@@ -532,8 +537,7 @@ class HashedRekordLogEntryV002(BaseModel):
 
 
 class DSSELogEntryV002Root(BaseModel):
-    dsse_v0_0_2: DSSELogEntryV002 = Field(
-        ..., alias="dsseV0_0_2")
+    dsse_v0_0_2: DSSELogEntryV002 = Field(..., alias="dsseV0_0_2")
 
 
 class DSSELogEntryV002(BaseModel):

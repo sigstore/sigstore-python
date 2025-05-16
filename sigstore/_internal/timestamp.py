@@ -28,8 +28,6 @@ from rfc3161_client import (
 )
 from rfc3161_client.base import HashAlgorithm
 
-from rfc3161_client.base import HashAlgorithm
-
 from sigstore._internal import USER_AGENT
 
 CLIENT_TIMEOUT: int = 5

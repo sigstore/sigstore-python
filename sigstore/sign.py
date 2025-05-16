@@ -50,7 +50,6 @@ import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509.oid import NameOID
-from sigstore.errors import Error
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
     HashOutput,
     MessageSignature,
@@ -62,24 +61,31 @@ from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioClient,
 )
-from sigstore._internal.rekor.client import RekorClient, REKOR_V2_API_MAJOR_VERSION, REKOR_V1_API_MAJOR_VERSION
+from sigstore._internal.rekor.client import (
+    REKOR_V1_API_MAJOR_VERSION,
+    RekorClient,
+)
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
+from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
 from sigstore.models import Bundle
 from sigstore.oidc import ExpiredIdentity, IdentityToken
-from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
-from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 
 _logger = logging.getLogger(__name__)
 
 
-def key_to_details(key: ec.EllipticCurvePrivateKey | rsa.RSAPrivateKey) -> v1.PublicKeyDetails:
-    '''
+def key_to_details(
+    key: ec.EllipticCurvePrivateKey | rsa.RSAPrivateKey,
+) -> v1.PublicKeyDetails:
+    """
     Converts a key to a PublicKeyDetails. Although, the key type is currently hardcoded to PKIX_ECDSA_P384_SHA_256.
-    '''
-    if isinstance(key, ec.EllipticCurvePrivateKey) and isinstance(key.curve, ec.SECP256R1):
+    """
+    if isinstance(key, ec.EllipticCurvePrivateKey) and isinstance(
+        key.curve, ec.SECP256R1
+    ):
         return v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
     else:
         raise Exception("unsupported key type")
@@ -335,9 +341,9 @@ class Signer:
                                     format=serialization.PublicFormat.SubjectPublicKeyInfo,
                                 )
                             ),
-                            key_details=key_to_details(self._private_key)
+                            key_details=key_to_details(self._private_key),
                         ),
-                    )
+                    ),
                 )
             )
 
@@ -403,8 +409,10 @@ class SigningContext:
         signing_config = trust_config.signing_config
         return cls(
             fulcio=FulcioClient(signing_config.get_fulcio_url()),
-            rekor=RekorClient(signing_config.get_tlog_urls()[
-                              0], signing_config._inner.rekor_tlog_urls[0].major_api_version),
+            rekor=RekorClient(
+                signing_config.get_tlog_urls()[0],
+                signing_config._inner.rekor_tlog_urls[0].major_api_version,
+            ),
             trusted_root=trust_config.trusted_root,
             tsa_clients=[
                 TimestampAuthorityClient(url) for url in signing_config.get_tsa_urls()

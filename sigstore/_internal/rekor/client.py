@@ -24,8 +24,6 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from betterproto import Casing
-import betterproto
 import rekor_types
 import requests
 
@@ -151,7 +149,9 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse | v2.CreateEntryRequest
+        proposed_entry: rekor_types.Hashedrekord
+        | rekor_types.Dsse
+        | v2.CreateEntryRequest,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
@@ -161,7 +161,8 @@ class RekorEntries(_Endpoint):
             payload = proposed_entry.to_dict()
             if "hashedRekordRequestV002" in payload:
                 payload["hashedRekordRequestV0_0_2"] = payload.pop(
-                    "hashedRekordRequestV002")
+                    "hashedRekordRequestV002"
+                )
             if "dsseRequestV002" in payload:
                 payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
         else:
@@ -179,7 +180,6 @@ class RekorEntries(_Endpoint):
             return LogEntry._from_dict_rekor(integrated_entry)
         else:
             return LogEntry._from_response(integrated_entry)
-
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:
@@ -236,7 +236,9 @@ class RekorEntriesRetrieve(_Endpoint):
 class RekorClient:
     """The internal Rekor client"""
 
-    def __init__(self, url: str, major_api_version: int = REKOR_V1_API_MAJOR_VERSION) -> None:
+    def __init__(
+        self, url: str, major_api_version: int = REKOR_V1_API_MAJOR_VERSION
+    ) -> None:
         """
         Create a new `RekorClient` from the given URL.
         """

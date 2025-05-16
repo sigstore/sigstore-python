@@ -63,6 +63,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import InclusionProof, KindVe
 from sigstore import dsse
 from sigstore._internal.merkle import verify_merkle_inclusion
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 from sigstore._utils import (
     B64Str,
     KeyID,
@@ -70,7 +71,6 @@ from sigstore._utils import (
     cert_is_root_ca,
 )
 from sigstore.errors import Error, VerificationError
-from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 
 if typing.TYPE_CHECKING:
     from sigstore._internal.trust import RekorKeyring

@@ -25,7 +25,7 @@ import rfc3161_client
 from sigstore._internal.trust import CertificateAuthority
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import VerificationError
-from sigstore.models import Bundle, LogEntry
+from sigstore.models import Bundle
 from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
 
