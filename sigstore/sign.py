@@ -303,39 +303,17 @@ class Signer:
 
         # Create the proposed hashedrekord entry
         if isinstance(self._signing_ctx._rekor, RekorV2Client):
-            proposed_entry = v2.CreateEntryRequest(
-                hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
-                    digest=hashed_input.digest,
-                    signature=v2.Signature(
-                        content=artifact_signature,
-                        verifier=v2.Verifier(
-                            public_key=v2.PublicKey(
-                                raw_bytes=cert.public_key().public_bytes(
-                                    encoding=serialization.Encoding.DER,
-                                    format=serialization.PublicFormat.SubjectPublicKeyInfo,
-                                )
-                            ),
-                            key_details=key_to_details(self._private_key),
-                        ),
-                    ),
-                )
+            proposed_entry = RekorV2Client._build_create_entry_request(
+                hashed_input=hashed_input,
+                signature=artifact_signature,
+                certificate=cert,
+                key_details=key_to_details(self._private_key),
             )
         else:
-            proposed_entry = rekor_types.Hashedrekord(
-                spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                    signature=rekor_types.hashedrekord.Signature(
-                        content=base64.b64encode(artifact_signature).decode(),
-                        public_key=rekor_types.hashedrekord.PublicKey(
-                            content=b64_cert.decode()
-                        ),
-                    ),
-                    data=rekor_types.hashedrekord.Data(
-                        hash=rekor_types.hashedrekord.Hash(
-                            algorithm=hashed_input._as_hashedrekord_algorithm(),
-                            value=hashed_input.digest.hex(),
-                        )
-                    ),
-                ),
+            proposed_entry = RekorClient._build_hashed_rekord_request(
+                hashed_input=hashed_input,
+                signature=artifact_signature,
+                certificate=cert,
             )
         return self._finalize_sign(cert, content, proposed_entry)
 

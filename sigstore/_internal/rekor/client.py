@@ -18,6 +18,7 @@ Client implementation for interacting with Rekor.
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from abc import ABC
@@ -26,10 +27,14 @@ from typing import Any, Optional
 
 import rekor_types
 import requests
+from cryptography.hazmat.primitives import serialization
+from cryptography.x509 import Certificate
 from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import TransparencyLogEntry
 
 from sigstore._internal import USER_AGENT
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
+from sigstore.hashes import Hashed
 from sigstore.models import LogEntry
 
 _logger = logging.getLogger(__name__)
@@ -242,6 +247,34 @@ class RekorClient:
         self.session.close()
 
     @classmethod
+    def _build_hashed_rekord_request(
+        cls,
+        hashed_input: Hashed,
+        signature: bytes,
+        certificate: Certificate,
+    ) -> rekor_types.Hashedrekordkord:
+        return rekor_types.Hashedrekord(
+            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                signature=rekor_types.hashedrekord.Signature(
+                    content=base64.b64encode(signature).decode(),
+                    public_key=rekor_types.hashedrekord.PublicKey(
+                        content=base64.b64encode(
+                            certificate.public_bytes(
+                                encoding=serialization.Encoding.PEM
+                            )
+                        ).decode()
+                    ),
+                ),
+                data=rekor_types.hashedrekord.Data(
+                    hash=rekor_types.hashedrekord.Hash(
+                        algorithm=hashed_input._as_hashedrekord_algorithm(),
+                        value=hashed_input.digest.hex(),
+                    )
+                ),
+            ),
+        )
+
+    @classmethod
     def production(cls) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor production instance.
@@ -313,6 +346,32 @@ class RekorV2Client:
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
         return LogEntry._from_dict_rekor(integrated_entry)
+
+    @classmethod
+    def _build_create_entry_request(
+        cls,
+        hashed_input: Hashed,
+        signature: bytes,
+        certificate: Certificate,
+        key_details: v1.PublicKeyDetails,
+    ) -> v2.CreateEntryRequest:
+        return v2.CreateEntryRequest(
+            hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
+                digest=hashed_input.digest,
+                signature=v2.Signature(
+                    content=signature,
+                    verifier=v2.Verifier(
+                        public_key=v2.PublicKey(
+                            raw_bytes=certificate.public_key().public_bytes(
+                                encoding=serialization.Encoding.DER,
+                                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                            )
+                        ),
+                        key_details=key_details,
+                    ),
+                ),
+            )
+        )
 
     @classmethod
     def production(cls) -> RekorClient:
