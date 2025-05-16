@@ -251,11 +251,6 @@ class LogEntry:
             log_index=tlog_entry.log_index,
             inclusion_proof=parsed_inclusion_proof,
             inclusion_promise=inclusion_promise,
-            inclusion_promise=B64Str(
-                base64.b64encode(
-                    tlog_entry.inclusion_promise.signed_entry_timestamp
-                ).decode()
-            ),
             _kind_version=tlog_entry.kind_version,
         )
 
