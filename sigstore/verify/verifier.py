@@ -125,7 +125,7 @@ class Verifier:
         )
 
     def _verify_signed_timestamp(
-        self, timestamp_response: TimeStampResponse, signature: bytes
+        self, timestamp_response: TimeStampResponse, message: bytes
     ) -> TimestampVerificationResult | None:
         """
         Verify a Signed Timestamp using the TSA provided by the Trusted Root.
@@ -140,7 +140,7 @@ class Verifier:
 
             verifier = builder.build()
             try:
-                verifier.verify(timestamp_response, signature)
+                verifier.verify_message(timestamp_response, message)
             except Rfc3161VerificationError as e:
                 _logger.debug("Unable to verify Timestamp with CA.")
                 _logger.exception(e)
@@ -183,15 +183,10 @@ class Verifier:
             msg = "duplicate timestamp found"
             raise VerificationError(msg)
 
-        # The Signer sends a hash of the signature as the messageImprint in a TimeStampReq
-        # to the Timestamping Service
-        signature_hash = sha256_digest(bundle.signature).digest
         verified_timestamps = [
-            verified_timestamp
+            result
             for tsr in timestamp_responses
-            if (
-                verified_timestamp := self._verify_signed_timestamp(tsr, signature_hash)
-            )
+            if (result := self._verify_signed_timestamp(tsr, bundle.signature))
         ]
 
         return verified_timestamps
