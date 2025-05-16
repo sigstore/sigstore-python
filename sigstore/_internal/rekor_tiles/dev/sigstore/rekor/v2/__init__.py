@@ -11,22 +11,16 @@ else:
     from pydantic.dataclasses import dataclass
 
 from typing import (
-    Dict,
     List,
     Optional,
 )
 
 import betterproto
-import betterproto.lib.pydantic.google.protobuf as betterproto_lib_pydantic_google_protobuf
-import grpclib
-from betterproto.grpc.grpclib_server import ServiceBase
 from pydantic import model_validator
 from pydantic.dataclasses import rebuild_dataclass
 
-from .....google import api as ____google_api__
 from .....io import intoto as ____io_intoto__
 from ...common import v1 as __common_v1__
-from .. import v1 as _v1__
 
 
 @dataclass(eq=False, repr=False)
@@ -192,158 +186,6 @@ class EntryBundleRequest(betterproto.Message):
     N must be either an index encoded as zero-padded 3-digit path elements, e.g. "x123/x456/789",
      and may end with ".p/<W>", where "<W>" is a uint8
     """
-
-
-class RekorStub(betterproto.ServiceStub):
-    async def create_entry(
-        self,
-        create_entry_request: "CreateEntryRequest",
-        *,
-        timeout: Optional[float] = None,
-        deadline: Optional["Deadline"] = None,
-        metadata: Optional["MetadataLike"] = None,
-    ) -> "_v1__.TransparencyLogEntry":
-        return await self._unary_unary(
-            "/dev.sigstore.rekor.v2.Rekor/CreateEntry",
-            create_entry_request,
-            _v1__.TransparencyLogEntry,
-            timeout=timeout,
-            deadline=deadline,
-            metadata=metadata,
-        )
-
-    async def get_tile(
-        self,
-        tile_request: "TileRequest",
-        *,
-        timeout: Optional[float] = None,
-        deadline: Optional["Deadline"] = None,
-        metadata: Optional["MetadataLike"] = None,
-    ) -> "____google_api__.HttpBody":
-        return await self._unary_unary(
-            "/dev.sigstore.rekor.v2.Rekor/GetTile",
-            tile_request,
-            ____google_api__.HttpBody,
-            timeout=timeout,
-            deadline=deadline,
-            metadata=metadata,
-        )
-
-    async def get_entry_bundle(
-        self,
-        entry_bundle_request: "EntryBundleRequest",
-        *,
-        timeout: Optional[float] = None,
-        deadline: Optional["Deadline"] = None,
-        metadata: Optional["MetadataLike"] = None,
-    ) -> "____google_api__.HttpBody":
-        return await self._unary_unary(
-            "/dev.sigstore.rekor.v2.Rekor/GetEntryBundle",
-            entry_bundle_request,
-            ____google_api__.HttpBody,
-            timeout=timeout,
-            deadline=deadline,
-            metadata=metadata,
-        )
-
-    async def get_checkpoint(
-        self,
-        betterproto_lib_pydantic_google_protobuf_empty: "betterproto_lib_pydantic_google_protobuf.Empty",
-        *,
-        timeout: Optional[float] = None,
-        deadline: Optional["Deadline"] = None,
-        metadata: Optional["MetadataLike"] = None,
-    ) -> "____google_api__.HttpBody":
-        return await self._unary_unary(
-            "/dev.sigstore.rekor.v2.Rekor/GetCheckpoint",
-            betterproto_lib_pydantic_google_protobuf_empty,
-            ____google_api__.HttpBody,
-            timeout=timeout,
-            deadline=deadline,
-            metadata=metadata,
-        )
-
-
-class RekorBase(ServiceBase):
-    async def create_entry(
-        self, create_entry_request: "CreateEntryRequest"
-    ) -> "_v1__.TransparencyLogEntry":
-        raise grpclib.GRPCError(grpclib.const.Status.UNIMPLEMENTED)
-
-    async def get_tile(
-        self, tile_request: "TileRequest"
-    ) -> "____google_api__.HttpBody":
-        raise grpclib.GRPCError(grpclib.const.Status.UNIMPLEMENTED)
-
-    async def get_entry_bundle(
-        self, entry_bundle_request: "EntryBundleRequest"
-    ) -> "____google_api__.HttpBody":
-        raise grpclib.GRPCError(grpclib.const.Status.UNIMPLEMENTED)
-
-    async def get_checkpoint(
-        self,
-        betterproto_lib_pydantic_google_protobuf_empty: "betterproto_lib_pydantic_google_protobuf.Empty",
-    ) -> "____google_api__.HttpBody":
-        raise grpclib.GRPCError(grpclib.const.Status.UNIMPLEMENTED)
-
-    async def __rpc_create_entry(
-        self,
-        stream: "grpclib.server.Stream[CreateEntryRequest, _v1__.TransparencyLogEntry]",
-    ) -> None:
-        request = await stream.recv_message()
-        response = await self.create_entry(request)
-        await stream.send_message(response)
-
-    async def __rpc_get_tile(
-        self, stream: "grpclib.server.Stream[TileRequest, ____google_api__.HttpBody]"
-    ) -> None:
-        request = await stream.recv_message()
-        response = await self.get_tile(request)
-        await stream.send_message(response)
-
-    async def __rpc_get_entry_bundle(
-        self,
-        stream: "grpclib.server.Stream[EntryBundleRequest, ____google_api__.HttpBody]",
-    ) -> None:
-        request = await stream.recv_message()
-        response = await self.get_entry_bundle(request)
-        await stream.send_message(response)
-
-    async def __rpc_get_checkpoint(
-        self,
-        stream: "grpclib.server.Stream[betterproto_lib_pydantic_google_protobuf.Empty, ____google_api__.HttpBody]",
-    ) -> None:
-        request = await stream.recv_message()
-        response = await self.get_checkpoint(request)
-        await stream.send_message(response)
-
-    def __mapping__(self) -> Dict[str, grpclib.const.Handler]:
-        return {
-            "/dev.sigstore.rekor.v2.Rekor/CreateEntry": grpclib.const.Handler(
-                self.__rpc_create_entry,
-                grpclib.const.Cardinality.UNARY_UNARY,
-                CreateEntryRequest,
-                _v1__.TransparencyLogEntry,
-            ),
-            "/dev.sigstore.rekor.v2.Rekor/GetTile": grpclib.const.Handler(
-                self.__rpc_get_tile,
-                grpclib.const.Cardinality.UNARY_UNARY,
-                TileRequest,
-                ____google_api__.HttpBody,
-            ),
-            "/dev.sigstore.rekor.v2.Rekor/GetEntryBundle": grpclib.const.Handler(
-                self.__rpc_get_entry_bundle,
-                grpclib.const.Cardinality.UNARY_UNARY,
-                EntryBundleRequest,
-                ____google_api__.HttpBody,
-            ),
-            "/dev.sigstore.rekor.v2.Rekor/GetCheckpoint": grpclib.const.Handler(
-                self.__rpc_get_checkpoint,
-                grpclib.const.Cardinality.UNARY_UNARY,
-                betterproto_lib_pydantic_google_protobuf.Empty,
-                ____google_api__.HttpBody,
-            ),
-        }
 
 
 rebuild_dataclass(Verifier)  # type: ignore
