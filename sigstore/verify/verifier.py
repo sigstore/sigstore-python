@@ -39,6 +39,7 @@ from OpenSSL.crypto import (
 from pydantic import ValidationError
 from rfc3161_client import TimeStampResponse, VerifierBuilder
 from rfc3161_client import VerificationError as Rfc3161VerificationError
+from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import KindVersion
 
 from sigstore import dsse, models
 from sigstore._internal.rekor import _hashedrekord_from_parts
@@ -65,6 +66,11 @@ MAX_ALLOWED_TIMESTAMP: int = 32
 # When verifying a timestamp, this threshold represents the minimum number of required
 # timestamps to consider a signature valid.
 VERIFY_TIMESTAMP_THRESHOLD: int = 1
+
+REKOR_V2_BUNDLE_ENTRY_KIND_VERSIONS = [
+    KindVersion(kind="hashedrekord", version="0.0.2"),
+    KindVersion(kind="dsse", version="0.0.2"),
+]
 
 
 class Verifier:
@@ -507,7 +513,7 @@ class Verifier:
         #      the other bundle materials (and input being verified).
         entry = bundle.log_entry
 
-        if entry._kind_version.version == "0.0.2":
+        if entry._kind_version in REKOR_V2_BUNDLE_ENTRY_KIND_VERSIONS:
             actual_body = v2.Entry().from_json(base64.b64decode(entry.body))
             expected_body = v2.Entry(
                 kind=entry._kind_version.kind,
