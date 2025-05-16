@@ -61,13 +61,15 @@ from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioClient,
 )
-from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor.client import RekorClient, REKOR_V2_API_MAJOR_VERSION, REKOR_V1_API_MAJOR_VERSION
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
 from sigstore.models import Bundle
 from sigstore.oidc import ExpiredIdentity, IdentityToken
+from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 
 _logger = logging.getLogger(__name__)
 
@@ -255,16 +257,9 @@ class Signer:
 
         cert = self._signing_cert()
 
-
         # Prepare inputs
-        # b64_cert = base64.b64encode(
-        #     cert.public_bytes(encoding=serialization.Encoding.PEM)
-        # )
         b64_cert = base64.b64encode(
-            cert.public_key().public_bytes(
-                encoding=serialization.Encoding.DER,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo,
-            )
+            cert.public_bytes(encoding=serialization.Encoding.PEM)
         )
 
         # Sign artifact
@@ -273,8 +268,6 @@ class Signer:
         artifact_signature = self._private_key.sign(
             hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())
         )
-
-        b64_digest = base64.b64encode(hashed_input.digest).decode()
 
         content = MessageSignature(
             message_digest=HashOutput(
@@ -285,45 +278,41 @@ class Signer:
         )
 
         # Create the proposed hashedrekord entry
-        proposed_entry = rekor_types.Hashedrekord(
-            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                signature=rekor_types.hashedrekord.Signature(
-                    content=base64.b64encode(artifact_signature).decode(),
-                    public_key=rekor_types.hashedrekord.PublicKey(
-                        content=b64_cert.decode()
+        if self._signing_ctx._rekor.major_api_version == REKOR_V1_API_MAJOR_VERSION:
+            proposed_entry = rekor_types.Hashedrekord(
+                spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                    signature=rekor_types.hashedrekord.Signature(
+                        content=base64.b64encode(artifact_signature).decode(),
+                        public_key=rekor_types.hashedrekord.PublicKey(
+                            content=b64_cert.decode()
+                        ),
+                    ),
+                    data=rekor_types.hashedrekord.Data(
+                        hash=rekor_types.hashedrekord.Hash(
+                            algorithm=hashed_input._as_hashedrekord_algorithm(),
+                            value=hashed_input.digest.hex(),
+                        )
                     ),
                 ),
-                data=rekor_types.hashedrekord.Data(
-                    hash=rekor_types.hashedrekord.Hash(
-                        algorithm=hashed_input._as_hashedrekord_algorithm(),
-                        # value=hashed_input.digest.decode(),
-                        value=b64_digest
-                    )
-                ),
-            ),
-        )
-
-        from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
-        from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
-        proposed_entry = v2.CreateEntryRequest(
-            hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
-                digest=base64.b64encode(hashed_input.digest),
-                signature=v2.Signature(
-                    content=base64.b64encode(artifact_signature),
-                    verifier=v2.Verifier(
-                        public_key=v2.PublicKey(
-                            raw_bytes=base64.b64encode(
-                                cert.public_key().public_bytes(
+            )
+        else:
+            proposed_entry = v2.CreateEntryRequest(
+                hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
+                    digest=hashed_input.digest,
+                    signature=v2.Signature(
+                        content=artifact_signature,
+                        verifier=v2.Verifier(
+                            public_key=v2.PublicKey(
+                                raw_bytes=cert.public_key().public_bytes(
                                     encoding=serialization.Encoding.DER,
                                     format=serialization.PublicFormat.SubjectPublicKeyInfo,
                                 )
                             ),
+                            key_details=v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
                         ),
-                        key_details=v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
-                    ),
+                    )
                 )
             )
-        )
 
         return self._finalize_sign(cert, content, proposed_entry)
 
@@ -387,7 +376,8 @@ class SigningContext:
         signing_config = trust_config.signing_config
         return cls(
             fulcio=FulcioClient(signing_config.get_fulcio_url()),
-            rekor=RekorClient(signing_config.get_tlog_urls()[0]),
+            rekor=RekorClient(signing_config.get_tlog_urls()[
+                              0], signing_config._inner.rekor_tlog_urls[0].major_api_version),
             trusted_root=trust_config.trusted_root,
             tsa_clients=[
                 TimestampAuthorityClient(url) for url in signing_config.get_tsa_urls()

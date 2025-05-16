@@ -24,6 +24,8 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from betterproto import Casing
+import betterproto
 import rekor_types
 import requests
 
@@ -35,6 +37,9 @@ _logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
+
+REKOR_V1_API_MAJOR_VERSION = 1
+REKOR_V2_API_MAJOR_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -151,31 +156,16 @@ class RekorEntries(_Endpoint):
         """
         Submit a new entry for inclusion in the Rekor log.
         """
-
+        # There may be a bug in betterproto, where the V_0_0_2 is changed to V002.
         if isinstance(proposed_entry, v2.CreateEntryRequest):
-            payload = proposed_entry.to_dict(include_default_values=True)
+            payload = proposed_entry.to_dict()
+            if "hashedRekordRequestV002" in payload:
+                payload["hashedRekordRequestV0_0_2"] = payload.pop(
+                    "hashedRekordRequestV002")
+            if "dsseRequestV002" in payload:
+                payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
         else:
             payload = proposed_entry.model_dump(mode="json", by_alias=True)
-        _logger.debug(f"proposed: {json.dumps(payload)}")
-        # layout from rekor-tiles/docs/openapi/rekor_service.swagger.json
-        # payloadV2 = {
-        #     'hashedRekordRequestV0_0_2': {
-        #         'digest': payload["spec"]['data']['hash']['value'],
-        #         'signature': {
-        #             'content': payload["spec"]['signature']['content'],
-        #             'verifier': {
-        #                 'public_key': {
-        #                     'rawBytes': payload["spec"]['signature']['publicKey']['content']
-        #                 },
-        #                 'key_details': "PKIX_ECDSA_P384_SHA_256"
-        #             }
-        #         }
-        #     }
-        # }
-        # _logger.debug(f"proposed: {json.dumps(payloadV2)}")
-        # payload = payloadV2
-        # NOTE: not "entries/"
-        print(self.url)
         resp: requests.Response = self.session.post(self.url, json=payload)
         try:
             resp.raise_for_status()
@@ -184,8 +174,10 @@ class RekorEntries(_Endpoint):
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
-        # return LogEntry._from_response(integrated_entry)
-        return LogEntry._from_dict_rekor(integrated_entry)
+        if isinstance(proposed_entry, v2.CreateEntryRequest):
+            return LogEntry._from_dict_rekor(integrated_entry)
+        else:
+            return LogEntry._from_response(integrated_entry)
 
 
     @property
@@ -243,12 +235,12 @@ class RekorEntriesRetrieve(_Endpoint):
 class RekorClient:
     """The internal Rekor client"""
 
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, major_api_version: int = REKOR_V1_API_MAJOR_VERSION) -> None:
         """
         Create a new `RekorClient` from the given URL.
         """
-        # NOTE: use "api/v2/"
-        self.url = f"{url}/api/v2"
+        self.url = f"{url}/api/v{major_api_version}"
+        self.major_api_version = major_api_version
         self.session = requests.Session()
         self.session.headers.update(
             {
