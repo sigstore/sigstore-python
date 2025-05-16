@@ -372,17 +372,17 @@ class Verifier:
         except VerificationError as exc:
             raise VerificationError(f"invalid log entry: {exc}")
 
-        # (6): verify that log entry was integrated circa the signing certificate's
-        #      validity period.
-        integrated_time = datetime.fromtimestamp(entry.integrated_time, tz=timezone.utc)
-        if not (
-            bundle.signing_certificate.not_valid_before_utc
-            <= integrated_time
-            <= bundle.signing_certificate.not_valid_after_utc
-        ):
-            raise VerificationError(
-                "invalid signing cert: expired at time of Rekor entry"
-            )
+        # (6): verify our established times (timestamps or the log integration time) are
+        # within signing certificate validity period.
+        for vts in verified_timestamps:
+            if not (
+                bundle.signing_certificate.not_valid_before_utc
+                <= vts.time
+                <= bundle.signing_certificate.not_valid_after_utc
+            ):
+                raise VerificationError(
+                    f"invalid signing cert: expired at time of signing, time via {vts}"
+                )
 
     def verify_dsse(
         self, bundle: Bundle, policy: VerificationPolicy
