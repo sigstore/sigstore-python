@@ -10,8 +10,6 @@ if TYPE_CHECKING:
 else:
     from pydantic.dataclasses import dataclass
 
-from typing import List
-
 import betterproto
 from pydantic.dataclasses import rebuild_dataclass
 
@@ -32,7 +30,7 @@ class Envelope(betterproto.Message):
      REQUIRED.
     """
 
-    signatures: List["Signature"] = betterproto.message_field(3)
+    signatures: "list[Signature]" = betterproto.message_field(3)
     """
     Signature over:
          PAE(type, payload)
