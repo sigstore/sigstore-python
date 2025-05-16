@@ -508,11 +508,11 @@ class Verifier:
         #      the other bundle materials (and input being verified).
         entry = bundle.log_entry
 
-        if entry.kind_version.version == '0.0.2':
+        if entry._kind_version.version == '0.0.2':
             actual_body = v2.Entry().from_json(base64.b64decode(entry.body))
             expected_body = v2.Entry(
-                kind=entry.kind_version.kind,
-                api_version=entry.kind_version.version,
+                kind=entry._kind_version.kind,
+                api_version=entry._kind_version.version,
                 spec=v2.Spec(
                     hashed_rekord_v0_0_2=v2.HashedRekordLogEntryV002(
                         data=v1.HashOutput(
