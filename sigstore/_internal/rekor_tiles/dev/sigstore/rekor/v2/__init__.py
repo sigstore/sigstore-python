@@ -96,7 +96,7 @@ class DsseRequestV002(betterproto.Message):
     envelope: "____io_intoto__.Envelope" = betterproto.message_field(1)
     """A DSSE envelope"""
 
-    verifiers: List["Verifier"] = betterproto.message_field(2)
+    verifiers: list["Verifier"] = betterproto.message_field(2)
     """
     All necessary verification material to verify all signatures embedded in the envelope
     """
@@ -107,7 +107,7 @@ class DsseLogEntryV002(betterproto.Message):
     payload_hash: "__common_v1__.HashOutput" = betterproto.message_field(1)
     """The hash of the DSSE payload"""
 
-    signatures: List["Signature"] = betterproto.message_field(2)
+    signatures: list["Signature"] = betterproto.message_field(2)
     """
     Signatures and their associated verification material used to verify the payload
     """

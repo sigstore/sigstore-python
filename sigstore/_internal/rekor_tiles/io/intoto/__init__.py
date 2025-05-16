@@ -32,7 +32,7 @@ class Envelope(betterproto.Message):
      REQUIRED.
     """
 
-    signatures: List["Signature"] = betterproto.message_field(3)
+    signatures: list["Signature"] = betterproto.message_field(3)
     """
     Signature over:
          PAE(type, payload)

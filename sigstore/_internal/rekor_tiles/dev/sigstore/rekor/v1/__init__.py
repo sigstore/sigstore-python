@@ -69,7 +69,7 @@ class InclusionProof(betterproto.Message):
     tree_size: int = betterproto.int64_field(3)
     """The size of the merkle tree at the time the proof was generated."""
 
-    hashes: List[bytes] = betterproto.bytes_field(4)
+    hashes: list[bytes] = betterproto.bytes_field(4)
     """
     A list of hashes required to compute the inclusion proof, sorted
      in order from leaf to root.

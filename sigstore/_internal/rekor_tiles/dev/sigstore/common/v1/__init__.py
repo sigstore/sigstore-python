@@ -242,7 +242,7 @@ class PublicKeyIdentifier(betterproto.Message):
 class ObjectIdentifier(betterproto.Message):
     """An ASN.1 OBJECT IDENTIFIER"""
 
-    id: List[int] = betterproto.int32_field(1)
+    id: list[int] = betterproto.int32_field(1)
 
 
 @dataclass(eq=False, repr=False)
@@ -292,7 +292,7 @@ class X509CertificateChain(betterproto.Message):
      the purpose of chain building.
     """
 
-    certificates: List["X509Certificate"] = betterproto.message_field(1)
+    certificates: list["X509Certificate"] = betterproto.message_field(1)
     """
     One or more DER-encoded certificates.
     
