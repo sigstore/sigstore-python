@@ -2,7 +2,7 @@ sigstore-python
 ===============
 
 <!--- @begin-badges@ --->
-![CI](https://github.com/sigstore/sigstore-python/workflows/CI/badge.svg)
+[![CI](https://github.com/sigstore/sigstore-python/workflows/CI/badge.svg)](https://github.com/sigstore/sigstore-python/actions/workflows/ci.yml)
 [![PyPI version](https://badge.fury.io/py/sigstore.svg)](https://pypi.org/project/sigstore)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python/badge)](https://securityscorecards.dev/viewer/?uri=github.com/sigstore/sigstore-python)
 [![SLSA](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/)
