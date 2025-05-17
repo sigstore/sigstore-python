@@ -16,6 +16,7 @@ from typing import Optional
 
 import pytest
 
+from sigstore._internal.trust import ClientTrustConfig
 from sigstore.models import Bundle
 from sigstore.verify import Verifier
 from sigstore.verify.policy import UnsafeNoOp
@@ -29,8 +30,12 @@ def get_cli_params(
     bundle_path: Optional[Path] = None,
     signature_path: Optional[Path] = None,
     certificate_path: Optional[Path] = None,
+    trust_config_path: Optional[Path] = None,
 ) -> list[str]:
-    cli_params = ["--staging", "sign"]
+    if trust_config_path is not None:
+        cli_params = ["--trust-config", str(trust_config_path), "sign"]
+    else:
+        cli_params = ["--staging", "sign"]
     if output_directory is not None:
         cli_params.extend(["--output-directory", str(output_directory)])
     if bundle_path is not None:
@@ -64,6 +69,43 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration)
 
     assert expected_output_bundle.exists()
     verifier = Verifier.staging()
+    with (
+        open(expected_output_bundle, "r") as bundle_file,
+        open(artifact, "rb") as input_file,
+    ):
+        bundle = Bundle.from_json(bundle_file.read())
+        verifier.verify_artifact(
+            input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()
+        )
+
+    expected_output_bundle.unlink()
+
+    captures = capsys.readouterr()
+    assert captures.out.endswith(
+        f"Sigstore bundle written to {expected_output_bundle}\n"
+    )
+
+
+@pytest.mark.ambient_oidc
+def test_sign_success_default_output_bundle_with_trust_config(capsys, sigstore, asset_integration):
+    artifact = asset_integration("a.txt")
+    expected_output_bundle = artifact.with_name("a.txt.sigstore.json")
+
+    trust_config = asset_integration(
+        "trust_config/config.v1.rekorv2_local.json")
+
+    assert not expected_output_bundle.exists()
+    sigstore(
+        *get_cli_params(
+            artifact_paths=[artifact],
+            trust_config_path=trust_config
+        )
+    )
+
+    assert expected_output_bundle.exists()
+    verifier = Verifier._from_trust_config(ClientTrustConfig.from_json(
+        trust_config.read_text()
+    ))
     with (
         open(expected_output_bundle, "r") as bundle_file,
         open(artifact, "rb") as input_file,
