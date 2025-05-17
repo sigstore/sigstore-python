@@ -86,6 +86,9 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration)
     )
 
 
+# expected to fail untilwe can make a proper trust_config for rekorv2 staging.
+# and perhaps also pending https://github.com/sigstore/sigstore-python/pull/1363.
+@pytest.mark.xfail
 @pytest.mark.ambient_oidc
 def test_sign_success_default_output_bundle_with_trust_config(capsys, sigstore, asset_integration):
     artifact = asset_integration("a.txt")
