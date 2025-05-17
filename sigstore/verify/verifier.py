@@ -25,6 +25,7 @@ from typing import cast
 
 import rekor_types
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import ExtendedKeyUsage, KeyUsage
 from cryptography.x509.oid import ExtendedKeyUsageOID
@@ -38,10 +39,13 @@ from OpenSSL.crypto import (
 from pydantic import ValidationError
 from rfc3161_client import TimeStampResponse, VerifierBuilder
 from rfc3161_client import VerificationError as Rfc3161VerificationError
+from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import KindVersion
 
-from sigstore import dsse
+from sigstore import dsse, models
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
+from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
 from sigstore._internal.sct import (
     verify_sct,
 )
@@ -62,6 +66,11 @@ MAX_ALLOWED_TIMESTAMP: int = 32
 # When verifying a timestamp, this threshold represents the minimum number of required
 # timestamps to consider a signature valid.
 VERIFY_TIMESTAMP_THRESHOLD: int = 1
+
+REKOR_V2_BUNDLE_ENTRY_KIND_VERSIONS = [
+    KindVersion(kind="hashedrekord", version="0.0.2"),
+    KindVersion(kind="dsse", version="0.0.2"),
+]
 
 
 class Verifier:
@@ -504,14 +513,42 @@ class Verifier:
         #      the other bundle materials (and input being verified).
         entry = bundle.log_entry
 
-        expected_body = _hashedrekord_from_parts(
-            bundle.signing_certificate,
-            bundle._inner.message_signature.signature,  # type: ignore[union-attr]
-            hashed_input,
-        )
-        actual_body = rekor_types.Hashedrekord.model_validate_json(
-            base64.b64decode(entry.body)
-        )
+        if entry._kind_version in REKOR_V2_BUNDLE_ENTRY_KIND_VERSIONS:
+            actual_body = v2.Entry().from_json(base64.b64decode(entry.body))
+            expected_body = v2.Entry(
+                kind=entry._kind_version.kind,
+                api_version=entry._kind_version.version,
+                spec=v2.Spec(
+                    hashed_rekord_v0_0_2=v2.HashedRekordLogEntryV002(
+                        data=v1.HashOutput(
+                            algorithm=bundle._inner.message_signature.message_digest.algorithm,
+                            digest=bundle._inner.message_signature.message_digest.digest,
+                        ),
+                        signature=v2.Signature(
+                            content=bundle._inner.message_signature.signature,
+                            verifier=v2.Verifier(
+                                public_key=v2.PublicKey(
+                                    raw_bytes=bundle.signing_certificate.public_key().public_bytes(
+                                        encoding=serialization.Encoding.DER,
+                                        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                                    )
+                                ),
+                                key_details=models.DEFAULT_KEY_DETAILS,
+                            ),
+                        ),
+                    )
+                ),
+            )
+        else:
+            expected_body = _hashedrekord_from_parts(
+                bundle.signing_certificate,
+                # type: ignore[union-attr]
+                bundle._inner.message_signature.signature,
+                hashed_input,
+            )
+            actual_body = rekor_types.Hashedrekord.model_validate_json(
+                base64.b64decode(entry.body)
+            )
         if expected_body != actual_body:
             raise VerificationError(
                 "transparency log entry is inconsistent with other materials"

@@ -18,6 +18,7 @@ Client implementation for interacting with Rekor.
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from abc import ABC
@@ -26,14 +27,23 @@ from typing import Any, Optional
 
 import rekor_types
 import requests
+from cryptography.hazmat.primitives import serialization
+from cryptography.x509 import Certificate
+from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import TransparencyLogEntry
 
 from sigstore._internal import USER_AGENT
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
+from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
+from sigstore.hashes import Hashed
 from sigstore.models import LogEntry
 
 _logger = logging.getLogger(__name__)
 
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
+
+REKOR_V1_API_MAJOR_VERSION = 1
+REKOR_V2_API_MAJOR_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -144,8 +154,7 @@ class RekorEntries(_Endpoint):
         return LogEntry._from_response(resp.json())
 
     def post(
-        self,
-        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
+        self, proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
@@ -240,6 +249,34 @@ class RekorClient:
         self.session.close()
 
     @classmethod
+    def _build_hashed_rekord_request(
+        cls,
+        hashed_input: Hashed,
+        signature: bytes,
+        certificate: Certificate,
+    ) -> rekor_types.Hashedrekordkord:
+        return rekor_types.Hashedrekord(
+            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                signature=rekor_types.hashedrekord.Signature(
+                    content=base64.b64encode(signature).decode(),
+                    public_key=rekor_types.hashedrekord.PublicKey(
+                        content=base64.b64encode(
+                            certificate.public_bytes(
+                                encoding=serialization.Encoding.PEM
+                            )
+                        ).decode()
+                    ),
+                ),
+                data=rekor_types.hashedrekord.Data(
+                    hash=rekor_types.hashedrekord.Hash(
+                        algorithm=hashed_input._as_hashedrekord_algorithm(),
+                        value=hashed_input.digest.hex(),
+                    )
+                ),
+            ),
+        )
+
+    @classmethod
     def production(cls) -> RekorClient:
         """
         Returns a `RekorClient` populated with the default Rekor production instance.
@@ -261,3 +298,95 @@ class RekorClient:
         Returns a `RekorLog` adapter for making requests to a Rekor log.
         """
         return RekorLog(f"{self.url}/log", session=self.session)
+
+
+class RekorV2Client:
+    """The internal Rekor client for the v2 API"""
+
+    # TODO: implement get_tile, get_entry_bundle, get_checkpoint.
+
+    def __init__(self, base_url: str) -> None:
+        """
+        Create a new `RekorV2Client` from the given URL.
+        """
+        self.url = f"{base_url}/api/v2"
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            }
+        )
+
+    def __del__(self) -> None:
+        """
+        Terminates the underlying network session.
+        """
+        self.session.close()
+
+    def create_entry(self, request: v2.CreateEntryRequest) -> TransparencyLogEntry:
+        """
+        Submit a new entry for inclusion in the Rekor log.
+        """
+        # There may be a bug in betterproto, where the V_0_0_2 is changed to V002.
+        payload = request.to_dict()
+        if "hashedRekordRequestV002" in payload:
+            payload["hashedRekordRequestV0_0_2"] = payload.pop(
+                "hashedRekordRequestV002"
+            )
+        if "dsseRequestV002" in payload:
+            payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
+        _logger.debug(f"request: {json.dumps(payload)}")
+        resp = self.session.post(f"{self.url}/log/entries", json=payload)
+
+        try:
+            resp.raise_for_status()
+        except requests.HTTPError as http_error:
+            raise RekorClientError(http_error)
+
+        integrated_entry = resp.json()
+        _logger.debug(f"integrated: {integrated_entry}")
+        return LogEntry._from_dict_rekor(integrated_entry)
+
+    @classmethod
+    def _build_create_entry_request(
+        cls,
+        hashed_input: Hashed,
+        signature: bytes,
+        certificate: Certificate,
+        key_details: v1.PublicKeyDetails,
+    ) -> v2.CreateEntryRequest:
+        return v2.CreateEntryRequest(
+            hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
+                digest=hashed_input.digest,
+                signature=v2.Signature(
+                    content=signature,
+                    verifier=v2.Verifier(
+                        public_key=v2.PublicKey(
+                            raw_bytes=certificate.public_key().public_bytes(
+                                encoding=serialization.Encoding.DER,
+                                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                            )
+                        ),
+                        key_details=key_details,
+                    ),
+                ),
+            )
+        )
+
+    @classmethod
+    def production(cls) -> RekorClient:
+        """
+        Returns a `RekorClient` populated with the default Rekor production instance.
+        """
+        return cls(
+            DEFAULT_REKOR_URL,
+        )
+
+    @classmethod
+    def staging(cls) -> RekorClient:
+        """
+        Returns a `RekorClient` populated with the default Rekor staging instance.
+        """
+        return cls(STAGING_REKOR_URL)

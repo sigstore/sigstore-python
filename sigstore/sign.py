@@ -48,7 +48,7 @@ from typing import Optional
 import cryptography.x509 as x509
 import rekor_types
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.x509.oid import NameOID
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
     HashOutput,
@@ -61,7 +61,13 @@ from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioClient,
 )
-from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor.client import (
+    REKOR_V1_API_MAJOR_VERSION,
+    RekorClient,
+    RekorV2Client,
+)
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
+from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
@@ -70,6 +76,20 @@ from sigstore.models import Bundle
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 
 _logger = logging.getLogger(__name__)
+
+
+def key_to_details(
+    key: ec.EllipticCurvePrivateKey | rsa.RSAPrivateKey,
+) -> v1.PublicKeyDetails:
+    """
+    Converts a key to a PublicKeyDetails. Although, the key type is currently hardcoded to a single type.
+    """
+    if isinstance(key, ec.EllipticCurvePrivateKey) and isinstance(
+        key.curve, ec.SECP256R1
+    ):
+        return v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
+    else:
+        raise Exception(f"unsupported key type {key}")
 
 
 class Signer:
@@ -176,13 +196,19 @@ class Signer:
         self,
         cert: x509.Certificate,
         content: MessageSignature | dsse.Envelope,
-        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
+        proposed_entry: rekor_types.Hashedrekord
+        | rekor_types.Dsse
+        | v2.CreateEntryRequest,
     ) -> Bundle:
         """
         Perform the common "finalizing" steps in a Sigstore signing flow.
         """
         # Submit the proposed entry to the transparency log
-        entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
+        client = self._signing_ctx._rekor
+        if isinstance(client, RekorV2Client):
+            entry = client.create_entry(proposed_entry)
+        else:
+            entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
 
         _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
@@ -255,11 +281,6 @@ class Signer:
 
         cert = self._signing_cert()
 
-        # Prepare inputs
-        b64_cert = base64.b64encode(
-            cert.public_bytes(encoding=serialization.Encoding.PEM)
-        )
-
         # Sign artifact
         hashed_input = sha256_digest(input_)
 
@@ -276,23 +297,19 @@ class Signer:
         )
 
         # Create the proposed hashedrekord entry
-        proposed_entry = rekor_types.Hashedrekord(
-            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                signature=rekor_types.hashedrekord.Signature(
-                    content=base64.b64encode(artifact_signature).decode(),
-                    public_key=rekor_types.hashedrekord.PublicKey(
-                        content=b64_cert.decode()
-                    ),
-                ),
-                data=rekor_types.hashedrekord.Data(
-                    hash=rekor_types.hashedrekord.Hash(
-                        algorithm=hashed_input._as_hashedrekord_algorithm(),
-                        value=hashed_input.digest.hex(),
-                    )
-                ),
-            ),
-        )
-
+        if isinstance(self._signing_ctx._rekor, RekorV2Client):
+            proposed_entry = RekorV2Client._build_create_entry_request(
+                hashed_input=hashed_input,
+                signature=artifact_signature,
+                certificate=cert,
+                key_details=key_to_details(self._private_key),
+            )
+        else:
+            proposed_entry = RekorClient._build_hashed_rekord_request(
+                hashed_input=hashed_input,
+                signature=artifact_signature,
+                certificate=cert,
+            )
         return self._finalize_sign(cert, content, proposed_entry)
 
 
@@ -305,7 +322,7 @@ class SigningContext:
         self,
         *,
         fulcio: FulcioClient,
-        rekor: RekorClient,
+        rekor: RekorClient | RekorV2Client,
         trusted_root: TrustedRoot,
         tsa_clients: list[TimestampAuthorityClient] | None = None,
     ):
@@ -353,9 +370,18 @@ class SigningContext:
         @api private
         """
         signing_config = trust_config.signing_config
+        if (
+            signing_config._inner.rekor_tlog_urls[0].major_api_version
+            == REKOR_V1_API_MAJOR_VERSION
+        ):
+            rekor_client = RekorClient(
+                signing_config.get_tlog_urls()[0],
+            )
+        else:
+            rekor_client = RekorV2Client(signing_config.get_tlog_urls()[0])
         return cls(
             fulcio=FulcioClient(signing_config.get_fulcio_url()),
-            rekor=RekorClient(signing_config.get_tlog_urls()[0]),
+            rekor=rekor_client,
             trusted_root=trust_config.trusted_root,
             tsa_clients=[
                 TimestampAuthorityClient(url) for url in signing_config.get_tsa_urls()

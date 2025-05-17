@@ -58,13 +58,12 @@ from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
 from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import Rfc3161SignedTimestamp
 from sigstore_protobuf_specs.dev.sigstore.rekor import v1 as rekor_v1
-from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import (
-    InclusionProof,
-)
+from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import InclusionProof, KindVersion
 
 from sigstore import dsse
 from sigstore._internal.merkle import verify_merkle_inclusion
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 from sigstore._utils import (
     B64Str,
     KeyID,
@@ -75,6 +74,8 @@ from sigstore.errors import Error, VerificationError
 
 if typing.TYPE_CHECKING:
     from sigstore._internal.trust import RekorKeyring
+
+DEFAULT_KEY_DETAILS = v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
 
 
 _logger = logging.getLogger(__name__)
@@ -173,6 +174,11 @@ class LogEntry:
     log entry.
     """
 
+    _kind_version: KindVersion
+    """
+    The kind and version of the log entry.
+    """
+
     @classmethod
     def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:
         """
@@ -183,8 +189,15 @@ class LogEntry:
         entries = list(dict_.items())
         if len(entries) != 1:
             raise ValueError("Received multiple entries in response")
-
         uuid, entry = entries[0]
+
+        # Fill in the appropriate kind
+        body_entry: ProposedEntry = TypeAdapter(ProposedEntry).validate_json(
+            base64.b64decode(entry["body"])
+        )
+        if not isinstance(body_entry, (Hashedrekord, Dsse)):
+            raise InvalidBundle("log entry is not of expected type")
+
         return LogEntry(
             uuid=uuid,
             body=entry["body"],
@@ -195,6 +208,9 @@ class LogEntry:
                 entry["verification"]["inclusionProof"]
             ),
             inclusion_promise=entry["verification"]["signedEntryTimestamp"],
+            _kind_version=KindVersion(
+                kind=body_entry.kind, version=body_entry.api_version
+            ),
         )
 
     @classmethod
@@ -219,6 +235,14 @@ class LogEntry:
             tree_size=inclusion_proof.tree_size,
         )
 
+        inclusion_promise: Optional[B64Str] = None
+        if tlog_entry.inclusion_promise:
+            inclusion_promise = B64Str(
+                base64.b64encode(
+                    tlog_entry.inclusion_promise.signed_entry_timestamp
+                ).decode()
+            )
+
         return LogEntry(
             uuid=None,
             body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
@@ -226,11 +250,8 @@ class LogEntry:
             log_id=tlog_entry.log_id.key_id.hex(),
             log_index=tlog_entry.log_index,
             inclusion_proof=parsed_inclusion_proof,
-            inclusion_promise=B64Str(
-                base64.b64encode(
-                    tlog_entry.inclusion_promise.signed_entry_timestamp
-                ).decode()
-            ),
+            inclusion_promise=inclusion_promise,
+            _kind_version=tlog_entry.kind_version,
         )
 
     def _to_rekor(self) -> rekor_v1.TransparencyLogEntry:
@@ -239,12 +260,6 @@ class LogEntry:
 
         @private
         """
-        inclusion_promise: rekor_v1.InclusionPromise | None = None
-        if self.inclusion_promise:
-            inclusion_promise = rekor_v1.InclusionPromise(
-                signed_entry_timestamp=base64.b64decode(self.inclusion_promise)
-            )
-
         inclusion_proof = rekor_v1.InclusionProof(
             log_index=self.inclusion_proof.log_index,
             root_hash=bytes.fromhex(self.inclusion_proof.root_hash),
@@ -257,21 +272,15 @@ class LogEntry:
             log_index=self.log_index,
             log_id=common_v1.LogId(key_id=bytes.fromhex(self.log_id)),
             integrated_time=self.integrated_time,
-            inclusion_promise=inclusion_promise,  # type: ignore[arg-type]
             inclusion_proof=inclusion_proof,
+            kind_version=self._kind_version,
             canonicalized_body=base64.b64decode(self.body),
         )
-
-        # Fill in the appropriate kind
-        body_entry: ProposedEntry = TypeAdapter(ProposedEntry).validate_json(
-            tlog_entry.canonicalized_body
-        )
-        if not isinstance(body_entry, (Hashedrekord, Dsse)):
-            raise InvalidBundle("log entry is not of expected type")
-
-        tlog_entry.kind_version = rekor_v1.KindVersion(
-            kind=body_entry.kind, version=body_entry.api_version
-        )
+        if self.inclusion_promise:
+            inclusion_promise = rekor_v1.InclusionPromise(
+                signed_entry_timestamp=base64.b64decode(self.inclusion_promise)
+            )
+            tlog_entry.inclusion_promise = inclusion_promise
 
         return tlog_entry
 
