@@ -18,7 +18,7 @@ import base64
 import os
 import re
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from io import BytesIO
 from pathlib import Path
 from typing import Callable
@@ -36,6 +36,7 @@ from tuf.ngclient import FetcherInterface, updater
 from sigstore._internal import tuf
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.models import Bundle
 from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
@@ -218,3 +219,30 @@ def dummy_jwt():
 def tsa_url():
     """Return the URL of the TSA"""
     return os.getenv("TEST_SIGSTORE_TIMESTAMP_AUTHORITY_URL")
+
+
+def has_setup_sigstore_env() -> bool:
+    """
+    Checks whether the TEST_SETUP_SIGSTORE_ENV variable is set to true,
+    This means we are using the sigstore/scaffolding/actions/setup-sigstore-env
+    that has the sigstore services in containers available for us to use.
+    """
+    return bool(os.getenv("TEST_SETUP_SIGSTORE_ENV", False))
+
+
+def get_trust_config_filenames() -> Iterable[str]:
+    # yield "config.v1.rekorv2_staging.json"
+    if has_setup_sigstore_env():
+        # prepare the file and return its path
+        yield "config.v1.rekorv2_local.json"
+
+
+@pytest.fixture(params=[*get_trust_config_filenames()])
+def v2_trust_config(request, asset) -> ClientTrustConfig:
+    """
+    Yields v2 trust_configs: one from an enbedded file that talks with staging,
+    and another that talks with the local containers, if available from `has_setup_sigstore_env()`.
+    """
+    path = asset(request.param)
+    print(path)
+    return ClientTrustConfig.from_json(path.read_text())

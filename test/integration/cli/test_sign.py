@@ -90,25 +90,21 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration)
 # and perhaps also pending https://github.com/sigstore/sigstore-python/pull/1363.
 @pytest.mark.xfail
 @pytest.mark.ambient_oidc
-def test_sign_success_default_output_bundle_with_trust_config(capsys, sigstore, asset_integration):
+def test_sign_success_default_output_bundle_with_trust_config(
+    capsys, sigstore, asset_integration
+):
     artifact = asset_integration("a.txt")
     expected_output_bundle = artifact.with_name("a.txt.sigstore.json")
 
-    trust_config = asset_integration(
-        "trust_config/config.v1.rekorv2_local.json")
+    trust_config = asset_integration("trust_config/config.v1.rekorv2_local.json")
 
     assert not expected_output_bundle.exists()
-    sigstore(
-        *get_cli_params(
-            artifact_paths=[artifact],
-            trust_config_path=trust_config
-        )
-    )
+    sigstore(*get_cli_params(artifact_paths=[artifact], trust_config_path=trust_config))
 
     assert expected_output_bundle.exists()
-    verifier = Verifier._from_trust_config(ClientTrustConfig.from_json(
-        trust_config.read_text()
-    ))
+    verifier = Verifier._from_trust_config(
+        ClientTrustConfig.from_json(trust_config.read_text())
+    )
     with (
         open(expected_output_bundle, "r") as bundle_file,
         open(artifact, "rb") as input_file,

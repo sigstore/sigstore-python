@@ -1,0 +1,128 @@
+{
+  "trustedRoot": {
+    "mediaType": "application/vnd.dev.sigstore.trustedroot+json;version=0.1",
+    "tlogs": [
+      {
+        "hashAlgorithm": "SHA2_256",
+        "publicKey": {
+            "rawBytes": "MCowBQYDK2VwAyEAREvJyNZGjX6B3DAIuD3BTg9rIwV00GY8Xg5FU+IFDUQ=",
+            "keyDetails": "PKIX_ED25519",
+            "validFor": {
+                "start": "1970-01-01T00:00:00Z"
+            }
+        },
+        "logId": {
+            "keyId": "tAlACZWkUrif9Z9sOIrpk1ak1I8loRNufk79N6l1SNg="
+        }
+    }
+    ],
+    "certificateAuthorities": [
+      {
+        "subject": {
+          "organization": "sigstore.dev",
+          "commonName": "sigstore"
+        },
+        "certChain": {
+          "certificates": [
+            {
+              "rawBytes": "MIICGjCCAaGgAwIBAgIUALnViVfnU0brJasmRkHrn/UnfaQwCgYIKoZIzj0EAwMwKjEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MREwDwYDVQQDEwhzaWdzdG9yZTAeFw0yMjA0MTMyMDA2MTVaFw0zMTEwMDUxMzU2NThaMDcxFTATBgNVBAoTDHNpZ3N0b3JlLmRldjEeMBwGA1UEAxMVc2lnc3RvcmUtaW50ZXJtZWRpYXRlMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE8RVS/ysH+NOvuDZyPIZtilgUF9NlarYpAd9HP1vBBH1U5CV77LSS7s0ZiH4nE7Hv7ptS6LvvR/STk798LVgMzLlJ4HeIfF3tHSaexLcYpSASr1kS0N/RgBJz/9jWCiXno3sweTAOBgNVHQ8BAf8EBAMCAQYwEwYDVR0lBAwwCgYIKwYBBQUHAwMwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQU39Ppz1YkEZb5qNjpKFWixi4YZD8wHwYDVR0jBBgwFoAUWMAeX5FFpWapesyQoZMi0CrFxfowCgYIKoZIzj0EAwMDZwAwZAIwPCsQK4DYiZYDPIaDi5HFKnfxXx6ASSVmERfsynYBiX2X6SJRnZU84/9DZdnFvvxmAjBOt6QpBlc4J/0DxvkTCqpclvziL6BCCPnjdlIB3Pu3BxsPmygUY7Ii2zbdCdliiow="
+            },
+            {
+              "rawBytes": "MIIB9zCCAXygAwIBAgIUALZNAPFdxHPwjeDloDwyYChAO/4wCgYIKoZIzj0EAwMwKjEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MREwDwYDVQQDEwhzaWdzdG9yZTAeFw0yMTEwMDcxMzU2NTlaFw0zMTEwMDUxMzU2NThaMCoxFTATBgNVBAoTDHNpZ3N0b3JlLmRldjERMA8GA1UEAxMIc2lnc3RvcmUwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAAT7XeFT4rb3PQGwS4IajtLk3/OlnpgangaBclYpsYBr5i+4ynB07ceb3LP0OIOZdxexX69c5iVuyJRQ+Hz05yi+UF3uBWAlHpiS5sh0+H2GHE7SXrk1EC5m1Tr19L9gg92jYzBhMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBRYwB5fkUWlZql6zJChkyLQKsXF+jAfBgNVHSMEGDAWgBRYwB5fkUWlZql6zJChkyLQKsXF+jAKBggqhkjOPQQDAwNpADBmAjEAj1nHeXZp+13NWBNa+EDsDP8G1WWg1tCMWP/WHPqpaVo0jhsweNFZgSs0eE7wYI4qAjEA2WB9ot98sIkoF3vZYdd3/VtWB5b9TNMea7Ix/stJ5TfcLLeABLE4BNJOsQ4vnBHJ"
+            }
+          ]
+        },
+        "validFor": {
+          "start": "2021-10-07T13:56:59Z"
+        }
+      }
+    ],
+    "ctlogs": [
+      {
+        "hashAlgorithm": "SHA2_256",
+        "publicKey": {
+          "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbbQiLx6GKy6ivhc11wJGbQjc2VX/mnuk5d670MTXR3p+LIAcxd5MhqIHpLmyYJ5mDKLEoZ/pC0nPuje3JueBcA==",
+          "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+          "validFor": {
+            "start": "1970-01-01T00:00:00Z"
+          }
+        },
+        "logId": {
+          "keyId": "ekJiz/ZpG+UEn5w/GaIr6+awI+RKfkpt/V9Teu7va1k="
+        }
+      },
+      {
+        "baseUrl": "https://ctfe.sigstore.dev/2022",
+        "hashAlgorithm": "SHA2_256",
+        "publicKey": {
+            "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiPSlFi0CmFTfEjCUqF9HuCEcYXNKAaYalIJmBZ8yyezPjTqhxrKBpMnaocVtLJBI1eM3uXnQzQGAJdJ4gs9Fyw==",
+            "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+            "validFor": {
+                "start": "2022-10-20T00:00:00.000Z"
+            }
+        },
+        "logId": {
+            "keyId": "3T0wasbHETJjGR4cmWc3AqJKXrjePK3/h4pygC8p7o4="
+        }
+    }
+    ],
+    "timestampAuthorities": [
+      {
+        "subject": {
+          "organization": "sigstore.dev",
+          "commonName": "sigstore-tsa-selfsigned"
+        },
+        "certChain": {
+          "certificates": [
+            {
+              "rawBytes": "MIICDzCCAZagAwIBAgIUCjWhBmHV4kFzxomWp/J98n4DfKcwCgYIKoZIzj0EAwMwOTEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MSAwHgYDVQQDExdzaWdzdG9yZS10c2Etc2VsZnNpZ25lZDAeFw0yNTAzMjgwOTE0MDZaFw0zNTAzMjYwODE0MDZaMC4xFTATBgNVBAoTDHNpZ3N0b3JlLmRldjEVMBMGA1UEAxMMc2lnc3RvcmUtdHNhMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEx1v5F3HpD9egHuknpBFlRz7QBRDJu4aeVzt9zJLRY0lvmx1lF7WBM2c9AN8ZGPQsmDqHlJN2R/7+RxLkvlLzkc19IOx38t7mGGEcB7agUDdCF/Ky3RTLSK0Xo/0AgHQdo2owaDAOBgNVHQ8BAf8EBAMCB4AwHQYDVR0OBBYEFKj8ZPYo3i7mO3NPVIxSxOGc3VOlMB8GA1UdIwQYMBaAFDsgRlletTJNRzDObmPuc3RH8gR9MBYGA1UdJQEB/wQMMAoGCCsGAQUFBwMIMAoGCCqGSM49BAMDA2cAMGQCMESvVS6GGtF33+J19TfwENWJXjRv4i0/HQFwLUSkX6TfV7g0nG8VnqNHJLvEpAtOjQIwUD3uywTXorQP1DgbV09rF9Yen+CEqs/iEpieJWPst280SSOZ5Na+dyPVk9/8SFk6"
+            },
+            {
+              "rawBytes": "MIIB9zCCAXygAwIBAgIUCPExEFKiQh0dP4sp5ltmSYSSkFUwCgYIKoZIzj0EAwMwOTEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MSAwHgYDVQQDExdzaWdzdG9yZS10c2Etc2VsZnNpZ25lZDAeFw0yNTAzMjgwOTE0MDZaFw0zNTAzMjYwODE0MDZaMDkxFTATBgNVBAoTDHNpZ3N0b3JlLmRldjEgMB4GA1UEAxMXc2lnc3RvcmUtdHNhLXNlbGZzaWduZWQwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAATt0tIDWyo4ARfL9BaSo0W5bJQEbKJTU/u7llvdjSI5aTkOAJa8tixn2+LEfPG4dMFdsMPtsIuU1qn2OqFiuMk6vHv/c+az25RQVY1oo50iMb0jIL3N4FgwhPFpZnCbQPOjRTBDMA4GA1UdDwEB/wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1UdDgQWBBQ7IEZZXrUyTUcwzm5j7nN0R/IEfTAKBggqhkjOPQQDAwNpADBmAjEA2MI1VXgbf3dUOSc95hSRypBKOab18eh2xzQtxUsHvWeY+1iFgyMluUuNR6taoSmFAjEA31m2czguZhKYX+4JSKu5pRYhBTXAd8KKQ3xdPRX/qCaLvT2qJAEQ1YQM3EJRrtI7"
+            }
+          ]
+        },
+        "validFor": {
+          "start": "2025-03-28T09:14:06Z"
+        }
+      }
+    ]
+  },
+  "signingConfig": {
+    "mediaType": "application/vnd.dev.sigstore.signingconfig.v0.2+json",
+    "caUrls": [
+      {
+        "url": "https://fulcio.sigstore.dev",
+        "majorApiVersion": 1,
+        "validFor": {
+          "start": "2023-04-14T21:38:40Z"
+        }
+      }
+    ],
+    "rekorTlogUrls": [
+      {
+        "url": "http://localhost:3003",
+        "majorApiVersion": 2,
+        "validFor": {
+            "start": "2021-01-12T11:53:27Z"
+        }
+    }
+    ],
+    "tsaUrls": [
+      {
+        "url": "https://timestamp.sigstage.dev/api/v1/timestamp",
+        "majorApiVersion": 1,
+        "validFor": {
+          "start": "2025-04-09T00:00:00Z"
+        }
+      }
+    ],
+    "rekorTlogConfig": {
+      "selector": "ANY"
+    },
+    "tsaConfig": {
+      "selector": "ANY"
+    }
+  },
+  "mediaType": "application/vnd.dev.sigstore.clienttrustconfig.v0.1+json"
+}

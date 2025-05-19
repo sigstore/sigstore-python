@@ -27,6 +27,7 @@ from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
 from sigstore.verify.policy import UnsafeNoOp
+from sigstore.verify.verifier import Verifier
 
 
 class TestSigningContext:
@@ -247,3 +248,27 @@ class TestSignWithTSA:
         assert (
             bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
         )
+
+
+@pytest.mark.staging
+@pytest.mark.ambient_oidc
+def test_sign_prehashed_rekorv2(v2_trust_config, staging) -> None:
+    _, _, identity = staging
+    trust_config = v2_trust_config
+    sign_ctx = SigningContext._from_trust_config(trust_config)
+
+    input_ = secrets.token_bytes(32)
+    hashed = Hashed(
+        digest=hashlib.sha256(input_).digest(), algorithm=HashAlgorithm.SHA2_256
+    )
+
+    with sign_ctx.signer(identity) as signer:
+        bundle = signer.sign_artifact(hashed)
+    assert bundle._inner.message_signature.message_digest.algorithm == hashed.algorithm
+    assert bundle._inner.message_signature.message_digest.digest == hashed.digest
+
+    verifier = Verifier._from_trust_config(trust_config)
+    # verifying against the original input works
+    verifier.verify_artifact(input_, bundle=bundle, policy=UnsafeNoOp())
+    # verifying against the prehash also works
+    verifier.verify_artifact(hashed, bundle=bundle, policy=UnsafeNoOp())
