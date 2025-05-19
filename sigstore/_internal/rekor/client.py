@@ -29,7 +29,6 @@ import rekor_types
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
-from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import TransparencyLogEntry
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
@@ -325,7 +324,7 @@ class RekorV2Client:
         """
         self.session.close()
 
-    def create_entry(self, request: v2.CreateEntryRequest) -> TransparencyLogEntry:
+    def create_entry(self, request: v2.CreateEntryRequest) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """

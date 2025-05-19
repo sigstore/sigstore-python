@@ -68,6 +68,7 @@ from sigstore._internal.rekor.client import (
 )
 from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 from sigstore._internal.rekor_tiles.dev.sigstore.rekor import v2
+from sigstore._internal.rekor_tiles.io import intoto
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
@@ -237,28 +238,56 @@ class Signer:
         """
         cert = self._signing_cert()
 
-        # Prepare inputs
-        b64_cert = base64.b64encode(
-            cert.public_bytes(encoding=serialization.Encoding.PEM)
-        )
-
         # Sign the statement, producing a DSSE envelope
         content = dsse._sign(self._private_key, input_)
 
-        # Create the proposed DSSE log entry
-        proposed_entry = rekor_types.Dsse(
-            spec=rekor_types.dsse.DsseSchema(
-                # NOTE: mypy can't see that this kwarg is correct due to two interacting
-                # behaviors/bugs (one pydantic, one datamodel-codegen):
-                # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
-                # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
-                proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
-                    envelope=content.to_json(),
-                    verifiers=[b64_cert.decode()],
+        # Prepare inputs
+        if isinstance(self._signing_ctx._rekor, RekorV2Client):
+            proposed_entry = v2.CreateEntryRequest(
+                dsse_request_v0_0_2=v2.DsseRequestV002(
+                    # TOODO: fix when the types from intoto no longer come from different import paths.
+                    envelope=intoto.Envelope(
+                        payload=content._inner.payload,
+                        payload_type=content._inner.payload_type,
+                        signatures=[
+                            intoto.Signature(
+                                keyid=signature.keyid,
+                                sig=signature.sig,
+                            )
+                            for signature in content._inner.signatures
+                        ],
+                    ),
+                    verifiers=[
+                        v2.Verifier(
+                            public_key=v2.PublicKey(
+                                raw_bytes=cert.public_key().public_bytes(
+                                    encoding=serialization.Encoding.DER,
+                                    format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                                )
+                            ),
+                            key_details=key_to_details(self._private_key),
+                        )
+                    ],
                 ),
-            ),
-        )
+            )
+        else:
+            b64_cert = base64.b64encode(
+                cert.public_bytes(encoding=serialization.Encoding.PEM)
+            )
 
+            # Create the proposed DSSE log entry
+            proposed_entry = rekor_types.Dsse(
+                spec=rekor_types.dsse.DsseSchema(
+                    # NOTE: mypy can't see that this kwarg is correct due to two interacting
+                    # behaviors/bugs (one pydantic, one datamodel-codegen):
+                    # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
+                    # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
+                    proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
+                        envelope=content.to_json(),
+                        verifiers=[b64_cert.decode()],
+                    ),
+                ),
+            )
         return self._finalize_sign(cert, content, proposed_entry)
 
     def sign_artifact(
