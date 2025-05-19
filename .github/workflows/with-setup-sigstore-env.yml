@@ -1,0 +1,25 @@
+name: test-with-setup-sigstore-env
+
+on:
+  push:
+    branches:
+      - main
+      - series/*
+  pull_request:
+  schedule:
+    - cron: '0 12 * * *'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: sigstore/scaffolding/actions/setup-sigstore-env
+        - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+          with:
+            python-version: ${{ matrix.conf.py }}
+            allow-prereleases: true
+            cache: "pip"
+            cache-dependency-path: pyproject.toml
+        - env:
+            TEST_SETUP_SIGSTORE_ENV: true 
+          run: pytest -k test_sign_prehashed_rekorv2
