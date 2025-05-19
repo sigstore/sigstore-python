@@ -19,6 +19,8 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+* Avoid instantiation issues with `TransparencyLogEntry` when `InclusionPromise` is not present.
+
 * TSA: Changed the Timestamp Authority requests to explicitly use sha256 for message digests.
   [#1373](https://github.com/sigstore/sigstore-python/pull/1373)
 
