@@ -6,6 +6,8 @@ import pytest
 from sigstore import dsse
 from sigstore._internal.rekor.client_v2 import (
     DEFAULT_KEY_DETAILS,
+    DEFAULT_REKOR_URL,
+    STAGING_REKOR_URL,
     Certificate,
     Hashed,
     LogEntry,
@@ -20,10 +22,19 @@ from sigstore._utils import sha256_digest
 from sigstore.sign import ec
 
 ALPHA_REKOR_V2_URL = "https://log2025-alpha1.rekor.sigstage.dev"
+LOCAL_REKOR_V2_URL = "http://localhost:3000"
 
 
-# TODO: add staging and production URLs when available.
-@pytest.fixture(params=[ALPHA_REKOR_V2_URL])
+# TODO: add staging and production URLs when available,
+# and local after using scaffolding/setup-sigstore-env action
+@pytest.fixture(
+    params=[
+        ALPHA_REKOR_V2_URL,
+        pytest.param(STAGING_REKOR_URL, marks=pytest.mark.xfail),
+        pytest.param(DEFAULT_REKOR_URL, marks=pytest.mark.xfail),
+        pytest.param(LOCAL_REKOR_V2_URL, marks=pytest.mark.xfail),
+    ]
+)
 def client(request) -> RekorV2Client:
     """
     Returns a RekorV2Client. This fixture is paramaterized to return clients with various URLs.
