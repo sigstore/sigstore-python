@@ -10,8 +10,6 @@ if TYPE_CHECKING:
 else:
     from pydantic.dataclasses import dataclass
 
-from typing import List
-
 import betterproto
 from pydantic.dataclasses import rebuild_dataclass
 

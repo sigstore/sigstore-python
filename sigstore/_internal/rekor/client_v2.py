@@ -20,19 +20,19 @@ from __future__ import annotations
 
 import json
 import logging
+
+import rekor_types
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
-import rekor_types
-
-
 
 from sigstore._internal import USER_AGENT
-from sigstore.hashes import Hashed
-from sigstore.models import LogEntry
-
 from sigstore._internal.rekor.v2_types.dev.sigstore.common.v1 import PublicKeyDetails
 from sigstore._internal.rekor.v2_types.dev.sigstore.rekor import v2
+from sigstore._internal.rekor.v2_types.io import intoto as v2_intoto
+from sigstore.dsse import Envelope
+from sigstore.hashes import Hashed
+from sigstore.models import LogEntry
 
 _logger = logging.getLogger(__name__)
 
@@ -71,7 +71,8 @@ class RekorV2Client:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
-        # There may be a bug in betterproto, where the V_0_0_2 is changed to V002.
+        # TODO: There may be a bug in betterproto, where the V_0_0_2 is changed to V002,
+        # Or it is an issue with the proto `json_value`.
         # See https://github.com/sigstore/rekor-tiles/blob/bd5893730de581629a5f475923c663f776793496/api/proto/rekor_service.proto#L66.
         payload = request.to_dict()
         if "hashedRekordRequestV002" in payload:
@@ -93,20 +94,20 @@ class RekorV2Client:
         return LogEntry._from_dict_rekor(integrated_entry)
 
     @classmethod
-    def _build_create_entry_request(
+    def _build_hashed_rekord_create_entry_request(
         cls,
-        hashed_input: Hashed,
-        signature: bytes,
-        certificate: Certificate,
+        artifact_hashed_input: Hashed,
+        artifact_signature: bytes,
+        signining_certificate: Certificate,
     ) -> v2.CreateEntryRequest:
         return v2.CreateEntryRequest(
             hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
-                digest=hashed_input.digest,
+                digest=artifact_hashed_input.digest,
                 signature=v2.Signature(
-                    content=signature,
+                    content=artifact_signature,
                     verifier=v2.Verifier(
                         public_key=v2.PublicKey(
-                            raw_bytes=certificate.public_key().public_bytes(
+                            raw_bytes=signining_certificate.public_key().public_bytes(
                                 encoding=serialization.Encoding.DER,
                                 format=serialization.PublicFormat.SubjectPublicKeyInfo,
                             )
@@ -114,6 +115,37 @@ class RekorV2Client:
                         key_details=DEFAULT_KEY_DETAILS,
                     ),
                 ),
+            )
+        )
+
+    @classmethod
+    def _build_dsse_create_entry_request(
+        cls, envelope: Envelope, signing_certificate: Certificate
+    ):
+        return v2.CreateEntryRequest(
+            dsse_request_v0_0_2=v2.DsseRequestV002(
+                envelope=v2_intoto.Envelope(
+                    payload=envelope._inner.payload,
+                    payload_type=envelope._inner.payload_type,
+                    signatures=[
+                        v2_intoto.Signature(
+                            keyid=signature.keyid,
+                            sig=signature.sig,
+                        )
+                        for signature in envelope._inner.signatures
+                    ],
+                ),
+                verifiers=[
+                    v2.Verifier(
+                        public_key=v2.PublicKey(
+                            raw_bytes=signing_certificate.public_key().public_bytes(
+                                encoding=serialization.Encoding.DER,
+                                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                            )
+                        ),
+                        key_details=DEFAULT_KEY_DETAILS,
+                    )
+                ],
             )
         )
 
@@ -145,8 +177,7 @@ class RekorClientError(Exception):
         """
         if http_error.response is not None:
             try:
-                error = rekor_types.Error.model_validate_json(
-                    http_error.response.text)
+                error = rekor_types.Error.model_validate_json(http_error.response.text)
                 super().__init__(f"{error.code}: {error.message}")
             except Exception:
                 super().__init__(

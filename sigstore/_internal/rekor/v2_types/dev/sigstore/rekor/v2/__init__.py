@@ -11,7 +11,6 @@ else:
     from pydantic.dataclasses import dataclass
 
 from typing import (
-    List,
     Optional,
 )
 
@@ -167,7 +166,7 @@ class TileRequest(betterproto.Message):
     Request for a full or partial tile (see https://github.com/C2SP/C2SP/blob/main/tlog-tiles.md#merkle-tree)
     """
 
-    l: int = betterproto.uint32_field(1)
+    l: int = betterproto.uint32_field(1)  # noqa: E741
     n: str = betterproto.string_field(2)
     """
     N must be either an index encoded as zero-padded 3-digit path elements, e.g. "x123/x456/789",
