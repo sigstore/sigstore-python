@@ -3,6 +3,10 @@
 # plugin: python-betterproto
 # This file has been @generated
 
+"""
+Types related to intoto
+"""
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -59,4 +63,4 @@ class Signature(betterproto.Message):
     """
 
 
-rebuild_dataclass(Envelope)  # type: ignore
+rebuild_dataclass(Envelope)  # type: ignore[arg-type]

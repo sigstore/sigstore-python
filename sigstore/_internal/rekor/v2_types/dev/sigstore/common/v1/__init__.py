@@ -3,7 +3,11 @@
 # plugin: python-betterproto
 # This file has been @generated
 
-from typing import TYPE_CHECKING
+"""
+V1 of the common types
+"""
+
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from dataclasses import dataclass
@@ -39,7 +43,7 @@ class HashAlgorithm(betterproto.Enum):
     SHA3_384 = 5
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, _source_type, _handler):
+    def __get_pydantic_core_schema__(cls, _source_type: Any, _handler: Any) -> Any:
         from pydantic_core import core_schema
 
         return core_schema.int_schema(ge=0)
@@ -115,7 +119,7 @@ class PublicKeyDetails(betterproto.Enum):
     LMOTS_SHA256 = 15
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, _source_type, _handler):
+    def __get_pydantic_core_schema__(cls, _source_type: Any, _handler: Any) -> Any:
         from pydantic_core import core_schema
 
         return core_schema.int_schema(ge=0)
@@ -133,7 +137,7 @@ class SubjectAlternativeNameType(betterproto.Enum):
     """
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, _source_type, _handler):
+    def __get_pydantic_core_schema__(cls, _source_type: Any, _handler: Any) -> Any:
         from pydantic_core import core_schema
 
         return core_schema.int_schema(ge=0)
@@ -273,7 +277,7 @@ class SubjectAlternativeName(betterproto.Message):
     """The exact value to match against."""
 
     @model_validator(mode="after")
-    def check_oneof(cls, values):
+    def check_oneof(cls: Any, values: Any) -> Any:
         return cls._validate_field_groups(values)
 
 
@@ -309,10 +313,10 @@ class TimeRange(betterproto.Message):
     end: Optional[datetime] = betterproto.message_field(2, optional=True)
 
 
-rebuild_dataclass(HashOutput)  # type: ignore
-rebuild_dataclass(MessageSignature)  # type: ignore
-rebuild_dataclass(PublicKey)  # type: ignore
-rebuild_dataclass(ObjectIdentifierValuePair)  # type: ignore
-rebuild_dataclass(SubjectAlternativeName)  # type: ignore
-rebuild_dataclass(X509CertificateChain)  # type: ignore
-rebuild_dataclass(TimeRange)  # type: ignore
+rebuild_dataclass(HashOutput)  # type: ignore[arg-type]
+rebuild_dataclass(MessageSignature)  # type: ignore[arg-type]
+rebuild_dataclass(PublicKey)  # type: ignore[arg-type]
+rebuild_dataclass(ObjectIdentifierValuePair)  # type: ignore[arg-type]
+rebuild_dataclass(SubjectAlternativeName)  # type: ignore[arg-type]
+rebuild_dataclass(X509CertificateChain)  # type: ignore[arg-type]
+rebuild_dataclass(TimeRange)  # type: ignore[arg-type]

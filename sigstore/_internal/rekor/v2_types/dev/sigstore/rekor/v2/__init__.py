@@ -3,7 +3,11 @@
 # plugin: python-betterproto
 # This file has been @generated
 
-from typing import TYPE_CHECKING
+"""
+Types used by RekorV2
+"""
+
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from dataclasses import dataclass
@@ -52,7 +56,7 @@ class Verifier(betterproto.Message):
     """Key encoding and signature algorithm to use for this key"""
 
     @model_validator(mode="after")
-    def check_oneof(cls, values):
+    def check_oneof(cls: Any, values: Any) -> Any:
         return cls._validate_field_groups(values)
 
 
@@ -140,7 +144,7 @@ class Spec(betterproto.Message):
     )
 
     @model_validator(mode="after")
-    def check_oneof(cls, values):
+    def check_oneof(cls: Any, values: Any) -> Any:
         return cls._validate_field_groups(values)
 
 
@@ -156,7 +160,7 @@ class CreateEntryRequest(betterproto.Message):
     )
 
     @model_validator(mode="after")
-    def check_oneof(cls, values):
+    def check_oneof(cls: Any, values: Any) -> Any:
         return cls._validate_field_groups(values)
 
 
@@ -187,12 +191,12 @@ class EntryBundleRequest(betterproto.Message):
     """
 
 
-rebuild_dataclass(Verifier)  # type: ignore
-rebuild_dataclass(Signature)  # type: ignore
-rebuild_dataclass(HashedRekordRequestV002)  # type: ignore
-rebuild_dataclass(HashedRekordLogEntryV002)  # type: ignore
-rebuild_dataclass(DsseRequestV002)  # type: ignore
-rebuild_dataclass(DsseLogEntryV002)  # type: ignore
-rebuild_dataclass(Entry)  # type: ignore
-rebuild_dataclass(Spec)  # type: ignore
-rebuild_dataclass(CreateEntryRequest)  # type: ignore
+rebuild_dataclass(Verifier)  # type: ignore[arg-type]
+rebuild_dataclass(Signature)  # type: ignore[arg-type]
+rebuild_dataclass(HashedRekordRequestV002)  # type: ignore[arg-type]
+rebuild_dataclass(HashedRekordLogEntryV002)  # type: ignore[arg-type]
+rebuild_dataclass(DsseRequestV002)  # type: ignore[arg-type]
+rebuild_dataclass(DsseLogEntryV002)  # type: ignore[arg-type]
+rebuild_dataclass(Entry)  # type: ignore[arg-type]
+rebuild_dataclass(Spec)  # type: ignore[arg-type]
+rebuild_dataclass(CreateEntryRequest)  # type: ignore[arg-type]

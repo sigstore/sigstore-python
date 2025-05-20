@@ -112,7 +112,7 @@ class RekorV2Client:
                                 format=serialization.PublicFormat.SubjectPublicKeyInfo,
                             )
                         ),
-                        key_details=DEFAULT_KEY_DETAILS,
+                        key_details=DEFAULT_KEY_DETAILS,  # type: ignore[arg-type]
                     ),
                 ),
             )
@@ -121,7 +121,7 @@ class RekorV2Client:
     @classmethod
     def _build_dsse_create_entry_request(
         cls, envelope: Envelope, signing_certificate: Certificate
-    ):
+    ) -> v2.CreateEntryRequest:
         return v2.CreateEntryRequest(
             dsse_request_v0_0_2=v2.DsseRequestV002(
                 envelope=v2_intoto.Envelope(
@@ -143,7 +143,7 @@ class RekorV2Client:
                                 format=serialization.PublicFormat.SubjectPublicKeyInfo,
                             )
                         ),
-                        key_details=DEFAULT_KEY_DETAILS,
+                        key_details=DEFAULT_KEY_DETAILS,  # type: ignore[arg-type]
                     )
                 ],
             )

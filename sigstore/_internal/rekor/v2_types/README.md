@@ -4,6 +4,8 @@ TODO: Eventually move these types to sigstore/protobuf-specs.
 
 These are types meant to be used with RekorV2.
 
-Generated from running `make python` in sigstore/rekor-tiles to generate (although not checked into git) and copied into here, **plus** formatting and lint fixes.
+Generated from running `make python` in sigstore/rekor-tiles to generate (although not checked into git) and copied into here, **plus** formatting and lint fixes (lots of `noqa` comments).
+
+Linting is still not expected to pass yet, since `interrogate` docstrings for **all** modules and classes.
 
 Eventually, we will move these types into sigstore/protobuf-specs.
