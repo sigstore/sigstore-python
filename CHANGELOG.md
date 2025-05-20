@@ -13,6 +13,8 @@ All versions prior to 0.9.0 are untracked.
 * Added support for ed25519 keys.
   [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
 
+* Added a `RekorV2Client` for posting new entries to a Rekor V2 instance.
+
 ### Fixed
 
 * Avoid instantiation issues with `TransparencyLogEntry` when `InclusionPromise` is not present.
