@@ -45,18 +45,25 @@ def client(request) -> RekorV2Client:
 
 
 @pytest.fixture()
+def sample_signer(staging):
+    """
+    Returns a `Signer`.
+    """
+    sign_ctx_cls, _, id_token = staging
+    with sign_ctx_cls().signer(id_token) as signer:
+        return signer
+
+
+@pytest.fixture()
 def sample_hashed_rekord_request_materials(
-    staging,
+    sample_signer,
 ) -> tuple[Hashed, bytes, Certificate]:
     """
     Creates materials needed for `RekorV2Client._build_hashed_rekord_create_entry_request`.
     """
-    sign_ctx_cls, _, id_token = staging
-    with sign_ctx_cls().signer(id_token) as signer:
-        cert = signer._signing_cert()
-
+    cert = sample_signer._signing_cert()
     hashed_input = sha256_digest(secrets.token_bytes(32))
-    signature = signer._private_key.sign(
+    signature = sample_signer._private_key.sign(
         hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())
     )
     return hashed_input, signature, cert
@@ -104,13 +111,11 @@ def sample_create_entry_request(request) -> v2.CreateEntryRequest:
 
 
 @pytest.fixture()
-def sample_dsse_request_materials(staging) -> tuple[dsse.Envelope, Certificate]:
+def sample_dsse_request_materials(sample_signer) -> tuple[dsse.Envelope, Certificate]:
     """
     Creates materials needed for `RekorV2Client._build_dsse_create_entry_request`.
     """
-    sign_ctx_cls, _, id_token = staging
-    with sign_ctx_cls().signer(id_token) as signer:
-        cert = signer._signing_cert()
+    cert = sample_signer._signing_cert()
     stmt = (
         dsse.StatementBuilder()
         .subjects(
@@ -128,7 +133,7 @@ def sample_dsse_request_materials(staging) -> tuple[dsse.Envelope, Certificate]:
             }
         )
     ).build()
-    envelope = dsse._sign(key=signer._private_key, stmt=stmt)
+    envelope = dsse._sign(key=sample_signer._private_key, stmt=stmt)
     return envelope, cert
 
 
