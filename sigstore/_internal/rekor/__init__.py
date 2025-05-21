@@ -17,16 +17,43 @@ APIs for interacting with Rekor.
 """
 
 import base64
+from abc import ABC, abstractmethod
 
 import rekor_types
 from cryptography.x509 import Certificate
 
+from sigstore._internal.rekor.v2_types.dev.sigstore.rekor import v2
 from sigstore._utils import base64_encode_pem_cert
+from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
+from sigstore.models import LogEntry
 
 __all__ = [
     "_hashedrekord_from_parts",
 ]
+
+
+Request = rekor_types.Hashedrekord | rekor_types.Dsse | v2.CreateEntryRequest
+HashedRekordRequest = rekor_types.Hashedrekord | v2.CreateEntryRequest
+DsseRequest = rekor_types.Dsse | v2.CreateEntryRequest
+
+
+class RekorLogSubmitter(ABC):
+    @abstractmethod
+    def create_entry(self, request: Request) -> LogEntry:
+        pass
+
+    @abstractmethod
+    def _build_hashed_rekord_request(
+        self, hashed_input: Hashed, signature: bytes, certificate: Certificate
+    ) -> HashedRekordRequest:
+        pass
+
+    @abstractmethod
+    def _build_dsse_request(
+        self, envelope: Envelope, certificate: Certificate
+    ) -> DsseRequest:
+        pass
 
 
 # TODO: This should probably live somewhere better.

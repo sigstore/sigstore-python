@@ -104,7 +104,7 @@ def sample_hashed_rekord_create_entry_request(
     Returns a sample `CreateEntryRequest` for for hashedrekor.
     """
     hashed_input, signature, cert = sample_hashed_rekord_request_materials
-    return RekorV2Client._build_hashed_rekord_create_entry_request(
+    return RekorV2Client._build_hashed_rekord_request(
         artifact_hashed_input=hashed_input,
         artifact_signature=signature,
         signing_certificate=cert,
@@ -119,7 +119,7 @@ def sample_dsse_create_entry_request(
     Returns a sample `CreateEntryRequest` for for dsse.
     """
     envelope, cert = sample_dsse_request_materials
-    return RekorV2Client._build_dsse_create_entry_request(
+    return RekorV2Client._build_dsse_request(
         envelope=envelope, signing_certificate=cert
     )
 
@@ -159,7 +159,7 @@ def test_build_hashed_rekord_create_entry_request(
             ),
         )
     )
-    actual_request = RekorV2Client._build_hashed_rekord_create_entry_request(
+    actual_request = RekorV2Client._build_hashed_rekord_request(
         artifact_hashed_input=hashed_input,
         artifact_signature=signature,
         signing_certificate=cert,
@@ -196,7 +196,7 @@ def test_build_dsse_create_entry_request(sample_dsse_request_materials):
             ],
         )
     )
-    actual_request = RekorV2Client._build_dsse_create_entry_request(
+    actual_request = RekorV2Client._build_dsse_request(
         envelope=envelope, signing_certificate=cert
     )
     assert expected_request == actual_request

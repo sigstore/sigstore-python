@@ -27,6 +27,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
+from sigstore._internal.rekor import RekorLogSubmitter
 from sigstore._internal.rekor.v2_types.dev.sigstore.common import v1 as common_v1
 from sigstore._internal.rekor.v2_types.dev.sigstore.rekor import v2
 from sigstore._internal.rekor.v2_types.io import intoto as v2_intoto
@@ -46,7 +47,7 @@ CREATE_ENTRIES_TIMEOUT_SECONDS = 10
 DEFAULT_KEY_DETAILS = common_v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
 
 
-class RekorV2Client:
+class RekorV2Client(RekorLogSubmitter):
     """The internal Rekor client for the v2 API"""
 
     # TODO: implement get_tile, get_entry_bundle, get_checkpoint.
@@ -102,7 +103,7 @@ class RekorV2Client:
         return LogEntry._from_dict_rekor(integrated_entry)
 
     @classmethod
-    def _build_hashed_rekord_create_entry_request(
+    def _build_hashed_rekord_request(
         cls,
         artifact_hashed_input: Hashed,
         artifact_signature: bytes,
@@ -126,7 +127,7 @@ class RekorV2Client:
         )
 
     @classmethod
-    def _build_dsse_create_entry_request(
+    def _build_dsse_request(
         cls, envelope: Envelope, signing_certificate: Certificate
     ) -> v2.CreateEntryRequest:
         return v2.CreateEntryRequest(
