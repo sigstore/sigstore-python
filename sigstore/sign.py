@@ -232,6 +232,9 @@ class Signer:
                 ),
             ),
         )
+        proposed_entry = self._signing_ctx._rekor._build_dsse_request(
+            envelope=content, certificate=cert
+        )
 
         return self._finalize_sign(cert, content, proposed_entry)
 
