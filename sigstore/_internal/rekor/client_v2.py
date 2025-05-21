@@ -39,6 +39,10 @@ _logger = logging.getLogger(__name__)
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
 
+# TODO: Link to merged documenation.
+# See https://github.com/sigstore/rekor-tiles/pull/255/files#diff-eb568acf84d583e4d3734b07773e96912277776bad39c560392aa33ea2cf2210R196
+CREATE_ENTRIES_TIMEOUT_SECONDS = 10
+
 DEFAULT_KEY_DETAILS = common_v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
 
 
@@ -82,7 +86,11 @@ class RekorV2Client:
         if "dsseRequestV002" in payload:
             payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
         _logger.debug(f"request: {json.dumps(payload)}")
-        resp = self.session.post(f"{self.url}/log/entries", json=payload)
+        resp = self.session.post(
+            f"{self.url}/log/entries",
+            json=payload,
+            timeout=CREATE_ENTRIES_TIMEOUT_SECONDS,
+        )
 
         try:
             resp.raise_for_status()
