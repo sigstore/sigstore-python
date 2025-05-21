@@ -41,18 +41,27 @@ DsseRequest = rekor_types.Dsse | v2.CreateEntryRequest
 class RekorLogSubmitter(ABC):
     @abstractmethod
     def create_entry(self, request: Request) -> LogEntry:
+        """
+        Submit the request to Rekor.
+        """
         pass
 
     @abstractmethod
     def _build_hashed_rekord_request(
         self, hashed_input: Hashed, signature: bytes, certificate: Certificate
     ) -> HashedRekordRequest:
+        """
+        Construct a hashed rekord request to submit to Rekor.
+        """
         pass
 
     @abstractmethod
     def _build_dsse_request(
         self, envelope: Envelope, certificate: Certificate
     ) -> DsseRequest:
+        """
+        Construct a dsse request to submit to Rekor.
+        """
         pass
 
 

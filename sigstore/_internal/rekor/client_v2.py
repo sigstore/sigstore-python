@@ -110,6 +110,9 @@ class RekorV2Client(RekorLogSubmitter):
         artifact_signature: bytes,
         signing_certificate: Certificate,
     ) -> v2.CreateEntryRequest:
+        """
+        Construct a hashed rekord request to submit to Rekor.
+        """
         return v2.CreateEntryRequest(
             hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
                 digest=artifact_hashed_input.digest,
@@ -131,6 +134,9 @@ class RekorV2Client(RekorLogSubmitter):
     def _build_dsse_request(
         cls, envelope: Envelope, signing_certificate: Certificate
     ) -> v2.CreateEntryRequest:
+        """
+        Construct a dsse request to submit to Rekor.
+        """
         return v2.CreateEntryRequest(
             dsse_request_v0_0_2=v2.DsseRequestV002(
                 envelope=v2_intoto.Envelope(
