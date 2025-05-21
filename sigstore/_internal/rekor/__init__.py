@@ -35,12 +35,16 @@ __all__ = [
 
 class RekorLogSubmitter(ABC):
     @abstractmethod
-    def create_entry(self, request: rekor_types.Hashedrekord | rekor_types.Dsse | v2.CreateEntryRequest) -> LogEntry:
+    def create_entry(
+        self,
+        request: rekor_types.Hashedrekord | rekor_types.Dsse | v2.CreateEntryRequest,
+    ) -> LogEntry:
         """
         Submit the request to Rekor.
         """
         pass
 
+    @classmethod
     @abstractmethod
     def _build_hashed_rekord_request(
         self, hashed_input: Hashed, signature: bytes, certificate: Certificate
@@ -50,6 +54,7 @@ class RekorLogSubmitter(ABC):
         """
         pass
 
+    @classmethod
     @abstractmethod
     def _build_dsse_request(
         self, envelope: Envelope, certificate: Certificate

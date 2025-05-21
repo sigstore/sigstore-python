@@ -182,7 +182,7 @@ class Signer:
         Perform the common "finalizing" steps in a Sigstore signing flow.
         """
         # Submit the proposed entry to the transparency log
-        entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
+        entry = self._signing_ctx._rekor.create_entry(proposed_entry)
 
         _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
@@ -255,11 +255,6 @@ class Signer:
 
         cert = self._signing_cert()
 
-        # Prepare inputs
-        b64_cert = base64.b64encode(
-            cert.public_bytes(encoding=serialization.Encoding.PEM)
-        )
-
         # Sign artifact
         hashed_input = sha256_digest(input_)
 
@@ -276,21 +271,8 @@ class Signer:
         )
 
         # Create the proposed hashedrekord entry
-        proposed_entry = rekor_types.Hashedrekord(
-            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                signature=rekor_types.hashedrekord.Signature(
-                    content=base64.b64encode(artifact_signature).decode(),
-                    public_key=rekor_types.hashedrekord.PublicKey(
-                        content=b64_cert.decode()
-                    ),
-                ),
-                data=rekor_types.hashedrekord.Data(
-                    hash=rekor_types.hashedrekord.Hash(
-                        algorithm=hashed_input._as_hashedrekord_algorithm(),
-                        value=hashed_input.digest.hex(),
-                    )
-                ),
-            ),
+        proposed_entry = self._signing_ctx._rekor._build_hashed_rekord_request(
+            hashed_input=hashed_input, signature=artifact_signature, certificate=cert
         )
 
         return self._finalize_sign(cert, content, proposed_entry)

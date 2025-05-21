@@ -18,6 +18,7 @@ Client implementation for interacting with Rekor.
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from abc import ABC
@@ -26,9 +27,16 @@ from typing import Any, Optional
 
 import rekor_types
 import requests
+from cryptography.hazmat.primitives import serialization
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.rekor import Certificate, Envelope, Hashed, LogEntry, RekorLogSubmitter
+from sigstore._internal.rekor import (
+    Certificate,
+    Envelope,
+    Hashed,
+    LogEntry,
+    RekorLogSubmitter,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -266,7 +274,7 @@ class RekorClient(RekorLogSubmitter):
         """
         Submit the request to Rekor.
         """
-        pass
+        return self.log.entries.post(request)
 
     def _build_hashed_rekord_request(
         self, hashed_input: Hashed, signature: bytes, certificate: Certificate
@@ -274,7 +282,26 @@ class RekorClient(RekorLogSubmitter):
         """
         Construct a hashed rekord request to submit to Rekor.
         """
-        pass
+        return rekor_types.Hashedrekord(
+            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
+                signature=rekor_types.hashedrekord.Signature(
+                    content=base64.b64encode(signature).decode(),
+                    public_key=rekor_types.hashedrekord.PublicKey(
+                        content=base64.b64encode(
+                            certificate.public_bytes(
+                                encoding=serialization.Encoding.PEM
+                            )
+                        ).decode()
+                    ),
+                ),
+                data=rekor_types.hashedrekord.Data(
+                    hash=rekor_types.hashedrekord.Hash(
+                        algorithm=hashed_input._as_hashedrekord_algorithm(),
+                        value=hashed_input.digest.hex(),
+                    )
+                ),
+            ),
+        )
 
     def _build_dsse_request(
         self, envelope: Envelope, certificate: Certificate
@@ -282,4 +309,21 @@ class RekorClient(RekorLogSubmitter):
         """
         Construct a dsse request to submit to Rekor.
         """
-        pass
+        return rekor_types.Dsse(
+            spec=rekor_types.dsse.DsseSchema(
+                # NOTE: mypy can't see that this kwarg is correct due to two interacting
+                # behaviors/bugs (one pydantic, one datamodel-codegen):
+                # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
+                # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
+                proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
+                    envelope=envelope.to_json(),
+                    verifiers=[
+                        base64.b64encode(
+                            certificate.public_bytes(
+                                encoding=serialization.Encoding.PEM
+                            )
+                        ).decode()
+                    ],
+                ),
+            ),
+        )
