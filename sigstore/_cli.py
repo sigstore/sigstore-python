@@ -208,7 +208,7 @@ def _add_shared_oidc_options(
         "--oidc-client-id",
         metavar="ID",
         type=str,
-        default=os.getenv("SIGSTORE_OIDC_CLIENT_ID", "sigstore"),
+        default=os.getenv("SIGSTORE_OIDC_CLIENT_ID"),
         help="The custom OpenID Connect client ID to use during OAuth2",
     )
     group.add_argument(
@@ -237,7 +237,6 @@ def _add_shared_oidc_options(
         default=_boolify_env("SIGSTORE_OAUTH_FORCE_OOB"),
         help="Force an out-of-band OAuth flow and do not automatically start the default web browser",
     )
-
 
 def _parser() -> argparse.ArgumentParser:
     # Arguments in parent_parser can be used for both commands and subcommands

@@ -12,6 +12,9 @@ All versions prior to 0.9.0 are untracked.
 
 * Added support for ed25519 keys.
   [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
+* Added client_id as the audience (aud) claim when initializing IdentityToken
+  [#1402](https://github.com/sigstore/sigstore-python/pull/1402)
+
 
 ### Fixed
 

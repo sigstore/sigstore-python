@@ -22,7 +22,6 @@ from id import (
     detect_credential,
 )
 
-from sigstore.oidc import _DEFAULT_AUDIENCE
 
 _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
@@ -44,7 +43,7 @@ def _has_oidc_id():
         return True
 
     try:
-        token = detect_credential(_DEFAULT_AUDIENCE)
+        token = detect_credential()
         if token is None:
             return False
     except GitHubOidcPermissionCredentialError:
