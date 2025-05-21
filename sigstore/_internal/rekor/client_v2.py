@@ -72,7 +72,8 @@ class RekorV2Client(RekorLogSubmitter):
         """
         self.session.close()
 
-    def create_entry(self, request: v2.CreateEntryRequest) -> LogEntry:
+    # TODO: when we remove the original Rekor client, remove the type ignore here
+    def create_entry(self, request: v2.CreateEntryRequest) -> LogEntry:  # type: ignore[override]
         """
         Submit a new entry for inclusion in the Rekor log.
         """
