@@ -28,15 +28,15 @@ from typing import Any, Optional
 import rekor_types
 import requests
 from cryptography.hazmat.primitives import serialization
+from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.rekor import (
-    Certificate,
-    Envelope,
-    Hashed,
-    LogEntry,
     RekorLogSubmitter,
 )
+from sigstore.dsse import Envelope
+from sigstore.hashes import Hashed
+from sigstore.models import LogEntry
 
 _logger = logging.getLogger(__name__)
 
@@ -270,13 +270,15 @@ class RekorClient(RekorLogSubmitter):
         """
         return RekorLog(f"{self.url}/log", session=self.session)
 
-    def create_entry(self, request: rekor_types.Hashedrekord) -> LogEntry:
+    def create_entry(  # type: ignore[override]
+        self, request: rekor_types.Hashedrekord | rekor_types.Dsse
+    ) -> LogEntry:
         """
         Submit the request to Rekor.
         """
         return self.log.entries.post(request)
 
-    def _build_hashed_rekord_request(
+    def _build_hashed_rekord_request(  # type: ignore[override]
         self, hashed_input: Hashed, signature: bytes, certificate: Certificate
     ) -> rekor_types.Hashedrekord:
         """
@@ -303,7 +305,7 @@ class RekorClient(RekorLogSubmitter):
             ),
         )
 
-    def _build_dsse_request(
+    def _build_dsse_request(  # type: ignore[override]
         self, envelope: Envelope, certificate: Certificate
     ) -> rekor_types.Dsse:
         """

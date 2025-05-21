@@ -38,7 +38,6 @@ with signing_ctx.signer(identity, cache=True) as signer:
 
 from __future__ import annotations
 
-import base64
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -47,7 +46,7 @@ from typing import Optional
 
 import cryptography.x509 as x509
 import rekor_types
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
@@ -211,27 +210,10 @@ class Signer:
         """
         cert = self._signing_cert()
 
-        # Prepare inputs
-        b64_cert = base64.b64encode(
-            cert.public_bytes(encoding=serialization.Encoding.PEM)
-        )
-
         # Sign the statement, producing a DSSE envelope
         content = dsse._sign(self._private_key, input_)
 
         # Create the proposed DSSE log entry
-        proposed_entry = rekor_types.Dsse(
-            spec=rekor_types.dsse.DsseSchema(
-                # NOTE: mypy can't see that this kwarg is correct due to two interacting
-                # behaviors/bugs (one pydantic, one datamodel-codegen):
-                # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
-                # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
-                proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
-                    envelope=content.to_json(),
-                    verifiers=[b64_cert.decode()],
-                ),
-            ),
-        )
         proposed_entry = self._signing_ctx._rekor._build_dsse_request(
             envelope=content, certificate=cert
         )
