@@ -131,6 +131,7 @@ def sample_dsse_request_materials(staging) -> tuple[dsse.Envelope, Certificate]:
     return envelope, cert
 
 
+@pytest.mark.ambient_oidc
 def test_build_hashed_rekord_create_entry_request(
     sample_hashed_rekord_request_materials,
 ):
@@ -163,6 +164,7 @@ def test_build_hashed_rekord_create_entry_request(
     assert expected_request == actual_request
 
 
+@pytest.mark.ambient_oidc
 def test_build_dsse_create_entry_request(sample_dsse_request_materials):
     """
     Ensures that we produce the request `CreateEntryRequest` correctly for dsses.
@@ -200,6 +202,7 @@ def test_build_dsse_create_entry_request(sample_dsse_request_materials):
     assert expected_request == actual_request
 
 
+@pytest.mark.ambient_oidc
 def test_create_entry(sample_create_entry_request, client):
     """
     Sends a request to RekorV2 and ensure's the response is parseable to a `LogEntry` and a `TransparencyLogEntry`.
