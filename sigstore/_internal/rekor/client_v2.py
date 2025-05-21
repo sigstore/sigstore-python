@@ -149,22 +149,6 @@ class RekorV2Client:
             )
         )
 
-    @classmethod
-    def production(cls) -> RekorV2Client:
-        """
-        Returns a `RekorV2Client` populated with the default Rekor production instance.
-        """
-        return cls(
-            DEFAULT_REKOR_URL,
-        )
-
-    @classmethod
-    def staging(cls) -> RekorV2Client:
-        """
-        Returns a `RekorV2Client` populated with the default Rekor staging instance.
-        """
-        return cls(STAGING_REKOR_URL)
-
 
 class RekorClientError(Exception):
     """
