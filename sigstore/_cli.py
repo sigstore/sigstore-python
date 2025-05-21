@@ -238,7 +238,6 @@ def _add_shared_oidc_options(
         help="Force an out-of-band OAuth flow and do not automatically start the default web browser",
     )
 
-
 def _parser() -> argparse.ArgumentParser:
     # Arguments in parent_parser can be used for both commands and subcommands
     parent_parser = argparse.ArgumentParser(add_help=False)
