@@ -27,13 +27,10 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.rekor import RekorLogSubmitter
+from sigstore._internal.rekor import RekorLogSubmitter, Envelope, Hashed, LogEntry
 from sigstore._internal.rekor.v2_types.dev.sigstore.common import v1 as common_v1
 from sigstore._internal.rekor.v2_types.dev.sigstore.rekor import v2
 from sigstore._internal.rekor.v2_types.io import intoto as v2_intoto
-from sigstore.dsse import Envelope
-from sigstore.hashes import Hashed
-from sigstore.models import LogEntry
 
 _logger = logging.getLogger(__name__)
 

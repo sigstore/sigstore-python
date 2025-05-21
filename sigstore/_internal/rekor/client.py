@@ -28,7 +28,7 @@ import rekor_types
 import requests
 
 from sigstore._internal import USER_AGENT
-from sigstore.models import LogEntry
+from sigstore._internal.rekor import Certificate, Envelope, Hashed, LogEntry, RekorLogSubmitter
 
 _logger = logging.getLogger(__name__)
 
@@ -216,7 +216,7 @@ class RekorEntriesRetrieve(_Endpoint):
         return oldest_entry
 
 
-class RekorClient:
+class RekorClient(RekorLogSubmitter):
     """The internal Rekor client"""
 
     def __init__(self, url: str) -> None:
@@ -261,3 +261,25 @@ class RekorClient:
         Returns a `RekorLog` adapter for making requests to a Rekor log.
         """
         return RekorLog(f"{self.url}/log", session=self.session)
+
+    def create_entry(self, request: rekor_types.Hashedrekord) -> LogEntry:
+        """
+        Submit the request to Rekor.
+        """
+        pass
+
+    def _build_hashed_rekord_request(
+        self, hashed_input: Hashed, signature: bytes, certificate: Certificate
+    ) -> rekor_types.Hashedrekord:
+        """
+        Construct a hashed rekord request to submit to Rekor.
+        """
+        pass
+
+    def _build_dsse_request(
+        self, envelope: Envelope, certificate: Certificate
+    ) -> rekor_types.Dsse:
+        """
+        Construct a dsse request to submit to Rekor.
+        """
+        pass
