@@ -12,6 +12,7 @@ from sigstore._internal.rekor.client_v2 import (
     Hashed,
     LogEntry,
     RekorV2Client,
+    common_v1,
     serialization,
     v2,
     v2_intoto,
@@ -72,7 +73,7 @@ def sample_hashed_rekord_create_entry_request(
     return RekorV2Client._build_hashed_rekord_create_entry_request(
         artifact_hashed_input=hashed_input,
         artifact_signature=signature,
-        signining_certificate=cert,
+        signing_certificate=cert,
     )
 
 
@@ -145,11 +146,8 @@ def test_build_hashed_rekord_create_entry_request(
             signature=v2.Signature(
                 content=signature,
                 verifier=v2.Verifier(
-                    public_key=v2.PublicKey(
-                        raw_bytes=cert.public_key().public_bytes(
-                            encoding=serialization.Encoding.DER,
-                            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-                        )
+                    x509_certificate=common_v1.X509Certificate(
+                        raw_bytes=cert.public_bytes(encoding=serialization.Encoding.DER)
                     ),
                     key_details=DEFAULT_KEY_DETAILS,
                 ),
@@ -159,7 +157,7 @@ def test_build_hashed_rekord_create_entry_request(
     actual_request = RekorV2Client._build_hashed_rekord_create_entry_request(
         artifact_hashed_input=hashed_input,
         artifact_signature=signature,
-        signining_certificate=cert,
+        signing_certificate=cert,
     )
     assert expected_request == actual_request
 
@@ -185,11 +183,8 @@ def test_build_dsse_create_entry_request(sample_dsse_request_materials):
             ),
             verifiers=[
                 v2.Verifier(
-                    public_key=v2.PublicKey(
-                        raw_bytes=cert.public_key().public_bytes(
-                            encoding=serialization.Encoding.DER,
-                            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-                        )
+                    x509_certificate=common_v1.X509Certificate(
+                        raw_bytes=cert.public_bytes(encoding=serialization.Encoding.DER)
                     ),
                     key_details=DEFAULT_KEY_DETAILS,
                 )

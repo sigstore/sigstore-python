@@ -27,7 +27,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.rekor.v2_types.dev.sigstore.common.v1 import PublicKeyDetails
+from sigstore._internal.rekor.v2_types.dev.sigstore.common import v1 as common_v1
 from sigstore._internal.rekor.v2_types.dev.sigstore.rekor import v2
 from sigstore._internal.rekor.v2_types.io import intoto as v2_intoto
 from sigstore.dsse import Envelope
@@ -39,7 +39,7 @@ _logger = logging.getLogger(__name__)
 DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
 STAGING_REKOR_URL = "https://rekor.sigstage.dev"
 
-DEFAULT_KEY_DETAILS = PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
+DEFAULT_KEY_DETAILS = common_v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
 
 
 class RekorV2Client:
@@ -98,7 +98,7 @@ class RekorV2Client:
         cls,
         artifact_hashed_input: Hashed,
         artifact_signature: bytes,
-        signining_certificate: Certificate,
+        signing_certificate: Certificate,
     ) -> v2.CreateEntryRequest:
         return v2.CreateEntryRequest(
             hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
@@ -106,10 +106,9 @@ class RekorV2Client:
                 signature=v2.Signature(
                     content=artifact_signature,
                     verifier=v2.Verifier(
-                        public_key=v2.PublicKey(
-                            raw_bytes=signining_certificate.public_key().public_bytes(
-                                encoding=serialization.Encoding.DER,
-                                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                        x509_certificate=common_v1.X509Certificate(
+                            raw_bytes=signing_certificate.public_bytes(
+                                encoding=serialization.Encoding.DER
                             )
                         ),
                         key_details=DEFAULT_KEY_DETAILS,  # type: ignore[arg-type]
@@ -137,10 +136,9 @@ class RekorV2Client:
                 ),
                 verifiers=[
                     v2.Verifier(
-                        public_key=v2.PublicKey(
-                            raw_bytes=signing_certificate.public_key().public_bytes(
-                                encoding=serialization.Encoding.DER,
-                                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                        x509_certificate=common_v1.X509Certificate(
+                            raw_bytes=signing_certificate.public_bytes(
+                                encoding=serialization.Encoding.DER
                             )
                         ),
                         key_details=DEFAULT_KEY_DETAILS,  # type: ignore[arg-type]
