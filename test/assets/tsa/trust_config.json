@@ -113,12 +113,39 @@
     ]
   },
   "signing_config": {
-    "ca_url": "https://fulcio.sigstage.dev",
-    "tlog_urls": [
-      "https://rekor.sigstage.dev"
+    "mediaType": "application/vnd.dev.sigstore.signingconfig.v0.2+json",
+    "caUrls": [
+      {
+        "url": "https://fulcio.sigstage.dev",
+        "majorApiVersion": 1,
+        "validFor": {
+          "start": "2022-04-14T21:38:40.000Z"
+        }
+      }
     ],
-    "tsa_urls": [
-      "placeholder-value"
-    ]
+    "rekorTlogUrls": [
+      {
+        "url": "https://rekor.sigstage.dev",
+        "majorApiVersion": 1,
+        "validFor": {
+          "start": "2021-01-12T11:53:27.000Z"
+        }
+      }
+    ],
+    "tsaUrls": [
+      {
+        "url": "placeholder",
+        "majorApiVersion": 1,
+        "validFor": {
+          "start": "2024-11-07T14:59:40.000Z"
+        }
+      }
+    ],
+    "rekorTlogConfig": {
+      "selector": "ANY"
+    },
+    "tsaConfig": {
+      "selector": "ANY"
+    }
   }
 }
