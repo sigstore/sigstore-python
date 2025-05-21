@@ -70,6 +70,33 @@ def sample_hashed_rekord_request_materials(
 
 
 @pytest.fixture()
+def sample_dsse_request_materials(sample_signer) -> tuple[dsse.Envelope, Certificate]:
+    """
+    Creates materials needed for `RekorV2Client._build_dsse_create_entry_request`.
+    """
+    cert = sample_signer._signing_cert()
+    stmt = (
+        dsse.StatementBuilder()
+        .subjects(
+            [
+                dsse.Subject(
+                    name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()}
+                )
+            ]
+        )
+        .predicate_type("https://cosign.sigstore.dev/attestation/v1")
+        .predicate(
+            {
+                "Data": "",
+                "Timestamp": "2023-12-07T00:37:58Z",
+            }
+        )
+    ).build()
+    envelope = dsse._sign(key=sample_signer._private_key, stmt=stmt)
+    return envelope, cert
+
+
+@pytest.fixture()
 def sample_hashed_rekord_create_entry_request(
     sample_hashed_rekord_request_materials,
 ) -> v2.CreateEntryRequest:
@@ -108,33 +135,6 @@ def sample_create_entry_request(request) -> v2.CreateEntryRequest:
     Returns a sample `CreateEntryRequest`, for each of the the params in the supplied fixture.
     """
     return request.getfixturevalue(request.param.__name__)
-
-
-@pytest.fixture()
-def sample_dsse_request_materials(sample_signer) -> tuple[dsse.Envelope, Certificate]:
-    """
-    Creates materials needed for `RekorV2Client._build_dsse_create_entry_request`.
-    """
-    cert = sample_signer._signing_cert()
-    stmt = (
-        dsse.StatementBuilder()
-        .subjects(
-            [
-                dsse.Subject(
-                    name="null", digest={"sha256": hashlib.sha256(b"").hexdigest()}
-                )
-            ]
-        )
-        .predicate_type("https://cosign.sigstore.dev/attestation/v1")
-        .predicate(
-            {
-                "Data": "",
-                "Timestamp": "2023-12-07T00:37:58Z",
-            }
-        )
-    ).build()
-    envelope = dsse._sign(key=sample_signer._private_key, stmt=stmt)
-    return envelope, cert
 
 
 @pytest.mark.ambient_oidc
