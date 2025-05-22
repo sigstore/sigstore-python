@@ -4,6 +4,20 @@
     "mediaType": "application/vnd.dev.sigstore.trustedroot+json;version=0.1",
     "tlogs": [
       {
+        "baseUrl": "https://rekor.sigstage.dev",
+        "hashAlgorithm": "SHA2_256",
+        "publicKey": {
+          "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDODRU688UYGuy54mNUlaEBiQdTE9nYLr0lg6RXowI/QV/RE1azBn4Eg5/2uTOMbhB1/gfcHzijzFi9Tk+g1Prg==",
+          "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+          "validFor": {
+            "start": "2021-01-12T11:53:27.000Z"
+          }
+        },
+        "logId": {
+          "keyId": "0y8wo8MtY5wrdiIFohx7sHeI5oKDpK5vQhGHI6G+pJY="
+        }
+      },
+      {
         "baseUrl": "https://log2025-alpha1.rekor.sigstage.dev",
         "hashAlgorithm": "SHA2_256",
         "publicKey": {
