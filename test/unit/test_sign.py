@@ -174,7 +174,7 @@ class TestSignWithTSA:
             asset("tsa/trust_config.json").read_text()
         )
 
-        trust_config._inner.signing_config.tsa_urls[0] = tsa_url
+        trust_config._inner.signing_config.tsa_urls[0].url = tsa_url
 
         return SigningContext.from_trust_config(trust_config)
 
