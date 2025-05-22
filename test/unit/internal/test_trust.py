@@ -21,6 +21,9 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
 
+from sigstore._internal.fulcio.client import FulcioClient
+from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
     ClientTrustConfig,
@@ -56,12 +59,21 @@ class TestSigningcconfig:
             signing_config._inner.media_type
             == SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value
         )
-        assert signing_config.get_fulcio_url() == "https://fulcio.example.com"
+
+        fulcio = signing_config.get_fulcio()
+        assert isinstance(fulcio, FulcioClient)
+        assert fulcio.url == "https://fulcio.example.com"
         assert signing_config.get_oidc_url() == "https://oauth2.example.com/auth"
-        assert signing_config.get_tlog_urls() == ["https://rekor.example.com"]
-        assert signing_config.get_tsa_urls() == [
-            "https://timestamp.example.com/api/v1/timestamp"
-        ]
+
+        tlogs = signing_config.get_tlogs()
+        assert len(tlogs) == 1
+        assert isinstance(tlogs[0], RekorClient)
+        assert tlogs[0].url == "https://rekor.example.com/api/v1"
+
+        tsas = signing_config.get_tsas()
+        assert len(tsas) == 1
+        assert isinstance(tsas[0], TimestampAuthorityClient)
+        assert tsas[0].url == "https://timestamp.example.com/api/v1/timestamp"
 
 
 class TestTrustedRoot:
