@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import base64
+import datetime
 import os
 import re
 from collections import defaultdict
@@ -157,6 +158,16 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
             raise DownloadHTTPError("File not found", 404)
 
     monkeypatch.setattr(updater, "Urllib3Fetcher", lambda app_user_agent: MockFetcher())
+
+    # Using the staging TUF assets is a nice way to test but staging tuf assets expire in
+    # 3 days so faking now() becomes necessary. This correctly affects checks in
+    # _internal/trust.py as well
+    class mydatetime(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.datetime(2025, 5, 6, 0, 0, 0, 0, datetime.timezone.utc)
+
+    monkeypatch.setattr(datetime, "datetime", mydatetime)
 
     return success, failure
 

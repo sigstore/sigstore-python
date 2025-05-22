@@ -39,8 +39,6 @@ from sigstore.oidc import IdentityToken
 
 _logger = logging.getLogger(__name__)
 
-DEFAULT_FULCIO_URL = "https://fulcio.sigstore.dev"
-STAGING_FULCIO_URL = "https://fulcio.sigstage.dev"
 SIGNING_CERT_ENDPOINT = "/api/v2/signingCert"
 TRUST_BUNDLE_ENDPOINT = "/api/v2/trustBundle"
 
@@ -163,7 +161,7 @@ class FulcioTrustBundle(_Endpoint):
 class FulcioClient:
     """The internal Fulcio client"""
 
-    def __init__(self, url: str = DEFAULT_FULCIO_URL) -> None:
+    def __init__(self, url: str) -> None:
         """Initialize the client"""
         _logger.debug(f"Fulcio client using URL: {url}")
         self.url = url
@@ -179,20 +177,6 @@ class FulcioClient:
         Destroys the underlying network session.
         """
         self.session.close()
-
-    @classmethod
-    def production(cls) -> FulcioClient:
-        """
-        Returns a `FulcioClient` for the Sigstore production instance of Fulcio.
-        """
-        return cls(DEFAULT_FULCIO_URL)
-
-    @classmethod
-    def staging(cls) -> FulcioClient:
-        """
-        Returns a `FulcioClient` for the Sigstore staging instance of Fulcio.
-        """
-        return cls(STAGING_FULCIO_URL)
 
     @property
     def signing_cert(self) -> FulcioSigningCert:
