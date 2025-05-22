@@ -340,21 +340,31 @@ class SigningConfig:
         except ValueError:
             raise Error(f"unsupported signing config format: {self._inner.media_type}")
 
-        # currently not supporting other select modes
-        # TODO: Support other modes ensuring tsa_urls() and tlog_urls() work
-        if self._inner.rekor_tlog_config.selector != ServiceSelector.ANY:
-            raise Error(
-                f"unsupported tlog selector {self._inner.rekor_tlog_config.selector}"
-            )
-        if self._inner.tsa_config.selector != ServiceSelector.ANY:
-            raise Error(f"unsupported TSA selector {self._inner.tsa_config.selector}")
-
         # Create lists of service protos that are valid & supported by this client
+        # Limit the TSA and tlog lists using the service selector config
         self._tlogs = self._get_valid_services(
             self._inner.rekor_tlog_urls, REKOR_VERSIONS
         )
+        if not self._tlogs:
+            raise Error("No valid Rekor transparency log found in signing config")
+        if self._inner.rekor_tlog_config.selector == ServiceSelector.EXACT:
+            if len(self._tlogs) < self._inner.rekor_tlog_config.count:
+                raise Error(
+                    "Not enough Rekor transparency logs found in signing config"
+                )
+            self._tlogs = self._tlogs[: self._inner.rekor_tlog_config.count]
+        elif self._inner.rekor_tlog_config.selector == ServiceSelector.ANY:
+            self._tlogs = self._tlogs[:1]
+
         self._tsas = self._get_valid_services(self._inner.tsa_urls, TSA_VERSIONS)
+        if self._inner.tsa_config.selector == ServiceSelector.EXACT:
+            self._tsas = self._tsas[: self._inner.tsa_config.count]
+        elif self._inner.tsa_config.selector == ServiceSelector.ANY:
+            self._tsas = self._tsas[:1]
+
         self._fulcios = self._get_valid_services(self._inner.ca_urls, FULCIO_VERSIONS)
+        if not self._fulcios:
+            raise Error("No valid Fulcio CA found in signing config")
         self._oidcs = self._get_valid_services(self._inner.oidc_urls, OIDC_VERSIONS)
 
     @classmethod
@@ -397,9 +407,6 @@ class SigningConfig:
         """
         Returns the rekor transparency logs that client should sign with.
         """
-
-        if not self._tlogs:
-            raise Error("No valid Rekor transparency log found in signing config")
         return [RekorClient(tlog.url) for tlog in self._tlogs]
 
     def get_fulcio(self) -> FulcioClient:
@@ -407,8 +414,6 @@ class SigningConfig:
         Returns url for the fulcio instance that client should use to get a
         signing certificate from
         """
-        if not self._fulcios:
-            raise Error("No valid Fulcio CA found in signing config")
         return FulcioClient(self._fulcios[0].url)
 
     def get_oidc_url(self) -> str:
