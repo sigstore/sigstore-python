@@ -405,13 +405,13 @@ class SigningConfig:
 
     def get_tlogs(self) -> list[RekorClient]:
         """
-        Returns the rekor transparency logs that client should sign with.
+        Returns the rekor transparency log clients that client should sign with.
         """
         return [RekorClient(tlog.url) for tlog in self._tlogs]
 
     def get_fulcio(self) -> FulcioClient:
         """
-        Returns url for the fulcio instance that client should use to get a
+        Returns a Fulcio instance that client should use to get a
         signing certificate from
         """
         return FulcioClient(self._fulcios[0].url)
@@ -427,7 +427,7 @@ class SigningConfig:
 
     def get_tsas(self) -> list[TimestampAuthorityClient]:
         """
-        Returns timestamp authority API end points.
+        Returns timestamp authority clients for urls configured in signing config.
         """
         return [TimestampAuthorityClient(s.url) for s in self._tsas]
 
