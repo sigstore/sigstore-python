@@ -424,8 +424,6 @@ class SigningConfig:
         """
         Returns timestamp authority API end points.
         """
-        if not self._tsas:
-            raise Error("No valid Rekor transparency log found in signing config")
         return [TimestampAuthorityClient(s.url) for s in self._tsas]
 
 
