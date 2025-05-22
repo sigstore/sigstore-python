@@ -29,15 +29,6 @@ from sigstore.sign import SigningContext
 from sigstore.verify.policy import UnsafeNoOp
 
 
-class TestSigningContext:
-    @pytest.mark.production
-    def test_production(self):
-        assert SigningContext.production() is not None
-
-    def test_staging(self, mock_staging_tuf):
-        assert SigningContext.staging() is not None
-
-
 @pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
@@ -185,7 +176,7 @@ class TestSignWithTSA:
 
         trust_config._inner.signing_config.tsa_urls[0] = tsa_url
 
-        return SigningContext._from_trust_config(trust_config)
+        return SigningContext.from_trust_config(trust_config)
 
     @pytest.fixture
     def identity(self, staging):
