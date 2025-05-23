@@ -47,6 +47,7 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     Service,
+    ServiceConfiguration,
     ServiceSelector,
     TransparencyLogInstance,
 )
@@ -340,34 +341,27 @@ class SigningConfig:
         except ValueError:
             raise Error(f"unsupported signing config format: {self._inner.media_type}")
 
-        # Create lists of service protos that are valid & supported by this client
-        # Limit the TSA and tlog lists using the service selector config
-        tlogs = self._get_valid_services(self._inner.rekor_tlog_urls, REKOR_VERSIONS)
-        if not tlogs:
+        # Create lists of service protos that are valid, selected by the service
+        # configuration & supported by this client
+        self._tlogs = self._get_valid_services(
+            self._inner.rekor_tlog_urls, REKOR_VERSIONS, self._inner.rekor_tlog_config
+        )
+        if not self._tlogs:
             raise Error("No valid Rekor transparency log found in signing config")
-        if self._inner.rekor_tlog_config.selector == ServiceSelector.EXACT:
-            if len(tlogs) < self._inner.rekor_tlog_config.count:
-                raise Error(
-                    "Not enough Rekor transparency logs found in signing config"
-                )
-            self._tlogs = tlogs[: self._inner.rekor_tlog_config.count]
-        elif self._inner.rekor_tlog_config.selector == ServiceSelector.ANY:
-            self._tlogs = tlogs[:1]
-        else:
-            self._tlogs = tlogs
 
-        tsas = self._get_valid_services(self._inner.tsa_urls, TSA_VERSIONS)
-        if self._inner.tsa_config.selector == ServiceSelector.EXACT:
-            self._tsas = tsas[: self._inner.tsa_config.count]
-        elif self._inner.tsa_config.selector == ServiceSelector.ANY:
-            self._tsas = tsas[:1]
-        else:
-            self._tsas = tsas
+        self._tsas = self._get_valid_services(
+            self._inner.tsa_urls, TSA_VERSIONS, self._inner.tsa_config
+        )
 
-        self._fulcios = self._get_valid_services(self._inner.ca_urls, FULCIO_VERSIONS)
+        self._fulcios = self._get_valid_services(
+            self._inner.ca_urls, FULCIO_VERSIONS, None
+        )
         if not self._fulcios:
             raise Error("No valid Fulcio CA found in signing config")
-        self._oidcs = self._get_valid_services(self._inner.oidc_urls, OIDC_VERSIONS)
+
+        self._oidcs = self._get_valid_services(
+            self._inner.oidc_urls, OIDC_VERSIONS, None
+        )
 
     @classmethod
     def from_file(
@@ -379,7 +373,10 @@ class SigningConfig:
         return cls(inner)
 
     def _get_valid_services(
-        self, services: list[Service], valid_versions: list[int]
+        self,
+        services: list[Service],
+        valid_versions: list[int],
+        config: ServiceConfiguration | None,
     ) -> list[Service]:
         """Return supported services, taking SigningConfig restrictions into account"""
 
@@ -394,7 +391,7 @@ class SigningConfig:
 
             logs_by_operator[service.operator].append(service)
 
-        # return a list of services but make sure we only return logs of one version per operator
+        # build a list of services but make sure we only include logs of one version per operator
         result: list[Service] = []
         for logs in logs_by_operator.values():
             logs.sort(key=lambda s: -s.major_api_version)
@@ -403,7 +400,17 @@ class SigningConfig:
             while logs and logs[-1].major_api_version == max_version:
                 result.append(logs.pop())
 
-        return result
+        # limit the list based on ServiceConfiguration
+        if not config or config.selector == ServiceSelector.ALL:
+            return result
+
+        count = config.count if config.selector == ServiceSelector.EXACT else 1
+        if len(result) < count:
+            raise ValueError(
+                f"Expected {count} services in signing config, found {len(result)}"
+            )
+
+        return result[:count]
 
     def get_tlogs(self) -> list[RekorClient]:
         """
