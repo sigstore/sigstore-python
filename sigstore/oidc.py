@@ -41,8 +41,8 @@ _KNOWN_OIDC_ISSUERS = {
     "https://oauth2.sigstage.dev/auth": "email",
     "https://token.actions.githubusercontent.com": "sub",
 }
-_DEFAULT_AUDIENCE = "sigstore"
 
+_DEFAULT_AUDIENCE = "sigstore"
 
 class _OpenIDConfiguration(BaseModel):
     """
@@ -66,7 +66,7 @@ class IdentityToken:
     a sensible subject, issuer, and audience for Sigstore purposes.
     """
 
-    def __init__(self, raw_token: str) -> None:
+    def __init__(self, raw_token: str, client_id: str) -> None:
         """
         Create a new `IdentityToken` from the given OIDC token.
         """
@@ -90,7 +90,7 @@ class IdentityToken:
                     # See: https://openid.net/specs/openid-connect-basic-1_0.html#IDToken
                     "require": ["aud", "sub", "iat", "exp", "iss"],
                 },
-                audience=_DEFAULT_AUDIENCE,
+                audience=client_id,
                 # NOTE: This leeway shouldn't be strictly necessary, but is
                 # included to preempt any (small) skew between the host
                 # and the originating IdP.
@@ -350,7 +350,7 @@ class Issuer:
         if token_error is not None:
             raise IdentityError(f"Error response from token endpoint: {token_error}")
 
-        return IdentityToken(token_json["access_token"])
+        return IdentityToken(token_json["access_token"], client_id)
 
 
 class IdentityError(Error):
