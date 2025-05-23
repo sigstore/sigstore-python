@@ -1,13 +1,16 @@
 import hashlib
+import os
 import secrets
 
 import pytest
+from id import (
+    detect_credential,
+)
 
 from sigstore import dsse
+from sigstore._internal.rekor.client import STAGING_REKOR_URL
 from sigstore._internal.rekor.client_v2 import (
     DEFAULT_KEY_DETAILS,
-    DEFAULT_REKOR_URL,
-    STAGING_REKOR_URL,
     Certificate,
     Hashed,
     LogEntry,
@@ -17,10 +20,11 @@ from sigstore._internal.rekor.client_v2 import (
     v2,
     v2_intoto,
 )
-
-# from sigstore.models import rekor_v1
+from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
-from sigstore.sign import ec
+from sigstore.models import rekor_v1
+from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
+from sigstore.sign import SigningContext, ec
 
 ALPHA_REKOR_V2_URL = "https://log2025-alpha1.rekor.sigstage.dev"
 LOCAL_REKOR_V2_URL = "http://localhost:3000"
@@ -29,12 +33,13 @@ LOCAL_REKOR_V2_URL = "http://localhost:3000"
 # TODO: add staging and production URLs when available,
 # and local after using scaffolding/setup-sigstore-env action
 @pytest.fixture(
+    scope="session",
     params=[
         ALPHA_REKOR_V2_URL,
         pytest.param(STAGING_REKOR_URL, marks=pytest.mark.xfail),
-        pytest.param(DEFAULT_REKOR_URL, marks=pytest.mark.xfail),
-        pytest.param(LOCAL_REKOR_V2_URL, marks=pytest.mark.xfail),
-    ]
+        # pytest.param(DEFAULT_REKOR_URL, marks=pytest.mark.xfail),
+        # pytest.param(LOCAL_REKOR_V2_URL, marks=pytest.mark.xfail),
+    ],
 )
 def client(request) -> RekorV2Client:
     """
@@ -44,37 +49,46 @@ def client(request) -> RekorV2Client:
     return RekorV2Client(base_url=request.param)
 
 
-@pytest.fixture()
-def sample_signer(staging):
+@pytest.fixture(scope="session")
+def sample_cert_and_private_key() -> tuple[Certificate, ec.EllipticCurvePrivateKey]:
     """
-    Returns a `Signer`.
+    Returns a sample Certificate and ec.EllipticCurvePrivateKey.
     """
-    sign_ctx_cls, _, id_token = staging
-    with sign_ctx_cls().signer(id_token) as signer:
-        return signer
+    # Detect env variable for local interactive tests.
+    token = os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")
+    if not token:
+        # If the variable is not defined, try getting an ambient token.
+        token = detect_credential(_DEFAULT_AUDIENCE)
+
+    with SigningContext.from_trust_config(ClientTrustConfig.staging()).signer(
+        IdentityToken(token)
+    ) as signer:
+        return signer._signing_cert(), signer._private_key
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def sample_hashed_rekord_request_materials(
-    sample_signer,
+    sample_cert_and_private_key,
 ) -> tuple[Hashed, bytes, Certificate]:
     """
     Creates materials needed for `RekorV2Client._build_hashed_rekord_create_entry_request`.
     """
-    cert = sample_signer._signing_cert()
+    cert, private_key = sample_cert_and_private_key
     hashed_input = sha256_digest(secrets.token_bytes(32))
-    signature = sample_signer._private_key.sign(
+    signature = private_key.sign(
         hashed_input.digest, ec.ECDSA(hashed_input._as_prehashed())
     )
     return hashed_input, signature, cert
 
 
-@pytest.fixture()
-def sample_dsse_request_materials(sample_signer) -> tuple[dsse.Envelope, Certificate]:
+@pytest.fixture(scope="session")
+def sample_dsse_request_materials(
+    sample_cert_and_private_key,
+) -> tuple[dsse.Envelope, Certificate]:
     """
     Creates materials needed for `RekorV2Client._build_dsse_create_entry_request`.
     """
-    cert = sample_signer._signing_cert()
+    cert, private_key = sample_cert_and_private_key
     stmt = (
         dsse.StatementBuilder()
         .subjects(
@@ -92,11 +106,11 @@ def sample_dsse_request_materials(sample_signer) -> tuple[dsse.Envelope, Certifi
             }
         )
     ).build()
-    envelope = dsse._sign(key=sample_signer._private_key, stmt=stmt)
+    envelope = dsse._sign(key=private_key, stmt=stmt)
     return envelope, cert
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def sample_hashed_rekord_create_entry_request(
     sample_hashed_rekord_request_materials,
 ) -> v2.CreateEntryRequest:
@@ -104,14 +118,14 @@ def sample_hashed_rekord_create_entry_request(
     Returns a sample `CreateEntryRequest` for for hashedrekor.
     """
     hashed_input, signature, cert = sample_hashed_rekord_request_materials
-    return RekorV2Client._build_hashed_rekord_create_entry_request(
-        artifact_hashed_input=hashed_input,
-        artifact_signature=signature,
-        signing_certificate=cert,
+    return RekorV2Client._build_hashed_rekord_request(
+        hashed_input=hashed_input,
+        signature=signature,
+        certificate=cert,
     )
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def sample_dsse_create_entry_request(
     sample_dsse_request_materials,
 ) -> v2.CreateEntryRequest:
@@ -119,22 +133,7 @@ def sample_dsse_create_entry_request(
     Returns a sample `CreateEntryRequest` for for dsse.
     """
     envelope, cert = sample_dsse_request_materials
-    return RekorV2Client._build_dsse_create_entry_request(
-        envelope=envelope, signing_certificate=cert
-    )
-
-
-@pytest.fixture(
-    params=[
-        sample_hashed_rekord_create_entry_request,
-        sample_dsse_create_entry_request,
-    ]
-)
-def sample_create_entry_request(request) -> v2.CreateEntryRequest:
-    """
-    Returns a sample `CreateEntryRequest`, for each of the the params in the supplied fixture.
-    """
-    return request.getfixturevalue(request.param.__name__)
+    return RekorV2Client._build_dsse_request(envelope=envelope, certificate=cert)
 
 
 @pytest.mark.ambient_oidc
@@ -159,10 +158,10 @@ def test_build_hashed_rekord_create_entry_request(
             ),
         )
     )
-    actual_request = RekorV2Client._build_hashed_rekord_create_entry_request(
-        artifact_hashed_input=hashed_input,
-        artifact_signature=signature,
-        signing_certificate=cert,
+    actual_request = RekorV2Client._build_hashed_rekord_request(
+        hashed_input=hashed_input,
+        signature=signature,
+        certificate=cert,
     )
     assert expected_request == actual_request
 
@@ -196,18 +195,30 @@ def test_build_dsse_create_entry_request(sample_dsse_request_materials):
             ],
         )
     )
-    actual_request = RekorV2Client._build_dsse_create_entry_request(
-        envelope=envelope, signing_certificate=cert
+    actual_request = RekorV2Client._build_dsse_request(
+        envelope=envelope, certificate=cert
     )
     assert expected_request == actual_request
 
 
+@pytest.mark.parametrize(
+    "sample_create_entry_request",
+    [
+        sample_hashed_rekord_create_entry_request.__name__,
+        sample_dsse_create_entry_request.__name__,
+    ],
+)
 @pytest.mark.ambient_oidc
-def test_create_entry(sample_create_entry_request, client):
+def test_create_entry(
+    request: pytest.FixtureRequest,
+    sample_create_entry_request: str,
+    client: RekorV2Client,
+):
     """
     Sends a request to RekorV2 and ensure's the response is parseable to a `LogEntry` and a `TransparencyLogEntry`.
     """
-    log_entry = client.create_entry(sample_create_entry_request)
+    log_entry = client.create_entry(
+        request.getfixturevalue(sample_create_entry_request)
+    )
     assert isinstance(log_entry, LogEntry)
-    # TODO: Pending https://github.com/sigstore/sigstore-python/pull/1370
-    # assert isinstance(log_entry._to_rekor(), rekor_v1.TransparencyLogEntry)
+    assert isinstance(log_entry._to_rekor(), rekor_v1.TransparencyLogEntry)

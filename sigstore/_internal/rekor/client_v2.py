@@ -27,6 +27,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
+from sigstore._internal.rekor import RekorLogSubmitter
 from sigstore._internal.rekor.v2_types.dev.sigstore.common import v1 as common_v1
 from sigstore._internal.rekor.v2_types.dev.sigstore.rekor import v2
 from sigstore._internal.rekor.v2_types.io import intoto as v2_intoto
@@ -41,12 +42,12 @@ STAGING_REKOR_URL = "https://rekor.sigstage.dev"
 
 # TODO: Link to merged documenation.
 # See https://github.com/sigstore/rekor-tiles/pull/255/files#diff-eb568acf84d583e4d3734b07773e96912277776bad39c560392aa33ea2cf2210R196
-CREATE_ENTRIES_TIMEOUT_SECONDS = 10
+CREATE_ENTRIES_TIMEOUT_SECONDS = 20
 
 DEFAULT_KEY_DETAILS = common_v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
 
 
-class RekorV2Client:
+class RekorV2Client(RekorLogSubmitter):
     """The internal Rekor client for the v2 API"""
 
     # TODO: implement get_tile, get_entry_bundle, get_checkpoint.
@@ -71,7 +72,8 @@ class RekorV2Client:
         """
         self.session.close()
 
-    def create_entry(self, request: v2.CreateEntryRequest) -> LogEntry:
+    # TODO: when we remove the original Rekor client, remove the type ignore here
+    def create_entry(self, request: v2.CreateEntryRequest) -> LogEntry:  # type: ignore[override]
         """
         Submit a new entry for inclusion in the Rekor log.
         """
@@ -79,7 +81,13 @@ class RekorV2Client:
         # Or it is an issue with the proto `json_value`.
         # See https://github.com/sigstore/rekor-tiles/blob/bd5893730de581629a5f475923c663f776793496/api/proto/rekor_service.proto#L66.
         payload = request.to_dict()
-        _logger.debug(f"proposed: {json.dumps(payload)}")
+        if "hashedRekordRequestV002" in payload:
+            payload["hashedRekordRequestV0_0_2"] = payload.pop(
+                "hashedRekordRequestV002"
+            )
+        if "dsseRequestV002" in payload:
+            payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
+        _logger.debug(f"request: {json.dumps(payload)}")
         resp = self.session.post(
             f"{self.url}/log/entries",
             json=payload,
@@ -96,20 +104,23 @@ class RekorV2Client:
         return LogEntry._from_dict_rekor(integrated_entry)
 
     @classmethod
-    def _build_hashed_rekord_create_entry_request(
+    def _build_hashed_rekord_request(
         cls,
-        artifact_hashed_input: Hashed,
-        artifact_signature: bytes,
-        signing_certificate: Certificate,
+        hashed_input: Hashed,
+        signature: bytes,
+        certificate: Certificate,
     ) -> v2.CreateEntryRequest:
+        """
+        Construct a hashed rekord request to submit to Rekor.
+        """
         return v2.CreateEntryRequest(
             hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
-                digest=artifact_hashed_input.digest,
+                digest=hashed_input.digest,
                 signature=v2.Signature(
-                    content=artifact_signature,
+                    content=signature,
                     verifier=v2.Verifier(
                         x509_certificate=common_v1.X509Certificate(
-                            raw_bytes=signing_certificate.public_bytes(
+                            raw_bytes=certificate.public_bytes(
                                 encoding=serialization.Encoding.DER
                             )
                         ),
@@ -120,9 +131,12 @@ class RekorV2Client:
         )
 
     @classmethod
-    def _build_dsse_create_entry_request(
-        cls, envelope: Envelope, signing_certificate: Certificate
+    def _build_dsse_request(
+        cls, envelope: Envelope, certificate: Certificate
     ) -> v2.CreateEntryRequest:
+        """
+        Construct a dsse request to submit to Rekor.
+        """
         return v2.CreateEntryRequest(
             dsse_request_v0_0_2=v2.DsseRequestV002(
                 envelope=v2_intoto.Envelope(
@@ -139,7 +153,7 @@ class RekorV2Client:
                 verifiers=[
                     v2.Verifier(
                         x509_certificate=common_v1.X509Certificate(
-                            raw_bytes=signing_certificate.public_bytes(
+                            raw_bytes=certificate.public_bytes(
                                 encoding=serialization.Encoding.DER
                             )
                         ),
