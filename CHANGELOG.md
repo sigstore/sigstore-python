@@ -10,6 +10,10 @@ All versions prior to 0.9.0 are untracked.
 
 ### Added
 
+* Added `LogEntry._kind_version`, which is now parsed earlier upon receipt from the rekor API,
+  either from the root of the response, or from the reponse's inner base64-encoded JSON `body`.
+  [#1370](https://github.com/sigstore/sigstore-python/pull/1370)
+
 * Added support for ed25519 keys.
   [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
 
@@ -22,11 +26,11 @@ All versions prior to 0.9.0 are untracked.
 * TSA: Changed the Timestamp Authority requests to explicitly use sha256 for message digests.
   [#1373](https://github.com/sigstore/sigstore-python/pull/1373)
 
-* Fixed the certificate calidity period check for Timestamp Authorities (TSA).
-  Certificates need not have and end date, while still requiring a start date.
+* Fixed the certificate validity period check for Timestamp Authorities (TSA).
+  Certificates need not have an end date, while still requiring a start date.
   [#1368](https://github.com/sigstore/sigstore-python/pull/1368)
 
-* API: Make Rekor APIs compatible with Rekor v2 by removing trailing slashes
+* Made Rekor client more compatible with Rekor v2 by removing trailing slashes
   from endpoints ([#1366](https://github.com/sigstore/sigstore-python/pull/1366))
 
 * Verify: verify that all established times (timestamps or the log integration time)
@@ -38,10 +42,31 @@ All versions prior to 0.9.0 are untracked.
   [sigstore/timestamp-authority](https://github.com/sigstore/timestamp-authority)
   [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
 
+* Tests: Updated the `staging` and `sign_ctx_and_ident_for_env` fixtures to use the new methods
+  for generating a `SigningContext`.
+  [#1409](https://github.com/sigstore/sigstore-python/pull/1409)
+
 ### Changed
 
+* API:
+  * ClientTrustConfig now provides methods `production()`, `staging()`and `from_tuf()`
+    to get access to current client configuration (trusted keys & certificates,
+    URLs and their validity periods). [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
 * `--trust-config` now requires a file with SigningConfig v0.2, and is able to fully
   configure the used Sigstore instance [#1358]/(https://github.com/sigstore/sigstore-python/pull/1358)
+* By default (when `--trust-config` is not used) the whole trust configuration now
+  comes from the TUF repository [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
+
+### Removed
+ * API:
+  * `Issuer.production()` and `Issuer.staging()` have been removed: Use
+    `Issuer()` instead with relevant URL. The current public good production and
+    staging URLs are available via the `ClientTrustConfig` object.
+    [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
+  * `SigningContext.production()` and `SigningContext.staging()` have been removed:
+    Use `SigningContext.from_trust_config()` instead.
+    [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
+
 
 ## [3.6.2]
 
