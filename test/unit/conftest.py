@@ -214,7 +214,7 @@ def sign_ctx_and_ident_for_env(
     return ctx_cls, IdentityToken(token)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
     """
     Returns a SigningContext, Verifier, and IdentityToken for the staging environment.
