@@ -22,6 +22,7 @@ import base64
 import logging
 from datetime import datetime, timezone
 from typing import cast
+import json
 
 import rekor_types
 from cryptography.exceptions import InvalidSignature
@@ -432,7 +433,19 @@ class Verifier:
             and entry._kind_version.version == "0.0.2"
         ):
             try:
-                entry_body = v2.Entry().from_json(base64.b64decode(entry.body))
+                # entry_body = v2.Entry().from_json(base64.b64decode(entry.body))
+                # A potential issue with the returned body not parsing properly.
+                # perhaps the json_name in the protos.
+                _dict = json.loads(base64.b64decode(entry.body))
+                actual_body = v2.Entry(
+                    kind=_dict['kind'],
+                    api_version=_dict['apiVersion'],
+                    spec=v2.Spec(
+                        hashed_rekord_v0_0_2=v2.HashedRekordLogEntryV002.from_dict(
+                            _dict['spec']['dsseV002']
+                        )
+                    )
+                )
             except ValidationError as exc:
                 raise VerificationError(f"invalid DSSE log entry: {exc}")
 
@@ -546,7 +559,19 @@ class Verifier:
             entry._kind_version.kind == "hashedrekord"
             and entry._kind_version.version == "0.0.2"
         ):
-            actual_body = v2.Entry().from_json(base64.b64decode(entry.body))
+            _dict = json.loads(base64.b64decode(entry.body))
+            print(_dict)
+            # A potential issue with the returned body not parsing properly.
+            # perhaps the json_name in the protos.
+            actual_body = v2.Entry(
+                kind=_dict['kind'],
+                api_version=_dict['apiVersion'],
+                spec=v2.Spec(
+                    hashed_rekord_v0_0_2=v2.HashedRekordLogEntryV002.from_dict(
+                        _dict['spec']['hashedRekordV002']
+                    )
+                )
+            )
             expected_body = v2.Entry(
                 kind=entry._kind_version.kind,
                 api_version=entry._kind_version.version,
