@@ -2,7 +2,7 @@ sigstore-python
 ===============
 
 <!--- @begin-badges@ --->
-![CI](https://github.com/sigstore/sigstore-python/workflows/CI/badge.svg)
+[![CI](https://github.com/sigstore/sigstore-python/workflows/CI/badge.svg)](https://github.com/sigstore/sigstore-python/actions/workflows/ci.yml)
 [![PyPI version](https://badge.fury.io/py/sigstore.svg)](https://pypi.org/project/sigstore)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/sigstore/sigstore-python/badge)](https://securityscorecards.dev/viewer/?uri=github.com/sigstore/sigstore-python)
 [![SLSA](https://slsa.dev/images/gh-badge-level3.svg)](https://slsa.dev/)
@@ -121,8 +121,7 @@ OpenID Connect options:
   --oidc-disable-ambient-providers
                         Disable ambient OpenID Connect credential detection
                         (e.g. on GitHub Actions) (default: False)
-  --oidc-issuer URL     The OpenID Connect issuer to use (conflicts with
-                        --staging) (default: https://oauth2.sigstore.dev/auth)
+  --oidc-issuer URL     The OpenID Connect issuer to use (default: None)
   --oauth-force-oob     Force an out-of-band OAuth flow and do not
                         automatically start the default web browser (default:
                         False)
@@ -185,8 +184,7 @@ OpenID Connect options:
   --oidc-disable-ambient-providers
                         Disable ambient OpenID Connect credential detection
                         (e.g. on GitHub Actions) (default: False)
-  --oidc-issuer URL     The OpenID Connect issuer to use (conflicts with
-                        --staging) (default: https://oauth2.sigstore.dev/auth)
+  --oidc-issuer URL     The OpenID Connect issuer to use (default: None)
   --oauth-force-oob     Force an out-of-band OAuth flow and do not
                         automatically start the default web browser (default:
                         False)

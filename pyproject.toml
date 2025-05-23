@@ -26,7 +26,7 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
-  "cryptography >= 42, < 45",
+  "cryptography >= 42, < 46",
   "id >= 1.1.0",
   "importlib_resources ~= 5.7; python_version < '3.11'",
   "pyasn1 ~= 0.6",
@@ -38,7 +38,7 @@ dependencies = [
   "rfc8785 ~= 0.1.2",
   "rfc3161-client >= 0.1.2,< 1.1.0",
   # NOTE(ww): Both under active development, so strictly pinned.
-  "sigstore-protobuf-specs == 0.4.1",
+  "sigstore-protobuf-specs == 0.4.2",
   "sigstore-rekor-types == 0.0.18",
   "tuf ~= 6.0",
   "platformdirs ~= 4.2",
@@ -62,7 +62,7 @@ lint = [
   "mypy ~= 1.1",
   # NOTE(ww): ruff is under active development, so we pin conservatively here
   # and let Dependabot periodically perform this update.
-  "ruff < 0.11.11",
+  "ruff < 0.11.12",
   "types-requests",
   "types-pyOpenSSL",
 ]

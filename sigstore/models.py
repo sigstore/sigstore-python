@@ -250,8 +250,8 @@ class LogEntry:
             log_id=tlog_entry.log_id.key_id.hex(),
             log_index=tlog_entry.log_index,
             inclusion_proof=parsed_inclusion_proof,
-            inclusion_promise=inclusion_promise,
             _kind_version=tlog_entry.kind_version,
+            inclusion_promise=inclusion_promise,
         )
 
     def _to_rekor(self) -> rekor_v1.TransparencyLogEntry:
