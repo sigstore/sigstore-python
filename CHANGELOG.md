@@ -36,6 +36,10 @@ All versions prior to 0.9.0 are untracked.
   [sigstore/timestamp-authority](https://github.com/sigstore/timestamp-authority)
   [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
 
+* Tests: Updated the `staging` and `sign_ctx_and_ident_for_env` fixtures to use the new methods
+  for generating a `SigningContext`.
+  [#1409](https://github.com/sigstore/sigstore-python/pull/1409)
+
 ### Changed
 
 * API:
