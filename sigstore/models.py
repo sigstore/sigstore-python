@@ -63,6 +63,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import InclusionProof, KindVe
 from sigstore import dsse
 from sigstore._internal.merkle import verify_merkle_inclusion
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
+from sigstore._internal.rekor_tiles.dev.sigstore.common import v1
 from sigstore._utils import (
     B64Str,
     KeyID,
@@ -73,6 +74,8 @@ from sigstore.errors import Error, VerificationError
 
 if typing.TYPE_CHECKING:
     from sigstore._internal.trust import RekorKeyring
+
+DEFAULT_KEY_DETAILS = v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
 
 
 _logger = logging.getLogger(__name__)
