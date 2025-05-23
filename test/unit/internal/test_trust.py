@@ -20,6 +20,11 @@ import pytest
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
+from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    Service,
+    ServiceConfiguration,
+    ServiceSelector,
+)
 
 from sigstore._internal.fulcio.client import FulcioClient
 from sigstore._internal.rekor.client import RekorClient
@@ -34,6 +39,19 @@ from sigstore._internal.trust import (
 )
 from sigstore._utils import load_pem_public_key
 from sigstore.errors import Error
+
+# Test data for TestSigningcconfig
+_service_v1_op1 = Service("url1", major_api_version=1, operator="op1")
+_service2_v1_op1 = Service("url2", major_api_version=1, operator="op1")
+_service_v2_op1 = Service("url3", major_api_version=2, operator="op1")
+_service_v1_op2 = Service("url4", major_api_version=1, operator="op2")
+_service_v1_op3 = Service("url5", major_api_version=1, operator="op3")
+_service_v1_op4 = Service(
+    "url6",
+    major_api_version=1,
+    operator="op4",
+    valid_for=TimeRange(datetime(3000, 1, 1, tzinfo=timezone.utc)),
+)
 
 
 class TestCertificateAuthority:
@@ -74,6 +92,102 @@ class TestSigningcconfig:
         assert len(tsas) == 1
         assert isinstance(tsas[0], TimestampAuthorityClient)
         assert tsas[0].url == "https://timestamp.example.com/api/v1/timestamp"
+
+    @pytest.mark.parametrize(
+        "services, versions, config, expected_result",
+        [
+            (
+                [_service_v1_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v1_op1],
+            ),
+            (  # multiple services, same operator: expect 1 service in result
+                [_service_v1_op1, _service2_v1_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service2_v1_op1],
+            ),
+            (  # 2 services, different operator: expect 2 services in result
+                [_service_v1_op1, _service_v1_op2],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v1_op1, _service_v1_op2],
+            ),
+            (  # 3 services, one is not yet valid: expect 2 services in result
+                [_service_v1_op1, _service_v1_op2, _service_v1_op4],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v1_op1, _service_v1_op2],
+            ),
+            (  # ANY selector: expect 1 service only in result
+                [_service_v1_op1, _service_v1_op2],
+                [1],
+                ServiceConfiguration(ServiceSelector.ANY),
+                [_service_v1_op1],
+            ),
+            (  # EXACT selector: expect configured number of services in result
+                [_service_v1_op1, _service_v1_op2, _service_v1_op3],
+                [1],
+                ServiceConfiguration(ServiceSelector.EXACT, 2),
+                [_service_v1_op1, _service_v1_op2],
+            ),
+            (  # services with different version: expect highest version
+                [_service_v1_op1, _service_v2_op1],
+                [1, 2],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v2_op1],
+            ),
+            (  # services with different version: expect the supported version
+                [_service_v1_op1, _service_v2_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v1_op1],
+            ),
+            (  # No supported versions: expect no results
+                [_service_v1_op1, _service_v1_op2],
+                [2],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [],
+            ),
+            (  # services without ServiceConfiguration: expect all supported
+                [_service_v1_op1, _service_v2_op1, _service_v1_op2],
+                [1],
+                None,
+                [_service_v1_op1, _service_v1_op2],
+            ),
+        ],
+    )
+    def test_get_valid_services(self, services, versions, config, expected_result):
+        result = SigningConfig._get_valid_services(services, versions, config)
+
+        assert len(result) == len(expected_result)
+        for s1, s2 in zip(result, expected_result):
+            assert s1.url == s2.url
+
+    @pytest.mark.parametrize(
+        "services, versions, config",
+        [
+            (  # ANY selector without services
+                [],
+                [1],
+                ServiceConfiguration(ServiceSelector.ANY),
+            ),
+            (  # EXACT selector without enough services
+                [_service_v1_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.EXACT, 2),
+            ),
+            (  # UNDEFINED selector
+                [_service_v1_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.UNDEFINED, 1),
+            ),
+        ],
+    )
+    def test_get_valid_services_fail(self, services, versions, config):
+        with pytest.raises(ValueError):
+            SigningConfig._get_valid_services(services, versions, config)
 
 
 class TestTrustedRoot:
