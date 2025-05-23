@@ -11,17 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
 import pytest
 
+from sigstore._internal.trust import ClientTrustConfig
 from sigstore.models import Bundle
 from sigstore.verify import Verifier
 from sigstore.verify.policy import UnsafeNoOp
 
 
-def get_cli_params(
+def _get_cli_params(
     artifact_paths: list[Path],
     overwrite: bool = False,
     no_default_files: bool = False,
@@ -29,8 +31,12 @@ def get_cli_params(
     bundle_path: Optional[Path] = None,
     signature_path: Optional[Path] = None,
     certificate_path: Optional[Path] = None,
+    trust_config_path: Optional[Path] = None,
 ) -> list[str]:
-    cli_params = ["--staging", "sign"]
+    if trust_config_path is not None:
+        cli_params = ["--trust-config", str(trust_config_path), "sign"]
+    else:
+        cli_params = ["--staging", "sign"]
     if output_directory is not None:
         cli_params.extend(["--output-directory", str(output_directory)])
     if bundle_path is not None:
@@ -49,6 +55,52 @@ def get_cli_params(
     return cli_params
 
 
+@pytest.fixture(params=[
+    True, False
+])
+def get_cli_params(request, asset) -> callable:
+    """
+    """
+    if request.param:
+        return _get_cli_params
+    return partial(_get_cli_params, trust_config_path=asset("tsa/trust_config.rekorv2_alpha.json"))
+
+
+@pytest.mark.ambient_oidc
+def test_sign_success_default_output_bundle_with_trust_config(
+    capsys, sigstore, asset_integration, asset
+):
+    artifact = asset_integration("a.txt")
+    expected_output_bundle = artifact.with_name("a.txt.sigstore.json")
+
+    trust_config = asset("tsa/trust_config.rekorv2_alpha.json")
+
+    assert not expected_output_bundle.exists()
+    sigstore(
+        *_get_cli_params(artifact_paths=[artifact], trust_config_path=trust_config))
+
+    assert expected_output_bundle.exists()
+    verifier = Verifier(
+        trusted_root=ClientTrustConfig.from_json(
+            trust_config.read_text()).trusted_root
+    )
+    with (
+        open(expected_output_bundle, "r") as bundle_file,
+        open(artifact, "rb") as input_file,
+    ):
+        bundle = Bundle.from_json(bundle_file.read())
+        verifier.verify_artifact(
+            input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()
+        )
+
+    expected_output_bundle.unlink()
+
+    captures = capsys.readouterr()
+    assert captures.out.endswith(
+        f"Sigstore bundle written to {expected_output_bundle}\n"
+    )
+
+
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
 def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration):
@@ -57,7 +109,7 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration)
 
     assert not expected_output_bundle.exists()
     sigstore(
-        *get_cli_params(
+        *_get_cli_params(
             artifact_paths=[artifact],
         )
     )
@@ -83,7 +135,7 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration)
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_success_custom_outputs(capsys, sigstore, asset_integration, tmp_path):
+def test_sign_success_custom_outputs(capsys, sigstore, asset_integration, tmp_path, get_cli_params):
     artifact = asset_integration("a.txt")
     output_bundle = tmp_path / "bundle.json"
     output_cert = tmp_path / "cert.cert"
@@ -110,7 +162,7 @@ def test_sign_success_custom_outputs(capsys, sigstore, asset_integration, tmp_pa
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_success_custom_output_dir(capsys, sigstore, asset_integration, tmp_path):
+def test_sign_success_custom_output_dir(capsys, sigstore, asset_integration, tmp_path, get_cli_params):
     artifact = asset_integration("a.txt")
     expected_output_bundle = tmp_path / "a.txt.sigstore.json"
 
@@ -131,7 +183,7 @@ def test_sign_success_custom_output_dir(capsys, sigstore, asset_integration, tmp
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_success_no_default_files(capsys, sigstore, asset_integration, tmp_path):
+def test_sign_success_no_default_files(capsys, sigstore, asset_integration, tmp_path, get_cli_params):
     artifact = asset_integration("a.txt")
     default_output_bundle = tmp_path / "a.txt.sigstore.json"
     output_cert = tmp_path / "cert.cert"
@@ -157,7 +209,7 @@ def test_sign_success_no_default_files(capsys, sigstore, asset_integration, tmp_
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration):
+def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration, get_cli_params):
     artifact = asset_integration("a.txt")
     expected_output_bundle = artifact.with_name("a.txt.sigstore.json")
 
@@ -196,7 +248,7 @@ def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration):
 
 
 def test_sign_fails_with_default_files_and_bundle_options(
-    capsys, sigstore, asset_integration
+    capsys, sigstore, asset_integration, get_cli_params
 ):
     artifact = asset_integration("a.txt")
     output_bundle = artifact.with_name("a.txt.sigstore.json")
@@ -218,7 +270,7 @@ def test_sign_fails_with_default_files_and_bundle_options(
 
 
 def test_sign_fails_with_multiple_inputs_and_custom_output(
-    capsys, sigstore, asset_integration
+    capsys, sigstore, asset_integration, get_cli_params
 ):
     artifact = asset_integration("a.txt")
 
@@ -263,7 +315,7 @@ def test_sign_fails_with_multiple_inputs_and_custom_output(
 
 
 def test_sign_fails_with_output_dir_and_custom_output_files(
-    capsys, sigstore, asset_integration
+    capsys, sigstore, asset_integration, get_cli_params
 ):
     artifact = asset_integration("a.txt")
 
@@ -311,7 +363,7 @@ def test_sign_fails_with_output_dir_and_custom_output_files(
 
 
 def test_sign_fails_without_both_output_cert_and_signature(
-    capsys, sigstore, asset_integration
+    capsys, sigstore, asset_integration, get_cli_params
 ):
     artifact = asset_integration("a.txt")
 

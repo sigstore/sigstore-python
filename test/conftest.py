@@ -28,7 +28,7 @@ _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def asset():
     def _asset(name: str) -> Path:
         return _ASSETS / name
