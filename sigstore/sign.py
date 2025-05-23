@@ -61,6 +61,7 @@ from sigstore._internal.fulcio import (
     FulcioClient,
 )
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
@@ -297,15 +298,33 @@ class SigningContext:
 
         @api private
         """
+        # Temporary code
+        # pending https://github.com/sigstore/sigstore-python/pull/1407
         signing_config = trust_config.signing_config
+        tlog_service = next(
+            (
+                service
+                for service in signing_config._inner.rekor_tlog_urls
+                if service.major_api_version in [1, 2]
+            ),
+            None,
+        )
+        if tlog_service.major_api_version == 1:
+            rekor_client = RekorClient(tlog_service.url)
+        elif tlog_service.major_api_version == 2:
+            rekor_client = RekorV2Client(tlog_service.url)
+        else:
+            raise ValueError("No supported rekor version supplied. Supporting {[1, 2]}")
+
         return cls(
             fulcio=FulcioClient(signing_config.get_fulcio_url()),
-            rekor=RekorClient(signing_config.get_tlog_urls()[0]),
+            rekor=rekor_client,
             trusted_root=trust_config.trusted_root,
             tsa_clients=[
                 TimestampAuthorityClient(url) for url in signing_config.get_tsa_urls()
             ],
         )
+        # Temporary code
 
     @contextmanager
     def signer(

@@ -215,7 +215,9 @@ def sign_ctx_and_ident_for_env(
 
 
 @pytest.fixture(scope="session")
-def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
+def staging_signer_verifier_token() -> tuple[
+    type[SigningContext], type[Verifier], IdentityToken
+]:
     """
     Returns a SigningContext, Verifier, and IdentityToken for the staging environment.
     The SigningContext and Verifier are both behind callables so that they may be lazily evaluated.
@@ -233,6 +235,37 @@ def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
         token = detect_credential(_DEFAULT_AUDIENCE)
 
     return signer, verifier, IdentityToken(token)
+
+
+@pytest.fixture(scope="session", params=[True, False])
+def staging(
+    request, asset, staging_signer_verifier_token
+) -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
+    """
+    Returns a SigningContext, Verifier, and IdentityToken for the staging environment,
+    And another for the alpha environment from a sample trust config.
+    The SigningContext and Verifier are both behind callables so that they may be lazily evaluated.
+    """
+    if request.param:
+        return staging_signer_verifier_token
+    else:
+
+        def signer():
+            return SigningContext.from_trust_config(
+                ClientTrustConfig.from_json(
+                    asset("tsa/trust_config.rekorv2_alpha.json").read_text()
+                )
+            )
+
+        def verifier():
+            return Verifier(
+                trusted_root=ClientTrustConfig.from_json(
+                    asset("tsa/trust_config.rekorv2_alpha.json").read_text()
+                ).trusted_root
+            )
+
+        _, _, token = staging_signer_verifier_token
+        return signer, verifier, token
 
 
 @pytest.fixture

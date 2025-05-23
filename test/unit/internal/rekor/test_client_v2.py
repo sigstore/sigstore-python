@@ -45,12 +45,12 @@ def client(request) -> RekorV2Client:
 
 @pytest.fixture(scope="session")
 def sample_cert_and_private_key(
-    staging,
+    staging_signer_verifier_token,
 ) -> tuple[Certificate, ec.EllipticCurvePrivateKey]:
     """
     Returns a sample Certificate and ec.EllipticCurvePrivateKey.
     """
-    sign_ctx_cls, _, identity = staging
+    sign_ctx_cls, _, identity = staging_signer_verifier_token
     with sign_ctx_cls().signer(identity) as signer:
         return signer._signing_cert(), signer._private_key
 
