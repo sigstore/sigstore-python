@@ -77,9 +77,6 @@ class RekorV2Client(RekorLogSubmitter):
         """
         Submit a new entry for inclusion in the Rekor log.
         """
-        # TODO: There may be a bug in betterproto, where the V_0_0_2 is changed to V002,
-        # Or it is an issue with the proto `json_value`.
-        # See https://github.com/sigstore/rekor-tiles/blob/bd5893730de581629a5f475923c663f776793496/api/proto/rekor_service.proto#L66.
         payload = request.to_dict()
         _logger.debug(f"proposed: {json.dumps(payload)}")
         resp = self.session.post(
