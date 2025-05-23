@@ -342,25 +342,27 @@ class SigningConfig:
 
         # Create lists of service protos that are valid & supported by this client
         # Limit the TSA and tlog lists using the service selector config
-        self._tlogs = self._get_valid_services(
-            self._inner.rekor_tlog_urls, REKOR_VERSIONS
-        )
-        if not self._tlogs:
+        tlogs = self._get_valid_services(self._inner.rekor_tlog_urls, REKOR_VERSIONS)
+        if not tlogs:
             raise Error("No valid Rekor transparency log found in signing config")
         if self._inner.rekor_tlog_config.selector == ServiceSelector.EXACT:
-            if len(self._tlogs) < self._inner.rekor_tlog_config.count:
+            if len(tlogs) < self._inner.rekor_tlog_config.count:
                 raise Error(
                     "Not enough Rekor transparency logs found in signing config"
                 )
-            self._tlogs = self._tlogs[: self._inner.rekor_tlog_config.count]
+            self._tlogs = tlogs[: self._inner.rekor_tlog_config.count]
         elif self._inner.rekor_tlog_config.selector == ServiceSelector.ANY:
-            self._tlogs = self._tlogs[:1]
+            self._tlogs = tlogs[:1]
+        else:
+            self._tlogs = tlogs
 
-        self._tsas = self._get_valid_services(self._inner.tsa_urls, TSA_VERSIONS)
+        tsas = self._get_valid_services(self._inner.tsa_urls, TSA_VERSIONS)
         if self._inner.tsa_config.selector == ServiceSelector.EXACT:
-            self._tsas = self._tsas[: self._inner.tsa_config.count]
+            self._tsas = tsas[: self._inner.tsa_config.count]
         elif self._inner.tsa_config.selector == ServiceSelector.ANY:
-            self._tsas = self._tsas[:1]
+            self._tsas = tsas[:1]
+        else:
+            self._tsas = tsas
 
         self._fulcios = self._get_valid_services(self._inner.ca_urls, FULCIO_VERSIONS)
         if not self._fulcios:
@@ -395,7 +397,7 @@ class SigningConfig:
         # return a list of services but make sure we only return logs of one version per operator
         result: list[Service] = []
         for logs in logs_by_operator.values():
-            logs.sort(key=lambda s: s.major_api_version)
+            logs.sort(key=lambda s: -s.major_api_version)
             max_version = logs[-1].major_api_version
 
             while logs and logs[-1].major_api_version == max_version:
