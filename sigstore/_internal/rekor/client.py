@@ -330,12 +330,6 @@ class RekorV2Client:
         """
         # There may be a bug in betterproto, where the V_0_0_2 is changed to V002.
         payload = request.to_dict()
-        if "hashedRekordRequestV002" in payload:
-            payload["hashedRekordRequestV0_0_2"] = payload.pop(
-                "hashedRekordRequestV002"
-            )
-        if "dsseRequestV002" in payload:
-            payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
         _logger.debug(f"request: {json.dumps(payload)}")
         resp = self.session.post(f"{self.url}/log/entries", json=payload)
 
