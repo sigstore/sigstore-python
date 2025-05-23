@@ -34,6 +34,6 @@
     "selector": "ANY"
   },
   "tsaConfig": {
-    "selector": "ANY"
+    "selector": "ALL"
   }
 }
