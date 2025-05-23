@@ -16,6 +16,8 @@
 APIs for interacting with Rekor.
 """
 
+from __future__ import annotations
+
 import base64
 from abc import ABC, abstractmethod
 
