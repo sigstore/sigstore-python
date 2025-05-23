@@ -79,13 +79,7 @@ class RekorV2Client:
         # Or it is an issue with the proto `json_value`.
         # See https://github.com/sigstore/rekor-tiles/blob/bd5893730de581629a5f475923c663f776793496/api/proto/rekor_service.proto#L66.
         payload = request.to_dict()
-        if "hashedRekordRequestV002" in payload:
-            payload["hashedRekordRequestV0_0_2"] = payload.pop(
-                "hashedRekordRequestV002"
-            )
-        if "dsseRequestV002" in payload:
-            payload["dsseRequestV0_0_2"] = payload.pop("dsseRequestV002")
-        _logger.debug(f"request: {json.dumps(payload)}")
+        _logger.debug(f"proposed: {json.dumps(payload)}")
         resp = self.session.post(
             f"{self.url}/log/entries",
             json=payload,
