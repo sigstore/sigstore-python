@@ -1,14 +1,10 @@
 import hashlib
-import os
 import secrets
 
 import pytest
-from id import (
-    detect_credential,
-)
 
 from sigstore import dsse
-from sigstore._internal.rekor.client import STAGING_REKOR_URL
+from sigstore._internal.rekor.client import DEFAULT_REKOR_URL, STAGING_REKOR_URL
 from sigstore._internal.rekor.client_v2 import (
     DEFAULT_KEY_DETAILS,
     Certificate,
@@ -20,11 +16,9 @@ from sigstore._internal.rekor.client_v2 import (
     v2,
     v2_intoto,
 )
-from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.models import rekor_v1
-from sigstore.oidc import _DEFAULT_AUDIENCE, IdentityToken
-from sigstore.sign import SigningContext, ec
+from sigstore.sign import ec
 
 ALPHA_REKOR_V2_URL = "https://log2025-alpha1.rekor.sigstage.dev"
 LOCAL_REKOR_V2_URL = "http://localhost:3000"
@@ -37,8 +31,8 @@ LOCAL_REKOR_V2_URL = "http://localhost:3000"
     params=[
         ALPHA_REKOR_V2_URL,
         pytest.param(STAGING_REKOR_URL, marks=pytest.mark.xfail),
-        # pytest.param(DEFAULT_REKOR_URL, marks=pytest.mark.xfail),
-        # pytest.param(LOCAL_REKOR_V2_URL, marks=pytest.mark.xfail),
+        pytest.param(DEFAULT_REKOR_URL, marks=pytest.mark.skip),
+        pytest.param(LOCAL_REKOR_V2_URL, marks=pytest.mark.skip),
     ],
 )
 def client(request) -> RekorV2Client:
@@ -50,19 +44,14 @@ def client(request) -> RekorV2Client:
 
 
 @pytest.fixture(scope="session")
-def sample_cert_and_private_key() -> tuple[Certificate, ec.EllipticCurvePrivateKey]:
+def sample_cert_and_private_key(
+    staging,
+) -> tuple[Certificate, ec.EllipticCurvePrivateKey]:
     """
     Returns a sample Certificate and ec.EllipticCurvePrivateKey.
     """
-    # Detect env variable for local interactive tests.
-    token = os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")
-    if not token:
-        # If the variable is not defined, try getting an ambient token.
-        token = detect_credential(_DEFAULT_AUDIENCE)
-
-    with SigningContext.from_trust_config(ClientTrustConfig.staging()).signer(
-        IdentityToken(token)
-    ) as signer:
+    sign_ctx_cls, _, identity = staging
+    with sign_ctx_cls().signer(identity) as signer:
         return signer._signing_cert(), signer._private_key
 
 
