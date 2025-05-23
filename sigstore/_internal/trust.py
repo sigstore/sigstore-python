@@ -372,38 +372,40 @@ class SigningConfig:
         inner = _SigningConfig().from_json(Path(path).read_bytes())
         return cls(inner)
 
+    @staticmethod
     def _get_valid_services(
-        self,
         services: list[Service],
-        valid_versions: list[int],
+        supported_versions: list[int],
         config: ServiceConfiguration | None,
     ) -> list[Service]:
         """Return supported services, taking SigningConfig restrictions into account"""
 
-        # split logs by operator, only include valid services
-        logs_by_operator: dict[str, list[Service]] = defaultdict(list)
+        # split services by operator, only include valid services
+        services_by_operator: dict[str, list[Service]] = defaultdict(list)
         for service in services:
-            if service.major_api_version not in valid_versions:
+            if service.major_api_version not in supported_versions:
                 continue
 
             if not _is_timerange_valid(service.valid_for, allow_expired=False):
                 continue
 
-            logs_by_operator[service.operator].append(service)
+            services_by_operator[service.operator].append(service)
 
-        # build a list of services but make sure we only include logs of one version per operator
+        # build a list of services but make sure we only include one service per operator
+        # and use the highest version available for that operator
         result: list[Service] = []
-        for logs in logs_by_operator.values():
-            logs.sort(key=lambda s: -s.major_api_version)
-            max_version = logs[-1].major_api_version
+        for op_services in services_by_operator.values():
+            op_services.sort(key=lambda s: s.major_api_version)
+            result.append(op_services[-1])
 
-            while logs and logs[-1].major_api_version == max_version:
-                result.append(logs.pop())
-
-        # limit the list based on ServiceConfiguration
+        # Depending on ServiceSelector, prune the result list
         if not config or config.selector == ServiceSelector.ALL:
             return result
 
+        if config.selector == ServiceSelector.UNDEFINED:
+            raise ValueError("Undefined is not a valid signing config ServiceSelector")
+
+        # handle EXACT and ANY selectors
         count = config.count if config.selector == ServiceSelector.EXACT else 1
         if len(result) < count:
             raise ValueError(
