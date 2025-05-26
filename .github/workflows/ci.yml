@@ -78,6 +78,7 @@ jobs:
 
           # Ensure Timestamp Authority tests are not skipped by
           # having pytest show skipped tests and verifying ours are running
+          set -o pipefail
           make test TEST_ARGS="-m timestamp_authority -rs" | tee output
           ! grep -q "skipping test that requires a Timestamp Authority" output || (echo "ERROR: Found skip message" && exit 1)
         env:
