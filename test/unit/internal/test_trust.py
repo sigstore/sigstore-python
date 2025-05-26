@@ -96,74 +96,82 @@ class TestSigningcconfig:
     @pytest.mark.parametrize(
         "services, versions, config, expected_result",
         [
-            (
+            pytest.param(
                 [_service_v1_op1],
                 [1],
                 ServiceConfiguration(ServiceSelector.ALL),
                 [_service_v1_op1],
+                id="base case",
             ),
-            (  # multiple services, same operator: expect 1 service in result
+            pytest.param(
                 [_service_v1_op1, _service2_v1_op1],
                 [1],
                 ServiceConfiguration(ServiceSelector.ALL),
                 [_service2_v1_op1],
+                id="multiple services, same operator: expect 1 service in result",
             ),
-            (  # 2 services, different operator: expect 2 services in result
+            pytest.param(
                 [_service_v1_op1, _service_v1_op2],
                 [1],
                 ServiceConfiguration(ServiceSelector.ALL),
                 [_service_v1_op1, _service_v1_op2],
+                id="2 services, different operator: expect 2 services in result",
             ),
-            (  # 3 services, one is not yet valid: expect 2 services in result
+            pytest.param(
                 [_service_v1_op1, _service_v1_op2, _service_v1_op4],
                 [1],
                 ServiceConfiguration(ServiceSelector.ALL),
                 [_service_v1_op1, _service_v1_op2],
+                id="3 services, one is not yet valid: expect 2 services in result",
             ),
-            (  # ANY selector: expect 1 service only in result
+            pytest.param(
                 [_service_v1_op1, _service_v1_op2],
                 [1],
                 ServiceConfiguration(ServiceSelector.ANY),
                 [_service_v1_op1],
+                id="ANY selector: expect 1 service only in result",
             ),
-            (  # EXACT selector: expect configured number of services in result
+            pytest.param(
                 [_service_v1_op1, _service_v1_op2, _service_v1_op3],
                 [1],
                 ServiceConfiguration(ServiceSelector.EXACT, 2),
                 [_service_v1_op1, _service_v1_op2],
+                id="EXACT selector: expect configured number of services in result",
             ),
-            (  # services with different version: expect highest version
+            pytest.param(
                 [_service_v1_op1, _service_v2_op1],
                 [1, 2],
                 ServiceConfiguration(ServiceSelector.ALL),
                 [_service_v2_op1],
+                id="services with different version: expect highest version",
             ),
-            (  # services with different version: expect the supported version
+            pytest.param(
                 [_service_v1_op1, _service_v2_op1],
                 [1],
                 ServiceConfiguration(ServiceSelector.ALL),
                 [_service_v1_op1],
+                id="services with different version: expect the supported version",
             ),
-            (  # No supported versions: expect no results
+            pytest.param(
                 [_service_v1_op1, _service_v1_op2],
                 [2],
                 ServiceConfiguration(ServiceSelector.ALL),
                 [],
+                id="No supported versions: expect no results",
             ),
-            (  # services without ServiceConfiguration: expect all supported
+            pytest.param(
                 [_service_v1_op1, _service_v2_op1, _service_v1_op2],
                 [1],
                 None,
                 [_service_v1_op1, _service_v1_op2],
+                id="services without ServiceConfiguration: expect all supported",
             ),
         ],
     )
     def test_get_valid_services(self, services, versions, config, expected_result):
         result = SigningConfig._get_valid_services(services, versions, config)
 
-        assert len(result) == len(expected_result)
-        for s1, s2 in zip(result, expected_result):
-            assert s1.url == s2.url
+        assert result == expected_result
 
     @pytest.mark.parametrize(
         "services, versions, config",
