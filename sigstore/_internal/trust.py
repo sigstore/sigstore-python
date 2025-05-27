@@ -18,6 +18,7 @@ Client trust configuration and trust root management for sigstore-python.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -46,6 +47,7 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
 )
 from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     Service,
+    ServiceConfiguration,
     ServiceSelector,
     TransparencyLogInstance,
 )
@@ -56,6 +58,9 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
     TrustedRoot as _TrustedRoot,
 )
 
+from sigstore._internal.fulcio.client import FulcioClient
+from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
 from sigstore._utils import (
     KeyID,
@@ -65,6 +70,12 @@ from sigstore._utils import (
     read_embedded,
 )
 from sigstore.errors import Error, MetadataError, TUFError, VerificationError
+
+# Versions supported by this client
+REKOR_VERSIONS = [1]
+TSA_VERSIONS = [1]
+FULCIO_VERSIONS = [1]
+OIDC_VERSIONS = [1]
 
 
 def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
@@ -323,13 +334,6 @@ class SigningConfig:
         @api private
         """
         self._inner = inner
-        self._verify()
-
-    def _verify(self) -> None:
-        """
-        Performs various feats of heroism to ensure that the signing config
-        is well-formed.
-        """
 
         # must have a recognized media type.
         try:
@@ -337,14 +341,27 @@ class SigningConfig:
         except ValueError:
             raise Error(f"unsupported signing config format: {self._inner.media_type}")
 
-        # currently not supporting other select modes
-        # TODO: Support other modes ensuring tsa_urls() and tlog_urls() work
-        if self._inner.rekor_tlog_config.selector != ServiceSelector.ANY:
-            raise Error(
-                f"unsupported tlog selector {self._inner.rekor_tlog_config.selector}"
-            )
-        if self._inner.tsa_config.selector != ServiceSelector.ANY:
-            raise Error(f"unsupported TSA selector {self._inner.tsa_config.selector}")
+        # Create lists of service protos that are valid, selected by the service
+        # configuration & supported by this client
+        self._tlogs = self._get_valid_services(
+            self._inner.rekor_tlog_urls, REKOR_VERSIONS, self._inner.rekor_tlog_config
+        )
+        if not self._tlogs:
+            raise Error("No valid Rekor transparency log found in signing config")
+
+        self._tsas = self._get_valid_services(
+            self._inner.tsa_urls, TSA_VERSIONS, self._inner.tsa_config
+        )
+
+        self._fulcios = self._get_valid_services(
+            self._inner.ca_urls, FULCIO_VERSIONS, None
+        )
+        if not self._fulcios:
+            raise Error("No valid Fulcio CA found in signing config")
+
+        self._oidcs = self._get_valid_services(
+            self._inner.oidc_urls, OIDC_VERSIONS, None
+        )
 
     @classmethod
     def from_file(
@@ -356,54 +373,73 @@ class SigningConfig:
         return cls(inner)
 
     @staticmethod
-    def _get_valid_service_url(services: list[Service]) -> str | None:
+    def _get_valid_services(
+        services: list[Service],
+        supported_versions: list[int],
+        config: ServiceConfiguration | None,
+    ) -> list[Service]:
+        """Return supported services, taking SigningConfig restrictions into account"""
+
+        # split services by operator, only include valid services
+        services_by_operator: dict[str, list[Service]] = defaultdict(list)
         for service in services:
-            if service.major_api_version != 1:
+            if service.major_api_version not in supported_versions:
                 continue
 
             if not _is_timerange_valid(service.valid_for, allow_expired=False):
                 continue
-            return service.url
-        return None
 
-    def get_tlog_urls(self) -> list[str]:
-        """
-        Returns the rekor transparency logs that client should sign with.
-        Currently only returns a single one but could in future return several
-        """
+            services_by_operator[service.operator].append(service)
 
-        url = self._get_valid_service_url(self._inner.rekor_tlog_urls)
-        if not url:
-            raise Error("No valid Rekor transparency log found in signing config")
-        return [url]
+        # build a list of services but make sure we only include one service per operator
+        # and use the highest version available for that operator
+        result: list[Service] = []
+        for op_services in services_by_operator.values():
+            op_services.sort(key=lambda s: s.major_api_version)
+            result.append(op_services[-1])
 
-    def get_fulcio_url(self) -> str:
+        # Depending on ServiceSelector, prune the result list
+        if not config or config.selector == ServiceSelector.ALL:
+            return result
+
+        if config.selector == ServiceSelector.UNDEFINED:
+            raise ValueError("Undefined is not a valid signing config ServiceSelector")
+
+        # handle EXACT and ANY selectors
+        count = config.count if config.selector == ServiceSelector.EXACT else 1
+        if len(result) < count:
+            raise ValueError(
+                f"Expected {count} services in signing config, found {len(result)}"
+            )
+
+        return result[:count]
+
+    def get_tlogs(self) -> list[RekorClient]:
         """
-        Returns url for the fulcio instance that client should use to get a
-        signing certificate from
+        Returns the rekor transparency log clients to sign with.
         """
-        url = self._get_valid_service_url(self._inner.ca_urls)
-        if not url:
-            raise Error("No valid Fulcio CA found in signing config")
-        return url
+        return [RekorClient(tlog.url) for tlog in self._tlogs]
+
+    def get_fulcio(self) -> FulcioClient:
+        """
+        Returns a Fulcio client to get a signing certificate from
+        """
+        return FulcioClient(self._fulcios[0].url)
 
     def get_oidc_url(self) -> str:
         """
         Returns url for the OIDC provider that client should use to interactively
         authenticate.
         """
-        url = self._get_valid_service_url(self._inner.oidc_urls)
-        if not url:
+        if not self._oidcs:
             raise Error("No valid OIDC provider found in signing config")
-        return url
+        return self._oidcs[0].url
 
-    def get_tsa_urls(self) -> list[str]:
+    def get_tsas(self) -> list[TimestampAuthorityClient]:
         """
-        Returns timestamp authority API end points. Currently returns a single one
-        but may return more in future.
+        Returns timestamp authority clients for urls configured in signing config.
         """
-        url = self._get_valid_service_url(self._inner.tsa_urls)
-        return [] if url is None else [url]
+        return [TimestampAuthorityClient(s.url) for s in self._tsas]
 
 
 class TrustedRoot:
