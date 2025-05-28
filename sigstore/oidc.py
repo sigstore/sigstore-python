@@ -44,6 +44,7 @@ _KNOWN_OIDC_ISSUERS = {
 
 _DEFAULT_CLIENT_ID = "sigstore"
 
+
 class _OpenIDConfiguration(BaseModel):
     """
     Represents a (subset) of the fields provided by an OpenID Connect provider's
@@ -66,7 +67,7 @@ class IdentityToken:
     a sensible subject, issuer, and audience for Sigstore purposes.
     """
 
-    def __init__(self, raw_token: str, client_id: str) -> None:
+    def __init__(self, raw_token: str, client_id: Optional[str]) -> None:
         """
         Create a new `IdentityToken` from the given OIDC token.
         """
@@ -270,7 +271,7 @@ class Issuer:
 
     def identity_token(  # nosec: B107
         self,
-        client_id: str = None,
+        client_id: Optional[str] = None,
         client_secret: str = "",
         force_oob: bool = False,
     ) -> IdentityToken:

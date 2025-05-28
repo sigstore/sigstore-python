@@ -208,7 +208,7 @@ def _add_shared_oidc_options(
         "--oidc-client-id",
         metavar="ID",
         type=str,
-        default=os.getenv("SIGSTORE_OIDC_CLIENT_ID"),
+        default=os.getenv("SIGSTORE_OIDC_CLIENT_ID", "sigstore"),
         help="The custom OpenID Connect client ID to use during OAuth2",
     )
     group.add_argument(
@@ -237,6 +237,7 @@ def _add_shared_oidc_options(
         default=_boolify_env("SIGSTORE_OAUTH_FORCE_OOB"),
         help="Force an out-of-band OAuth flow and do not automatically start the default web browser",
     )
+
 
 def _parser() -> argparse.ArgumentParser:
     # Arguments in parent_parser can be used for both commands and subcommands
@@ -658,7 +659,7 @@ def _sign_common(
     # 3) Interactive OAuth flow
     identity: IdentityToken | None
     if args.identity_token:
-        identity = IdentityToken(args.identity_token)
+        identity = IdentityToken(args.identity_token, args.client_id)
     else:
         identity = _get_identity(args, trust_config)
 
@@ -1184,7 +1185,7 @@ def _get_identity(
 
     # Happy path: we've detected an ambient credential, so we can return early.
     if token:
-        return IdentityToken(token)
+        return IdentityToken(token, args.client_id)
 
     if args.oidc_issuer is not None:
         issuer = Issuer(args.oidc_issuer)

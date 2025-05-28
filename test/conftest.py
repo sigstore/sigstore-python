@@ -22,7 +22,6 @@ from id import (
     detect_credential,
 )
 
-
 _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
 
