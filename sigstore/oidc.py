@@ -67,7 +67,7 @@ class IdentityToken:
     a sensible subject, issuer, and audience for Sigstore purposes.
     """
 
-    def __init__(self, raw_token: str, client_id: Optional[str]) -> None:
+    def __init__(self, raw_token: str, client_id: str) -> None:
         """
         Create a new `IdentityToken` from the given OIDC token.
         """
@@ -271,7 +271,7 @@ class Issuer:
 
     def identity_token(  # nosec: B107
         self,
-        client_id: Optional[str] = None,
+        client_id: str = _DEFAULT_CLIENT_ID,
         client_secret: str = "",
         force_oob: bool = False,
     ) -> IdentityToken:
@@ -285,8 +285,6 @@ class Issuer:
         an out-of-band flow. When `True`, the out-of-band flow is always used.
         """
 
-        if client_id is None:
-            client_id = _DEFAULT_CLIENT_ID
         # This function and the components that it relies on are based off of:
         # https://github.com/psteniusubi/python-sample
 
@@ -405,11 +403,8 @@ class IdentityError(Error):
             """
 
 
-def detect_credential(client_id: Optional[str] = None) -> Optional[str]:
+def detect_credential(client_id: str = _DEFAULT_CLIENT_ID) -> Optional[str]:
     """Calls `id.detect_credential`, but wraps exceptions with our own exception type."""
-
-    if client_id is None:
-        client_id = _DEFAULT_CLIENT_ID
 
     try:
         return cast(Optional[str], id.detect_credential(client_id))
