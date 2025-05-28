@@ -37,6 +37,7 @@ from tuf.ngclient import FetcherInterface, updater
 from sigstore._internal import tuf
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.models import Bundle
 from sigstore.oidc import IdentityToken
@@ -188,10 +189,20 @@ def sign_ctx_and_ident_for_env(
     pytestconfig,
     env: str,
 ) -> tuple[type[SigningContext], type[IdentityToken]]:
+    """
+    Returns a SigningContext and IdentityToken for the given environment.
+    The SigningContext is behind a callable so that it may be lazily evaluated.
+    """
     if env == "staging":
-        ctx_cls = SigningContext.staging
+
+        def ctx_cls():
+            return SigningContext.from_trust_config(ClientTrustConfig.staging())
+
     elif env == "production":
-        ctx_cls = SigningContext.production
+
+        def ctx_cls():
+            return SigningContext.from_trust_config(ClientTrustConfig.production())
+
     else:
         raise ValueError(f"Unknown env {env}")
 
@@ -205,7 +216,14 @@ def sign_ctx_and_ident_for_env(
 
 @pytest.fixture
 def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
-    signer = SigningContext.staging
+    """
+    Returns a SigningContext, Verifier, and IdentityToken for the staging environment.
+    The SigningContext and Verifier are both behind callables so that they may be lazily evaluated.
+    """
+
+    def signer():
+        return SigningContext.from_trust_config(ClientTrustConfig.staging())
+
     verifier = Verifier.staging
 
     # Detect env variable for local interactive tests.
