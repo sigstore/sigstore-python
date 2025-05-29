@@ -69,22 +69,23 @@ usage: sigstore [-h] [-v] [-V] [--staging | --trust-config FILE] COMMAND ...
 a tool for signing and verifying Python package distributions
 
 positional arguments:
-  COMMAND               the operation to perform
-    attest              sign one or more inputs using DSSE
-    sign                sign one or more inputs
-    verify              verify one or more inputs
-    get-identity-token  retrieve and return a Sigstore-compatible OpenID
-                        Connect token
-    plumbing            developer-only plumbing operations
+  COMMAND              the operation to perform
+    attest             sign one or more inputs using DSSE
+    sign               sign one or more inputs
+    verify             verify one or more inputs
+    get-identity-token
+                       retrieve and return a Sigstore-compatible OpenID
+                       Connect token
+    plumbing           developer-only plumbing operations
 
-options:
-  -h, --help            show this help message and exit
-  -v, --verbose         run with additional debug logging; supply multiple
-                        times to increase verbosity (default: 0)
-  -V, --version         show program's version number and exit
-  --staging             Use sigstore's staging instances, instead of the
-                        default production instances (default: False)
-  --trust-config FILE   The client trust configuration to use (default: None)
+optional arguments:
+  -h, --help           show this help message and exit
+  -v, --verbose        run with additional debug logging; supply multiple
+                       times to increase verbosity (default: 0)
+  -V, --version        show program's version number and exit
+  --staging            Use sigstore's staging instances, instead of the
+                       default production instances (default: False)
+  --trust-config FILE  The client trust configuration to use (default: None)
 ```
 <!-- @end-sigstore-help@ -->
 
@@ -104,7 +105,7 @@ usage: sigstore sign [-h] [-v] [--identity-token TOKEN] [--oidc-client-id ID]
 positional arguments:
   FILE                  The file to sign
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
@@ -128,10 +129,10 @@ OpenID Connect options:
 Output options:
   --no-default-files    Don't emit the default output files
                         ({input}.sigstore.json) (default: False)
-  --signature, --output-signature FILE
+  --signature FILE, --output-signature FILE
                         Write a single signature to the given file; does not
                         work with multiple input files (default: None)
-  --certificate, --output-certificate FILE
+  --certificate FILE, --output-certificate FILE
                         Write a single certificate to the given file; does not
                         work with multiple input files (default: None)
   --bundle FILE         Write a single Sigstore bundle to the given file; does
@@ -160,7 +161,7 @@ usage: sigstore attest [-h] [-v] --predicate FILE --predicate-type TYPE
 positional arguments:
   FILE                  The file to sign
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
@@ -204,17 +205,17 @@ Output options:
 ```
 usage: sigstore verify identity [-h] [-v] [--certificate FILE]
                                 [--signature FILE] [--bundle FILE] [--offline]
-                                --cert-identity IDENTITY
-                                --cert-oidc-issuer URL
+                                --cert-identity IDENTITY --cert-oidc-issuer
+                                URL
                                 FILE_OR_DIGEST [FILE_OR_DIGEST ...]
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
 
 Verification inputs:
-  --certificate, --cert FILE
+  --certificate FILE, --cert FILE
                         The PEM-encoded certificate to verify against; not
                         used with multiple inputs (default: None)
   --signature FILE      The signature to verify against; not used with
@@ -247,13 +248,13 @@ usage: sigstore verify github [-h] [-v] [--certificate FILE]
                               [--ref REF]
                               FILE_OR_DIGEST [FILE_OR_DIGEST ...]
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
 
 Verification inputs:
-  --certificate, --cert FILE
+  --certificate FILE, --cert FILE
                         The PEM-encoded certificate to verify against; not
                         used with multiple inputs (default: None)
   --signature FILE      The signature to verify against; not used with
