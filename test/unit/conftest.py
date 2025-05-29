@@ -47,6 +47,8 @@ from sigstore.verify.verifier import Verifier
 _TUF_ASSETS = (Path(__file__).parent.parent / "assets" / "staging-tuf").resolve()
 assert _TUF_ASSETS.is_dir()
 
+TEST_CLIENT_ID = "sigstore"
+
 
 @pytest.fixture
 def x509_testcase(asset):
@@ -209,7 +211,7 @@ def sign_ctx_and_ident_for_env(
     token = os.getenv(f"SIGSTORE_IDENTITY_TOKEN_{env}")
     if not token:
         # If the variable is not defined, try getting an ambient token.
-        token = detect_credential()
+        token = detect_credential(TEST_CLIENT_ID)
 
     return ctx_cls, IdentityToken(token)
 
@@ -230,7 +232,7 @@ def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
     token = os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")
     if not token:
         # If the variable is not defined, try getting an ambient token.
-        token = detect_credential()
+        token = detect_credential(TEST_CLIENT_ID)
 
     return signer, verifier, IdentityToken(token)
 
