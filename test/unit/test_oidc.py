@@ -18,15 +18,13 @@ import pytest
 
 from sigstore import oidc
 
-TEST_CLIENT_ID = "sigstore"
-
 
 class TestIdentityToken:
     def test_invalid_jwt(self):
         with pytest.raises(
             oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
-            oidc.IdentityToken("invalid jwt", TEST_CLIENT_ID)
+            oidc.IdentityToken("invalid jwt")
 
     def test_missing_iss(self, dummy_jwt):
         now = int(datetime.datetime.now().timestamp())
@@ -43,7 +41,7 @@ class TestIdentityToken:
         with pytest.raises(
             oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     def test_missing_aud(self, dummy_jwt):
         now = int(datetime.datetime.now().timestamp())
@@ -60,7 +58,7 @@ class TestIdentityToken:
         with pytest.raises(
             oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     @pytest.mark.parametrize("aud", (None, "not-sigstore"))
     def test_invalid_aud(self, dummy_jwt, aud):
@@ -79,7 +77,7 @@ class TestIdentityToken:
         with pytest.raises(
             oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     def test_missing_iat(self, dummy_jwt):
         now = int(datetime.datetime.now().timestamp())
@@ -96,7 +94,7 @@ class TestIdentityToken:
         with pytest.raises(
             oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     @pytest.mark.parametrize("iat", (None, "not-an-int"))
     def test_invalid_iat(self, dummy_jwt, iat):
@@ -115,7 +113,7 @@ class TestIdentityToken:
         with pytest.raises(
             oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     def test_missing_nbf_ok(self, dummy_jwt):
         now = int(datetime.datetime.now().timestamp())
@@ -129,7 +127,7 @@ class TestIdentityToken:
             }
         )
 
-        assert oidc.IdentityToken(jwt, TEST_CLIENT_ID) is not None
+        assert oidc.IdentityToken(jwt) is not None
 
     def test_invalid_nbf(self, dummy_jwt):
         now = int(datetime.datetime.now().timestamp())
@@ -148,7 +146,7 @@ class TestIdentityToken:
             oidc.IdentityError,
             match="Identity token is not within its validity period",
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     def test_missing_exp(self, dummy_jwt):
         now = int(datetime.datetime.now().timestamp())
@@ -165,7 +163,7 @@ class TestIdentityToken:
         with pytest.raises(
             oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     def test_invalid_exp(self, dummy_jwt):
         now = int(datetime.datetime.now().timestamp())
@@ -184,7 +182,7 @@ class TestIdentityToken:
         with pytest.raises(
             oidc.IdentityError, match="Identity token is malformed or missing claims"
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     @pytest.mark.parametrize(
         "iss", [k for k, v in oidc._KNOWN_OIDC_ISSUERS.items() if v != "sub"]
@@ -206,7 +204,7 @@ class TestIdentityToken:
             oidc.IdentityError,
             match=r"Identity token is missing the required '.+' claim",
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     @pytest.mark.parametrize("fed", ("notadict", {"connector_id": 123}))
     def test_invalid_federated_claims(self, dummy_jwt, fed):
@@ -228,7 +226,7 @@ class TestIdentityToken:
             oidc.IdentityError,
             match="unexpected claim type: federated_claims.*",
         ):
-            oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+            oidc.IdentityToken(jwt)
 
     @pytest.mark.parametrize(
         ("iss", "identity_claim", "identity_value", "fed_iss"),
@@ -265,7 +263,7 @@ class TestIdentityToken:
             }
         )
 
-        identity = oidc.IdentityToken(jwt, TEST_CLIENT_ID)
+        identity = oidc.IdentityToken(jwt)
         assert identity.in_validity_period()
         assert identity.identity == identity_value
         assert identity.issuer == iss

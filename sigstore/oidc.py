@@ -67,7 +67,7 @@ class IdentityToken:
     a sensible subject, issuer, and audience for Sigstore purposes.
     """
 
-    def __init__(self, raw_token: str, client_id: str) -> None:
+    def __init__(self, raw_token: str, client_id: str = _DEFAULT_CLIENT_ID) -> None:
         """
         Create a new `IdentityToken` from the given OIDC token.
         """

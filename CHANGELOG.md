@@ -16,7 +16,7 @@ All versions prior to 0.9.0 are untracked.
 
 * Added support for ed25519 keys.
   [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
-* api: `IdentityToken` now supports `client_id` for audience claim validation.
+* API: `IdentityToken` now supports `client_id` for audience claim validation.
   [#1402](https://github.com/sigstore/sigstore-python/pull/1402)
 
 
