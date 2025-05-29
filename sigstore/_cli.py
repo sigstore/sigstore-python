@@ -1181,7 +1181,7 @@ def _get_identity(
 ) -> Optional[IdentityToken]:
     token = None
     if not args.oidc_disable_ambient_providers:
-        token = detect_credential()
+        token = detect_credential(args.oidc_client_id)
 
     # Happy path: we've detected an ambient credential, so we can return early.
     if token:
