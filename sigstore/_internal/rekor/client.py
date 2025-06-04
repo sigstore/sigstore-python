@@ -32,6 +32,7 @@ from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.rekor import (
+    EntryRequest,
     RekorLogSubmitter,
 )
 from sigstore.dsse import Envelope
@@ -153,13 +154,12 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
+        payload: EntryRequest,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
 
-        payload = proposed_entry.model_dump(mode="json", by_alias=True)
         _logger.debug(f"proposed: {json.dumps(payload)}")
 
         resp: requests.Response = self.session.post(self.url, json=payload)
@@ -270,9 +270,7 @@ class RekorClient(RekorLogSubmitter):
         """
         return RekorLog(f"{self.url}/log", session=self.session)
 
-    def create_entry(  # type: ignore[override]
-        self, request: rekor_types.Hashedrekord | rekor_types.Dsse
-    ) -> LogEntry:
+    def create_entry(self, request: EntryRequest) -> LogEntry:
         """
         Submit the request to Rekor.
         """
@@ -280,11 +278,11 @@ class RekorClient(RekorLogSubmitter):
 
     def _build_hashed_rekord_request(  # type: ignore[override]
         self, hashed_input: Hashed, signature: bytes, certificate: Certificate
-    ) -> rekor_types.Hashedrekord:
+    ) -> EntryRequest:
         """
-        Construct a hashed rekord request to submit to Rekor.
+        Construct a hashed rekord payload to submit to Rekor.
         """
-        return rekor_types.Hashedrekord(
+        rekord = rekor_types.Hashedrekord(
             spec=rekor_types.hashedrekord.HashedrekordV001Schema(
                 signature=rekor_types.hashedrekord.Signature(
                     content=base64.b64encode(signature).decode(),
@@ -304,14 +302,15 @@ class RekorClient(RekorLogSubmitter):
                 ),
             ),
         )
+        return EntryRequest(rekord.model_dump(mode="json", by_alias=True))
 
     def _build_dsse_request(  # type: ignore[override]
         self, envelope: Envelope, certificate: Certificate
-    ) -> rekor_types.Dsse:
+    ) -> EntryRequest:
         """
         Construct a dsse request to submit to Rekor.
         """
-        return rekor_types.Dsse(
+        dsse = rekor_types.Dsse(
             spec=rekor_types.dsse.DsseSchema(
                 # NOTE: mypy can't see that this kwarg is correct due to two interacting
                 # behaviors/bugs (one pydantic, one datamodel-codegen):
@@ -329,3 +328,4 @@ class RekorClient(RekorLogSubmitter):
                 ),
             ),
         )
+        return EntryRequest(dsse.model_dump(mode="json", by_alias=True))

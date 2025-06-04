@@ -45,7 +45,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import cryptography.x509 as x509
-import rekor_types
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
@@ -60,6 +59,7 @@ from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioClient,
 )
+from sigstore._internal.rekor import EntryRequest
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
@@ -175,7 +175,7 @@ class Signer:
         self,
         cert: x509.Certificate,
         content: MessageSignature | dsse.Envelope,
-        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
+        proposed_entry: EntryRequest,
     ) -> Bundle:
         """
         Perform the common "finalizing" steps in a Sigstore signing flow.

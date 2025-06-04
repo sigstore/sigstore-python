@@ -27,7 +27,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.rekor import RekorLogSubmitter
+from sigstore._internal.rekor import EntryRequest, RekorLogSubmitter
 from sigstore._internal.rekor.v2_types.dev.sigstore.common import v1 as common_v1
 from sigstore._internal.rekor.v2_types.dev.sigstore.rekor import v2
 from sigstore._internal.rekor.v2_types.io import intoto as v2_intoto
@@ -72,12 +72,10 @@ class RekorV2Client(RekorLogSubmitter):
         """
         self.session.close()
 
-    # TODO: when we remove the original Rekor client, remove the type ignore here
-    def create_entry(self, request: v2.CreateEntryRequest) -> LogEntry:  # type: ignore[override]
+    def create_entry(self, payload: EntryRequest) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
-        payload = request.to_dict()
         _logger.debug(f"proposed: {json.dumps(payload)}")
         resp = self.session.post(
             f"{self.url}/log/entries",
@@ -100,11 +98,11 @@ class RekorV2Client(RekorLogSubmitter):
         hashed_input: Hashed,
         signature: bytes,
         certificate: Certificate,
-    ) -> v2.CreateEntryRequest:
+    ) -> EntryRequest:
         """
         Construct a hashed rekord request to submit to Rekor.
         """
-        return v2.CreateEntryRequest(
+        req = v2.CreateEntryRequest(
             hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
                 digest=hashed_input.digest,
                 signature=v2.Signature(
@@ -120,15 +118,16 @@ class RekorV2Client(RekorLogSubmitter):
                 ),
             )
         )
+        return EntryRequest(req.to_dict())
 
     @classmethod
     def _build_dsse_request(
         cls, envelope: Envelope, certificate: Certificate
-    ) -> v2.CreateEntryRequest:
+    ) -> EntryRequest:
         """
         Construct a dsse request to submit to Rekor.
         """
-        return v2.CreateEntryRequest(
+        req = v2.CreateEntryRequest(
             dsse_request_v0_0_2=v2.DsseRequestV002(
                 envelope=v2_intoto.Envelope(
                     payload=envelope._inner.payload,
@@ -153,6 +152,7 @@ class RekorV2Client(RekorLogSubmitter):
                 ],
             )
         )
+        return EntryRequest(req.to_dict())
 
 
 class RekorClientError(Exception):

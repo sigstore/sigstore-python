@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import base64
 from abc import ABC, abstractmethod
+from typing import Any, NewType
 
 import rekor_types
 from cryptography.x509 import Certificate
 
-from sigstore._internal.rekor.v2_types.dev.sigstore.rekor import v2
 from sigstore._utils import base64_encode_pem_cert
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
@@ -34,12 +34,19 @@ __all__ = [
     "_hashedrekord_from_parts",
 ]
 
+EntryRequest = NewType("EntryRequest", dict[str, Any])
+
 
 class RekorLogSubmitter(ABC):
+    """Abstract class to represent a Rekor log entry submitter.
+
+    Intended to be implemented by RekorClient and RekorV2Client
+    """
+
     @abstractmethod
     def create_entry(
         self,
-        request: rekor_types.Hashedrekord | rekor_types.Dsse | v2.CreateEntryRequest,
+        request: EntryRequest,
     ) -> LogEntry:
         """
         Submit the request to Rekor.
@@ -50,7 +57,7 @@ class RekorLogSubmitter(ABC):
     @abstractmethod
     def _build_hashed_rekord_request(
         self, hashed_input: Hashed, signature: bytes, certificate: Certificate
-    ) -> rekor_types.Hashedrekord | v2.CreateEntryRequest:
+    ) -> EntryRequest:
         """
         Construct a hashed rekord request to submit to Rekor.
         """
@@ -60,7 +67,7 @@ class RekorLogSubmitter(ABC):
     @abstractmethod
     def _build_dsse_request(
         self, envelope: Envelope, certificate: Certificate
-    ) -> rekor_types.Dsse | v2.CreateEntryRequest:
+    ) -> EntryRequest:
         """
         Construct a dsse request to submit to Rekor.
         """
