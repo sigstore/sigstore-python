@@ -11,10 +11,11 @@ from sigstore.models import rekor_v1
 
 ALPHA_REKOR_V2_URL = "https://log2025-alpha1.rekor.sigstage.dev"
 
+
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
 def test_rekor_v2_create_entry_dsse(staging):
-    # This is not a real unit test: it requires not only staging rekor but also TUF 
+    # This is not a real unit test: it requires not only staging rekor but also TUF
     # fulcio and oidc -- maybe useful only until we have real integration tests in place
     sign_ctx_cls, _, identity = staging
 
@@ -50,7 +51,7 @@ def test_rekor_v2_create_entry_dsse(staging):
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
 def test_rekor_v2_create_entry_hashed_rekord(staging):
-    # This is not a real unit test: it requires not only staging rekor but also TUF 
+    # This is not a real unit test: it requires not only staging rekor but also TUF
     # fulcio and oidc -- maybe useful only until we have real integration tests in place
     sign_ctx_cls, _, identity = staging
 
@@ -58,10 +59,8 @@ def test_rekor_v2_create_entry_hashed_rekord(staging):
     sign_ctx = sign_ctx_cls()
     sign_ctx._rekor = RekorV2Client(ALPHA_REKOR_V2_URL)
 
-
     with sign_ctx.signer(identity) as signer:
         bundle = signer.sign_artifact(b"")
 
     assert isinstance(bundle.log_entry, LogEntry)
     assert isinstance(bundle.log_entry._to_rekor(), rekor_v1.TransparencyLogEntry)
-

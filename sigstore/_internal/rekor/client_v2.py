@@ -37,20 +37,14 @@ from sigstore.models import LogEntry
 
 _logger = logging.getLogger(__name__)
 
-DEFAULT_REKOR_URL = "https://rekor.sigstore.dev"
-STAGING_REKOR_URL = "https://rekor.sigstage.dev"
-
-# TODO: Link to merged documenation.
-# See https://github.com/sigstore/rekor-tiles/pull/255/files#diff-eb568acf84d583e4d3734b07773e96912277776bad39c560392aa33ea2cf2210R196
-CREATE_ENTRIES_TIMEOUT_SECONDS = 20
-
 DEFAULT_KEY_DETAILS = common_v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
 
 
 class RekorV2Client(RekorLogSubmitter):
-    """The internal Rekor client for the v2 API"""
+    """The internal Rekor client for the v2 API
 
-    # TODO: implement get_tile, get_entry_bundle, get_checkpoint.
+    See https://github.com/sigstore/rekor-tiles/blob/main/CLIENTS.md
+    """
 
     def __init__(self, base_url: str) -> None:
         """
@@ -75,12 +69,15 @@ class RekorV2Client(RekorLogSubmitter):
     def create_entry(self, payload: EntryRequest) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
+
+        Note that this call can take a fairly long time as the log
+        only responds after the entry has been included in the log.
+        https://github.com/sigstore/rekor-tiles/blob/main/CLIENTS.md#handling-longer-requests
         """
         _logger.debug(f"proposed: {json.dumps(payload)}")
         resp = self.session.post(
             f"{self.url}/log/entries",
             json=payload,
-            timeout=CREATE_ENTRIES_TIMEOUT_SECONDS,
         )
 
         try:
