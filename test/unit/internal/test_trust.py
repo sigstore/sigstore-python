@@ -54,10 +54,13 @@ class TestTrustedRoot:
         assert (
             root._inner.media_type == TrustedRoot.TrustedRootType.TRUSTED_ROOT_0_1.value
         )
-        assert len(root._inner.tlogs) == 1
+        assert len(root._inner.tlogs) == 2
         assert len(root._inner.certificate_authorities) == 2
         assert len(root._inner.ctlogs) == 2
         assert len(root._inner.timestamp_authorities) == 1
+
+        # only one of the two rekor keys is actually supported
+        assert len(root.rekor_keyring(KeyringPurpose.VERIFY)._keyring) == 1
 
     def test_bad_media_type(self, asset):
         path = asset("trusted_root/trustedroot.badtype.json")

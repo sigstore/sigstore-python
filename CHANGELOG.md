@@ -8,6 +8,14 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.6.3]
+
+### Fixed
+
+* Verify: Avoid hard failure if trusted root contains unsupported keytypes (as verification
+  may succeed without that key).
+  [#1425](https://github.com/sigstore/sigstore-python/pull/1425)
+
 ## [3.6.2]
 
 ### Fixed
