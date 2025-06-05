@@ -208,7 +208,7 @@ class TestTrustedRoot:
     )
     def test_good(self, asset, file):
         """
-        Ensures that the trusted_roots are well-formed and that the embedded keys are supported.
+        Ensures that the trusted_roots are well-formed and that the expected embedded keys are supported.
         """
         path = asset(file)
         root = TrustedRoot.from_file(path)
@@ -216,12 +216,14 @@ class TestTrustedRoot:
         assert (
             root._inner.media_type == TrustedRoot.TrustedRootType.TRUSTED_ROOT_0_1.value
         )
-        assert len(root._inner.tlogs) == 1
+        assert len(root._inner.tlogs) == 2
         assert len(root._inner.certificate_authorities) == 2
         assert len(root._inner.ctlogs) == 2
         assert len(root._inner.timestamp_authorities) == 1
-        assert root.rekor_keyring(KeyringPurpose.VERIFY) is not None
-        assert root.ct_keyring(KeyringPurpose.VERIFY) is not None
+
+        # only one of the two rekor keys is actually supported
+        assert len(root.rekor_keyring(KeyringPurpose.VERIFY)._keyring) == 1
+        assert len(root.ct_keyring(KeyringPurpose.VERIFY)._keyring) == 2
         assert root.get_fulcio_certs() is not None
         assert root.get_timestamp_authorities() is not None
 

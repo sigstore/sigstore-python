@@ -43,6 +43,10 @@ All versions prior to 0.9.0 are untracked.
   still required.
   [#1381](https://github.com/sigstore/sigstore-python/pull/1381)
 
+* Verify: Avoid hard failure if trusted root contains unsupported keytypes (as verification
+  may succeed without that key).
+  [#1424](https://github.com/sigstore/sigstore-python/pull/1424)
+
 * CI: Timestamp Authority tests use latest release, not latest tag, of
   [sigstore/timestamp-authority](https://github.com/sigstore/timestamp-authority)
   [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
