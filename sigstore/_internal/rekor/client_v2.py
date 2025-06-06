@@ -40,6 +40,16 @@ _logger = logging.getLogger(__name__)
 DEFAULT_KEY_DETAILS = common_v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256
 
 
+class _V2EntryRequest(EntryRequest):
+    @classmethod
+    def from_hashed_rekord(cls, req: v2.HashedRekordRequestV002) -> _V2EntryRequest:
+        return cls({"hashedRekordRequestV002": req.to_dict()})
+
+    @classmethod
+    def from_dsse(cls, req: v2.DsseRequestV002) -> _V2EntryRequest:
+        return cls({"dsseRequestV002": req.to_dict()})
+
+
 class RekorV2Client(RekorLogSubmitter):
     """The internal Rekor client for the v2 API
 
@@ -99,23 +109,21 @@ class RekorV2Client(RekorLogSubmitter):
         """
         Construct a hashed rekord request to submit to Rekor.
         """
-        req = v2.CreateEntryRequest(
-            hashed_rekord_request_v0_0_2=v2.HashedRekordRequestV002(
-                digest=hashed_input.digest,
-                signature=v2.Signature(
-                    content=signature,
-                    verifier=v2.Verifier(
-                        x509_certificate=common_v1.X509Certificate(
-                            raw_bytes=certificate.public_bytes(
-                                encoding=serialization.Encoding.DER
-                            )
-                        ),
-                        key_details=DEFAULT_KEY_DETAILS,  # type: ignore[arg-type]
+        req = v2.HashedRekordRequestV002(
+            digest=hashed_input.digest,
+            signature=v2.Signature(
+                content=signature,
+                verifier=v2.Verifier(
+                    x509_certificate=common_v1.X509Certificate(
+                        raw_bytes=certificate.public_bytes(
+                            encoding=serialization.Encoding.DER
+                        )
                     ),
+                    key_details=DEFAULT_KEY_DETAILS,  # type: ignore[arg-type]
                 ),
-            )
+            ),
         )
-        return EntryRequest(req.to_dict())
+        return _V2EntryRequest.from_hashed_rekord(req)
 
     @classmethod
     def _build_dsse_request(
@@ -124,32 +132,30 @@ class RekorV2Client(RekorLogSubmitter):
         """
         Construct a dsse request to submit to Rekor.
         """
-        req = v2.CreateEntryRequest(
-            dsse_request_v0_0_2=v2.DsseRequestV002(
-                envelope=intoto.Envelope(
-                    payload=envelope._inner.payload,
-                    payload_type=envelope._inner.payload_type,
-                    signatures=[
-                        intoto.Signature(
-                            keyid=signature.keyid,
-                            sig=signature.sig,
-                        )
-                        for signature in envelope._inner.signatures
-                    ],
-                ),
-                verifiers=[
-                    v2.Verifier(
-                        x509_certificate=common_v1.X509Certificate(
-                            raw_bytes=certificate.public_bytes(
-                                encoding=serialization.Encoding.DER
-                            )
-                        ),
-                        key_details=DEFAULT_KEY_DETAILS,  # type: ignore[arg-type]
+        req = v2.DsseRequestV002(
+            envelope=intoto.Envelope(
+                payload=envelope._inner.payload,
+                payload_type=envelope._inner.payload_type,
+                signatures=[
+                    intoto.Signature(
+                        keyid=signature.keyid,
+                        sig=signature.sig,
                     )
+                    for signature in envelope._inner.signatures
                 ],
-            )
+            ),
+            verifiers=[
+                v2.Verifier(
+                    x509_certificate=common_v1.X509Certificate(
+                        raw_bytes=certificate.public_bytes(
+                            encoding=serialization.Encoding.DER
+                        )
+                    ),
+                    key_details=DEFAULT_KEY_DETAILS,  # type: ignore[arg-type]
+                )
+            ],
         )
-        return EntryRequest(req.to_dict())
+        return _V2EntryRequest.from_dsse(req)
 
 
 class RekorClientError(Exception):
