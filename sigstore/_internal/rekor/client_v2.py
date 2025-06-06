@@ -25,12 +25,12 @@ import rekor_types
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
+from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
+from sigstore_protobuf_specs.dev.sigstore.rekor import v2
+from sigstore_protobuf_specs.io import intoto
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.rekor import EntryRequest, RekorLogSubmitter
-from sigstore._internal.rekor.v2_types.dev.sigstore.common import v1 as common_v1
-from sigstore._internal.rekor.v2_types.dev.sigstore.rekor import v2
-from sigstore._internal.rekor.v2_types.io import intoto as v2_intoto
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
 from sigstore.models import LogEntry
@@ -126,11 +126,11 @@ class RekorV2Client(RekorLogSubmitter):
         """
         req = v2.CreateEntryRequest(
             dsse_request_v0_0_2=v2.DsseRequestV002(
-                envelope=v2_intoto.Envelope(
+                envelope=intoto.Envelope(
                     payload=envelope._inner.payload,
                     payload_type=envelope._inner.payload_type,
                     signatures=[
-                        v2_intoto.Signature(
+                        intoto.Signature(
                             keyid=signature.keyid,
                             sig=signature.sig,
                         )

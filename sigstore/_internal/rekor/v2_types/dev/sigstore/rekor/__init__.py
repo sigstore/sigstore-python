@@ -1,3 +1,0 @@
-"""
-Types used by Rekor
-"""

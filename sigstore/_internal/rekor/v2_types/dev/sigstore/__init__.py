@@ -1,3 +1,0 @@
-"""
-Types for RekorV2
-"""
