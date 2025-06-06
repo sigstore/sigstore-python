@@ -659,7 +659,7 @@ def _sign_common(
     # 3) Interactive OAuth flow
     identity: IdentityToken | None
     if args.identity_token:
-        identity = IdentityToken(args.identity_token)
+        identity = IdentityToken(args.identity_token, args.oidc_client_id)
     else:
         identity = _get_identity(args, trust_config)
 
@@ -1181,11 +1181,11 @@ def _get_identity(
 ) -> Optional[IdentityToken]:
     token = None
     if not args.oidc_disable_ambient_providers:
-        token = detect_credential()
+        token = detect_credential(args.oidc_client_id)
 
     # Happy path: we've detected an ambient credential, so we can return early.
     if token:
-        return IdentityToken(token)
+        return IdentityToken(token, args.oidc_client_id)
 
     if args.oidc_issuer is not None:
         issuer = Issuer(args.oidc_issuer)

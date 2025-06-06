@@ -22,10 +22,10 @@ from id import (
     detect_credential,
 )
 
-from sigstore.oidc import _DEFAULT_AUDIENCE
-
 _ASSETS = (Path(__file__).parent / "assets").resolve()
 assert _ASSETS.is_dir()
+
+TEST_CLIENT_ID = "sigstore"
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def _has_oidc_id():
         return True
 
     try:
-        token = detect_credential(_DEFAULT_AUDIENCE)
+        token = detect_credential(TEST_CLIENT_ID)
         if token is None:
             return False
     except GitHubOidcPermissionCredentialError:

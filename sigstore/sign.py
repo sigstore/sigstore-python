@@ -299,12 +299,10 @@ class SigningContext:
         """
         signing_config = trust_config.signing_config
         return cls(
-            fulcio=FulcioClient(signing_config.get_fulcio_url()),
-            rekor=RekorClient(signing_config.get_tlog_urls()[0]),
+            fulcio=signing_config.get_fulcio(),
+            rekor=signing_config.get_tlogs()[0],
             trusted_root=trust_config.trusted_root,
-            tsa_clients=[
-                TimestampAuthorityClient(url) for url in signing_config.get_tsa_urls()
-            ],
+            tsa_clients=signing_config.get_tsas(),
         )
 
     @contextmanager

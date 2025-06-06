@@ -41,7 +41,8 @@ _KNOWN_OIDC_ISSUERS = {
     "https://oauth2.sigstage.dev/auth": "email",
     "https://token.actions.githubusercontent.com": "sub",
 }
-_DEFAULT_AUDIENCE = "sigstore"
+
+_DEFAULT_CLIENT_ID = "sigstore"
 
 
 class _OpenIDConfiguration(BaseModel):
@@ -66,7 +67,7 @@ class IdentityToken:
     a sensible subject, issuer, and audience for Sigstore purposes.
     """
 
-    def __init__(self, raw_token: str) -> None:
+    def __init__(self, raw_token: str, client_id: str = _DEFAULT_CLIENT_ID) -> None:
         """
         Create a new `IdentityToken` from the given OIDC token.
         """
@@ -90,7 +91,7 @@ class IdentityToken:
                     # See: https://openid.net/specs/openid-connect-basic-1_0.html#IDToken
                     "require": ["aud", "sub", "iat", "exp", "iss"],
                 },
-                audience=_DEFAULT_AUDIENCE,
+                audience=client_id,
                 # NOTE: This leeway shouldn't be strictly necessary, but is
                 # included to preempt any (small) skew between the host
                 # and the originating IdP.
@@ -270,7 +271,7 @@ class Issuer:
 
     def identity_token(  # nosec: B107
         self,
-        client_id: str = "sigstore",
+        client_id: str = _DEFAULT_CLIENT_ID,
         client_secret: str = "",
         force_oob: bool = False,
     ) -> IdentityToken:
@@ -350,7 +351,7 @@ class Issuer:
         if token_error is not None:
             raise IdentityError(f"Error response from token endpoint: {token_error}")
 
-        return IdentityToken(token_json["access_token"])
+        return IdentityToken(token_json["access_token"], client_id)
 
 
 class IdentityError(Error):
@@ -402,9 +403,10 @@ class IdentityError(Error):
             """
 
 
-def detect_credential() -> Optional[str]:
+def detect_credential(client_id: str = _DEFAULT_CLIENT_ID) -> Optional[str]:
     """Calls `id.detect_credential`, but wraps exceptions with our own exception type."""
+
     try:
-        return cast(Optional[str], id.detect_credential(_DEFAULT_AUDIENCE))
+        return cast(Optional[str], id.detect_credential(client_id))
     except id.IdentityError as exc:
         IdentityError.raise_from_id(exc)

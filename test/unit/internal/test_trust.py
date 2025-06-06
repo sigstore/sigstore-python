@@ -20,7 +20,15 @@ import pytest
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import load_pem_x509_certificate
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
+from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+    Service,
+    ServiceConfiguration,
+    ServiceSelector,
+)
 
+from sigstore._internal.fulcio.client import FulcioClient
+from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
     ClientTrustConfig,
@@ -31,6 +39,19 @@ from sigstore._internal.trust import (
 )
 from sigstore._utils import load_pem_public_key
 from sigstore.errors import Error
+
+# Test data for TestSigningcconfig
+_service_v1_op1 = Service("url1", major_api_version=1, operator="op1")
+_service2_v1_op1 = Service("url2", major_api_version=1, operator="op1")
+_service_v2_op1 = Service("url3", major_api_version=2, operator="op1")
+_service_v1_op2 = Service("url4", major_api_version=1, operator="op2")
+_service_v1_op3 = Service("url5", major_api_version=1, operator="op3")
+_service_v1_op4 = Service(
+    "url6",
+    major_api_version=1,
+    operator="op4",
+    valid_for=TimeRange(datetime(3000, 1, 1, tzinfo=timezone.utc)),
+)
 
 
 class TestCertificateAuthority:
@@ -56,12 +77,125 @@ class TestSigningcconfig:
             signing_config._inner.media_type
             == SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value
         )
-        assert signing_config.get_fulcio_url() == "https://fulcio.example.com"
+
+        fulcio = signing_config.get_fulcio()
+        assert isinstance(fulcio, FulcioClient)
+        assert fulcio.url == "https://fulcio.example.com"
         assert signing_config.get_oidc_url() == "https://oauth2.example.com/auth"
-        assert signing_config.get_tlog_urls() == ["https://rekor.example.com"]
-        assert signing_config.get_tsa_urls() == [
-            "https://timestamp.example.com/api/v1/timestamp"
-        ]
+
+        tlogs = signing_config.get_tlogs()
+        assert len(tlogs) == 1
+        assert isinstance(tlogs[0], RekorClient)
+        assert tlogs[0].url == "https://rekor.example.com/api/v1"
+
+        tsas = signing_config.get_tsas()
+        assert len(tsas) == 1
+        assert isinstance(tsas[0], TimestampAuthorityClient)
+        assert tsas[0].url == "https://timestamp.example.com/api/v1/timestamp"
+
+    @pytest.mark.parametrize(
+        "services, versions, config, expected_result",
+        [
+            pytest.param(
+                [_service_v1_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v1_op1],
+                id="base case",
+            ),
+            pytest.param(
+                [_service_v1_op1, _service2_v1_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service2_v1_op1],
+                id="multiple services, same operator: expect 1 service in result",
+            ),
+            pytest.param(
+                [_service_v1_op1, _service_v1_op2],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v1_op1, _service_v1_op2],
+                id="2 services, different operator: expect 2 services in result",
+            ),
+            pytest.param(
+                [_service_v1_op1, _service_v1_op2, _service_v1_op4],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v1_op1, _service_v1_op2],
+                id="3 services, one is not yet valid: expect 2 services in result",
+            ),
+            pytest.param(
+                [_service_v1_op1, _service_v1_op2],
+                [1],
+                ServiceConfiguration(ServiceSelector.ANY),
+                [_service_v1_op1],
+                id="ANY selector: expect 1 service only in result",
+            ),
+            pytest.param(
+                [_service_v1_op1, _service_v1_op2, _service_v1_op3],
+                [1],
+                ServiceConfiguration(ServiceSelector.EXACT, 2),
+                [_service_v1_op1, _service_v1_op2],
+                id="EXACT selector: expect configured number of services in result",
+            ),
+            pytest.param(
+                [_service_v1_op1, _service_v2_op1],
+                [1, 2],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v2_op1],
+                id="services with different version: expect highest version",
+            ),
+            pytest.param(
+                [_service_v1_op1, _service_v2_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [_service_v1_op1],
+                id="services with different version: expect the supported version",
+            ),
+            pytest.param(
+                [_service_v1_op1, _service_v1_op2],
+                [2],
+                ServiceConfiguration(ServiceSelector.ALL),
+                [],
+                id="No supported versions: expect no results",
+            ),
+            pytest.param(
+                [_service_v1_op1, _service_v2_op1, _service_v1_op2],
+                [1],
+                None,
+                [_service_v1_op1, _service_v1_op2],
+                id="services without ServiceConfiguration: expect all supported",
+            ),
+        ],
+    )
+    def test_get_valid_services(self, services, versions, config, expected_result):
+        result = SigningConfig._get_valid_services(services, versions, config)
+
+        assert result == expected_result
+
+    @pytest.mark.parametrize(
+        "services, versions, config",
+        [
+            (  # ANY selector without services
+                [],
+                [1],
+                ServiceConfiguration(ServiceSelector.ANY),
+            ),
+            (  # EXACT selector without enough services
+                [_service_v1_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.EXACT, 2),
+            ),
+            (  # UNDEFINED selector
+                [_service_v1_op1],
+                [1],
+                ServiceConfiguration(ServiceSelector.UNDEFINED, 1),
+            ),
+        ],
+    )
+    def test_get_valid_services_fail(self, services, versions, config):
+        with pytest.raises(ValueError):
+            SigningConfig._get_valid_services(services, versions, config)
 
 
 class TestTrustedRoot:
@@ -74,7 +208,7 @@ class TestTrustedRoot:
     )
     def test_good(self, asset, file):
         """
-        Ensures that the trusted_roots are well-formed and that the embedded keys are supported.
+        Ensures that the trusted_roots are well-formed and that the expected embedded keys are supported.
         """
         path = asset(file)
         root = TrustedRoot.from_file(path)
@@ -82,12 +216,14 @@ class TestTrustedRoot:
         assert (
             root._inner.media_type == TrustedRoot.TrustedRootType.TRUSTED_ROOT_0_1.value
         )
-        assert len(root._inner.tlogs) == 1
+        assert len(root._inner.tlogs) == 2
         assert len(root._inner.certificate_authorities) == 2
         assert len(root._inner.ctlogs) == 2
         assert len(root._inner.timestamp_authorities) == 1
-        assert root.rekor_keyring(KeyringPurpose.VERIFY) is not None
-        assert root.ct_keyring(KeyringPurpose.VERIFY) is not None
+
+        # only one of the two rekor keys is actually supported
+        assert len(root.rekor_keyring(KeyringPurpose.VERIFY)._keyring) == 1
+        assert len(root.ct_keyring(KeyringPurpose.VERIFY)._keyring) == 2
         assert root.get_fulcio_certs() is not None
         assert root.get_timestamp_authorities() is not None
 
