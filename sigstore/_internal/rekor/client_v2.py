@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import cast
 
 import rekor_types
 import requests
@@ -106,7 +107,10 @@ class RekorV2Client(RekorLogSubmitter):
         public_key = certificate.public_key()
         if isinstance(public_key, EllipticCurvePublicKey):
             if public_key.curve.name == "secp256r1":
-                return common_v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256
+                return cast(
+                    common_v1.PublicKeyDetails,
+                    common_v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256,
+                )
             raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
 
