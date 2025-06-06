@@ -14,6 +14,20 @@
             "logId": {
                 "keyId": "wNI9atQGlz+VWfO6LRygH4QUfY/8W4RFwiT5i5WRgB0="
             }
+        },
+        {
+            "baseUrl": "https://example.com/unsupported_key",
+            "hashAlgorithm": "SHA2_256",
+            "publicKey": {
+                "rawBytes": "",
+                "keyDetails": "PKIX_ED25519",
+                "validFor": {
+                    "start": "2021-01-12T11:53:27.000Z"
+                }
+            },
+            "logId": {
+                "keyId": "xNI9atQGlz+VWfO6LRygH4QUfY/8W4RFwiT5i5WRgB0="
+            }
         }
     ],
     "certificateAuthorities": [
