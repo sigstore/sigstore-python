@@ -37,6 +37,7 @@ __all__ = [
 
 class EntryRequest(dict[str, Any]):
     """Entry request payload, for either rekor v1 or v2"""
+
     pass
 
 
