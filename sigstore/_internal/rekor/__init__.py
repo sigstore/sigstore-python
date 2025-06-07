@@ -23,6 +23,7 @@ from abc import ABC, abstractmethod
 from typing import Any, NewType
 
 import rekor_types
+import requests
 from cryptography.x509 import Certificate
 
 from sigstore._utils import base64_encode_pem_cert
@@ -35,6 +36,27 @@ __all__ = [
 ]
 
 EntryRequest = NewType("EntryRequest", dict[str, Any])
+
+
+class RekorClientError(Exception):
+    """
+    A generic error in the Rekor client.
+    """
+
+    def __init__(self, http_error: requests.HTTPError):
+        """
+        Create a new `RekorClientError` from the given `requests.HTTPError`.
+        """
+        if http_error.response is not None:
+            try:
+                error = rekor_types.Error.model_validate_json(http_error.response.text)
+                super().__init__(f"{error.code}: {error.message}")
+            except Exception:
+                super().__init__(
+                    f"Rekor returned an unknown error with HTTP {http_error.response.status_code}"
+                )
+        else:
+            super().__init__(f"Unexpected Rekor error: {http_error}")
 
 
 class RekorLogSubmitter(ABC):

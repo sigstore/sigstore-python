@@ -22,7 +22,6 @@ import json
 import logging
 from typing import cast
 
-import rekor_types
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
@@ -32,7 +31,7 @@ from sigstore_protobuf_specs.dev.sigstore.rekor import v2
 from sigstore_protobuf_specs.io import intoto
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.rekor import EntryRequest, RekorLogSubmitter
+from sigstore._internal.rekor import EntryRequest, RekorClientError, RekorLogSubmitter
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
 from sigstore.models import LogEntry
@@ -159,30 +158,9 @@ class RekorV2Client(RekorLogSubmitter):
                                 encoding=serialization.Encoding.DER
                             )
                         ),
-                        key_details=cls._get_key_details(certificate)
+                        key_details=cls._get_key_details(certificate),
                     )
                 ],
             )
         )
         return EntryRequest(req.to_dict())
-
-
-class RekorClientError(Exception):
-    """
-    A generic error in the Rekor client.
-    """
-
-    def __init__(self, http_error: requests.HTTPError):
-        """
-        Create a new `RekorClientError` from the given `requests.HTTPError`.
-        """
-        if http_error.response is not None:
-            try:
-                error = rekor_types.Error.model_validate_json(http_error.response.text)
-                super().__init__(f"{error.code}: {error.message}")
-            except Exception:
-                super().__init__(
-                    f"Rekor returned an unknown error with HTTP {http_error.response.status_code}"
-                )
-        else:
-            super().__init__(f"Unexpected Rekor error: {http_error}")
