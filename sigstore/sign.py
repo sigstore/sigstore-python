@@ -59,8 +59,7 @@ from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioClient,
 )
-from sigstore._internal.rekor import EntryRequest
-from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor import EntryRequest, RekorLogSubmitter
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
@@ -272,7 +271,7 @@ class SigningContext:
         self,
         *,
         fulcio: FulcioClient,
-        rekor: RekorClient,
+        rekor: RekorLogSubmitter,
         trusted_root: TrustedRoot,
         tsa_clients: list[TimestampAuthorityClient] | None = None,
     ):
