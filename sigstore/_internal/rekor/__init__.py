@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import base64
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, NewType
 
 import rekor_types
 from cryptography.x509 import Certificate
@@ -34,11 +34,7 @@ __all__ = [
     "_hashedrekord_from_parts",
 ]
 
-
-class EntryRequest(dict[str, Any]):
-    """Entry request payload, for either rekor v1 or v2"""
-
-    pass
+EntryRequest = NewType("EntryRequest", dict[str, Any])
 
 
 class RekorLogSubmitter(ABC):
