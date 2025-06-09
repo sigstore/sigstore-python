@@ -32,7 +32,7 @@ from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.rekor import (
-    EntryRequest,
+    EntryRequestBody,
     RekorClientError,
     RekorLogSubmitter,
 )
@@ -134,7 +134,7 @@ class RekorEntries(_Endpoint):
 
     def post(
         self,
-        payload: EntryRequest,
+        payload: EntryRequestBody,
     ) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
@@ -250,7 +250,7 @@ class RekorClient(RekorLogSubmitter):
         """
         return RekorLog(f"{self.url}/log", session=self.session)
 
-    def create_entry(self, request: EntryRequest) -> LogEntry:
+    def create_entry(self, request: EntryRequestBody) -> LogEntry:
         """
         Submit the request to Rekor.
         """
@@ -258,7 +258,7 @@ class RekorClient(RekorLogSubmitter):
 
     def _build_hashed_rekord_request(  # type: ignore[override]
         self, hashed_input: Hashed, signature: bytes, certificate: Certificate
-    ) -> EntryRequest:
+    ) -> EntryRequestBody:
         """
         Construct a hashed rekord payload to submit to Rekor.
         """
@@ -282,11 +282,11 @@ class RekorClient(RekorLogSubmitter):
                 ),
             ),
         )
-        return EntryRequest(rekord.model_dump(mode="json", by_alias=True))
+        return EntryRequestBody(rekord.model_dump(mode="json", by_alias=True))
 
     def _build_dsse_request(  # type: ignore[override]
         self, envelope: Envelope, certificate: Certificate
-    ) -> EntryRequest:
+    ) -> EntryRequestBody:
         """
         Construct a dsse request to submit to Rekor.
         """
@@ -308,4 +308,4 @@ class RekorClient(RekorLogSubmitter):
                 ),
             ),
         )
-        return EntryRequest(dsse.model_dump(mode="json", by_alias=True))
+        return EntryRequestBody(dsse.model_dump(mode="json", by_alias=True))

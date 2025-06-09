@@ -31,7 +31,11 @@ from sigstore_protobuf_specs.dev.sigstore.rekor import v2
 from sigstore_protobuf_specs.io import intoto
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.rekor import EntryRequest, RekorClientError, RekorLogSubmitter
+from sigstore._internal.rekor import (
+    EntryRequestBody,
+    RekorClientError,
+    RekorLogSubmitter,
+)
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
 from sigstore.models import LogEntry
@@ -65,7 +69,7 @@ class RekorV2Client(RekorLogSubmitter):
         """
         self.session.close()
 
-    def create_entry(self, payload: EntryRequest) -> LogEntry:
+    def create_entry(self, payload: EntryRequestBody) -> LogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
 
@@ -109,7 +113,7 @@ class RekorV2Client(RekorLogSubmitter):
         hashed_input: Hashed,
         signature: bytes,
         certificate: Certificate,
-    ) -> EntryRequest:
+    ) -> EntryRequestBody:
         """
         Construct a hashed rekord request to submit to Rekor.
         """
@@ -129,12 +133,12 @@ class RekorV2Client(RekorLogSubmitter):
                 ),
             )
         )
-        return EntryRequest(req.to_dict())
+        return EntryRequestBody(req.to_dict())
 
     @classmethod
     def _build_dsse_request(
         cls, envelope: Envelope, certificate: Certificate
-    ) -> EntryRequest:
+    ) -> EntryRequestBody:
         """
         Construct a dsse request to submit to Rekor.
         """
@@ -163,4 +167,4 @@ class RekorV2Client(RekorLogSubmitter):
                 ],
             )
         )
-        return EntryRequest(req.to_dict())
+        return EntryRequestBody(req.to_dict())

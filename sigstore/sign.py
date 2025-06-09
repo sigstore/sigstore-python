@@ -59,7 +59,7 @@ from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioClient,
 )
-from sigstore._internal.rekor import EntryRequest, RekorLogSubmitter
+from sigstore._internal.rekor import EntryRequestBody, RekorLogSubmitter
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
@@ -174,7 +174,7 @@ class Signer:
         self,
         cert: x509.Certificate,
         content: MessageSignature | dsse.Envelope,
-        proposed_entry: EntryRequest,
+        proposed_entry: EntryRequestBody,
     ) -> Bundle:
         """
         Perform the common "finalizing" steps in a Sigstore signing flow.
