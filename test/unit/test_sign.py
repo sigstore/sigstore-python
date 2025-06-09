@@ -52,6 +52,7 @@ def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
 
 
 @pytest.mark.staging
+@pytest.mark.ambient_oidc
 def test_sign_with_staging_rekor_v2(staging_with_rekorv2, null_policy):
     ctx_cls, verifier_cls, identity = staging_with_rekorv2
 
