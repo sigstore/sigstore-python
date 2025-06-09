@@ -31,7 +31,6 @@ from cryptography.x509 import Certificate, load_pem_x509_certificate
 from id import (
     detect_credential,
 )
-from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import Service
 from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface, updater
 
@@ -239,9 +238,9 @@ def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
 
 
 @pytest.fixture
-def staging_with_rekorv2() -> tuple[
-    type[SigningContext], type[Verifier], IdentityToken
-]:
+def staging_with_rekorv2(
+    asset,
+) -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
     """
     Returns a SigningContext, Verifier, and IdentityToken for the staging environment.
     The signingContext will use the Rekor V2 instance even if it is not yet enabled in
@@ -249,9 +248,10 @@ def staging_with_rekorv2() -> tuple[
     """
 
     def signer():
-        trust_config = ClientTrustConfig.staging()
-        trust_config.signing_config._tlogs.append(
-            Service("https://log2025-alpha1.rekor.sigstage.dev", 2)
+        trust_config = ClientTrustConfig.from_json(
+            asset(
+                os.path.join("trust_config", "staging-but-sign-with-rekor-v2.json")
+            ).read_text()
         )
         return SigningContext.from_trust_config(trust_config)
 
