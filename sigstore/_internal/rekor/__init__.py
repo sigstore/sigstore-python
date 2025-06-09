@@ -35,7 +35,7 @@ __all__ = [
     "_hashedrekord_from_parts",
 ]
 
-EntryRequest = NewType("EntryRequest", dict[str, Any])
+EntryRequestBody = NewType("EntryRequestBody", dict[str, Any])
 
 
 class RekorClientError(Exception):
@@ -68,7 +68,7 @@ class RekorLogSubmitter(ABC):
     @abstractmethod
     def create_entry(
         self,
-        request: EntryRequest,
+        request: EntryRequestBody,
     ) -> LogEntry:
         """
         Submit the request to Rekor.
@@ -79,7 +79,7 @@ class RekorLogSubmitter(ABC):
     @abstractmethod
     def _build_hashed_rekord_request(
         self, hashed_input: Hashed, signature: bytes, certificate: Certificate
-    ) -> EntryRequest:
+    ) -> EntryRequestBody:
         """
         Construct a hashed rekord request to submit to Rekor.
         """
@@ -89,7 +89,7 @@ class RekorLogSubmitter(ABC):
     @abstractmethod
     def _build_dsse_request(
         self, envelope: Envelope, certificate: Certificate
-    ) -> EntryRequest:
+    ) -> EntryRequestBody:
         """
         Construct a dsse request to submit to Rekor.
         """
