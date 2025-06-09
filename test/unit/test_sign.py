@@ -51,6 +51,21 @@ def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
     assert expected_entry.log_index == actual_entry.log_index
 
 
+@pytest.mark.staging
+def test_sign_with_staging_rekor_v2(staging_with_rekorv2, null_policy):
+    ctx_cls, verifier_cls, identity = staging_with_rekorv2
+
+    ctx: SigningContext = ctx_cls()
+    verifier = verifier_cls()
+    assert identity is not None
+
+    payload = secrets.token_bytes(32)
+    with ctx.signer(identity) as signer:
+        bundle = signer.sign_artifact(payload)
+
+    verifier.verify_artifact(payload, bundle, null_policy)
+
+
 @pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch):
