@@ -60,9 +60,10 @@ class RekorClientError(Exception):
 
 
 class RekorLogSubmitter(ABC):
-    """Abstract class to represent a Rekor log entry submitter.
+    """
+    Abstract class to represent a Rekor log entry submitter.
 
-    Intended to be implemented by RekorClient and RekorV2Client
+    Intended to be implemented by RekorClient and RekorV2Client.
     """
 
     @abstractmethod
