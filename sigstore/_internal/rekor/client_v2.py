@@ -44,7 +44,8 @@ _logger = logging.getLogger(__name__)
 
 
 class RekorV2Client(RekorLogSubmitter):
-    """The internal Rekor client for the v2 API
+    """
+    The internal Rekor client for the v2 API.
 
     See https://github.com/sigstore/rekor-tiles/blob/main/CLIENTS.md
     """
@@ -94,9 +95,11 @@ class RekorV2Client(RekorLogSubmitter):
 
     @staticmethod
     def _get_key_details(certificate: Certificate) -> common_v1.PublicKeyDetails:
-        """Determine PublicKeyDetails from a certificate
+        """
+        Determine PublicKeyDetails from a certificate
 
-        We know that sign.Signer only uses secp256r1 so do not support anything else"""
+        We know that sign.Signer only uses secp256r1, so do not support anything else.
+        """
         public_key = certificate.public_key()
         if isinstance(public_key, EllipticCurvePublicKey):
             if public_key.curve.name == "secp256r1":
