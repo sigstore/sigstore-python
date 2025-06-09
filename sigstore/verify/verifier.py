@@ -440,73 +440,9 @@ class Verifier:
             entry._kind_version.kind == "dsse"
             and entry._kind_version.version == "0.0.2"
         ):
-            try:
-                v2_body = v2.Entry().from_json(base64.b64decode(entry.body))
-            except ValidationError as exc:
-                raise VerificationError(f"invalid DSSE log entry: {exc}")
-
-            if v2_body.spec.dsse_v002 is None:
-                raise VerificationError(
-                    "invalid DSSE log entry: missing dsse_v002 field"
-                )
-
-            if (
-                v2_body.spec.dsse_v002.payload_hash.algorithm
-                != v1.HashAlgorithm.SHA2_256
-            ):
-                raise VerificationError("expected SHA256 hash in DSSE entry")
-
-            digest = sha256_digest(envelope._inner.payload).digest
-            if v2_body.spec.dsse_v002.payload_hash.digest != digest:
-                raise VerificationError("DSSE entry payload hash does not match bundle")
-
-            v2_signatures = [
-                v2.Signature(
-                    content=signature.sig,
-                    verifier=v2.Verifier(
-                        x509_certificate=v1.X509Certificate(
-                            bundle.signing_certificate.public_bytes(
-                                encoding=serialization.Encoding.DER
-                            )
-                        ),
-                        key_details=self._get_key_details(bundle.signing_certificate),
-                    ),
-                )
-                for signature in envelope._inner.signatures
-            ]
-            if v2_signatures != v2_body.spec.dsse_v002.signatures:
-                raise VerificationError("log entry signatures do not match bundle")
+            validate_dsse_v002_entry_body(bundle)
         else:
-            try:
-                entry_body = rekor_types.Dsse.model_validate_json(
-                    base64.b64decode(entry.body)
-                )
-            except ValidationError as exc:
-                raise VerificationError(f"invalid DSSE log entry: {exc}")
-
-            payload_hash = sha256_digest(envelope._inner.payload).digest.hex()
-            if (
-                entry_body.spec.root.payload_hash.algorithm  # type: ignore[union-attr]
-                != rekor_types.dsse.Algorithm.SHA256
-            ):
-                raise VerificationError(
-                    "expected SHA256 payload hash in DSSE log entry"
-                )
-            if payload_hash != entry_body.spec.root.payload_hash.value:  # type: ignore[union-attr]
-                raise VerificationError("log entry payload hash does not match bundle")
-
-            # NOTE: Like `dsse._verify`: multiple signatures would be frivolous here,
-            # but we handle them just in case the signer has somehow produced multiple
-            # signatures for their envelope with the same signing key.
-            signatures = [
-                rekor_types.dsse.Signature(
-                    signature=base64.b64encode(signature.sig).decode(),
-                    verifier=base64_encode_pem_cert(bundle.signing_certificate),
-                )
-                for signature in envelope._inner.signatures
-            ]
-            if signatures != entry_body.spec.root.signatures:
-                raise VerificationError("log entry signatures do not match bundle")
+            validate_dsse_v001_entry_body(bundle)
 
         return (envelope._inner.payload_type, envelope._inner.payload)
 
@@ -551,58 +487,151 @@ class Verifier:
         # (8): verify the consistency of the log entry's body against
         #      the other bundle materials (and input being verified).
         entry = bundle.log_entry
-
         if (
             entry._kind_version.kind == "hashedrekord"
             and entry._kind_version.version == "0.0.2"
         ):
-            if bundle._inner.message_signature is None:
-                raise VerificationError(
-                    "invalid hashedrekord log entry: missing message signature"
-                )
+            validate_hashedrekord_v002_entry_body(bundle)
+        else:
+            validate_hashedrekord_v001_entry_body(bundle, hashed_input)
 
-            v2_expected_body = v2.Entry(
-                kind=entry._kind_version.kind,
-                api_version=entry._kind_version.version,
-                spec=v2.Spec(
-                    hashed_rekord_v002=v2.HashedRekordLogEntryV002(
-                        data=v1.HashOutput(
-                            algorithm=bundle._inner.message_signature.message_digest.algorithm,
-                            digest=bundle._inner.message_signature.message_digest.digest,
-                        ),
-                        signature=v2.Signature(
-                            content=bundle._inner.message_signature.signature,
-                            verifier=v2.Verifier(
-                                x509_certificate=v1.X509Certificate(
-                                    bundle.signing_certificate.public_bytes(
-                                        encoding=serialization.Encoding.DER
-                                    )
-                                ),
-                                key_details=self._get_key_details(
-                                    bundle.signing_certificate
-                                ),
-                            ),
-                        ),
+
+def validate_dsse_v001_entry_body(bundle: Bundle) -> None:
+    """
+    Valideate the Entry body for dsse v001.
+    """
+    entry = bundle.log_entry
+    envelope = bundle._dsse_envelope
+    if envelope is None:
+        raise VerificationError(
+            "cannot perform DSSE verification on a bundle without a DSSE envelope"
+        )
+    try:
+        entry_body = rekor_types.Dsse.model_validate_json(base64.b64decode(entry.body))
+    except ValidationError as exc:
+        raise VerificationError(f"invalid DSSE log entry: {exc}")
+
+    payload_hash = sha256_digest(envelope._inner.payload).digest.hex()
+    if (
+        entry_body.spec.root.payload_hash.algorithm  # type: ignore[union-attr]
+        != rekor_types.dsse.Algorithm.SHA256
+    ):
+        raise VerificationError("expected SHA256 payload hash in DSSE log entry")
+    if payload_hash != entry_body.spec.root.payload_hash.value:  # type: ignore[union-attr]
+        raise VerificationError("log entry payload hash does not match bundle")
+
+    # NOTE: Like `dsse._verify`: multiple signatures would be frivolous here,
+    # but we handle them just in case the signer has somehow produced multiple
+    # signatures for their envelope with the same signing key.
+    signatures = [
+        rekor_types.dsse.Signature(
+            signature=base64.b64encode(signature.sig).decode(),
+            verifier=base64_encode_pem_cert(bundle.signing_certificate),
+        )
+        for signature in envelope._inner.signatures
+    ]
+    if signatures != entry_body.spec.root.signatures:
+        raise VerificationError("log entry signatures do not match bundle")
+
+
+def validate_dsse_v002_entry_body(bundle: Bundle) -> None:
+    """
+    Valideate the Entry body for dsse v002.
+    """
+    entry = bundle.log_entry
+    envelope = bundle._dsse_envelope
+    if envelope is None:
+        raise VerificationError(
+            "cannot perform DSSE verification on a bundle without a DSSE envelope"
+        )
+    try:
+        v2_body = v2.Entry().from_json(base64.b64decode(entry.body))
+    except ValidationError as exc:
+        raise VerificationError(f"invalid DSSE log entry: {exc}")
+
+    if v2_body.spec.dsse_v002 is None:
+        raise VerificationError("invalid DSSE log entry: missing dsse_v002 field")
+
+    if v2_body.spec.dsse_v002.payload_hash.algorithm != v1.HashAlgorithm.SHA2_256:
+        raise VerificationError("expected SHA256 hash in DSSE entry")
+
+    digest = sha256_digest(envelope._inner.payload).digest
+    if v2_body.spec.dsse_v002.payload_hash.digest != digest:
+        raise VerificationError("DSSE entry payload hash does not match bundle")
+
+    v2_signatures = [
+        v2.Signature(
+            content=signature.sig,
+            verifier=v2.Verifier(
+                x509_certificate=v1.X509Certificate(
+                    bundle.signing_certificate.public_bytes(
+                        encoding=serialization.Encoding.DER
                     )
                 ),
-            )
-            v2_actual_body = v2.Entry().from_json(base64.b64decode(entry.body))
-            if v2_expected_body != v2_actual_body:
-                raise VerificationError(
-                    "transparency log entry is inconsistent with other materials"
-                )
+                key_details=Verifier._get_key_details(bundle.signing_certificate),
+            ),
+        )
+        for signature in envelope._inner.signatures
+    ]
+    if v2_signatures != v2_body.spec.dsse_v002.signatures:
+        raise VerificationError("log entry signatures do not match bundle")
 
-        else:
-            expected_body = _hashedrekord_from_parts(
-                bundle.signing_certificate,
-                bundle._inner.message_signature.signature,  # type: ignore[union-attr]
-                hashed_input,
-            )
-            actual_body = rekor_types.Hashedrekord.model_validate_json(
-                base64.b64decode(entry.body)
-            )
 
-            if expected_body != actual_body:
-                raise VerificationError(
-                    "transparency log entry is inconsistent with other materials"
-                )
+def validate_hashedrekord_v001_entry_body(bundle: Bundle, hashed_input: Hashed) -> None:
+    """
+    Valideate the Entry body for hashedrekord v001.
+    """
+    entry = bundle.log_entry
+    expected_body = _hashedrekord_from_parts(
+        bundle.signing_certificate,
+        bundle._inner.message_signature.signature,  # type: ignore[union-attr]
+        hashed_input,
+    )
+    actual_body = rekor_types.Hashedrekord.model_validate_json(
+        base64.b64decode(entry.body)
+    )
+    if expected_body != actual_body:
+        raise VerificationError(
+            "transparency log entry is inconsistent with other materials"
+        )
+
+
+def validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
+    """
+    Valideate the Entry body for hashedrekord v002.
+    """
+    entry = bundle.log_entry
+    if bundle._inner.message_signature is None:
+        raise VerificationError(
+            "invalid hashedrekord log entry: missing message signature"
+        )
+    v2_expected_body = v2.Entry(
+        kind=entry._kind_version.kind,
+        api_version=entry._kind_version.version,
+        spec=v2.Spec(
+            hashed_rekord_v002=v2.HashedRekordLogEntryV002(
+                data=v1.HashOutput(
+                    algorithm=bundle._inner.message_signature.message_digest.algorithm,
+                    digest=bundle._inner.message_signature.message_digest.digest,
+                ),
+                signature=v2.Signature(
+                    content=bundle._inner.message_signature.signature,
+                    verifier=v2.Verifier(
+                        x509_certificate=v1.X509Certificate(
+                            bundle.signing_certificate.public_bytes(
+                                encoding=serialization.Encoding.DER
+                            )
+                        ),
+                        key_details=Verifier._get_key_details(
+                            bundle.signing_certificate
+                        ),
+                    ),
+                ),
+            )
+        ),
+    )
+    v2_actual_body = v2.Entry().from_json(base64.b64decode(entry.body))
+    if v2_expected_body != v2_actual_body:
+        raise VerificationError(
+            "transparency log entry is inconsistent with other materials"
+        )
