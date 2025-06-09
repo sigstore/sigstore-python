@@ -21,7 +21,7 @@ All versions prior to 0.9.0 are untracked.
 
 
 * Added a `RekorV2Client` for posting new entries to a Rekor V2 instance.
-  [#1400](https://github.com/sigstore/sigstore-python/pull/1400)
+  [#1400](https://github.com/sigstore/sigstore-python/pull/1422)
 
 ### Fixed
 
