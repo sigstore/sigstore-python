@@ -76,7 +76,8 @@ def test_verifier_multiple_verifications(signing_materials, null_policy):
 
 @pytest.mark.online
 @pytest.mark.parametrize(
-    "filename", ("bundle.txt", "bundle_v3.txt", "bundle_v3_alt.txt")
+    "filename",
+    ("bundle.txt", "bundle_v3.txt", "bundle_v3_alt.txt", "staging-rekor-v2.txt"),
 )
 def test_verifier_bundle(signing_bundle, null_policy, filename):
     (file, bundle) = signing_bundle(filename)
