@@ -422,13 +422,18 @@ class Verifier:
         # Instead, we manually pick apart the entry body below and verify
         # the parts we can (namely the payload hash and signature list).
         entry = bundle.log_entry
-        if (
-            entry._kind_version.kind == "dsse"
-            and entry._kind_version.version == "0.0.2"
-        ):
+        if entry._kind_version.kind != "dsse":
+            raise VerificationError(
+                f"Expected entry type dsse, got {entry._kind_version.kind}"
+            )
+        if entry._kind_version.version == "0.0.2":
             _validate_dsse_v002_entry_body(bundle)
-        else:
+        elif entry._kind_version.version == "0.0.1":
             _validate_dsse_v001_entry_body(bundle)
+        else:
+            raise VerificationError(
+                f"Unsupported dsse version {entry._kind_version.version}"
+            )
 
         return (envelope._inner.payload_type, envelope._inner.payload)
 
@@ -473,13 +478,19 @@ class Verifier:
         # (8): verify the consistency of the log entry's body against
         #      the other bundle materials (and input being verified).
         entry = bundle.log_entry
-        if (
-            entry._kind_version.kind == "hashedrekord"
-            and entry._kind_version.version == "0.0.2"
-        ):
+        if entry._kind_version.kind != "hashedrekord":
+            raise VerificationError(
+                f"Expected entry type hashedrekord, got {entry._kind_version.kind}"
+            )
+
+        if entry._kind_version.version == "0.0.2":
             _validate_hashedrekord_v002_entry_body(bundle)
-        else:
+        elif entry._kind_version.version == "0.0.1":
             _validate_hashedrekord_v001_entry_body(bundle, hashed_input)
+        else:
+            raise VerificationError(
+                f"Unsupported hashedrekord version {entry._kind_version.version}"
+            )
 
 
 def _validate_dsse_v001_entry_body(bundle: Bundle) -> None:
