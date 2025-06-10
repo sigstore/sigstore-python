@@ -375,20 +375,6 @@ class Verifier:
                     f"invalid signing cert: expired at time of signing, time via {vts}"
                 )
 
-    @staticmethod
-    def _get_key_details(certificate: Certificate) -> v1.PublicKeyDetails:
-        """Determine PublicKeyDetails from a certificate"""
-        public_key = certificate.public_key()
-        if isinstance(public_key, EllipticCurvePublicKey):
-            if public_key.curve.name == "secp256r1":
-                return cast(
-                    v1.PublicKeyDetails,
-                    v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256,
-                )
-            # TODO support other keys
-            raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
-        raise ValueError(f"Unsupported public key type: {type(public_key)}")
-
     def verify_dsse(
         self, bundle: Bundle, policy: VerificationPolicy
     ) -> tuple[str, bytes]:
@@ -440,9 +426,9 @@ class Verifier:
             entry._kind_version.kind == "dsse"
             and entry._kind_version.version == "0.0.2"
         ):
-            validate_dsse_v002_entry_body(bundle)
+            _validate_dsse_v002_entry_body(bundle)
         else:
-            validate_dsse_v001_entry_body(bundle)
+            _validate_dsse_v001_entry_body(bundle)
 
         return (envelope._inner.payload_type, envelope._inner.payload)
 
@@ -491,14 +477,14 @@ class Verifier:
             entry._kind_version.kind == "hashedrekord"
             and entry._kind_version.version == "0.0.2"
         ):
-            validate_hashedrekord_v002_entry_body(bundle)
+            _validate_hashedrekord_v002_entry_body(bundle)
         else:
-            validate_hashedrekord_v001_entry_body(bundle, hashed_input)
+            _validate_hashedrekord_v001_entry_body(bundle, hashed_input)
 
 
-def validate_dsse_v001_entry_body(bundle: Bundle) -> None:
+def _validate_dsse_v001_entry_body(bundle: Bundle) -> None:
     """
-    Valideate the Entry body for dsse v001.
+    Validate the Entry body for dsse v001.
     """
     entry = bundle.log_entry
     envelope = bundle._dsse_envelope
@@ -534,9 +520,9 @@ def validate_dsse_v001_entry_body(bundle: Bundle) -> None:
         raise VerificationError("log entry signatures do not match bundle")
 
 
-def validate_dsse_v002_entry_body(bundle: Bundle) -> None:
+def _validate_dsse_v002_entry_body(bundle: Bundle) -> None:
     """
-    Valideate the Entry body for dsse v002.
+    Validate Entry body for dsse v002.
     """
     entry = bundle.log_entry
     envelope = bundle._dsse_envelope
@@ -562,14 +548,7 @@ def validate_dsse_v002_entry_body(bundle: Bundle) -> None:
     v2_signatures = [
         v2.Signature(
             content=signature.sig,
-            verifier=v2.Verifier(
-                x509_certificate=v1.X509Certificate(
-                    bundle.signing_certificate.public_bytes(
-                        encoding=serialization.Encoding.DER
-                    )
-                ),
-                key_details=Verifier._get_key_details(bundle.signing_certificate),
-            ),
+            verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
         )
         for signature in envelope._inner.signatures
     ]
@@ -577,9 +556,11 @@ def validate_dsse_v002_entry_body(bundle: Bundle) -> None:
         raise VerificationError("log entry signatures do not match bundle")
 
 
-def validate_hashedrekord_v001_entry_body(bundle: Bundle, hashed_input: Hashed) -> None:
+def _validate_hashedrekord_v001_entry_body(
+    bundle: Bundle, hashed_input: Hashed
+) -> None:
     """
-    Valideate the Entry body for hashedrekord v001.
+    Validate the Entry body for hashedrekord v001.
     """
     entry = bundle.log_entry
     expected_body = _hashedrekord_from_parts(
@@ -596,9 +577,9 @@ def validate_hashedrekord_v001_entry_body(bundle: Bundle, hashed_input: Hashed) 
         )
 
 
-def validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
+def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
     """
-    Valideate the Entry body for hashedrekord v002.
+    Validate Entry body for hashedrekord v002.
     """
     entry = bundle.log_entry
     if bundle._inner.message_signature is None:
@@ -616,16 +597,7 @@ def validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
                 ),
                 signature=v2.Signature(
                     content=bundle._inner.message_signature.signature,
-                    verifier=v2.Verifier(
-                        x509_certificate=v1.X509Certificate(
-                            bundle.signing_certificate.public_bytes(
-                                encoding=serialization.Encoding.DER
-                            )
-                        ),
-                        key_details=Verifier._get_key_details(
-                            bundle.signing_certificate
-                        ),
-                    ),
+                    verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
                 ),
             )
         ),
@@ -635,3 +607,29 @@ def validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
         raise VerificationError(
             "transparency log entry is inconsistent with other materials"
         )
+
+
+def _v2_verifier_from_certificate(certificate: Certificate) -> v2.Verifier:
+    public_key = certificate.public_key()
+    key_details = None
+
+    if isinstance(public_key, EllipticCurvePublicKey):
+        if public_key.curve.name == "secp256r1":
+            key_details = cast(
+                v1.PublicKeyDetails,
+                v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256,
+            )
+        else:
+            raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
+
+    # TODO support other keys
+
+    if key_details is None:
+        raise ValueError(f"Unsupported public key type: {type(public_key)}")
+
+    return v2.Verifier(
+        x509_certificate=v1.X509Certificate(
+            certificate.public_bytes(encoding=serialization.Encoding.DER)
+        ),
+        key_details=key_details,
+    )
