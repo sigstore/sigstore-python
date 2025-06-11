@@ -32,5 +32,5 @@ jobs:
             export TRUST_CONFIG=${{ steps.setup-sigstore-env.outputs.trust-config }}
         
             set -o pipefail
-            make test TEST_ARGS="-k test_sign_rekor_entry_consistent -rs" | tee output
+            make test TEST_ARGS="-k test_sign_rekor_entry_consistent -rs -v" | tee output
             ! grep -q "skipping test that use the local environment" output || (echo "ERROR: Found skip message" && exit 1)
