@@ -27,7 +27,6 @@ import rekor_types
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.x509 import Certificate, ExtendedKeyUsage, KeyUsage
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from OpenSSL.crypto import (
@@ -621,26 +620,32 @@ def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
 
 
 def _v2_verifier_from_certificate(certificate: Certificate) -> v2.Verifier:
-    public_key = certificate.public_key()
-    key_details = None
+    """
+    Return a Rekor v2 protobuf Verifier for the signing certificate.
 
-    if isinstance(public_key, EllipticCurvePublicKey):
-        if public_key.curve.name == "secp256r1":
-            key_details = cast(
-                v1.PublicKeyDetails,
-                v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256,
-            )
+    This method decides which signature algorithms are supported for verification
+    (in a rekor v2 entry), see
+    https://github.com/sigstore/architecture-docs/blob/main/algorithm-registry.md.
+    Note that actual signature verification happens in verify_artifact() and
+    verify_dsse(): New keytypes need to be added here and in those methods.
+    """
+    public_key = certificate.public_key()
+
+    if isinstance(public_key, ec.EllipticCurvePublicKey):
+        if isinstance(public_key.curve, ec.SECP256R1):
+            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256
+        elif isinstance(public_key.curve, ec.SECP384R1):
+            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_384
+        elif isinstance(public_key.curve, ec.SECP521R1):
+            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512
         else:
             raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
-
-    # TODO support other keys
-
-    if key_details is None:
+    else:
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
 
     return v2.Verifier(
         x509_certificate=v1.X509Certificate(
             certificate.public_bytes(encoding=serialization.Encoding.DER)
         ),
-        key_details=key_details,
+        key_details=cast(v1.PublicKeyDetails, key_details),
     )
