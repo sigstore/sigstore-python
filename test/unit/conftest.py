@@ -48,6 +48,16 @@ _TUF_ASSETS = (Path(__file__).parent.parent / "assets" / "staging-tuf").resolve(
 assert _TUF_ASSETS.is_dir()
 
 TEST_CLIENT_ID = "sigstore"
+LOCAL = "local"
+
+
+def _has_setup_sigstore_env() -> bool:
+    """
+    Checks whether the TEST_SETUP_SIGSTORE_ENV variable is set to true,
+    This means we are using the sigstore/scaffolding/actions/setup-sigstore-env
+    that has the sigstore services in containers available for us to use.
+    """
+    return bool(os.getenv("TEST_SETUP_SIGSTORE_ENV", False))
 
 
 @pytest.fixture
@@ -194,6 +204,8 @@ def sign_ctx_and_ident_for_env(
     """
     Returns a SigningContext and IdentityToken for the given environment.
     The SigningContext is behind a callable so that it may be lazily evaluated.
+
+    The local tests require setup by the test-with-setup-sigstore-env.yml workflow.
     """
     if env == "staging":
 
@@ -204,6 +216,17 @@ def sign_ctx_and_ident_for_env(
 
         def ctx_cls():
             return SigningContext.from_trust_config(ClientTrustConfig.production())
+
+    elif env == "local":
+        print("HAS", _has_setup_sigstore_env())
+        if not _has_setup_sigstore_env():
+            pytest.skip(
+                "skipping test that use the local environment due to unset `TEST_SETUP_SIGSTORE_ENV` env variable"
+            )
+        def ctx_cls():
+            return SigningContext.from_trust_config(ClientTrustConfig.from_json(
+                Path(os.getenv("TRUST_CONFIG")).read_text()
+            ))
 
     else:
         raise ValueError(f"Unknown env {env}")

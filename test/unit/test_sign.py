@@ -19,6 +19,8 @@ import pretend
 import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
+from .conftest import LOCAL
+
 import sigstore.oidc
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import ClientTrustConfig
@@ -29,7 +31,7 @@ from sigstore.sign import SigningContext
 from sigstore.verify.policy import UnsafeNoOp
 
 
-@pytest.mark.parametrize("env", ["staging", "production"])
+@pytest.mark.parametrize("env", ["staging", "production", LOCAL])
 @pytest.mark.ambient_oidc
 def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
     ctx_cls, identity = sign_ctx_and_ident_for_env
