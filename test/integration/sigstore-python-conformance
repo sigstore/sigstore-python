@@ -4,9 +4,27 @@
 A wrapper to convert `sigstore-conformance` CLI protocol invocations to match `sigstore-python`.
 """
 
-
+import json
 import os
 import sys
+from contextlib import suppress
+from string import Template
+from tempfile import NamedTemporaryFile
+
+# The signing config in this trust_config is not used: it's just here
+# so the built trustconfig is complete
+trust_config = {
+    "mediaType": "application/vnd.dev.sigstore.clienttrustconfig.v0.1+json",
+    "signingConfig": {
+        "mediaType": "application/vnd.dev.sigstore.signingconfig.v0.2+json",
+        "caUrls": [{ "url": "https://fulcio.example.com" }],
+        "oidcUrls": [],
+        "rekorTlogUrls": [{ "url": "https://rekor.example.com" }],
+        "tsaUrls": [],
+        "rekorTlogConfig": {"selector": "ANY"},
+        "tsaConfig": {"selector": "ANY"}
+    }
+}
 
 SUBCMD_REPLACEMENTS = {
     "sign-bundle": "sign",
@@ -32,17 +50,39 @@ if "--staging" in fixed_args:
     command.append("--staging")
     fixed_args.remove("--staging")
 
-# Fix-up the subcommand: the conformance suite uses `verify`, but
-# `sigstore` requires `verify identity` for identity based verifications.
-subcommand, *fixed_args = fixed_args
-if subcommand == "sign":
-    command.append("sign")
-elif subcommand == "verify":
-    command.extend(["verify", "identity"])
-else:
-    raise ValueError(f"unsupported subcommand: {subcommand}")
+# We may get "--trusted-root" as argument but sigstore-python wants "--trust-config":
+trusted_root_path = None
+with suppress(ValueError):
+    i = fixed_args.index("--trusted-root")
+    trusted_root_path = fixed_args[i+1]
+    fixed_args.pop(i)
+    fixed_args.pop(i)
 
-# Replace incompatible flags.
-command.extend(ARG_REPLACEMENTS[arg] if arg in ARG_REPLACEMENTS else arg for arg in fixed_args)
+# If we did get a trustedroot, write a matching trustconfig into a temp file
+with NamedTemporaryFile(mode="wt") as temp_file:
+    if trusted_root_path is not None:
+        with open(trusted_root_path) as f:
+            trusted_root=json.load(f)
+        trust_config["trustedRoot"] = trusted_root
 
-os.execvp("sigstore", command)
+        json.dump(trust_config, temp_file)
+        temp_file.flush()
+
+        command.extend(["--trust-config", temp_file.name])
+
+    # Fix-up the subcommand: the conformance suite uses `verify`, but
+    # `sigstore` requires `verify identity` for identity based verifications.
+    subcommand, *fixed_args = fixed_args
+    if subcommand == "sign":
+        command.append("sign")
+    elif subcommand == "verify":
+        command.extend(["verify", "identity"])
+    else:
+        raise ValueError(f"unsupported subcommand: {subcommand}")
+
+    # Replace incompatible flags.
+    command.extend(
+        ARG_REPLACEMENTS[arg] if arg in ARG_REPLACEMENTS else arg for arg in fixed_args
+    )
+
+    os.execvp("sigstore", command)
