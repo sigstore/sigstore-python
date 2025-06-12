@@ -241,7 +241,7 @@ def sign_ctx_and_ident_for_env(
 
 
 @pytest.fixture
-def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
+def preprod() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
     """
     Returns a SigningContext, Verifier, and IdentityToken for the staging environment.
     The SigningContext and Verifier are both behind callables so that they may be lazily evaluated.

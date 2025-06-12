@@ -117,8 +117,8 @@ def test_identity_proof_claim_lookup(sign_ctx_and_ident_for_env, monkeypatch):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_prehashed(staging):
-    sign_ctx_cls, verifier_cls, identity = staging
+def test_sign_prehashed(preprod):
+    sign_ctx_cls, verifier_cls, identity = preprod
 
     sign_ctx = sign_ctx_cls()
     verifier = verifier_cls()
@@ -142,8 +142,8 @@ def test_sign_prehashed(staging):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_dsse(staging):
-    sign_ctx, _, identity = staging
+def test_sign_dsse(preprod):
+    sign_ctx, _, identity = preprod
 
     ctx = sign_ctx()
     stmt = (
@@ -181,8 +181,8 @@ class TestSignWithTSA:
         return SigningContext.from_trust_config(trust_config)
 
     @pytest.fixture
-    def identity(self, staging):
-        _, _, identity = staging
+    def identity(self, preprod):
+        _, _, identity = preprod
         return identity
 
     @pytest.fixture
