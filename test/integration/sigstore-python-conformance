@@ -4,6 +4,7 @@
 A wrapper to convert `sigstore-conformance` CLI protocol invocations to match `sigstore-python`.
 """
 
+
 import os
 import sys
 
@@ -25,19 +26,23 @@ subcmd = fixed_args[0]
 if subcmd in SUBCMD_REPLACEMENTS:
     fixed_args[0] = SUBCMD_REPLACEMENTS[subcmd]
 
-# Replace incompatible flags.
-fixed_args = [
-    ARG_REPLACEMENTS[arg] if arg in ARG_REPLACEMENTS else arg for arg in fixed_args
-]
+# Build base command with optional staging argument
+command = ["sigstore"]
+if "--staging" in fixed_args:
+    command.append("--staging")
+    fixed_args.remove("--staging")
 
 # Fix-up the subcommand: the conformance suite uses `verify`, but
 # `sigstore` requires `verify identity` for identity based verifications.
 subcommand, *fixed_args = fixed_args
 if subcommand == "sign":
-    fixed_args = ["sigstore", "sign", *fixed_args]
+    command.append("sign")
 elif subcommand == "verify":
-    fixed_args = ["sigstore", "verify", "identity", *fixed_args]
+    command.extend(["verify", "identity"])
 else:
     raise ValueError(f"unsupported subcommand: {subcommand}")
 
-os.execvp("sigstore", fixed_args)
+# Replace incompatible flags.
+command.extend(ARG_REPLACEMENTS[arg] if arg in ARG_REPLACEMENTS else arg for arg in fixed_args)
+
+os.execvp("sigstore", command)
