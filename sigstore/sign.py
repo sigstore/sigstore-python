@@ -38,7 +38,6 @@ with signing_ctx.signer(identity, cache=True) as signer:
 
 from __future__ import annotations
 
-import base64
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -46,8 +45,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import cryptography.x509 as x509
-import rekor_types
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
@@ -61,7 +59,7 @@ from sigstore._internal.fulcio import (
     ExpiredCertificate,
     FulcioClient,
 )
-from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor import EntryRequestBody, RekorLogSubmitter
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
@@ -176,13 +174,13 @@ class Signer:
         self,
         cert: x509.Certificate,
         content: MessageSignature | dsse.Envelope,
-        proposed_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
+        proposed_entry: EntryRequestBody,
     ) -> Bundle:
         """
         Perform the common "finalizing" steps in a Sigstore signing flow.
         """
         # Submit the proposed entry to the transparency log
-        entry = self._signing_ctx._rekor.log.entries.post(proposed_entry)
+        entry = self._signing_ctx._rekor.create_entry(proposed_entry)
 
         _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
@@ -211,26 +209,12 @@ class Signer:
         """
         cert = self._signing_cert()
 
-        # Prepare inputs
-        b64_cert = base64.b64encode(
-            cert.public_bytes(encoding=serialization.Encoding.PEM)
-        )
-
         # Sign the statement, producing a DSSE envelope
         content = dsse._sign(self._private_key, input_)
 
         # Create the proposed DSSE log entry
-        proposed_entry = rekor_types.Dsse(
-            spec=rekor_types.dsse.DsseSchema(
-                # NOTE: mypy can't see that this kwarg is correct due to two interacting
-                # behaviors/bugs (one pydantic, one datamodel-codegen):
-                # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
-                # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
-                proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
-                    envelope=content.to_json(),
-                    verifiers=[b64_cert.decode()],
-                ),
-            ),
+        proposed_entry = self._signing_ctx._rekor._build_dsse_request(
+            envelope=content, certificate=cert
         )
 
         return self._finalize_sign(cert, content, proposed_entry)
@@ -255,11 +239,6 @@ class Signer:
 
         cert = self._signing_cert()
 
-        # Prepare inputs
-        b64_cert = base64.b64encode(
-            cert.public_bytes(encoding=serialization.Encoding.PEM)
-        )
-
         # Sign artifact
         hashed_input = sha256_digest(input_)
 
@@ -276,21 +255,8 @@ class Signer:
         )
 
         # Create the proposed hashedrekord entry
-        proposed_entry = rekor_types.Hashedrekord(
-            spec=rekor_types.hashedrekord.HashedrekordV001Schema(
-                signature=rekor_types.hashedrekord.Signature(
-                    content=base64.b64encode(artifact_signature).decode(),
-                    public_key=rekor_types.hashedrekord.PublicKey(
-                        content=b64_cert.decode()
-                    ),
-                ),
-                data=rekor_types.hashedrekord.Data(
-                    hash=rekor_types.hashedrekord.Hash(
-                        algorithm=hashed_input._as_hashedrekord_algorithm(),
-                        value=hashed_input.digest.hex(),
-                    )
-                ),
-            ),
+        proposed_entry = self._signing_ctx._rekor._build_hashed_rekord_request(
+            hashed_input=hashed_input, signature=artifact_signature, certificate=cert
         )
 
         return self._finalize_sign(cert, content, proposed_entry)
@@ -305,7 +271,7 @@ class SigningContext:
         self,
         *,
         fulcio: FulcioClient,
-        rekor: RekorClient,
+        rekor: RekorLogSubmitter,
         trusted_root: TrustedRoot,
         tsa_clients: list[TimestampAuthorityClient] | None = None,
     ):
