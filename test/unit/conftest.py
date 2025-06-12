@@ -223,10 +223,11 @@ def sign_ctx_and_ident_for_env(
             pytest.skip(
                 "skipping test that use the local environment due to unset `TEST_SETUP_SIGSTORE_ENV` env variable"
             )
+
         def ctx_cls():
-            return SigningContext.from_trust_config(ClientTrustConfig.from_json(
-                Path(os.getenv("TRUST_CONFIG")).read_text()
-            ))
+            return SigningContext.from_trust_config(
+                ClientTrustConfig.from_json(Path(os.getenv("TRUST_CONFIG")).read_text())
+            )
 
     else:
         raise ValueError(f"Unknown env {env}")

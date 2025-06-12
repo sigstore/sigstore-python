@@ -19,8 +19,6 @@ import pretend
 import pytest
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
-from .conftest import LOCAL
-
 import sigstore.oidc
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import ClientTrustConfig
@@ -29,6 +27,8 @@ from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
 from sigstore.verify.policy import UnsafeNoOp
+
+from .conftest import LOCAL
 
 
 @pytest.mark.parametrize("env", ["staging", "production", LOCAL])
