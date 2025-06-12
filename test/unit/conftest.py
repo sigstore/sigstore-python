@@ -240,20 +240,42 @@ def sign_ctx_and_ident_for_env(
     return ctx_cls, IdentityToken(token)
 
 
-@pytest.fixture
-def preprod() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
+@pytest.fixture(
+    params=[
+        pytest.param(
+            (ClientTrustConfig.staging(), os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")),
+            id="preprod-staging",
+        ),
+        pytest.param(
+            (
+                ClientTrustConfig.from_json(
+                    Path(os.getenv("TRUST_CONFIG")).read_text()
+                ),
+                os.getenv("SIGSTORE_IDENTITY_TOKEN_local"),
+            ),
+            id="preprod-local",
+            marks=pytest.mark.skipif(
+                not _has_setup_sigstore_env(),
+                reason="skipping test that use the local environment due to unset `TEST_SETUP_SIGSTORE_ENV` env variable",
+            ),
+        ),
+    ]
+)
+def preprod(request) -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
     """
     Returns a SigningContext, Verifier, and IdentityToken for the staging environment.
     The SigningContext and Verifier are both behind callables so that they may be lazily evaluated.
     """
+    trust_config, token = request.param
+    ctx = SigningContext.from_trust_config(trust_config)
 
     def signer():
-        return SigningContext.from_trust_config(ClientTrustConfig.staging())
+        return ctx
 
-    verifier = Verifier.staging
+    def verifier():
+        return Verifier(trusted_root=ctx._trusted_root)
 
     # Detect env variable for local interactive tests.
-    token = os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")
     if not token:
         # If the variable is not defined, try getting an ambient token.
         token = detect_credential(TEST_CLIENT_ID)
