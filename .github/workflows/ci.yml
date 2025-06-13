@@ -60,7 +60,7 @@ jobs:
           unshare --map-root-user --net make test T="test/unit" TEST_ARGS="--skip-online -vv --showlocals"
 
       - name: test
-        run: make test TEST_ARGS="-vv --showlocals"
+        run: make test TEST_ARGS="-vvv --showlocals"
 
       # TODO: Refactor this or remove it entirely once there's
       # a suitable staging TSA instance.
