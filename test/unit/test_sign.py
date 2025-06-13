@@ -27,12 +27,8 @@ from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
 from sigstore.verify.policy import UnsafeNoOp
 
-from .conftest import LOCAL
 
-
-@pytest.mark.parametrize(
-    "env", ["staging", "production", pytest.param(LOCAL, marks=pytest.mark.xfail)]
-)
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
     ctx_cls, identity = sign_ctx_and_ident_for_env
@@ -54,7 +50,7 @@ def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
     assert expected_entry.log_index == actual_entry.log_index
 
 
-@pytest.mark.parametrize("env", ["staging", "production", pytest.param(LOCAL, marks=pytest.mark.xfail)])
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch):
     ctx, identity = sign_ctx_and_ident_for_env
@@ -73,7 +69,7 @@ def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch
             signer.sign_artifact(payload)
 
 
-@pytest.mark.parametrize("env", ["staging", "production", pytest.param(LOCAL, marks=pytest.mark.xfail)])
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
     ctx, identity = sign_ctx_and_ident_for_env
@@ -93,9 +89,7 @@ def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
             signer.sign_artifact(payload)
 
 
-@pytest.mark.parametrize(
-    "env", ["staging", "production", pytest.param(LOCAL, marks=pytest.mark.xfail)]
-)
+@pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
 def test_identity_proof_claim_lookup(sign_ctx_and_ident_for_env, monkeypatch):
     ctx_cls, identity = sign_ctx_and_ident_for_env
