@@ -28,10 +28,10 @@ ALPHA_REKOR_V2_URL = "https://log2025-alpha1.rekor.sigstage.dev"
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_rekor_v2_create_entry_dsse(staging):
+def test_rekor_v2_create_entry_dsse(preprod):
     # This is not a real unit test: it requires not only staging rekor but also TUF
     # fulcio and oidc -- maybe useful only until we have real integration tests in place
-    sign_ctx_cls, _, identity = staging
+    sign_ctx_cls, _, identity = preprod
 
     # Hack to run Signer.sign() with staging rekor v2
     sign_ctx = sign_ctx_cls()
@@ -64,10 +64,10 @@ def test_rekor_v2_create_entry_dsse(staging):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_rekor_v2_create_entry_hashed_rekord(staging):
+def test_rekor_v2_create_entry_hashed_rekord(preprod):
     # This is not a real unit test: it requires not only staging rekor but also TUF
     # fulcio and oidc -- maybe useful only until we have real integration tests in place
-    sign_ctx_cls, _, identity = staging
+    sign_ctx_cls, _, identity = preprod
 
     # Hack to run Signer.sign() with staging rekor v2
     sign_ctx = sign_ctx_cls()
