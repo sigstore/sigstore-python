@@ -243,12 +243,12 @@ def sign_ctx_and_ident_for_env(
 @pytest.fixture(
     params=[
         pytest.param(
-            (ClientTrustConfig.staging(), os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")),
+            (ClientTrustConfig.staging, os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")),
             id="preprod-staging",
         ),
         pytest.param(
             (
-                ClientTrustConfig.from_json(
+                lambda: ClientTrustConfig.from_json(
                     Path(os.getenv("TRUST_CONFIG")).read_text()
                 ),
                 os.getenv("SIGSTORE_IDENTITY_TOKEN_local"),
@@ -265,9 +265,12 @@ def preprod(request) -> tuple[type[SigningContext], type[Verifier], IdentityToke
     """
     Returns a SigningContext, Verifier, and IdentityToken for the staging environment.
     The SigningContext and Verifier are both behind callables so that they may be lazily evaluated.
+
+    We paramaterize this fixture so that consuming tests can run multiple times, once for each of
+    the params. https://docs.pytest.org/en/stable/how-to/fixtures.html#fixture-parametrize
     """
-    trust_config, token = request.param
-    ctx = SigningContext.from_trust_config(trust_config)
+    trust_config_func, token = request.param
+    ctx = SigningContext.from_trust_config(trust_config_func())
 
     def signer():
         return ctx
