@@ -27,4 +27,4 @@ jobs:
       - uses: sigstore/sigstore-conformance@fd90e6b0f3046f2276a6659481de6df495dea3b9 # v0.0.18
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance
-          xfail: "test_verify_with_trust_root test_verify_dsse_bundle_with_trust_root" # see issue 821
+          xfail: "test_verify_dsse_bundle_with_trust_root" # see issue 1442
