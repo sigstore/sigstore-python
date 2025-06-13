@@ -171,14 +171,11 @@ def test_sign_dsse(preprod):
 @pytest.mark.timestamp_authority
 class TestSignWithTSA:
     @pytest.fixture
-    def sig_ctx(self, asset, tsa_url) -> SigningContext:
-        trust_config = ClientTrustConfig.from_json(
-            asset("tsa/trust_config.json").read_text()
-        )
-
-        trust_config._inner.signing_config.tsa_urls[0].url = tsa_url
-
-        return SigningContext.from_trust_config(trust_config)
+    def sign_ctx_and_identity(self, preprod, tsa_url):
+        sign_ctx_func, _, identity = preprod
+        sign_ctx = sign_ctx_func()
+        sign_ctx._tsa_clients[0].url = tsa_url
+        return sign_ctx, identity
 
     @pytest.fixture
     def identity(self, preprod):
@@ -192,7 +189,8 @@ class TestSignWithTSA:
             digest=hashlib.sha256(input_).digest(), algorithm=HashAlgorithm.SHA2_256
         )
 
-    def test_sign_artifact(self, sig_ctx, identity, hashed):
+    def test_sign_artifact(self, sign_ctx_and_identity, hashed):
+        sig_ctx, identity = sign_ctx_and_identity
         with sig_ctx.signer(identity) as signer:
             bundle = signer.sign_artifact(hashed)
 
@@ -201,7 +199,8 @@ class TestSignWithTSA:
             bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
         )
 
-    def test_sign_dsse(self, sig_ctx, identity):
+    def test_sign_dsse(self, sign_ctx_and_identity):
+        sig_ctx, identity = sign_ctx_and_identity
         stmt = (
             StatementBuilder()
             .subjects(
@@ -228,8 +227,9 @@ class TestSignWithTSA:
             bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
         )
 
-    def test_with_timestamp_error(self, sig_ctx, identity, hashed, caplog):
+    def test_with_timestamp_error(self, sign_ctx_and_identity, hashed, caplog):
         # Simulate here an TSA that returns an invalid Timestamp
+        sig_ctx, identity = sign_ctx_and_identity
         sig_ctx._tsa_clients.append(TimestampAuthorityClient("invalid-url"))
 
         with caplog.at_level(logging.WARNING, logger="sigstore.sign"):
