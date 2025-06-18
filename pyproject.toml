@@ -124,7 +124,7 @@ exclude_dirs = ["./test"]
 [tool.ruff.lint]
 extend-select = ["I", "UP"]
 ignore = [
-  "UP007",  # https://github.com/pydantic/pydantic/issues/4146
+  "UP007", # https://github.com/pydantic/pydantic/issues/4146
   "UP011",
   "UP015",
 ]

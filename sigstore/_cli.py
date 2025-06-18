@@ -22,7 +22,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn, Optional, TextIO, Union
+from typing import Any, NoReturn, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -76,9 +76,9 @@ _package_logger.setLevel(os.environ.get("SIGSTORE_LOGLEVEL", "INFO").upper())
 
 @dataclass(frozen=True)
 class SigningOutputs:
-    signature: Optional[Path] = None
-    certificate: Optional[Path] = None
-    bundle: Optional[Path] = None
+    signature: Path | None = None
+    certificate: Path | None = None
+    bundle: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -1178,7 +1178,7 @@ def _get_trust_config(args: argparse.Namespace) -> ClientTrustConfig:
 
 def _get_identity(
     args: argparse.Namespace, trust_config: ClientTrustConfig
-) -> Optional[IdentityToken]:
+) -> IdentityToken | None:
     token = None
     if not args.oidc_disable_ambient_providers:
         token = detect_credential(args.oidc_client_id)
