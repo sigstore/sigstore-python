@@ -27,7 +27,7 @@ import threading
 import urllib.parse
 import uuid
 from types import TracebackType
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from id import IdentityError
 
@@ -224,7 +224,7 @@ class _OAuthRedirectServer(http.server.HTTPServer):
     def __init__(self, client_id: str, client_secret: str, issuer: Issuer) -> None:
         super().__init__(("localhost", 0), _OAuthRedirectHandler)
         self.oauth_session = _OAuthSession(client_id, client_secret, issuer)
-        self.auth_response: Optional[dict[str, list[str]]] = None
+        self.auth_response: dict[str, list[str]] | None = None
         self._is_out_of_band = False
 
     @property

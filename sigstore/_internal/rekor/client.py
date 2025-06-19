@@ -23,7 +23,7 @@ import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import rekor_types
 import requests
@@ -108,9 +108,7 @@ class RekorEntries(_Endpoint):
     Represents the individual log entry endpoints on a Rekor instance.
     """
 
-    def get(
-        self, *, uuid: Optional[str] = None, log_index: Optional[int] = None
-    ) -> LogEntry:
+    def get(self, *, uuid: str | None = None, log_index: int | None = None) -> LogEntry:
         """
         Retrieve a specific log entry, either by UUID or by log index.
 
@@ -168,7 +166,7 @@ class RekorEntriesRetrieve(_Endpoint):
     def post(
         self,
         expected_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
-    ) -> Optional[LogEntry]:
+    ) -> LogEntry | None:
         """
         Retrieves an extant Rekor entry, identified by its artifact signature,
         artifact hash, and signing certificate.
@@ -192,7 +190,7 @@ class RekorEntriesRetrieve(_Endpoint):
         # We select the oldest entry for our actual return value,
         # since a malicious actor could conceivably spam the log with
         # newer duplicate entries.
-        oldest_entry: Optional[LogEntry] = None
+        oldest_entry: LogEntry | None = None
         for result in results:
             entry = LogEntry._from_response(result)
             if (
