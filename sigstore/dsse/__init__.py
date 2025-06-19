@@ -54,7 +54,7 @@ class Subject(BaseModel):
     A single in-toto statement subject.
     """
 
-    name: Optional[StrictStr]
+    name: Optional[StrictStr]  # noqa: UP045
     digest: DigestSet = Field(...)
 
 
@@ -68,7 +68,7 @@ class _Statement(BaseModel):
     type_: Literal["https://in-toto.io/Statement/v1"] = Field(..., alias="_type")
     subjects: list[Subject] = Field(..., min_length=1, alias="subject")
     predicate_type: StrictStr = Field(..., alias="predicateType")
-    predicate: Optional[dict[str, Any]] = Field(None, alias="predicate")
+    predicate: Optional[dict[str, Any]] = Field(None, alias="predicate")  # noqa: UP045
 
 
 class Statement:
@@ -134,9 +134,9 @@ class StatementBuilder:
 
     def __init__(
         self,
-        subjects: Optional[list[Subject]] = None,
-        predicate_type: Optional[str] = None,
-        predicate: Optional[dict[str, Any]] = None,
+        subjects: list[Subject] | None = None,
+        predicate_type: str | None = None,
+        predicate: dict[str, Any] | None = None,
     ):
         """
         Create a new `StatementBuilder`.

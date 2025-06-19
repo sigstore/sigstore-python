@@ -403,7 +403,7 @@ class IdentityError(Error):
             """
 
 
-def detect_credential(client_id: str = _DEFAULT_CLIENT_ID) -> Optional[str]:
+def detect_credential(client_id: str = _DEFAULT_CLIENT_ID) -> str | None:
     """Calls `id.detect_credential`, but wraps exceptions with our own exception type."""
 
     try:
