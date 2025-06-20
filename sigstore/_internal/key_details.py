@@ -26,6 +26,7 @@ from sigstore_protobuf_specs.dev.sigstore.common import v1
 def _get_key_details(certificate: Certificate) -> v1.PublicKeyDetails:
     """
     Determine PublicKeyDetails from the Certificate.
+    We disclude the unrecommended types.
     See
     - https://github.com/sigstore/architecture-docs/blob/6a8d78108ef4bb403046817fbcead211a9dca71d/algorithm-registry.md.
     - https://github.com/sigstore/protobuf-specs/blob/3aaae418f76fb4b34df4def4cd093c464f20fed3/protos/sigstore_common.proto
