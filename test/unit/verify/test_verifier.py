@@ -170,8 +170,8 @@ def test_verifier_fail_expiry(signing_materials, null_policy, monkeypatch):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_verifier_dsse_roundtrip(staging):
-    signer_cls, verifier_cls, identity = staging
+def test_verifier_dsse_roundtrip(preprod):
+    signer_cls, verifier_cls, identity = preprod
 
     ctx = signer_cls()
     stmt = (

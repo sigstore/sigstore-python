@@ -48,6 +48,16 @@ _TUF_ASSETS = (Path(__file__).parent.parent / "assets" / "staging-tuf").resolve(
 assert _TUF_ASSETS.is_dir()
 
 TEST_CLIENT_ID = "sigstore"
+LOCAL = "local"
+
+
+def _has_setup_sigstore_env() -> bool:
+    """
+    Checks whether the TEST_SETUP_SIGSTORE_ENV variable is set to true,
+    This means we are using the sigstore/scaffolding/actions/setup-sigstore-env
+    that has the sigstore services in containers available for us to use.
+    """
+    return bool(os.getenv("TEST_SETUP_SIGSTORE_ENV", False))
 
 
 @pytest.fixture
@@ -194,6 +204,8 @@ def sign_ctx_and_ident_for_env(
     """
     Returns a SigningContext and IdentityToken for the given environment.
     The SigningContext is behind a callable so that it may be lazily evaluated.
+
+    The local tests require setup by the test-with-setup-sigstore-env.yml workflow.
     """
     if env == "staging":
 
@@ -216,20 +228,45 @@ def sign_ctx_and_ident_for_env(
     return ctx_cls, IdentityToken(token)
 
 
-@pytest.fixture
-def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
+@pytest.fixture(
+    params=[
+        pytest.param(
+            (ClientTrustConfig.staging, os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")),
+            id="preprod-staging",
+        ),
+        pytest.param(
+            (
+                lambda: ClientTrustConfig.from_json(
+                    Path(os.getenv("TRUST_CONFIG")).read_text()
+                ),
+                os.getenv("SIGSTORE_IDENTITY_TOKEN_local"),
+            ),
+            id="preprod-local",
+            marks=pytest.mark.skipif(
+                not _has_setup_sigstore_env(),
+                reason="skipping test that use the local environment due to unset `TEST_SETUP_SIGSTORE_ENV` env variable",
+            ),
+        ),
+    ]
+)
+def preprod(request) -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
     """
     Returns a SigningContext, Verifier, and IdentityToken for the staging environment.
     The SigningContext and Verifier are both behind callables so that they may be lazily evaluated.
+
+    We paramaterize this fixture so that consuming tests can run multiple times, once for each of
+    the params. https://docs.pytest.org/en/stable/how-to/fixtures.html#fixture-parametrize
     """
+    trust_config_func, token = request.param
+    ctx = SigningContext.from_trust_config(trust_config_func())
 
     def signer():
-        return SigningContext.from_trust_config(ClientTrustConfig.staging())
+        return ctx
 
-    verifier = Verifier.staging
+    def verifier():
+        return Verifier(trusted_root=ctx._trusted_root)
 
     # Detect env variable for local interactive tests.
-    token = os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")
     if not token:
         # If the variable is not defined, try getting an ambient token.
         token = detect_credential(TEST_CLIENT_ID)
