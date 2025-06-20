@@ -128,7 +128,7 @@ class LogEntry:
     at least one will fail.
     """
 
-    uuid: Optional[str]
+    uuid: Optional[str]  # noqa: UP045
     """
     This entry's unique ID in the log instance it was retrieved from.
 
@@ -163,7 +163,7 @@ class LogEntry:
     An inclusion proof for this log entry.
     """
 
-    inclusion_promise: Optional[B64Str]
+    inclusion_promise: Optional[B64Str]  # noqa: UP045
     """
     An inclusion promise for this log entry, if present.
 
@@ -232,7 +232,7 @@ class LogEntry:
             tree_size=inclusion_proof.tree_size,
         )
 
-        inclusion_promise: Optional[B64Str] = None
+        inclusion_promise: B64Str | None = None
         if tlog_entry.inclusion_promise:
             inclusion_promise = B64Str(
                 base64.b64encode(
@@ -654,7 +654,7 @@ class Bundle:
         cert: Certificate,
         content: common_v1.MessageSignature | dsse.Envelope,
         log_entry: LogEntry,
-        signed_timestamp: Optional[list[TimeStampResponse]] = None,
+        signed_timestamp: list[TimeStampResponse] | None = None,
     ) -> Bundle:
         """
         @private
