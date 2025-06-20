@@ -16,23 +16,27 @@
 Utilities for getting the sigstore_protobuf_specs.dev.sigstore.common.v1.PublicKeyDetails.
 """
 
+from typing import cast
+
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.types import PublicKeyTypes
 from sigstore_protobuf_specs.dev.sigstore.common import v1
 
 
-def _get_key_details(public_key: v1.PublicKey) -> v1.PublicKeyDetails:
+def _get_key_details(public_key: PublicKeyTypes) -> v1.PublicKeyDetails:
     """
     Determine PublicKeyDetails from the public key.
     See https://github.com/sigstore/architecture-docs/blob/6a8d78108ef4bb403046817fbcead211a9dca71d/algorithm-registry.md.
     """
     if isinstance(public_key, ec.EllipticCurvePublicKey):
         if isinstance(public_key.curve, ec.SECP256R1):
-            return v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256
+            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256
         elif isinstance(public_key.curve, ec.SECP384R1):
-            return v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_384
+            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_384
         elif isinstance(public_key.curve, ec.SECP521R1):
-            return v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512
+            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512
         else:
             raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
+    return cast(v1.PublicKeyDetails, key_details)

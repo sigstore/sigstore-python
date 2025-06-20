@@ -20,17 +20,16 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import cast
 
 import requests
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.x509 import Certificate
 from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
 from sigstore_protobuf_specs.dev.sigstore.rekor import v2
 from sigstore_protobuf_specs.io import intoto
 
 from sigstore._internal import USER_AGENT
+from sigstore._internal.key_details import _get_key_details
 from sigstore._internal.rekor import (
     EntryRequestBody,
     RekorClientError,
@@ -93,23 +92,6 @@ class RekorV2Client(RekorLogSubmitter):
         _logger.debug(f"integrated: {integrated_entry}")
         return LogEntry._from_dict_rekor(integrated_entry)
 
-    @staticmethod
-    def _get_key_details(certificate: Certificate) -> common_v1.PublicKeyDetails:
-        """
-        Determine PublicKeyDetails from a certificate
-
-        We know that sign.Signer only uses secp256r1, so do not support anything else.
-        """
-        public_key = certificate.public_key()
-        if isinstance(public_key, EllipticCurvePublicKey):
-            if public_key.curve.name == "secp256r1":
-                return cast(
-                    common_v1.PublicKeyDetails,
-                    common_v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256,
-                )
-            raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
-        raise ValueError(f"Unsupported public key type: {type(public_key)}")
-
     @classmethod
     def _build_hashed_rekord_request(
         cls,
@@ -131,7 +113,7 @@ class RekorV2Client(RekorLogSubmitter):
                                 encoding=serialization.Encoding.DER
                             )
                         ),
-                        key_details=cls._get_key_details(certificate),
+                        key_details=_get_key_details(certificate.public_key()),
                     ),
                 ),
             )
@@ -165,7 +147,7 @@ class RekorV2Client(RekorLogSubmitter):
                                 encoding=serialization.Encoding.DER
                             )
                         ),
-                        key_details=cls._get_key_details(certificate),
+                        key_details=_get_key_details(certificate.public_key()),
                     )
                 ],
             )
