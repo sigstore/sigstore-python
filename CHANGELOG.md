@@ -19,9 +19,11 @@ All versions prior to 0.9.0 are untracked.
 * API: `IdentityToken` now supports `client_id` for audience claim validation.
   [#1402](https://github.com/sigstore/sigstore-python/pull/1402)
 
-
 * Added a `RekorV2Client` for posting new entries to a Rekor V2 instance.
   [#1400](https://github.com/sigstore/sigstore-python/pull/1422)
+
+* Added a function for determining the `key_details` of a certificate`.
+  [#1456](https://github.com/sigstore/sigstore-python/pull/1456)
 
 ### Fixed
 
