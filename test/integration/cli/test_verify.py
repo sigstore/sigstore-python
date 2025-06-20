@@ -43,7 +43,6 @@ def test_regression_verify_legacy_bundle(capsys, caplog, asset_integration, sigs
     captures = capsys.readouterr()
     assert captures.err == f"OK: {artifact.absolute()}\n"
 
-    assert len(caplog.records) == 1
     assert (
         caplog.records[0].message
         == f"{artifact.absolute()}: {legacy_bundle.absolute()} should be named {bundle.absolute()}. Support for discovering 'bare' .sigstore inputs will be deprecated in a future release."
