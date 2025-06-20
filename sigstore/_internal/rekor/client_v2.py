@@ -113,7 +113,7 @@ class RekorV2Client(RekorLogSubmitter):
                                 encoding=serialization.Encoding.DER
                             )
                         ),
-                        key_details=_get_key_details(certificate.public_key()),
+                        key_details=_get_key_details(certificate),
                     ),
                 ),
             )
@@ -147,7 +147,7 @@ class RekorV2Client(RekorLogSubmitter):
                                 encoding=serialization.Encoding.DER
                             )
                         ),
-                        key_details=_get_key_details(certificate.public_key()),
+                        key_details=_get_key_details(certificate),
                     )
                 ],
             )
