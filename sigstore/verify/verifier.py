@@ -134,8 +134,7 @@ class Verifier:
 
             verifier = builder.build()
             try:
-                # TODO: remove ignore after rfc3161-client upgrade
-                verifier.verify_message(timestamp_response, message)  # type: ignore[attr-defined]
+                verifier.verify_message(timestamp_response, message)
             except Rfc3161VerificationError as e:
                 _logger.debug("Unable to verify Timestamp with CA.")
                 _logger.exception(e)

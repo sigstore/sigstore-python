@@ -36,7 +36,7 @@ dependencies = [
   "requests",
   "rich >= 13,< 15",
   "rfc8785 ~= 0.1.2",
-  "rfc3161-client >= 1.0.2,< 1.1.0",
+  "rfc3161-client >= 1.0.3,< 1.1.0",
   # NOTE(ww): Both under active development, so strictly pinned.
   "sigstore-protobuf-specs == 0.4.3",
   "sigstore-rekor-types == 0.0.18",
@@ -62,7 +62,7 @@ lint = [
   "mypy ~= 1.1",
   # NOTE(ww): ruff is under active development, so we pin conservatively here
   # and let Dependabot periodically perform this update.
-  "ruff < 0.11.14",
+  "ruff < 0.12.1",
   "types-requests",
   "types-pyOpenSSL",
 ]
@@ -124,7 +124,7 @@ exclude_dirs = ["./test"]
 [tool.ruff.lint]
 extend-select = ["I", "UP"]
 ignore = [
-  "UP007",  # https://github.com/pydantic/pydantic/issues/4146
+  "UP007", # https://github.com/pydantic/pydantic/issues/4146
   "UP011",
   "UP015",
 ]

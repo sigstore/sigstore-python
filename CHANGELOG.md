@@ -78,6 +78,13 @@ All versions prior to 0.9.0 are untracked.
     Use `SigningContext.from_trust_config()` instead.
     [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
 
+## [3.6.4]
+
+### Fixed
+
+* Bumped the `rfc3161-client` dependency to `>=1.0.3` to fix a security
+  vulnerability ([#1451](https://github.com/sigstore/sigstore-python/pull/1451))
+
 ## [3.6.3]
 
 ### Fixed
@@ -686,7 +693,8 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.6.3...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.6.4...HEAD
+[3.6.4]: https://github.com/sigstore/sigstore-python/compare/v3.6.3...v3.6.4
 [3.6.3]: https://github.com/sigstore/sigstore-python/compare/v3.6.2...v3.6.3
 [3.6.2]: https://github.com/sigstore/sigstore-python/compare/v3.6.1...v3.6.2
 [3.6.1]: https://github.com/sigstore/sigstore-python/compare/v3.6.0...v3.6.1

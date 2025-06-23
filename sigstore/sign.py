@@ -42,7 +42,6 @@ import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Optional
 
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes
@@ -96,8 +95,8 @@ class Signer:
         """
         self._identity_token = identity_token
         self._signing_ctx: SigningContext = signing_ctx
-        self.__cached_private_key: Optional[ec.EllipticCurvePrivateKey] = None
-        self.__cached_signing_certificate: Optional[x509.Certificate] = None
+        self.__cached_private_key: ec.EllipticCurvePrivateKey | None = None
+        self.__cached_signing_certificate: x509.Certificate | None = None
         if cache:
             _logger.debug("Generating ephemeral keys...")
             self.__cached_private_key = ec.generate_private_key(ec.SECP256R1())

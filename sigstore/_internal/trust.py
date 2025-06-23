@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, NewType, Optional
+from typing import ClassVar, NewType
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature
@@ -111,7 +111,7 @@ class Key:
     Represents a key in a `Keyring`.
     """
 
-    hash_algorithm: Optional[hashes.HashAlgorithm]
+    hash_algorithm: hashes.HashAlgorithm | None
     key: PublicKey
     key_id: KeyID
 
@@ -138,7 +138,7 @@ class Key:
         if not public_key.raw_bytes:
             raise VerificationError("public key is empty")
 
-        hash_algorithm: Optional[hashes.HashAlgorithm]
+        hash_algorithm: hashes.HashAlgorithm | None
         if public_key.key_details in self._RSA_SHA_256_DETAILS:
             hash_algorithm = hashes.SHA256()
             key = load_der_public_key(public_key.raw_bytes, types=(rsa.RSAPublicKey,))

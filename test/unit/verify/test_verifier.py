@@ -363,8 +363,8 @@ class TestVerifierWithTimestamp:
             )
 
         assert (
-            caplog.records[0].message
-            == "Error while verifying certificates: Unable to verify certificate"
+            "Error while verifying certificates: Unable to verify pkcs7 signature"
+            in caplog.records[0].message
         )
 
     def test_verifier_not_enough_timestamp(
