@@ -19,8 +19,8 @@ APIs for interacting with Rekor.
 from __future__ import annotations
 
 import base64
+import typing
 from abc import ABC, abstractmethod
-from typing import Any, NewType
 
 import rekor_types
 import requests
@@ -29,13 +29,15 @@ from cryptography.x509 import Certificate
 from sigstore._utils import base64_encode_pem_cert
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
-from sigstore.models import LogEntry
+
+if typing.TYPE_CHECKING:
+    from sigstore.models import LogEntry
 
 __all__ = [
     "_hashedrekord_from_parts",
 ]
 
-EntryRequestBody = NewType("EntryRequestBody", dict[str, Any])
+EntryRequestBody = typing.NewType("EntryRequestBody", dict[str, typing.Any])
 
 
 class RekorClientError(Exception):
