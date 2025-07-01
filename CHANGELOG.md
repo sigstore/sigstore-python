@@ -67,6 +67,8 @@ All versions prior to 0.9.0 are untracked.
   configure the used Sigstore instance [#1358]/(https://github.com/sigstore/sigstore-python/pull/1358)
 * By default (when `--trust-config` is not used) the whole trust configuration now
   comes from the TUF repository [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
+* If the user provided TSA urls, rfc3161 timestamps are now fetched **before** submitting
+  entries to rekor.
 
 ### Removed
  * API:
