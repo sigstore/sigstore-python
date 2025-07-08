@@ -60,7 +60,9 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
 )
 
 from sigstore._internal.fulcio.client import FulcioClient
+from sigstore._internal.rekor import RekorLogSubmitter
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
 from sigstore._utils import (
@@ -73,7 +75,7 @@ from sigstore._utils import (
 from sigstore.errors import Error, MetadataError, TUFError, VerificationError
 
 # Versions supported by this client
-REKOR_VERSIONS = [1]
+REKOR_VERSIONS = [1, 2]
 TSA_VERSIONS = [1]
 FULCIO_VERSIONS = [1]
 OIDC_VERSIONS = [1]
@@ -420,11 +422,19 @@ class SigningConfig:
 
         return result[:count]
 
-    def get_tlogs(self) -> list[RekorClient]:
+    def get_tlogs(self) -> list[RekorLogSubmitter]:
         """
         Returns the rekor transparency log clients to sign with.
         """
-        return [RekorClient(tlog.url) for tlog in self._tlogs]
+        result: list[RekorLogSubmitter] = []
+        for tlog in self._tlogs:
+            if tlog.major_api_version == 1:
+                result.append(RekorClient(tlog.url))
+            elif tlog.major_api_version == 2:
+                result.append(RekorV2Client(tlog.url))
+            else:
+                raise AssertionError(f"Unexpected Rekor v{tlog.major_api_version}")
+        return result
 
     def get_fulcio(self) -> FulcioClient:
         """

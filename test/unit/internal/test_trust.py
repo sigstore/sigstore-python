@@ -28,6 +28,7 @@ from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
 
 from sigstore._internal.fulcio.client import FulcioClient
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
@@ -83,15 +84,26 @@ class TestSigningcconfig:
         assert fulcio.url == "https://fulcio.example.com"
         assert signing_config.get_oidc_url() == "https://oauth2.example.com/auth"
 
+        # signing config contains v1 and v2, we pick v2
         tlogs = signing_config.get_tlogs()
         assert len(tlogs) == 1
-        assert isinstance(tlogs[0], RekorClient)
-        assert tlogs[0].url == "https://rekor.example.com/api/v1"
+        assert isinstance(tlogs[0], RekorV2Client)
+        assert tlogs[0].url == "https://rekor-v2.example.com/api/v2"
 
         tsas = signing_config.get_tsas()
         assert len(tsas) == 1
         assert isinstance(tsas[0], TimestampAuthorityClient)
         assert tsas[0].url == "https://timestamp.example.com/api/v1/timestamp"
+
+    def test_good_only_v1_rekor(self, asset):
+        """Test case where a rekor 2 instance is not available"""
+        path = asset("signing_config/signingconfig-only-v1-rekor.v2.json")
+        signing_config = SigningConfig.from_file(path)
+
+        tlogs = signing_config.get_tlogs()
+        assert len(tlogs) == 1
+        assert isinstance(tlogs[0], RekorClient)
+        assert tlogs[0].url == "https://rekor.example.com/api/v1"
 
     @pytest.mark.parametrize(
         "services, versions, config, expected_result",
