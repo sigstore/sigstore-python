@@ -83,6 +83,41 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration)
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
+def test_sign_success_multiple_artifacts(capsys, sigstore, asset_integration):
+    artifacts = [
+        asset_integration("a.txt"),
+        asset_integration("b.txt"),
+        asset_integration("c.txt"),
+    ]
+
+    sigstore(
+        *get_cli_params(
+            artifact_paths=artifacts,
+        )
+    )
+
+    captures = capsys.readouterr()
+
+    for artifact in artifacts:
+        expected_output_bundle = Path(f"{artifact}.sigstore.json")
+
+        assert f"Sigstore bundle written to {expected_output_bundle}\n" in captures.out
+
+        assert expected_output_bundle.exists()
+        verifier = Verifier.staging()
+        with (
+            open(expected_output_bundle, "r") as bundle_file,
+            open(artifact, "rb") as input_file,
+        ):
+            bundle = Bundle.from_json(bundle_file.read())
+            expected_output_bundle.unlink()
+            verifier.verify_artifact(
+                input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()
+            )
+
+
+@pytest.mark.staging
+@pytest.mark.ambient_oidc
 def test_sign_success_custom_outputs(capsys, sigstore, asset_integration, tmp_path):
     artifact = asset_integration("a.txt")
     output_bundle = tmp_path / "bundle.json"
