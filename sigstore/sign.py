@@ -178,11 +178,6 @@ class Signer:
         """
         Perform the common "finalizing" steps in a Sigstore signing flow.
         """
-        # Submit the proposed entry to the transparency log
-        entry = self._signing_ctx._rekor.create_entry(proposed_entry)
-
-        _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
-
         # If the user provided TSA urls, timestamps the response
         signed_timestamp = []
         for tsa_client in self._signing_ctx._tsa_clients:
@@ -192,6 +187,10 @@ class Signer:
                 _logger.warning(
                     f"Unable to use {tsa_client.url} to timestamp the bundle. Failed with {e}"
                 )
+
+        # Submit the proposed entry to the transparency log
+        entry = self._signing_ctx._rekor.create_entry(proposed_entry)
+        _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
 
         return Bundle._from_parts(cert, content, entry, signed_timestamp)
 
