@@ -123,7 +123,9 @@ def test_sign_success_multiple_artifacts(capsys, sigstore, asset_integration):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_success_multiple_artifacts_rekor_v2(capsys, sigstore, asset_integration, asset):
+def test_sign_success_multiple_artifacts_rekor_v2(
+    capsys, sigstore, asset_integration, asset
+):
     """This is a copy of test_sign_success_multiple_artifacts that exists to ensure the
     multi-threaded signing works with rekor v2 as well: this test can be removed when v2
     is the default
@@ -138,7 +140,7 @@ def test_sign_success_multiple_artifacts_rekor_v2(capsys, sigstore, asset_integr
     sigstore(
         *get_cli_params(
             artifact_paths=artifacts,
-            trust_config_path=asset("trust_config/staging-but-sign-with-rekor-v2.json")
+            trust_config_path=asset("trust_config/staging-but-sign-with-rekor-v2.json"),
         )
     )
 
