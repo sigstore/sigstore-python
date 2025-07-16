@@ -29,8 +29,13 @@ def get_cli_params(
     bundle_path: Optional[Path] = None,
     signature_path: Optional[Path] = None,
     certificate_path: Optional[Path] = None,
+    trust_config_path: Optional[Path] = None,
 ) -> list[str]:
-    cli_params = ["--staging", "sign"]
+    if trust_config_path is not None:
+        cli_params = ["--trust-config", str(trust_config_path), "sign"]
+    else:
+        cli_params = ["--staging", "sign"]
+
     if output_directory is not None:
         cli_params.extend(["--output-directory", str(output_directory)])
     if bundle_path is not None:
@@ -93,6 +98,47 @@ def test_sign_success_multiple_artifacts(capsys, sigstore, asset_integration):
     sigstore(
         *get_cli_params(
             artifact_paths=artifacts,
+        )
+    )
+
+    captures = capsys.readouterr()
+
+    for artifact in artifacts:
+        expected_output_bundle = Path(f"{artifact}.sigstore.json")
+
+        assert f"Sigstore bundle written to {expected_output_bundle}\n" in captures.out
+
+        assert expected_output_bundle.exists()
+        verifier = Verifier.staging()
+        with (
+            open(expected_output_bundle, "r") as bundle_file,
+            open(artifact, "rb") as input_file,
+        ):
+            bundle = Bundle.from_json(bundle_file.read())
+            expected_output_bundle.unlink()
+            verifier.verify_artifact(
+                input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()
+            )
+
+
+@pytest.mark.staging
+@pytest.mark.ambient_oidc
+def test_sign_success_multiple_artifacts_rekor_v2(capsys, sigstore, asset_integration, asset):
+    """This is a copy of test_sign_success_multiple_artifacts that exists to ensure the
+    multi-threaded signing works with rekor v2 as well: this test can be removed when v2
+    is the default
+    """
+
+    artifacts = [
+        asset_integration("a.txt"),
+        asset_integration("b.txt"),
+        asset_integration("c.txt"),
+    ]
+
+    sigstore(
+        *get_cli_params(
+            artifact_paths=artifacts,
+            trust_config_path=asset("trust_config/staging-but-sign-with-rekor-v2.json")
         )
     )
 
