@@ -1,0 +1,5 @@
+DO NOT MODIFY ME!
+
+this is "c.txt", a sample input for sigstore-python's unit tests.
+
+DO NOT MODIFY ME!
