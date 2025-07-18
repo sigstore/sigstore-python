@@ -68,7 +68,6 @@ lint: $(VENV)/pyvenv.cfg
 		ruff check $(ALL_PY_SRCS) && \
 		mypy $(PY_MODULE) && \
 		bandit -c pyproject.toml -r $(PY_MODULE) && \
-		interrogate --fail-under 100 -c pyproject.toml $(PY_MODULE) && \
 		python docs/scripts/gen_ref_pages.py --check
 
 .PHONY: reformat

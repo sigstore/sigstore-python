@@ -25,9 +25,9 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictStr, ValidationError
+from sigstore_models.intoto import Envelope as _Envelope
+from sigstore_models.intoto import Signature as _Signature
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
-from sigstore_protobuf_specs.io.intoto import Envelope as _Envelope
-from sigstore_protobuf_specs.io.intoto import Signature
 
 from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed
@@ -223,14 +223,14 @@ class Envelope:
     @classmethod
     def _from_json(cls, contents: bytes | str) -> Envelope:
         """Return a DSSE envelope from the given JSON representation."""
-        inner = _Envelope().from_json(contents)
+        inner = _Envelope.model_validate_json(contents)
         return cls(inner)
 
     def to_json(self) -> str:
         """
         Return a JSON string with this DSSE envelope's contents.
         """
-        return self._inner.to_json()
+        return self._inner.model_dump_json()
 
     def __eq__(self, other: object) -> bool:
         """Equality for DSSE envelopes."""
@@ -272,7 +272,7 @@ def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
         _Envelope(
             payload=stmt._contents,
             payload_type=Envelope._TYPE,
-            signatures=[Signature(sig=signature)],
+            signatures=[_Signature(sig=signature)],
         )
     )
 
