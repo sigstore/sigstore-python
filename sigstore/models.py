@@ -45,20 +45,17 @@ from pydantic import (
 from pydantic.dataclasses import dataclass
 from rekor_types import Dsse, Hashedrekord, ProposedEntry
 from rfc3161_client import TimeStampResponse, decode_timestamp_response
-from sigstore_protobuf_specs.dev.sigstore.bundle import v1 as bundle_v1
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
-    Bundle as _Bundle,
-)
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
+from sigstore_models.bundle import v1 as bundle_v1
+from sigstore_models.bundle.v1 import Bundle as _Bundle
+from sigstore_models.bundle.v1 import (
     TimestampVerificationData as _TimestampVerificationData,
 )
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
-    VerificationMaterial as _VerificationMaterial,
-)
-from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import Rfc3161SignedTimestamp
-from sigstore_protobuf_specs.dev.sigstore.rekor import v1 as rekor_v1
-from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import InclusionProof, KindVersion
+from sigstore_models.bundle.v1 import VerificationMaterial as _VerificationMaterial
+from sigstore_models.common import v1 as common_v1
+from sigstore_models.common.v1 import MessageSignature, RFC3161SignedTimestamp
+from sigstore_models.intoto import Envelope as _Envelope
+from sigstore_models.rekor import v1 as rekor_v1
+from sigstore_models.rekor.v1 import InclusionProof, KindVersion
 
 from sigstore import dsse
 from sigstore._internal.merkle import verify_merkle_inclusion
@@ -215,8 +212,7 @@ class LogEntry:
         """
         Create a new `LogEntry` from the given Rekor TransparencyLogEntry.
         """
-        tlog_entry = rekor_v1.TransparencyLogEntry()
-        tlog_entry.from_dict(dict_)
+        tlog_entry = rekor_v1.TransparencyLogEntry.from_dict(dict_)
 
         inclusion_proof: InclusionProof | None = tlog_entry.inclusion_proof
         # This check is required by us as the client, not the
@@ -380,7 +376,7 @@ class TimestampVerificationData:
         """
         Deserialize the given timestamp verification data.
         """
-        inner = _TimestampVerificationData().from_json(raw)
+        inner = _TimestampVerificationData.from_json(raw)
         return cls(inner)
 
 
@@ -483,8 +479,11 @@ class Bundle:
             # In older bundles, there is an entire pool (misleadingly called
             # a chain) of certificates, the first of which is the signing
             # certificate.
+            if not self._inner.verification_material.x509_certificate_chain:
+                raise InvalidBundle("expected certificate chain in bundle")
+
             chain = self._inner.verification_material.x509_certificate_chain
-            if not chain or not chain.certificates:
+            if not chain.certificates:
                 raise InvalidBundle("expected non-empty certificate chain in bundle")
 
             # Per client policy in protobuf-specs: the first entry in the chain
@@ -555,7 +554,7 @@ class Bundle:
 
             if (
                 not log_entry.inclusion_promise
-                and not self._inner.verification_material.timestamp_verification_data.rfc3161_timestamps
+                and not self._inner.verification_material.timestamp_verification_data
             ):
                 raise InvalidBundle(
                     "bundle must contain an inclusion promise or signed timestamp(s)"
@@ -583,8 +582,8 @@ class Bundle:
 
         @private
         """
-        if self._inner.is_set("dsse_envelope"):
-            return dsse.Envelope(self._inner.dsse_envelope)  # type: ignore[arg-type]
+        if isinstance(self._inner.content, _Envelope):
+            return dsse.Envelope(self._inner.content)
         return None
 
     @property
@@ -596,7 +595,7 @@ class Bundle:
         return (
             self._dsse_envelope.signature
             if self._dsse_envelope
-            else self._inner.message_signature.signature  # type: ignore[union-attr]
+            else self._inner.content.signature  # type: ignore[union-attr]
         )
 
     @property
@@ -611,7 +610,10 @@ class Bundle:
         """
         Deserialize the given Sigstore bundle.
         """
-        inner = _Bundle.from_dict(json.loads(raw))
+        try:
+            inner = _Bundle.from_json(raw)
+        except ValueError as exc:
+            raise InvalidBundle(f"failed to load bundle: {exc}")
         return cls(inner)
 
     def to_json(self) -> str:
@@ -622,18 +624,18 @@ class Bundle:
 
     def _to_parts(
         self,
-    ) -> tuple[Certificate, common_v1.MessageSignature | dsse.Envelope, LogEntry]:
+    ) -> tuple[Certificate, MessageSignature | dsse.Envelope, LogEntry]:
         """
         Decompose the `Bundle` into its core constituent parts.
 
         @private
         """
 
-        content: common_v1.MessageSignature | dsse.Envelope
+        content: MessageSignature | dsse.Envelope
         if self._dsse_envelope:
             content = self._dsse_envelope
         else:
-            content = self._inner.message_signature  # type: ignore[assignment]
+            content = self._inner.content  # type: ignore[assignment]
 
         return (self.signing_certificate, content, self.log_entry)
 
@@ -644,15 +646,13 @@ class Bundle:
         constituent parts.
         """
 
-        return cls._from_parts(
-            cert, common_v1.MessageSignature(signature=sig), log_entry
-        )
+        return cls._from_parts(cert, MessageSignature(signature=sig), log_entry)
 
     @classmethod
     def _from_parts(
         cls,
         cert: Certificate,
-        content: common_v1.MessageSignature | dsse.Envelope,
+        content: MessageSignature | dsse.Envelope,
         log_entry: LogEntry,
         signed_timestamp: list[TimeStampResponse] | None = None,
     ) -> Bundle:
@@ -666,26 +666,30 @@ class Bundle:
         if signed_timestamp is not None:
             timestamp_verifcation_data.rfc3161_timestamps.extend(
                 [
-                    Rfc3161SignedTimestamp(signed_timestamp=response.as_bytes())
+                    RFC3161SignedTimestamp(signed_timestamp=response.as_bytes())
                     for response in signed_timestamp
                 ]
             )
 
-        # Fill in the appropriate variants.
-        if isinstance(content, common_v1.MessageSignature):
-            # mypy will be mystified if types are specified here
-            content_dict: dict[str, Any] = {"message_signature": content}
+        # Fill in the appropriate variant.
+        message_signature = None
+        dsse_envelope = None
+        if isinstance(content, MessageSignature):
+            message_signature = content
         else:
-            content_dict = {"dsse_envelope": content._inner}
+            dsse_envelope = content._inner
 
         inner = _Bundle(
             media_type=Bundle.BundleType.BUNDLE_0_3.value,
             verification_material=bundle_v1.VerificationMaterial(
-                certificate=common_v1.X509Certificate(cert.public_bytes(Encoding.DER)),
+                certificate=common_v1.X509Certificate(
+                    raw_bytes=cert.public_bytes(Encoding.DER)
+                ),
                 tlog_entries=[log_entry._to_rekor()],
                 timestamp_verification_data=timestamp_verifcation_data,
             ),
-            **content_dict,
+            message_signature=message_signature,
+            dsse_envelope=dsse_envelope,
         )
 
         return cls(inner)

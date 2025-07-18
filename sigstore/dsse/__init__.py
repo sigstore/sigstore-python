@@ -25,9 +25,9 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictStr, ValidationError
+from sigstore_models.common.v1 import HashAlgorithm
 from sigstore_models.intoto import Envelope as _Envelope
 from sigstore_models.intoto import Signature as _Signature
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 from sigstore.errors import Error, VerificationError
 from sigstore.hashes import Hashed

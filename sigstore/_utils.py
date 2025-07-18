@@ -33,7 +33,7 @@ from cryptography.x509 import (
     load_der_x509_certificate,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
+from sigstore_models.common.v1 import HashAlgorithm
 
 from sigstore import hashes as sigstore_hashes
 from sigstore.errors import VerificationError

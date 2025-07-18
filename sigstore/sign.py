@@ -47,10 +47,7 @@ import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
-    HashOutput,
-    MessageSignature,
-)
+from sigstore_models.common.v1 import HashOutput, MessageSignature
 
 from sigstore import dsse
 from sigstore import hashes as sigstore_hashes
