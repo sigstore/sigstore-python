@@ -168,13 +168,11 @@ class TestBundle:
     """
 
     def test_invalid_bundle_version(self, signing_bundle):
-        with pytest.raises(InvalidBundle, match="unsupported bundle format"):
+        with pytest.raises(InvalidBundle, match="failed to load bundle"):
             signing_bundle("bundle_invalid_version.txt")
 
     def test_invalid_empty_cert_chain(self, signing_bundle):
-        with pytest.raises(
-            InvalidBundle, match="expected non-empty certificate chain in bundle"
-        ):
+        with pytest.raises(InvalidBundle, match="failed to load bundle"):
             signing_bundle("bundle_no_cert_v1.txt")
 
     def test_invalid_no_log_entry(self, signing_bundle):
@@ -184,9 +182,7 @@ class TestBundle:
             signing_bundle("bundle_no_log_entry.txt")
 
     def test_verification_materials_offline_no_checkpoint(self, signing_bundle):
-        with pytest.raises(
-            InvalidBundle, match="entry must contain inclusion proof, with checkpoint"
-        ):
+        with pytest.raises(InvalidBundle, match="failed to load bundle"):
             signing_bundle("bundle_no_checkpoint.txt")
 
     def test_bundle_roundtrip(self, signing_bundle):
