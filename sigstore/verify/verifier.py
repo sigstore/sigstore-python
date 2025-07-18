@@ -39,6 +39,7 @@ from OpenSSL.crypto import (
 from pydantic import ValidationError
 from rfc3161_client import TimeStampResponse, VerifierBuilder
 from rfc3161_client import VerificationError as Rfc3161VerificationError
+from sigstore_models.common.v1 import MessageSignature
 from sigstore_protobuf_specs.dev.sigstore.common import v1
 from sigstore_protobuf_specs.dev.sigstore.rekor import v2
 
@@ -464,7 +465,7 @@ class Verifier:
             signing_key = bundle.signing_certificate.public_key()
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
             signing_key.verify(
-                bundle._inner.message_signature.signature,  # type: ignore[union-attr]
+                bundle._inner.content.signature,  # type: ignore[union-attr]
                 hashed_input.digest,
                 ec.ECDSA(hashed_input._as_prehashed()),
             )
@@ -574,7 +575,7 @@ def _validate_hashedrekord_v001_entry_body(
     entry = bundle.log_entry
     expected_body = _hashedrekord_from_parts(
         bundle.signing_certificate,
-        bundle._inner.message_signature.signature,  # type: ignore[union-attr]
+        bundle._inner.content.signature,  # type: ignore[union-attr]
         hashed_input,
     )
     actual_body = rekor_types.Hashedrekord.model_validate_json(
@@ -591,7 +592,7 @@ def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
     Validate Entry body for hashedrekord v002.
     """
     entry = bundle.log_entry
-    if bundle._inner.message_signature is None:
+    if not isinstance(bundle._inner.content, MessageSignature):
         raise VerificationError(
             "invalid hashedrekord log entry: missing message signature"
         )
@@ -601,11 +602,11 @@ def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
         spec=v2.Spec(
             hashed_rekord_v002=v2.HashedRekordLogEntryV002(
                 data=v1.HashOutput(
-                    algorithm=bundle._inner.message_signature.message_digest.algorithm,
-                    digest=bundle._inner.message_signature.message_digest.digest,
+                    algorithm=bundle._inner.content.message_digest.algorithm,
+                    digest=bundle._inner.content.message_digest.digest,
                 ),
                 signature=v2.Signature(
-                    content=bundle._inner.message_signature.signature,
+                    content=bundle._inner.content.signature,
                     verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
                 ),
             )

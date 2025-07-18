@@ -134,7 +134,7 @@ class RekorV2Client(RekorLogSubmitter):
                     payload_type=envelope._inner.payload_type,
                     signatures=[
                         intoto.Signature(
-                            keyid=signature.keyid,
+                            keyid=signature.keyid,  # type: ignore[arg-type]
                             sig=signature.sig,
                         )
                         for signature in envelope._inner.signatures

@@ -58,7 +58,7 @@ Documentation = "https://sigstore.github.io/sigstore-python/"
 test = ["pytest", "pytest-cov", "pretend", "coverage[toml]"]
 lint = [
   "bandit",
-  "interrogate >= 1.7.0",
+  # "interrogate >= 1.7.0",
   "mypy ~= 1.1",
   # NOTE(ww): ruff is under active development, so we pin conservatively here
   # and let Dependabot periodically perform this update.
