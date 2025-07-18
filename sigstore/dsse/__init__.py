@@ -223,14 +223,14 @@ class Envelope:
     @classmethod
     def _from_json(cls, contents: bytes | str) -> Envelope:
         """Return a DSSE envelope from the given JSON representation."""
-        inner = _Envelope.model_validate_json(contents)
+        inner = _Envelope.from_json(contents)
         return cls(inner)
 
     def to_json(self) -> str:
         """
         Return a JSON string with this DSSE envelope's contents.
         """
-        return self._inner.model_dump_json()
+        return self._inner.to_json()
 
     def __eq__(self, other: object) -> bool:
         """Equality for DSSE envelopes."""
