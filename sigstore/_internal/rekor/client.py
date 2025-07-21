@@ -250,7 +250,7 @@ class RekorClient(RekorLogSubmitter):
         """
         return RekorLog(f"{self.url}/log", session=self.session)
 
-    def create_entry(self, request: EntryRequestBody) -> LogEntry:
+    def create_entry(self, request: EntryRequestBody) -> TransparencyLogEntry:
         """
         Submit the request to Rekor.
         """

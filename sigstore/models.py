@@ -25,24 +25,13 @@ from enum import Enum
 from textwrap import dedent
 from typing import Any
 
-import pydantic
-import pydantic.alias_generators
 import rfc8785
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
 )
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    StrictInt,
-    StrictStr,
-    TypeAdapter,
-    ValidationInfo,
-    field_validator,
-)
+from pydantic import TypeAdapter
 from rekor_types import Dsse, Hashedrekord, ProposedEntry
 from rfc3161_client import TimeStampResponse, decode_timestamp_response
 from sigstore_models.bundle import v1 as bundle_v1
@@ -71,47 +60,6 @@ if typing.TYPE_CHECKING:
 
 
 _logger = logging.getLogger(__name__)
-
-
-class LogInclusionProof(BaseModel):
-    """
-    Represents an inclusion proof for a transparency log entry.
-    """
-
-    model_config = ConfigDict(
-        validate_by_name=True,
-        validate_by_alias=True,
-        alias_generator=pydantic.alias_generators.to_camel,
-    )
-
-    checkpoint: StrictStr = Field(...)
-    hashes: list[StrictStr] = Field(...)
-    log_index: StrictInt = Field(...)
-    root_hash: StrictStr = Field(...)
-    tree_size: StrictInt = Field(...)
-
-    @field_validator("log_index")
-    def _log_index_positive(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError(f"Inclusion proof has invalid log index: {v} < 0")
-        return v
-
-    @field_validator("tree_size")
-    def _tree_size_positive(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError(f"Inclusion proof has invalid tree size: {v} < 0")
-        return v
-
-    @field_validator("tree_size")
-    def _log_index_within_tree_size(
-        cls, v: int, info: ValidationInfo, **kwargs: Any
-    ) -> int:
-        if "log_index" in info.data and v <= info.data["log_index"]:
-            raise ValueError(
-                "Inclusion proof has log index greater than or equal to tree size: "
-                f"{v} <= {info.data['log_index']}"
-            )
-        return v
 
 
 class TransparencyLogEntry:
@@ -172,24 +120,27 @@ class TransparencyLogEntry:
 
         raw_inclusion_proof = entry["verification"]["inclusionProof"]
 
+        # NOTE: The type ignores below are a consequence of our Pydantic
+        # modeling: mypy and other typecheckers see `ProtoU64` as `int`,
+        # but it gets coerced from a string due to Protobuf's JSON serialization.
         inner = _TransparencyLogEntry(
-            log_index=str(entry["logIndex"]),  # type: ignore[assignment]
+            log_index=str(entry["logIndex"]),  # type: ignore[arg-type]
             log_id=common_v1.LogId(
                 key_id=base64.b64encode(bytes.fromhex(entry["logID"]))
             ),
             kind_version=rekor_v1.KindVersion(
                 kind=body_entry.kind, version=body_entry.api_version
             ),
-            integrated_time=str(entry["integratedTime"]),  # type: ignore[assignment]
+            integrated_time=str(entry["integratedTime"]),  # type: ignore[arg-type]
             inclusion_promise=rekor_v1.InclusionPromise(
                 signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"]
             ),
             inclusion_proof=rekor_v1.InclusionProof(
-                log_index=str(raw_inclusion_proof["logIndex"]),  # type: ignore[assignment]
+                log_index=str(raw_inclusion_proof["logIndex"]),  # type: ignore[arg-type]
                 root_hash=base64.b64encode(
                     bytes.fromhex(raw_inclusion_proof["rootHash"])
                 ),
-                tree_size=str(raw_inclusion_proof["treeSize"]),  # type: ignore[assignment]
+                tree_size=str(raw_inclusion_proof["treeSize"]),  # type: ignore[arg-type]
                 hashes=[
                     base64.b64encode(bytes.fromhex(h))
                     for h in raw_inclusion_proof["hashes"]
@@ -513,10 +464,12 @@ class TimestampVerificationData:
         It verifies that TimeStamp Responses embedded in the bundle are correctly
         formed.
         """
+        if not (timestamps := self._inner.rfc3161_timestamps):
+            timestamps = []
+
         try:
             self._signed_ts = [
-                decode_timestamp_response(ts.signed_timestamp)
-                for ts in (self._inner.rfc3161_timestamps)
+                decode_timestamp_response(ts.signed_timestamp) for ts in timestamps
             ]
         except ValueError:
             raise VerificationError("Invalid Timestamp Response")

@@ -122,5 +122,5 @@ def verify_merkle_inclusion(entry: TransparencyLogEntry) -> None:
     if calc_hash != inclusion_proof.root_hash:
         raise VerificationError(
             f"inclusion proof contains invalid root hash: expected {inclusion_proof}, calculated "
-            f"{calc_hash}"
+            f"{calc_hash.hex()}"
         )

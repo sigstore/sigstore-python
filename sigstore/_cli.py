@@ -30,7 +30,7 @@ from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 from sigstore_models.bundle.v1 import Bundle as RawBundle
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
+from sigstore_models.common.v1 import HashAlgorithm
 from typing_extensions import TypeAlias
 
 from sigstore import __version__, dsse
