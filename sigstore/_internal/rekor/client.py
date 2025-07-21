@@ -195,9 +195,16 @@ class RekorEntriesRetrieve(_Endpoint):
         oldest_entry: TransparencyLogEntry | None = None
         for result in results:
             entry = TransparencyLogEntry._from_v1_response(result)
+
+            # We expect every entry in Rekor v1 to have an integrated time.
+            if entry._inner.integrated_time is None:
+                raise ValueError(
+                    f"Rekor v1 gave us an entry without an integrated time: {entry._inner.log_index}"
+                )
+
             if (
                 oldest_entry is None
-                or entry._inner.integrated_time < oldest_entry._inner.integrated_time
+                or entry._inner.integrated_time < oldest_entry._inner.integrated_time  # type: ignore[operator]
             ):
                 oldest_entry = entry
 
