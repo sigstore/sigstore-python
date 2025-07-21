@@ -486,7 +486,7 @@ class Verifier:
             )
 
         if entry._inner.kind_version.version == "0.0.2":
-            _validate_hashedrekord_v002_entry_body(bundle)
+            _validate_hashedrekord_v002_entry_body(bundle, hashed_input)
         elif entry._inner.kind_version.version == "0.0.1":
             _validate_hashedrekord_v001_entry_body(bundle, hashed_input)
         else:
@@ -592,7 +592,9 @@ def _validate_hashedrekord_v001_entry_body(
         )
 
 
-def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
+def _validate_hashedrekord_v002_entry_body(
+    bundle: Bundle, hashed_input: Hashed
+) -> None:
     """
     Validate Entry body for hashedrekord v002.
     """
@@ -607,10 +609,8 @@ def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
         spec=v2.entry.Spec(
             hashed_rekord_v002=v2.hashedrekord.HashedRekordLogEntryV002(
                 data=v1.HashOutput(
-                    algorithm=bundle._inner.message_signature.message_digest.algorithm,
-                    digest=base64.b64encode(
-                        bundle._inner.message_signature.message_digest.digest
-                    ),
+                    algorithm=hashed_input.algorithm,
+                    digest=base64.b64encode(hashed_input.digest),
                 ),
                 signature=v2.verifier.Signature(
                     content=base64.b64encode(bundle._inner.message_signature.signature),
@@ -628,7 +628,7 @@ def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
 
 def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verifier:
     """
-    Return a Rekor v2 protobuf Verifier for the signing certificate.
+    Return a Rekor v2 Verifier for the signing certificate.
 
     This method decides which signature algorithms are supported for verification
     (in a rekor v2 entry), see
@@ -656,5 +656,5 @@ def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verif
                 certificate.public_bytes(encoding=serialization.Encoding.DER)
             )
         ),
-        key_details=cast(v1.PublicKeyDetails, key_details),
+        key_details=key_details,
     )

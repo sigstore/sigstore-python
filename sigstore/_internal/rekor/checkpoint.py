@@ -211,8 +211,8 @@ def verify_checkpoint(rekor_keyring: RekorKeyring, entry: TransparencyLogEntry) 
     """
 
     inclusion_proof = entry._inner.inclusion_proof
-    if inclusion_proof is None:  # TODO: still needed?
-        raise VerificationError("Rekor entry has no inclusion proof")
+    if inclusion_proof.checkpoint is None:
+        raise VerificationError("Inclusion proof does not contain a checkpoint")
 
     # verification occurs in two stages:
     # 1) verify the signature on the checkpoint
