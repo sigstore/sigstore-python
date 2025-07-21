@@ -556,7 +556,9 @@ class Bundle:
         if signed_timestamp is not None:
             timestamp_verifcation_data.rfc3161_timestamps.extend(
                 [
-                    RFC3161SignedTimestamp(signed_timestamp=base64.b64encode(response.as_bytes()))
+                    RFC3161SignedTimestamp(
+                        signed_timestamp=base64.b64encode(response.as_bytes())
+                    )
                     for response in signed_timestamp
                 ]
             )
