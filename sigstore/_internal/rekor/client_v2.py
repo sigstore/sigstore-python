@@ -18,16 +18,17 @@ Client implementation for interacting with RekorV2.
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
+from sigstore_models import intoto
+from sigstore_models.common import v1 as common_v1
+from sigstore_models.rekor import v2 as rekor_v2
 from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEntry
-from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
-from sigstore_protobuf_specs.dev.sigstore.rekor import v2
-from sigstore_protobuf_specs.io import intoto
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.key_details import _get_key_details
@@ -104,15 +105,17 @@ class RekorV2Client(RekorLogSubmitter):
         """
         Construct a hashed rekord request to submit to Rekor.
         """
-        req = v2.CreateEntryRequest(
-            hashed_rekord_request_v002=v2.HashedRekordRequestV002(
+        req = rekor_v2.entry.CreateEntryRequest(
+            hashed_rekord_request_v002=rekor_v2.hashedrekord.HashedRekordRequestV002(
                 digest=hashed_input.digest,
-                signature=v2.Signature(
+                signature=rekor_v2.verifier.Signature(
                     content=signature,
-                    verifier=v2.Verifier(
+                    verifier=rekor_v2.verifier.Verifier(
                         x509_certificate=common_v1.X509Certificate(
-                            raw_bytes=certificate.public_bytes(
-                                encoding=serialization.Encoding.DER
+                            raw_bytes=base64.b64encode(
+                                certificate.public_bytes(
+                                    encoding=serialization.Encoding.DER
+                                )
                             )
                         ),
                         key_details=_get_key_details(certificate),
@@ -129,24 +132,16 @@ class RekorV2Client(RekorLogSubmitter):
         """
         Construct a dsse request to submit to Rekor.
         """
-        req = v2.CreateEntryRequest(
-            dsse_request_v002=v2.DsseRequestV002(
-                envelope=intoto.Envelope(
-                    payload=envelope._inner.payload,
-                    payload_type=envelope._inner.payload_type,
-                    signatures=[
-                        intoto.Signature(
-                            keyid=signature.keyid,  # type: ignore[arg-type]
-                            sig=signature.sig,
-                        )
-                        for signature in envelope._inner.signatures
-                    ],
-                ),
+        req = rekor_v2.entry.CreateEntryRequest(
+            dsse_request_v002=rekor_v2.dsse.DSSERequestV002(
+                envelope=envelope._inner,
                 verifiers=[
-                    v2.Verifier(
+                    rekor_v2.verifier.Verifier(
                         x509_certificate=common_v1.X509Certificate(
-                            raw_bytes=certificate.public_bytes(
-                                encoding=serialization.Encoding.DER
+                            raw_bytes=base64.b64encode(
+                                certificate.public_bytes(
+                                    encoding=serialization.Encoding.DER
+                                )
                             )
                         ),
                         key_details=_get_key_details(certificate),

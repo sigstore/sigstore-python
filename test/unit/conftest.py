@@ -31,7 +31,7 @@ from cryptography.x509 import Certificate, load_pem_x509_certificate
 from id import (
     detect_credential,
 )
-from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import Service
+from sigstore_models.trustroot.v1 import Service
 from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface, updater
 
@@ -251,7 +251,9 @@ def staging_with_rekorv2() -> tuple[
     def signer():
         trust_config = ClientTrustConfig.staging()
         trust_config.signing_config._tlogs.append(
-            Service("https://log2025-alpha1.rekor.sigstage.dev", 2)
+            Service(
+                url="https://log2025-alpha1.rekor.sigstage.dev", major_api_version=2
+            )
         )
         return SigningContext.from_trust_config(trust_config)
 

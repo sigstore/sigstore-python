@@ -39,8 +39,8 @@ from OpenSSL.crypto import (
 from pydantic import ValidationError
 from rfc3161_client import TimeStampResponse, VerifierBuilder
 from rfc3161_client import VerificationError as Rfc3161VerificationError
-from sigstore_protobuf_specs.dev.sigstore.common import v1
-from sigstore_protobuf_specs.dev.sigstore.rekor import v2
+from sigstore_models.common import v1
+from sigstore_models.rekor import v2
 
 from sigstore import dsse
 from sigstore._internal.rekor import _hashedrekord_from_parts
@@ -546,7 +546,7 @@ def _validate_dsse_v002_entry_body(bundle: Bundle) -> None:
             "cannot perform DSSE verification on a bundle without a DSSE envelope"
         )
     try:
-        v2_body = v2.Entry().from_json(entry._inner.canonicalized_body)
+        v2_body = v2.entry.Entry.from_json(entry._inner.canonicalized_body)
     except ValidationError as exc:
         raise VerificationError(f"invalid DSSE log entry: {exc}")
 
@@ -561,8 +561,8 @@ def _validate_dsse_v002_entry_body(bundle: Bundle) -> None:
         raise VerificationError("DSSE entry payload hash does not match bundle")
 
     v2_signatures = [
-        v2.Signature(
-            content=signature.sig,
+        v2.verifier.Signature(
+            content=base64.b64encode(signature.sig),
             verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
         )
         for signature in envelope._inner.signatures
@@ -601,30 +601,32 @@ def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
         raise VerificationError(
             "invalid hashedrekord log entry: missing message signature"
         )
-    v2_expected_body = v2.Entry(
+    v2_expected_body = v2.entry.Entry(
         kind=entry._inner.kind_version.kind,
         api_version=entry._inner.kind_version.version,
-        spec=v2.Spec(
-            hashed_rekord_v002=v2.HashedRekordLogEntryV002(
+        spec=v2.entry.Spec(
+            hashed_rekord_v002=v2.hashedrekord.HashedRekordLogEntryV002(
                 data=v1.HashOutput(
                     algorithm=bundle._inner.message_signature.message_digest.algorithm,
-                    digest=bundle._inner.message_signature.message_digest.digest,
+                    digest=base64.b64encode(
+                        bundle._inner.message_signature.message_digest.digest
+                    ),
                 ),
-                signature=v2.Signature(
-                    content=bundle._inner.message_signature.signature,
+                signature=v2.verifier.Signature(
+                    content=base64.b64encode(bundle._inner.message_signature.signature),
                     verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
                 ),
             )
         ),
     )
-    v2_actual_body = v2.Entry().from_json(entry._inner.canonicalized_body)
+    v2_actual_body = v2.entry.Entry.from_json(entry._inner.canonicalized_body)
     if v2_expected_body != v2_actual_body:
         raise VerificationError(
             "transparency log entry is inconsistent with other materials"
         )
 
 
-def _v2_verifier_from_certificate(certificate: Certificate) -> v2.Verifier:
+def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verifier:
     """
     Return a Rekor v2 protobuf Verifier for the signing certificate.
 
@@ -648,9 +650,11 @@ def _v2_verifier_from_certificate(certificate: Certificate) -> v2.Verifier:
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
 
-    return v2.Verifier(
+    return v2.verifier.Verifier(
         x509_certificate=v1.X509Certificate(
-            certificate.public_bytes(encoding=serialization.Encoding.DER)
+            raw_bytes=base64.b64encode(
+                certificate.public_bytes(encoding=serialization.Encoding.DER)
+            )
         ),
         key_details=cast(v1.PublicKeyDetails, key_details),
     )

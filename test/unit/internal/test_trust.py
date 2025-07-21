@@ -19,8 +19,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509 import load_pem_x509_certificate
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
-from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
+from sigstore_models.common.v1 import TimeRange
+from sigstore_models.trustroot.v1 import (
     Service,
     ServiceConfiguration,
     ServiceSelector,
@@ -42,16 +42,16 @@ from sigstore._utils import load_pem_public_key
 from sigstore.errors import Error
 
 # Test data for TestSigningcconfig
-_service_v1_op1 = Service("url1", major_api_version=1, operator="op1")
-_service2_v1_op1 = Service("url2", major_api_version=1, operator="op1")
-_service_v2_op1 = Service("url3", major_api_version=2, operator="op1")
-_service_v1_op2 = Service("url4", major_api_version=1, operator="op2")
-_service_v1_op3 = Service("url5", major_api_version=1, operator="op3")
+_service_v1_op1 = Service(url="url1", major_api_version=1, operator="op1")
+_service2_v1_op1 = Service(url="url2", major_api_version=1, operator="op1")
+_service_v2_op1 = Service(url="url3", major_api_version=2, operator="op1")
+_service_v1_op2 = Service(url="url4", major_api_version=1, operator="op2")
+_service_v1_op3 = Service(url="url5", major_api_version=1, operator="op3")
 _service_v1_op4 = Service(
-    "url6",
+    url="url6",
     major_api_version=1,
     operator="op4",
-    valid_for=TimeRange(datetime(3000, 1, 1, tzinfo=timezone.utc)),
+    valid_for=TimeRange(start=datetime(3000, 1, 1, tzinfo=timezone.utc)),
 )
 
 
@@ -61,6 +61,7 @@ class TestCertificateAuthority:
         authority = CertificateAuthority.from_json(path)
 
         assert len(authority.certificates(allow_expired=True)) == 3
+        assert authority.validity_period_end is not None
         assert authority.validity_period_start < authority.validity_period_end
 
     def test_missing_root(self, asset):
@@ -111,63 +112,63 @@ class TestSigningcconfig:
             pytest.param(
                 [_service_v1_op1],
                 [1],
-                ServiceConfiguration(ServiceSelector.ALL),
+                ServiceConfiguration(selector=ServiceSelector.ALL),
                 [_service_v1_op1],
                 id="base case",
             ),
             pytest.param(
                 [_service_v1_op1, _service2_v1_op1],
                 [1],
-                ServiceConfiguration(ServiceSelector.ALL),
+                ServiceConfiguration(selector=ServiceSelector.ALL),
                 [_service2_v1_op1],
                 id="multiple services, same operator: expect 1 service in result",
             ),
             pytest.param(
                 [_service_v1_op1, _service_v1_op2],
                 [1],
-                ServiceConfiguration(ServiceSelector.ALL),
+                ServiceConfiguration(selector=ServiceSelector.ALL),
                 [_service_v1_op1, _service_v1_op2],
                 id="2 services, different operator: expect 2 services in result",
             ),
             pytest.param(
                 [_service_v1_op1, _service_v1_op2, _service_v1_op4],
                 [1],
-                ServiceConfiguration(ServiceSelector.ALL),
+                ServiceConfiguration(selector=ServiceSelector.ALL),
                 [_service_v1_op1, _service_v1_op2],
                 id="3 services, one is not yet valid: expect 2 services in result",
             ),
             pytest.param(
                 [_service_v1_op1, _service_v1_op2],
                 [1],
-                ServiceConfiguration(ServiceSelector.ANY),
+                ServiceConfiguration(selector=ServiceSelector.ANY),
                 [_service_v1_op1],
                 id="ANY selector: expect 1 service only in result",
             ),
             pytest.param(
                 [_service_v1_op1, _service_v1_op2, _service_v1_op3],
                 [1],
-                ServiceConfiguration(ServiceSelector.EXACT, 2),
+                ServiceConfiguration(selector=ServiceSelector.EXACT, count=2),
                 [_service_v1_op1, _service_v1_op2],
                 id="EXACT selector: expect configured number of services in result",
             ),
             pytest.param(
                 [_service_v1_op1, _service_v2_op1],
                 [1, 2],
-                ServiceConfiguration(ServiceSelector.ALL),
+                ServiceConfiguration(selector=ServiceSelector.ALL),
                 [_service_v2_op1],
                 id="services with different version: expect highest version",
             ),
             pytest.param(
                 [_service_v1_op1, _service_v2_op1],
                 [1],
-                ServiceConfiguration(ServiceSelector.ALL),
+                ServiceConfiguration(selector=ServiceSelector.ALL),
                 [_service_v1_op1],
                 id="services with different version: expect the supported version",
             ),
             pytest.param(
                 [_service_v1_op1, _service_v1_op2],
                 [2],
-                ServiceConfiguration(ServiceSelector.ALL),
+                ServiceConfiguration(selector=ServiceSelector.ALL),
                 [],
                 id="No supported versions: expect no results",
             ),
@@ -191,17 +192,12 @@ class TestSigningcconfig:
             (  # ANY selector without services
                 [],
                 [1],
-                ServiceConfiguration(ServiceSelector.ANY),
+                ServiceConfiguration(selector=ServiceSelector.ANY),
             ),
             (  # EXACT selector without enough services
                 [_service_v1_op1],
                 [1],
-                ServiceConfiguration(ServiceSelector.EXACT, 2),
-            ),
-            (  # UNDEFINED selector
-                [_service_v1_op1],
-                [1],
-                ServiceConfiguration(ServiceSelector.UNDEFINED, 1),
+                ServiceConfiguration(selector=ServiceSelector.EXACT, count=2),
             ),
         ],
     )
@@ -228,7 +224,7 @@ class TestTrustedRoot:
         assert (
             root._inner.media_type == TrustedRoot.TrustedRootType.TRUSTED_ROOT_0_1.value
         )
-        assert len(root._inner.tlogs) == 2
+        assert len(root._inner.tlogs) == 1
         assert len(root._inner.certificate_authorities) == 2
         assert len(root._inner.ctlogs) == 2
         assert len(root._inner.timestamp_authorities) == 1
@@ -243,7 +239,8 @@ class TestTrustedRoot:
         path = asset("trusted_root/trustedroot.badtype.json")
 
         with pytest.raises(
-            Error, match="unsupported trusted root format: bad-media-type"
+            ValueError,
+            match=r"Input should be 'application/vnd\.dev\.sigstore\.trustedroot\+json;version=0\.1' or 'application/vnd\.dev\.sigstore\.trustedroot\.v0\.2\+json'",
         ):
             TrustedRoot.from_file(path)
 
@@ -329,8 +326,8 @@ def test_is_timerange_valid():
     def range_from(offset_lower=0, offset_upper=0):
         base = datetime.now(timezone.utc)
         return TimeRange(
-            base + timedelta(minutes=offset_lower),
-            base + timedelta(minutes=offset_upper),
+            start=base + timedelta(minutes=offset_lower),
+            end=base + timedelta(minutes=offset_upper),
         )
 
     # Test None should always be valid
@@ -356,6 +353,7 @@ def test_is_timerange_valid():
 
 def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     def get_public_bytes(keys):
+        assert len(keys) != 0
         return [
             k.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
             for k in keys
@@ -484,6 +482,7 @@ class TestClientTrustConfig:
         path = asset("trust_config/config.badtype.json")
 
         with pytest.raises(
-            Error, match="unsupported client trust config format: bad-media-type"
+            ValueError,
+            match=r"Input should be 'application/vnd\.dev\.sigstore\.clienttrustconfig.v0.1\+json'",
         ):
             ClientTrustConfig.from_json(path.read_text())
