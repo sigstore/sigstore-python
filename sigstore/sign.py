@@ -188,7 +188,7 @@ class Signer:
 
         # Submit the proposed entry to the transparency log
         entry = self._signing_ctx._rekor.create_entry(proposed_entry)
-        _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
+        _logger.debug(f"Transparency log entry created with index: {entry._inner.log_index}")
 
         return Bundle._from_parts(cert, content, entry, signed_timestamp)
 

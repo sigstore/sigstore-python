@@ -18,6 +18,7 @@ Functionality for building and manipulating in-toto Statements and DSSE envelope
 
 from __future__ import annotations
 
+import base64
 import logging
 from typing import Any, Literal, Optional
 
@@ -270,9 +271,9 @@ def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
     signature = key.sign(pae, ec.ECDSA(hashes.SHA256()))
     return Envelope(
         _Envelope(
-            payload=stmt._contents,
+            payload=base64.b64encode(stmt._contents),
             payload_type=Envelope._TYPE,
-            signatures=[_Signature(sig=signature)],
+            signatures=[_Signature(sig=base64.b64encode(signature))],
         )
     )
 
