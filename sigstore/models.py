@@ -154,13 +154,21 @@ class TransparencyLogEntry:
 
         return cls(inner)
 
-    def encode_canonical(self) -> bytes:
+    def _encode_canonical(self) -> bytes:
         """
         Returns a canonicalized JSON (RFC 8785) representation of the transparency log entry.
 
         This encoded representation is suitable for verification against
         the Signed Entry Timestamp.
         """
+        # We might not have an integrated time if our log entry is from rekor
+        # v2, i.e. was integrated synchronously instead of via an
+        # inclusion promise.
+        if self._inner.integrated_time is None:
+            raise ValueError(
+                "can't encode canonical form for SET without integrated time"
+            )
+
         payload: dict[str, int | str] = {
             "body": base64.b64encode(self._inner.canonicalized_body).decode(),
             "integratedTime": self._inner.integrated_time,
@@ -187,7 +195,7 @@ class TransparencyLogEntry:
             keyring.verify(
                 key_id=KeyID(self._inner.log_id.key_id),
                 signature=signed_entry_ts,
-                data=self.encode_canonical(),
+                data=self._encode_canonical(),
             )
         except VerificationError as exc:
             raise VerificationError(f"SET: invalid inclusion promise: {exc}")
@@ -211,7 +219,7 @@ class TransparencyLogEntry:
             f"successfully verified inclusion proof: index={self._inner.log_index}"
         )
 
-        if self._inner.inclusion_promise:
+        if self._inner.inclusion_promise and self._inner.integrated_time:
             self._verify_set(keyring)
             _logger.debug(
                 f"successfully verified inclusion promise: index={self._inner.log_index}"

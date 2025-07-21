@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Client implementation for interacting with Rekor.
+Client implementation for interacting with Rekor (v1).
 """
 
 from __future__ import annotations
