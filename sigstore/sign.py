@@ -38,6 +38,7 @@ with signing_ctx.signer(identity, cache=True) as signer:
 
 from __future__ import annotations
 
+import base64
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -244,9 +245,9 @@ class Signer:
         content = MessageSignature(
             message_digest=HashOutput(
                 algorithm=hashed_input.algorithm,
-                digest=hashed_input.digest,
+                digest=base64.b64encode(hashed_input.digest),
             ),
-            signature=artifact_signature,
+            signature=base64.b64encode(artifact_signature),
         )
 
         # Create the proposed hashedrekord entry

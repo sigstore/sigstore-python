@@ -25,7 +25,6 @@ import logging
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
-from sigstore_models import intoto
 from sigstore_models.common import v1 as common_v1
 from sigstore_models.rekor import v2 as rekor_v2
 from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEntry
