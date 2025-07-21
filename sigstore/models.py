@@ -714,7 +714,7 @@ class Bundle:
 
             if (
                 not log_entry._inner.inclusion_promise
-                and not self._inner.verification_material.timestamp_verification_data
+                and not self.verification_material.timestamp_verification_data
             ):
                 raise InvalidBundle(
                     "bundle must contain an inclusion promise or signed timestamp(s)"
