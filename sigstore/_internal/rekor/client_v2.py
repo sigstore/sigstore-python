@@ -24,6 +24,7 @@ import logging
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
+from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEntry
 from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
 from sigstore_protobuf_specs.dev.sigstore.rekor import v2
 from sigstore_protobuf_specs.io import intoto
@@ -37,7 +38,7 @@ from sigstore._internal.rekor import (
 )
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
-from sigstore.models import LogEntry
+from sigstore.models import TransparencyLogEntry
 
 _logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ class RekorV2Client(RekorLogSubmitter):
         """
         self.session.close()
 
-    def create_entry(self, payload: EntryRequestBody) -> LogEntry:
+    def create_entry(self, payload: EntryRequestBody) -> TransparencyLogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
 
@@ -90,7 +91,8 @@ class RekorV2Client(RekorLogSubmitter):
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
-        return LogEntry._from_dict_rekor(integrated_entry)
+        inner = _TransparencyLogEntry.from_dict(integrated_entry)
+        return TransparencyLogEntry(inner)
 
     @classmethod
     def _build_hashed_rekord_request(

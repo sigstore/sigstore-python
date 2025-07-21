@@ -29,9 +29,7 @@ from cryptography.x509 import load_pem_x509_certificate
 from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
-    Bundle as RawBundle,
-)
+from sigstore_models.bundle.v1 import Bundle as RawBundle
 from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 from typing_extensions import TypeAlias
 
@@ -701,7 +699,7 @@ def _sign_common(
             print(cert_pem)
 
             print(
-                f"Transparency log entry created at index: {result.log_entry.log_index}"
+                f"Transparency log entry created at index: {result.log_entry._inner.log_index}"
             )
 
             sig_output: TextIO
@@ -1210,7 +1208,7 @@ def _fix_bundle(args: argparse.Namespace) -> None:
 
     rekor = RekorClient.staging() if args.staging else RekorClient.production()
 
-    raw_bundle = RawBundle.from_dict(json.loads(args.bundle.read_bytes()))
+    raw_bundle = RawBundle.from_json(args.bundle.read_bytes())
 
     if len(raw_bundle.verification_material.tlog_entries) != 1:
         _fatal("unfixable bundle: must have exactly one log entry")
@@ -1223,8 +1221,8 @@ def _fix_bundle(args: argparse.Namespace) -> None:
     inclusion_proof = tlog_entry.inclusion_proof
     if not inclusion_proof.checkpoint:
         _logger.info("fixable: bundle's log entry is missing a checkpoint")
-        new_entry = rekor.log.entries.get(log_index=tlog_entry.log_index)._to_rekor()
-        raw_bundle.verification_material.tlog_entries = [new_entry]
+        new_entry = rekor.log.entries.get(log_index=tlog_entry.log_index)
+        raw_bundle.verification_material.tlog_entries = [new_entry._inner]
 
     # Try to create our invariant-preserving Bundle from the any changes above.
     try:
