@@ -126,7 +126,10 @@ def test_identity_proof_claim_lookup(sign_ctx_and_ident_for_env, monkeypatch):
         expected_entry = signer.sign_artifact(payload).log_entry
     actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry._inner.log_index)
 
-    assert expected_entry._inner.canonicalized_body == actual_entry._inner.canonicalized_body
+    assert (
+        expected_entry._inner.canonicalized_body
+        == actual_entry._inner.canonicalized_body
+    )
     assert expected_entry._inner.integrated_time == actual_entry._inner.integrated_time
     assert expected_entry._inner.log_id == actual_entry._inner.log_id
     assert expected_entry._inner.log_index == actual_entry._inner.log_index
