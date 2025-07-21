@@ -252,7 +252,7 @@ def staging_with_rekorv2() -> tuple[
         trust_config = ClientTrustConfig.staging()
         trust_config.signing_config._tlogs.append(
             Service(
-                url="https://log2025-alpha1.rekor.sigstage.dev", major_api_version=2
+                url="https://log2025-alpha1.rekor.sigstage.dev", major_api_version=2, operator="sigstage.dev"
             )
         )
         return SigningContext.from_trust_config(trust_config)

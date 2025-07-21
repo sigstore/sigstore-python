@@ -1,5 +1,4 @@
 {
-  "comment": "Place holder for use until prod actually has a signing config: see ClientTrustConfig.from_tuf()",
   "mediaType": "application/vnd.dev.sigstore.signingconfig.v0.2+json",
   "caUrls": [
     {
@@ -7,7 +6,8 @@
       "majorApiVersion": 1,
       "validFor": {
         "start": "2022-04-13T20:06:15.000Z"
-      }
+      },
+      "operator": "sigstore.dev"
     }
   ],
   "oidcUrls": [
@@ -15,8 +15,9 @@
       "url": "https://oauth2.sigstore.dev/auth",
       "majorApiVersion": 1,
       "validFor": {
-        "start": "2025-04-30T00:00:00Z"
-      }
+        "start": "2022-04-13T20:06:15.000Z"
+      },
+      "operator": "sigstore.dev"
     }
   ],
   "rekorTlogUrls": [
@@ -25,15 +26,24 @@
       "majorApiVersion": 1,
       "validFor": {
         "start": "2021-01-12T11:53:27.000Z"
-      }
+      },
+      "operator": "sigstore.dev"
     }
   ],
   "tsaUrls": [
+    {
+      "url": "https://timestamp.sigstore.dev/api/v1/timestamp",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2025-07-04T00:00:00Z"
+      },
+      "operator": "sigstore.dev"
+    }
   ],
   "rekorTlogConfig": {
     "selector": "ANY"
   },
   "tsaConfig": {
-    "selector": "ALL"
+    "selector": "ANY"
   }
 }
