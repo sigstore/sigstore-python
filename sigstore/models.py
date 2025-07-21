@@ -808,7 +808,9 @@ class Bundle:
         constituent parts.
         """
 
-        return cls._from_parts(cert, MessageSignature(signature=sig), log_entry)
+        return cls._from_parts(
+            cert, MessageSignature(signature=base64.b64encode(sig)), log_entry
+        )
 
     @classmethod
     def _from_parts(
@@ -845,7 +847,7 @@ class Bundle:
             media_type=Bundle.BundleType.BUNDLE_0_3.value,
             verification_material=bundle_v1.VerificationMaterial(
                 certificate=common_v1.X509Certificate(
-                    raw_bytes=cert.public_bytes(Encoding.DER)
+                    raw_bytes=base64.b64encode(cert.public_bytes(Encoding.DER))
                 ),
                 tlog_entries=[log_entry._inner],
                 timestamp_verification_data=timestamp_verifcation_data,
