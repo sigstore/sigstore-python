@@ -5,8 +5,7 @@ on:
     types:
       - published
 
-permissions: # added using https://github.com/step-security/secure-workflows
-  contents: read
+permissions: {}
 
 jobs:
   build:
@@ -99,7 +98,7 @@ jobs:
       - name: Generate build provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: 'built-packages/*'
+          subject-path: "built-packages/*"
 
   release-pypi:
     needs: [build, generate-provenance]

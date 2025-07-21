@@ -5,7 +5,9 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 */8 * * *'
+    - cron: "0 */8 * * *"
+
+permissions: {}
 
 jobs:
   staging-tests:
@@ -26,7 +28,6 @@ jobs:
           python-version: "3.x"
           cache: "pip"
           cache-dependency-path: pyproject.toml
-
 
       - name: staging tests
         env:
