@@ -6,7 +6,8 @@
       "majorApiVersion": 1,
       "validFor": {
         "start": "2022-04-14T21:38:40Z"
-      }
+      },
+      "operator": "sigstore.dev"
     }
   ],
   "oidcUrls": [
@@ -15,7 +16,8 @@
       "majorApiVersion": 1,
       "validFor": {
         "start": "2025-04-16T00:00:00Z"
-      }
+      },
+      "operator": "sigstore.dev"
     }
   ],
   "rekorTlogUrls": [
@@ -24,7 +26,8 @@
       "majorApiVersion": 1,
       "validFor": {
         "start": "2021-01-12T11:53:27Z"
-      }
+      },
+      "operator": "sigstore.dev"
     }
   ],
   "tsaUrls": [
@@ -33,7 +36,8 @@
       "majorApiVersion": 1,
       "validFor": {
         "start": "2025-04-09T00:00:00Z"
-      }
+      },
+      "operator": "sigstore.dev"
     }
   ],
   "rekorTlogConfig": {

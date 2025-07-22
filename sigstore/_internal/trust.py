@@ -49,7 +49,6 @@ from sigstore._utils import (
     PublicKey,
     key_id,
     load_der_public_key,
-    read_embedded,
 )
 from sigstore.errors import Error, MetadataError, TUFError, VerificationError
 

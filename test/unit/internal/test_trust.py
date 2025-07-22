@@ -70,7 +70,7 @@ class TestCertificateAuthority:
             CertificateAuthority.from_json(path)
 
 
-class TestSigningcconfig:
+class TestSigningConfig:
     def test_good(self, asset):
         path = asset("signing_config/signingconfig.v2.json")
         signing_config = SigningConfig.from_file(path)
@@ -270,9 +270,9 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
     # Don't expect trusted_root.json request as it's cached already
     expected_requests = {
         "timestamp.json": 1,
-        "13.snapshot.json": 1,
-        "13.targets.json": 1,
-        "cb9a48c332a0d515db7760ad6972a09a0f4ed721fe5e839b70371e0d0802abe2.signing_config.v0.2.json": 1
+        "16.snapshot.json": 1,
+        "17.targets.json": 1,
+        "ed6a9cf4e7c2e3297a4b5974fce0d17132f03c63512029d7aa3a402b43acab49.trusted_root.json": 1,
     }
     expected_fail_reqs = {"12.root.json": 1}
     assert reqs == expected_requests
@@ -355,10 +355,10 @@ def test_is_timerange_valid():
 def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
     def get_public_bytes(keys):
         assert len(keys) != 0
-        return [
+        return {
             k.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
             for k in keys
-        ]
+        }
 
     def _pem_keys(keys):
         return get_public_bytes([load_pem_public_key(k) for k in keys])
@@ -379,15 +379,17 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
 
     # Assert that trust root from TUF contains the expected keys/certs
     trust_root = ClientTrustConfig.staging().trusted_root
-    assert ctfe_keys[0] in get_public_bytes(
-        [
-            k.key
-            for k in trust_root.ct_keyring(
-                purpose=KeyringPurpose.VERIFY
-            )._keyring.values()
-        ]
+    assert ctfe_keys.issubset(
+        get_public_bytes(
+            [
+                k.key
+                for k in trust_root.ct_keyring(
+                    purpose=KeyringPurpose.VERIFY
+                )._keyring.values()
+            ]
+        )
     )
-    assert (
+    assert rekor_keys.issubset(
         get_public_bytes(
             [
                 k.key
@@ -396,21 +398,22 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
                 )._keyring.values()
             ]
         )
-        == rekor_keys
     )
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from offline TUF contains the expected keys/certs
     trust_root = ClientTrustConfig.staging(offline=True).trusted_root
-    assert ctfe_keys[0] in get_public_bytes(
-        [
-            k.key
-            for k in trust_root.ct_keyring(
-                purpose=KeyringPurpose.VERIFY
-            )._keyring.values()
-        ]
+    assert ctfe_keys.issubset(
+        get_public_bytes(
+            [
+                k.key
+                for k in trust_root.ct_keyring(
+                    purpose=KeyringPurpose.VERIFY
+                )._keyring.values()
+            ]
+        )
     )
-    assert (
+    assert rekor_keys.issubset(
         get_public_bytes(
             [
                 k.key
@@ -419,22 +422,23 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
                 )._keyring.values()
             ]
         )
-        == rekor_keys
     )
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
     # Assert that trust root from file contains the expected keys/certs
     path = tuf_asset.target_path("trusted_root.json")
     trust_root = TrustedRoot.from_file(path)
-    assert ctfe_keys[0] in get_public_bytes(
-        [
-            k.key
-            for k in trust_root.ct_keyring(
-                purpose=KeyringPurpose.VERIFY
-            )._keyring.values()
-        ]
+    assert ctfe_keys.issubset(
+        get_public_bytes(
+            [
+                k.key
+                for k in trust_root.ct_keyring(
+                    purpose=KeyringPurpose.VERIFY
+                )._keyring.values()
+            ]
+        )
     )
-    assert (
+    assert rekor_keys.issubset(
         get_public_bytes(
             [
                 k.key
@@ -443,7 +447,6 @@ def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
                 )._keyring.values()
             ]
         )
-        == rekor_keys
     )
     assert trust_root.get_fulcio_certs() == fulcio_certs
 
