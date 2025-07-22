@@ -392,7 +392,9 @@ class SigningConfig:
 
         # handle EXACT and ANY selectors
         count = (
-            config.count if config.selector == trustroot_v1.ServiceSelector.EXACT and config.count else 1
+            config.count
+            if config.selector == trustroot_v1.ServiceSelector.EXACT and config.count
+            else 1
         )
         if len(result) < count:
             raise ValueError(
