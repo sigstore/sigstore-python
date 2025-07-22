@@ -335,9 +335,12 @@ class SigningConfig:
             """Returns the variant's string value."""
             return self.value
 
-    def __init__(self, inner: _SigningConfig):
+    def __init__(self, inner: _SigningConfig, tlog_version: int | None = None):
         """
         Construct a new `SigningConfig`.
+
+        tlog_version is an optional argument that enforces that only specified
+        versions of rekor are included in the transparency logs.
 
         @api private
         """
@@ -351,8 +354,13 @@ class SigningConfig:
 
         # Create lists of service protos that are valid, selected by the service
         # configuration & supported by this client
+        if tlog_version is None:
+            tlog_versions = REKOR_VERSIONS
+        else:
+            tlog_versions = [tlog_version]
+
         self._tlogs = self._get_valid_services(
-            self._inner.rekor_tlog_urls, REKOR_VERSIONS, self._inner.rekor_tlog_config
+            self._inner.rekor_tlog_urls, tlog_versions, self._inner.rekor_tlog_config
         )
         if not self._tlogs:
             raise Error("No valid Rekor transparency log found in signing config")
@@ -415,7 +423,7 @@ class SigningConfig:
 
         # handle EXACT and ANY selectors
         count = config.count if config.selector == ServiceSelector.EXACT else 1
-        if len(result) < count:
+        if config.selector == ServiceSelector.EXACT and len(result) < count:
             raise ValueError(
                 f"Expected {count} services in signing config, found {len(result)}"
             )
@@ -655,6 +663,9 @@ class ClientTrustConfig:
         self._inner = inner
         self._verify()
 
+        # This can be used to enforce a specific rekor major version in signingconfig
+        self.force_tlog_version: int | None = None
+
     def _verify(self) -> None:
         """
         Performs various feats of heroism to ensure that the client trust config
@@ -681,4 +692,6 @@ class ClientTrustConfig:
         """
         Return the interior root of trust, as a `SigningConfig`.
         """
-        return SigningConfig(self._inner.signing_config)
+        return SigningConfig(
+            self._inner.signing_config, tlog_version=self.force_tlog_version
+        )

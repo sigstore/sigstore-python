@@ -289,6 +289,11 @@ def _parser() -> argparse.ArgumentParser:
         parents=[parent_parser],
     )
     attest.add_argument(
+        "--rekor-version",
+        type=int,
+        help="Force the rekor transparency log version (in case there are multiple in signing configuration)",
+    )
+    attest.add_argument(
         "files",
         metavar="FILE",
         type=Path,
@@ -347,6 +352,11 @@ def _parser() -> argparse.ArgumentParser:
         help="sign one or more inputs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[parent_parser],
+    )
+    sign.add_argument(
+        "--rekor-version",
+        type=int,
+        help="Force the rekor transparency log version (in case there are multiple in signing configuration)",
     )
 
     oidc_options = sign.add_argument_group("OpenID Connect options")
@@ -1195,11 +1205,16 @@ def _get_trust_config(args: argparse.Namespace) -> ClientTrustConfig:
     offline = getattr(args, "offline", False)
 
     if args.trust_config:
-        return ClientTrustConfig.from_json(args.trust_config.read_text())
+        trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
     elif args.staging:
-        return ClientTrustConfig.staging(offline=offline)
+        trust_config = ClientTrustConfig.staging(offline=offline)
     else:
-        return ClientTrustConfig.production(offline=offline)
+        trust_config = ClientTrustConfig.production(offline=offline)
+
+    # Enforce rekor version if --rekor-version is used
+    trust_config.force_tlog_version = getattr(args, "rekor_version", None)
+
+    return trust_config
 
 
 def _get_identity(
