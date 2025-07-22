@@ -272,6 +272,7 @@ def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
         "timestamp.json": 1,
         "13.snapshot.json": 1,
         "13.targets.json": 1,
+        "cb9a48c332a0d515db7760ad6972a09a0f4ed721fe5e839b70371e0d0802abe2.signing_config.v0.2.json": 1
     }
     expected_fail_reqs = {"12.root.json": 1}
     assert reqs == expected_requests
