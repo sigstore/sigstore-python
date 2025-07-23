@@ -291,7 +291,9 @@ def _parser() -> argparse.ArgumentParser:
     attest.add_argument(
         "--rekor-version",
         type=int,
-        help="Force the rekor transparency log version (in case there are multiple in signing configuration)",
+        metavar="VERSION",
+        default=argparse.SUPPRESS,
+        help="Force the rekor transparency log version. Valid values are [1, 2]. By default the highest available version is used",
     )
     attest.add_argument(
         "files",
@@ -356,7 +358,9 @@ def _parser() -> argparse.ArgumentParser:
     sign.add_argument(
         "--rekor-version",
         type=int,
-        help="Force the rekor transparency log version (in case there are multiple in signing configuration)",
+        metavar="VERSION",
+        default=argparse.SUPPRESS,
+        help="Force the rekor transparency log version. Valid values are [1, 2]. By default the highest available version is used",
     )
 
     oidc_options = sign.add_argument_group("OpenID Connect options")

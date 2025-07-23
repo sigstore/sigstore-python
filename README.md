@@ -94,7 +94,7 @@ optional arguments:
 
 <!-- @begin-sigstore-sign-help@ -->
 ```
-usage: sigstore sign [-h] [-v] [--rekor-version REKOR_VERSION]
+usage: sigstore sign [-h] [-v] [--rekor-version VERSION]
                      [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
@@ -110,10 +110,10 @@ optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
-  --rekor-version REKOR_VERSION
-                        Force the rekor transparency log version (in case
-                        there are multiple in signing configuration) (default:
-                        None)
+  --rekor-version VERSION
+                        Force the rekor transparency log version. Valid values
+                        are [1, 2]. By default the highest available version
+                        is used
 
 OpenID Connect options:
   --identity-token TOKEN
@@ -156,8 +156,8 @@ Output options:
 
 <!-- @begin-sigstore-attest-help@ -->
 ```
-usage: sigstore attest [-h] [-v] [--rekor-version REKOR_VERSION] --predicate
-                       FILE --predicate-type TYPE [--identity-token TOKEN]
+usage: sigstore attest [-h] [-v] [--rekor-version VERSION] --predicate FILE
+                       --predicate-type TYPE [--identity-token TOKEN]
                        [--oidc-client-id ID] [--oidc-client-secret SECRET]
                        [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                        [--oauth-force-oob] [--bundle FILE] [--overwrite]
@@ -170,10 +170,10 @@ optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
-  --rekor-version REKOR_VERSION
-                        Force the rekor transparency log version (in case
-                        there are multiple in signing configuration) (default:
-                        None)
+  --rekor-version VERSION
+                        Force the rekor transparency log version. Valid values
+                        are [1, 2]. By default the highest available version
+                        is used
 
 DSSE options:
   --predicate FILE      Path to the predicate file (default: None)
