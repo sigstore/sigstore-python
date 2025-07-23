@@ -728,7 +728,7 @@ def _sign_common(
 
         # sign in threads: this is relevant for especially Rekor v2 as otherwise we wait
         # for log inclusion for each signature separately
-        with futures.ThreadPoolExecutor(max_workers=10) as executor:
+        with futures.ThreadPoolExecutor() as executor:
             jobs = [
                 executor.submit(
                     _sign_file_threaded,
