@@ -120,7 +120,8 @@
         "majorApiVersion": 1,
         "validFor": {
           "start": "2022-04-14T21:38:40.000Z"
-        }
+        },
+        "operator": "sigstage.dev"
       }
     ],
     "rekorTlogUrls": [
@@ -129,7 +130,8 @@
         "majorApiVersion": 1,
         "validFor": {
           "start": "2021-01-12T11:53:27.000Z"
-        }
+        },
+        "operator": "sigstage.dev"
       }
     ],
     "tsaUrls": [
@@ -138,7 +140,8 @@
         "majorApiVersion": 1,
         "validFor": {
           "start": "2024-11-07T14:59:40.000Z"
-        }
+        },
+        "operator": "sigstage.dev"
       }
     ],
     "rekorTlogConfig": {

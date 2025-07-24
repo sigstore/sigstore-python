@@ -20,7 +20,7 @@ import rekor_types
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.utils import Prehashed
 from pydantic import BaseModel
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
+from sigstore_models.common.v1 import HashAlgorithm
 
 from sigstore.errors import Error
 
@@ -60,4 +60,4 @@ class Hashed(BaseModel, frozen=True):
         """
         Returns a str representation of this `Hashed`.
         """
-        return f"{HashAlgorithm(self.algorithm)}:{self.digest.hex()}"
+        return f"{self.algorithm.value}:{self.digest.hex()}"
