@@ -20,10 +20,9 @@ import json
 import logging
 import os
 import sys
-from concurrent import futures
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn, Union
+from typing import Any, NoReturn, TextIO, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -57,7 +56,7 @@ from sigstore.oidc import (
     Issuer,
     detect_credential,
 )
-from sigstore.sign import Signer, SigningContext
+from sigstore.sign import SigningContext
 from sigstore.verify import (
     Verifier,
     policy,
@@ -637,57 +636,6 @@ def _get_identity_token(args: argparse.Namespace) -> None:
         _invalid_arguments(args, "No identity token supplied or detected!")
 
 
-def _sign_file_threaded(
-    signer: Signer,
-    predicate_type: str | None,
-    predicate: dict[str, Any] | None,
-    file: Path,
-    outputs: SigningOutputs,
-) -> None:
-    """sign method to be called from signing thread"""
-    _logger.debug(f"signing for {file.name}")
-    with file.open(mode="rb") as io:
-        # The input can be indefinitely large, so we perform a streaming
-        # digest and sign the prehash rather than buffering it fully.
-        digest = sha256_digest(io)
-    try:
-        if predicate is None:
-            result = signer.sign_artifact(input_=digest)
-        else:
-            subject = Subject(name=file.name, digest={"sha256": digest.digest.hex()})
-            statement_builder = StatementBuilder(
-                subjects=[subject],
-                predicate_type=predicate_type,
-                predicate=predicate,
-            )
-            result = signer.sign_dsse(statement_builder.build())
-    except ExpiredIdentity as exp_identity:
-        _logger.error("Signature failed: identity token has expired")
-        raise exp_identity
-
-    except ExpiredCertificate as exp_certificate:
-        _logger.error("Signature failed: Fulcio signing certificate has expired")
-        raise exp_certificate
-
-    _logger.info(
-        f"Transparency log entry created at index: {result.log_entry.log_index}"
-    )
-
-    if outputs.signature is not None:
-        signature = base64.b64encode(result.signature).decode()
-        with outputs.signature.open(mode="w") as io:
-            print(signature, file=io)
-
-    if outputs.certificate is not None:
-        cert_pem = signer._signing_cert().public_bytes(Encoding.PEM).decode()
-        with outputs.certificate.open(mode="w") as io:
-            print(cert_pem, file=io)
-
-    if outputs.bundle is not None:
-        with outputs.bundle.open(mode="w") as io:
-            print(result.to_json(), file=io)
-
-
 def _sign_common(
     args: argparse.Namespace, output_map: OutputMap, predicate: dict[str, Any] | None
 ) -> None:
@@ -718,37 +666,63 @@ def _sign_common(
     if not identity:
         _invalid_arguments(args, "No identity token supplied or detected!")
 
-    # Not all commands provide --predicate-type
-    predicate_type = getattr(args, "predicate_type", None)
-
     with signing_ctx.signer(identity) as signer:
-        print("Using ephemeral certificate:")
-        cert_pem = signer._signing_cert().public_bytes(Encoding.PEM).decode()
-        print(cert_pem)
-
-        # sign in threads: this is relevant for especially Rekor v2 as otherwise we wait
-        # for log inclusion for each signature separately
-        with futures.ThreadPoolExecutor() as executor:
-            jobs = [
-                executor.submit(
-                    _sign_file_threaded,
-                    signer,
-                    predicate_type,
-                    predicate,
-                    file,
-                    outputs,
-                )
-                for file, outputs in output_map.items()
-            ]
-            for job in futures.as_completed(jobs):
-                job.result()
-
         for file, outputs in output_map.items():
+            _logger.debug(f"signing for {file.name}")
+            with file.open(mode="rb") as io:
+                # The input can be indefinitely large, so we perform a streaming
+                # digest and sign the prehash rather than buffering it fully.
+                digest = sha256_digest(io)
+            try:
+                if predicate is None:
+                    result = signer.sign_artifact(input_=digest)
+                else:
+                    subject = Subject(
+                        name=file.name, digest={"sha256": digest.digest.hex()}
+                    )
+                    predicate_type = args.predicate_type
+                    statement_builder = StatementBuilder(
+                        subjects=[subject],
+                        predicate_type=predicate_type,
+                        predicate=predicate,
+                    )
+                    result = signer.sign_dsse(statement_builder.build())
+            except ExpiredIdentity as exp_identity:
+                print("Signature failed: identity token has expired")
+                raise exp_identity
+
+            except ExpiredCertificate as exp_certificate:
+                print("Signature failed: Fulcio signing certificate has expired")
+                raise exp_certificate
+
+            print("Using ephemeral certificate:")
+            cert = result.signing_certificate
+            cert_pem = cert.public_bytes(Encoding.PEM).decode()
+            print(cert_pem)
+
+            print(
+                f"Transparency log entry created at index: {result.log_entry.log_index}"
+            )
+
+            sig_output: TextIO
+            if outputs.signature is not None:
+                sig_output = outputs.signature.open("w")
+            else:
+                sig_output = sys.stdout
+
+            signature = base64.b64encode(result.signature).decode()
+            print(signature, file=sig_output)
             if outputs.signature is not None:
                 print(f"Signature written to {outputs.signature}")
+
             if outputs.certificate is not None:
+                with outputs.certificate.open(mode="w") as io:
+                    print(cert_pem, file=io)
                 print(f"Certificate written to {outputs.certificate}")
+
             if outputs.bundle is not None:
+                with outputs.bundle.open(mode="w") as io:
+                    print(result.to_json(), file=io)
                 print(f"Sigstore bundle written to {outputs.bundle}")
 
 

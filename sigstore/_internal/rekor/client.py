@@ -73,20 +73,8 @@ class RekorLogInfo:
 
 
 class _Endpoint(ABC):
-    def __init__(self, url: str, session: requests.Session | None = None) -> None:
-        # Note that _Endpoint may not be thread be safe if the same Session is provided
-        # to an _Endpoint in multiple threads
+    def __init__(self, url: str, session: requests.Session) -> None:
         self.url = url
-        if session is None:
-            session = requests.Session()
-            session.headers.update(
-                {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "User-Agent": USER_AGENT,
-                }
-            )
-
         self.session = session
 
 
@@ -222,6 +210,20 @@ class RekorClient(RekorLogSubmitter):
         Create a new `RekorClient` from the given URL.
         """
         self.url = f"{url}/api/v1"
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            }
+        )
+
+    def __del__(self) -> None:
+        """
+        Terminates the underlying network session.
+        """
+        self.session.close()
 
     @classmethod
     def production(cls) -> RekorClient:
@@ -244,8 +246,7 @@ class RekorClient(RekorLogSubmitter):
         """
         Returns a `RekorLog` adapter for making requests to a Rekor log.
         """
-
-        return RekorLog(f"{self.url}/log")
+        return RekorLog(f"{self.url}/log", session=self.session)
 
     def create_entry(self, request: EntryRequestBody) -> LogEntry:
         """
