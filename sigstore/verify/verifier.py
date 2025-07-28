@@ -128,9 +128,18 @@ class Verifier:
         for certificate_authority in cert_authorities:
             certificates = certificate_authority.certificates(allow_expired=True)
 
-            builder = VerifierBuilder()
+            # We expect at least a signing cert and a root cert but there may be intermediates
+            if len(certificates) < 2:
+                _logger.debug("Unable to verify Timestamp: cert chain is incomplete")
+                continue
+
+            builder = (
+                VerifierBuilder()
+                .tsa_certificate(certificates.pop(0))
+                .add_root_certificate(certificates.pop())
+            )
             for certificate in certificates:
-                builder.add_root_certificate(certificate)
+                builder = builder.add_intermediate_certificate(certificate)
 
             verifier = builder.build()
             try:
