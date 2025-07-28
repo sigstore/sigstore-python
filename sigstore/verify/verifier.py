@@ -135,10 +135,10 @@ class Verifier:
 
             builder = (
                 VerifierBuilder()
-                .tsa_certificate(certificates.pop(0))
-                .add_root_certificate(certificates.pop())
+                .tsa_certificate(certificates[0])
+                .add_root_certificate(certificates[-1])
             )
-            for certificate in certificates:
+            for certificate in certificates[1:-1]:
                 builder = builder.add_intermediate_certificate(certificate)
 
             verifier = builder.build()
