@@ -106,7 +106,7 @@ class RekorV2Client(RekorLogSubmitter):
         """
         req = rekor_v2.entry.CreateEntryRequest(
             hashed_rekord_request_v002=rekor_v2.hashedrekord.HashedRekordRequestV002(
-                digest=hashed_input.digest,
+                digest=base64.b64encode(hashed_input.digest),
                 signature=rekor_v2.verifier.Signature(
                     content=base64.b64encode(signature),
                     verifier=rekor_v2.verifier.Verifier(
