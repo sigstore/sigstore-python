@@ -377,3 +377,18 @@ class TestVerifierWithTimestamp:
                 Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
                 null_policy,
             )
+
+    def test_verify_signed_timestamp_regression(self, asset):
+        """
+        Ensure we correctly verify a timestamp with no embedded certs.
+
+        This is a regression test for # 1482
+        """
+        verifier = Verifier.staging(offline=True)
+        ts = rfc3161_client.decode_timestamp_response(
+            asset("tsa/issue1482-timestamp-with-no-cert").read_bytes()
+        )
+        res = verifier._verify_signed_timestamp(
+            ts, asset("tsa/issue1482-message").read_bytes()
+        )
+        assert res is not None
