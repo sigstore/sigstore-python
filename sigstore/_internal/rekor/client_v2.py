@@ -108,7 +108,7 @@ class RekorV2Client(RekorLogSubmitter):
             hashed_rekord_request_v002=rekor_v2.hashedrekord.HashedRekordRequestV002(
                 digest=hashed_input.digest,
                 signature=rekor_v2.verifier.Signature(
-                    content=signature,
+                    content=base64.b64encode(signature),
                     verifier=rekor_v2.verifier.Verifier(
                         x509_certificate=common_v1.X509Certificate(
                             raw_bytes=base64.b64encode(
