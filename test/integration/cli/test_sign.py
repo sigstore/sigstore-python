@@ -116,7 +116,6 @@ def test_sign_success_multiple_artifacts(capsys, sigstore, asset_integration, tm
             open(artifact, "rb") as input_file,
         ):
             bundle = Bundle.from_json(bundle_file.read())
-            expected_output_bundle.unlink()
             verifier.verify_artifact(
                 input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()
             )
@@ -160,7 +159,6 @@ def test_sign_success_multiple_artifacts_rekor_v2(
             open(artifact, "rb") as input_file,
         ):
             bundle = Bundle.from_json(bundle_file.read())
-            expected_output_bundle.unlink()
             verifier.verify_artifact(
                 input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()
             )
@@ -268,6 +266,7 @@ def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration, tmp
         sigstore(
             *get_cli_params(
                 artifact_paths=[artifact],
+                output_directory=tmp_path,
                 overwrite=False,
             )
         )
