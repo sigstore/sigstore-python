@@ -19,12 +19,11 @@ Common models shared between signing and verification.
 from __future__ import annotations
 
 import base64
-import json
 import logging
 import typing
 from enum import Enum
 from textwrap import dedent
-from typing import Any, Optional
+from typing import Any
 
 import rfc8785
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -32,39 +31,24 @@ from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
 )
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    StrictInt,
-    StrictStr,
-    TypeAdapter,
-    ValidationInfo,
-    field_validator,
-)
-from pydantic.dataclasses import dataclass
+from pydantic import TypeAdapter
 from rekor_types import Dsse, Hashedrekord, ProposedEntry
 from rfc3161_client import TimeStampResponse, decode_timestamp_response
-from sigstore_protobuf_specs.dev.sigstore.bundle import v1 as bundle_v1
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
-    Bundle as _Bundle,
-)
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
+from sigstore_models.bundle import v1 as bundle_v1
+from sigstore_models.bundle.v1 import Bundle as _Bundle
+from sigstore_models.bundle.v1 import (
     TimestampVerificationData as _TimestampVerificationData,
 )
-from sigstore_protobuf_specs.dev.sigstore.bundle.v1 import (
-    VerificationMaterial as _VerificationMaterial,
-)
-from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import Rfc3161SignedTimestamp
-from sigstore_protobuf_specs.dev.sigstore.rekor import v1 as rekor_v1
-from sigstore_protobuf_specs.dev.sigstore.rekor.v1 import InclusionProof, KindVersion
+from sigstore_models.bundle.v1 import VerificationMaterial as _VerificationMaterial
+from sigstore_models.common import v1 as common_v1
+from sigstore_models.common.v1 import MessageSignature, RFC3161SignedTimestamp
+from sigstore_models.rekor import v1 as rekor_v1
+from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEntry
 
 from sigstore import dsse
 from sigstore._internal.merkle import verify_merkle_inclusion
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
 from sigstore._utils import (
-    B64Str,
     KeyID,
     cert_is_leaf,
     cert_is_root_ca,
@@ -78,115 +62,54 @@ if typing.TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
-class LogInclusionProof(BaseModel):
-    """
-    Represents an inclusion proof for a transparency log entry.
-    """
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    checkpoint: StrictStr = Field(..., alias="checkpoint")
-    hashes: list[StrictStr] = Field(..., alias="hashes")
-    log_index: StrictInt = Field(..., alias="logIndex")
-    root_hash: StrictStr = Field(..., alias="rootHash")
-    tree_size: StrictInt = Field(..., alias="treeSize")
-
-    @field_validator("log_index")
-    def _log_index_positive(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError(f"Inclusion proof has invalid log index: {v} < 0")
-        return v
-
-    @field_validator("tree_size")
-    def _tree_size_positive(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError(f"Inclusion proof has invalid tree size: {v} < 0")
-        return v
-
-    @field_validator("tree_size")
-    def _log_index_within_tree_size(
-        cls, v: int, info: ValidationInfo, **kwargs: Any
-    ) -> int:
-        if "log_index" in info.data and v <= info.data["log_index"]:
-            raise ValueError(
-                "Inclusion proof has log index greater than or equal to tree size: "
-                f"{v} <= {info.data['log_index']}"
-            )
-        return v
-
-
-@dataclass(frozen=True)
-class LogEntry:
+class TransparencyLogEntry:
     """
     Represents a transparency log entry.
-
-    Log entries are retrieved from the transparency log after signing or verification events,
-    or loaded from "Sigstore" bundles provided by the user.
-
-    This representation allows for either a missing inclusion promise or a missing
-    inclusion proof, but not both: attempting to construct a `LogEntry` without
-    at least one will fail.
     """
 
-    uuid: Optional[str]  # noqa: UP045
-    """
-    This entry's unique ID in the log instance it was retrieved from.
+    def __init__(self, inner: _TransparencyLogEntry) -> None:
+        """
+        Creates a new `TransparencyLogEntry` from the given inner object.
 
-    For sharded log deployments, IDs are unique per-shard.
+        @private
+        """
+        self._inner = inner
+        self._validate()
 
-    Not present for `LogEntry` instances loaded from Sigstore bundles.
-    """
+    def _validate(self) -> None:
+        """
+        Ensure this transparency log entry is well-formed and upholds our
+        client invariants.
+        """
 
-    body: B64Str
-    """
-    The base64-encoded body of the transparency log entry.
-    """
+        inclusion_proof: rekor_v1.InclusionProof | None = self._inner.inclusion_proof
+        # This check is required by us as the client, not the
+        # protobuf-specs themselves.
+        if not inclusion_proof or not inclusion_proof.checkpoint:
+            raise InvalidBundle("entry must contain inclusion proof, with checkpoint")
 
-    integrated_time: int
-    """
-    The UNIX time at which this entry was integrated into the transparency log.
-    """
+    def __eq__(self, value: object) -> bool:
+        """
+        Compares this `TransparencyLogEntry` with another object for equality.
 
-    log_id: str
-    """
-    The log's ID (as the SHA256 hash of the DER-encoded public key for the log
-    at the time of entry inclusion).
-    """
-
-    log_index: int
-    """
-    The index of this entry within the log.
-    """
-
-    inclusion_proof: LogInclusionProof
-    """
-    An inclusion proof for this log entry.
-    """
-
-    inclusion_promise: Optional[B64Str]  # noqa: UP045
-    """
-    An inclusion promise for this log entry, if present.
-
-    Internally, this is a base64-encoded Signed Entry Timestamp (SET) for this
-    log entry.
-    """
-
-    _kind_version: KindVersion
-    """
-    The kind and version of the log entry.
-    """
+        Two `TransparencyLogEntry` instances are considered equal if their
+        inner contents are equal.
+        """
+        if not isinstance(value, TransparencyLogEntry):
+            return NotImplemented
+        return self._inner == value._inner
 
     @classmethod
-    def _from_response(cls, dict_: dict[str, Any]) -> LogEntry:
+    def _from_v1_response(cls, dict_: dict[str, Any]) -> TransparencyLogEntry:
         """
-        Create a new `LogEntry` from the given API response.
+        Create a new `TransparencyLogEntry` from the given API response.
         """
 
         # Assumes we only get one entry back
         entries = list(dict_.items())
         if len(entries) != 1:
             raise ValueError("Received multiple entries in response")
-        uuid, entry = entries[0]
+        _, entry = entries[0]
 
         # Fill in the appropriate kind
         body_entry: ProposedEntry = TypeAdapter(ProposedEntry).validate_json(
@@ -195,104 +118,62 @@ class LogEntry:
         if not isinstance(body_entry, (Hashedrekord, Dsse)):
             raise InvalidBundle("log entry is not of expected type")
 
-        return LogEntry(
-            uuid=uuid,
-            body=entry["body"],
-            integrated_time=entry["integratedTime"],
-            log_id=entry["logID"],
-            log_index=entry["logIndex"],
-            inclusion_proof=LogInclusionProof.model_validate(
-                entry["verification"]["inclusionProof"]
+        raw_inclusion_proof = entry["verification"]["inclusionProof"]
+
+        # NOTE: The type ignores below are a consequence of our Pydantic
+        # modeling: mypy and other typecheckers see `ProtoU64` as `int`,
+        # but it gets coerced from a string due to Protobuf's JSON serialization.
+        inner = _TransparencyLogEntry(
+            log_index=str(entry["logIndex"]),  # type: ignore[arg-type]
+            log_id=common_v1.LogId(
+                key_id=base64.b64encode(bytes.fromhex(entry["logID"]))
             ),
-            inclusion_promise=entry["verification"]["signedEntryTimestamp"],
-            _kind_version=KindVersion(
+            kind_version=rekor_v1.KindVersion(
                 kind=body_entry.kind, version=body_entry.api_version
             ),
+            integrated_time=str(entry["integratedTime"]),  # type: ignore[arg-type]
+            inclusion_promise=rekor_v1.InclusionPromise(
+                signed_entry_timestamp=entry["verification"]["signedEntryTimestamp"]
+            ),
+            inclusion_proof=rekor_v1.InclusionProof(
+                log_index=str(raw_inclusion_proof["logIndex"]),  # type: ignore[arg-type]
+                root_hash=base64.b64encode(
+                    bytes.fromhex(raw_inclusion_proof["rootHash"])
+                ),
+                tree_size=str(raw_inclusion_proof["treeSize"]),  # type: ignore[arg-type]
+                hashes=[
+                    base64.b64encode(bytes.fromhex(h))
+                    for h in raw_inclusion_proof["hashes"]
+                ],
+                checkpoint=rekor_v1.Checkpoint(
+                    envelope=raw_inclusion_proof["checkpoint"]
+                ),
+            ),
+            canonicalized_body=entry["body"],
         )
 
-    @classmethod
-    def _from_dict_rekor(cls, dict_: dict[str, Any]) -> LogEntry:
-        """
-        Create a new `LogEntry` from the given Rekor TransparencyLogEntry.
-        """
-        tlog_entry = rekor_v1.TransparencyLogEntry()
-        tlog_entry.from_dict(dict_)
+        return cls(inner)
 
-        inclusion_proof: InclusionProof | None = tlog_entry.inclusion_proof
-        # This check is required by us as the client, not the
-        # protobuf-specs themselves.
-        if not inclusion_proof or not inclusion_proof.checkpoint.envelope:
-            raise InvalidBundle("entry must contain inclusion proof, with checkpoint")
-
-        parsed_inclusion_proof = LogInclusionProof(
-            checkpoint=inclusion_proof.checkpoint.envelope,
-            hashes=[h.hex() for h in inclusion_proof.hashes],
-            log_index=inclusion_proof.log_index,
-            root_hash=inclusion_proof.root_hash.hex(),
-            tree_size=inclusion_proof.tree_size,
-        )
-
-        inclusion_promise: B64Str | None = None
-        if tlog_entry.inclusion_promise:
-            inclusion_promise = B64Str(
-                base64.b64encode(
-                    tlog_entry.inclusion_promise.signed_entry_timestamp
-                ).decode()
-            )
-
-        return LogEntry(
-            uuid=None,
-            body=B64Str(base64.b64encode(tlog_entry.canonicalized_body).decode()),
-            integrated_time=tlog_entry.integrated_time,
-            log_id=tlog_entry.log_id.key_id.hex(),
-            log_index=tlog_entry.log_index,
-            inclusion_proof=parsed_inclusion_proof,
-            _kind_version=tlog_entry.kind_version,
-            inclusion_promise=inclusion_promise,
-        )
-
-    def _to_rekor(self) -> rekor_v1.TransparencyLogEntry:
-        """
-        Create a new protobuf-level `TransparencyLogEntry` from this `LogEntry`.
-
-        @private
-        """
-        inclusion_proof = rekor_v1.InclusionProof(
-            log_index=self.inclusion_proof.log_index,
-            root_hash=bytes.fromhex(self.inclusion_proof.root_hash),
-            tree_size=self.inclusion_proof.tree_size,
-            hashes=[bytes.fromhex(hash_) for hash_ in self.inclusion_proof.hashes],
-            checkpoint=rekor_v1.Checkpoint(envelope=self.inclusion_proof.checkpoint),
-        )
-
-        tlog_entry = rekor_v1.TransparencyLogEntry(
-            log_index=self.log_index,
-            log_id=common_v1.LogId(key_id=bytes.fromhex(self.log_id)),
-            integrated_time=self.integrated_time,
-            inclusion_proof=inclusion_proof,
-            kind_version=self._kind_version,
-            canonicalized_body=base64.b64decode(self.body),
-        )
-        if self.inclusion_promise:
-            inclusion_promise = rekor_v1.InclusionPromise(
-                signed_entry_timestamp=base64.b64decode(self.inclusion_promise)
-            )
-            tlog_entry.inclusion_promise = inclusion_promise
-
-        return tlog_entry
-
-    def encode_canonical(self) -> bytes:
+    def _encode_canonical(self) -> bytes:
         """
         Returns a canonicalized JSON (RFC 8785) representation of the transparency log entry.
 
         This encoded representation is suitable for verification against
         the Signed Entry Timestamp.
         """
+        # We might not have an integrated time if our log entry is from rekor
+        # v2, i.e. was integrated synchronously instead of via an
+        # inclusion promise.
+        if self._inner.integrated_time is None:
+            raise ValueError(
+                "can't encode canonical form for SET without integrated time"
+            )
+
         payload: dict[str, int | str] = {
-            "body": self.body,
-            "integratedTime": self.integrated_time,
-            "logID": self.log_id,
-            "logIndex": self.log_index,
+            "body": base64.b64encode(self._inner.canonicalized_body).decode(),
+            "integratedTime": self._inner.integrated_time,
+            "logID": self._inner.log_id.key_id.hex(),
+            "logIndex": self._inner.log_index,
         }
 
         return rfc8785.dumps(payload)
@@ -305,16 +186,16 @@ class LogEntry:
         Fails if the given log entry does not contain an inclusion promise.
         """
 
-        if self.inclusion_promise is None:
+        if self._inner.inclusion_promise is None:
             raise VerificationError("SET: invalid inclusion promise: missing")
 
-        signed_entry_ts = base64.b64decode(self.inclusion_promise)
+        signed_entry_ts = self._inner.inclusion_promise.signed_entry_timestamp
 
         try:
             keyring.verify(
-                key_id=KeyID(bytes.fromhex(self.log_id)),
+                key_id=KeyID(self._inner.log_id.key_id),
                 signature=signed_entry_ts,
-                data=self.encode_canonical(),
+                data=self._encode_canonical(),
             )
         except VerificationError as exc:
             raise VerificationError(f"SET: invalid inclusion promise: {exc}")
@@ -334,12 +215,14 @@ class LogEntry:
         verify_merkle_inclusion(self)
         verify_checkpoint(keyring, self)
 
-        _logger.debug(f"successfully verified inclusion proof: index={self.log_index}")
+        _logger.debug(
+            f"successfully verified inclusion proof: index={self._inner.log_index}"
+        )
 
-        if self.inclusion_promise:
+        if self._inner.inclusion_promise and self._inner.integrated_time:
             self._verify_set(keyring)
             _logger.debug(
-                f"successfully verified inclusion promise: index={self.log_index}"
+                f"successfully verified inclusion promise: index={self._inner.log_index}"
             )
 
 
@@ -362,10 +245,12 @@ class TimestampVerificationData:
         It verifies that TimeStamp Responses embedded in the bundle are correctly
         formed.
         """
+        if not (timestamps := self._inner.rfc3161_timestamps):
+            timestamps = []
+
         try:
             self._signed_ts = [
-                decode_timestamp_response(ts.signed_timestamp)
-                for ts in self._inner.rfc3161_timestamps
+                decode_timestamp_response(ts.signed_timestamp) for ts in timestamps
             ]
         except ValueError:
             raise VerificationError("Invalid Timestamp Response")
@@ -380,7 +265,7 @@ class TimestampVerificationData:
         """
         Deserialize the given timestamp verification data.
         """
-        inner = _TimestampVerificationData().from_json(raw)
+        inner = _TimestampVerificationData.from_json(raw)
         return cls(inner)
 
 
@@ -394,11 +279,16 @@ class VerificationMaterial:
         self._inner = inner
 
     @property
-    def timestamp_verification_data(self) -> TimestampVerificationData:
+    def timestamp_verification_data(self) -> TimestampVerificationData | None:
         """
-        Returns the Timestamp Verification Data.
+        Returns the Timestamp Verification Data, if present.
         """
-        return TimestampVerificationData(self._inner.timestamp_verification_data)
+        if (
+            self._inner.timestamp_verification_data
+            and self._inner.timestamp_verification_data.rfc3161_timestamps
+        ):
+            return TimestampVerificationData(self._inner.timestamp_verification_data)
+        return None
 
 
 class InvalidBundle(Error):
@@ -483,8 +373,11 @@ class Bundle:
             # In older bundles, there is an entire pool (misleadingly called
             # a chain) of certificates, the first of which is the signing
             # certificate.
+            if not self._inner.verification_material.x509_certificate_chain:
+                raise InvalidBundle("expected certificate chain in bundle")
+
             chain = self._inner.verification_material.x509_certificate_chain
-            if not chain or not chain.certificates:
+            if not chain.certificates:
                 raise InvalidBundle("expected non-empty certificate chain in bundle")
 
             # Per client policy in protobuf-specs: the first entry in the chain
@@ -540,22 +433,22 @@ class Bundle:
         #
         # Before all of this, we require that the inclusion proof be present
         # (when constructing the LogEntry).
-        log_entry = LogEntry._from_dict_rekor(tlog_entry.to_dict())
+        log_entry = TransparencyLogEntry(tlog_entry)
 
         if media_type == Bundle.BundleType.BUNDLE_0_1:
-            if not log_entry.inclusion_promise:
+            if not log_entry._inner.inclusion_promise:
                 raise InvalidBundle("bundle must contain an inclusion promise")
-            if not log_entry.inclusion_proof.checkpoint:
+            if not log_entry._inner.inclusion_proof.checkpoint:
                 _logger.debug(
                     "0.1 bundle contains inclusion proof without checkpoint; ignoring"
                 )
         else:
-            if not log_entry.inclusion_proof.checkpoint:
+            if not log_entry._inner.inclusion_proof.checkpoint:
                 raise InvalidBundle("expected checkpoint in inclusion proof")
 
             if (
-                not log_entry.inclusion_promise
-                and not self._inner.verification_material.timestamp_verification_data.rfc3161_timestamps
+                not log_entry._inner.inclusion_promise
+                and not self.verification_material.timestamp_verification_data
             ):
                 raise InvalidBundle(
                     "bundle must contain an inclusion promise or signed timestamp(s)"
@@ -569,7 +462,7 @@ class Bundle:
         return self._signing_certificate
 
     @property
-    def log_entry(self) -> LogEntry:
+    def log_entry(self) -> TransparencyLogEntry:
         """
         Returns the bundle's log entry, containing an inclusion proof
         (with checkpoint) and an inclusion promise (if the latter is present).
@@ -583,8 +476,8 @@ class Bundle:
 
         @private
         """
-        if self._inner.is_set("dsse_envelope"):
-            return dsse.Envelope(self._inner.dsse_envelope)  # type: ignore[arg-type]
+        if self._inner.dsse_envelope is not None:
+            return dsse.Envelope(self._inner.dsse_envelope)
         return None
 
     @property
@@ -611,7 +504,10 @@ class Bundle:
         """
         Deserialize the given Sigstore bundle.
         """
-        inner = _Bundle.from_dict(json.loads(raw))
+        try:
+            inner = _Bundle.from_json(raw)
+        except ValueError as exc:
+            raise InvalidBundle(f"failed to load bundle: {exc}")
         return cls(inner)
 
     def to_json(self) -> str:
@@ -622,14 +518,14 @@ class Bundle:
 
     def _to_parts(
         self,
-    ) -> tuple[Certificate, common_v1.MessageSignature | dsse.Envelope, LogEntry]:
+    ) -> tuple[Certificate, MessageSignature | dsse.Envelope, TransparencyLogEntry]:
         """
         Decompose the `Bundle` into its core constituent parts.
 
         @private
         """
 
-        content: common_v1.MessageSignature | dsse.Envelope
+        content: MessageSignature | dsse.Envelope
         if self._dsse_envelope:
             content = self._dsse_envelope
         else:
@@ -638,22 +534,24 @@ class Bundle:
         return (self.signing_certificate, content, self.log_entry)
 
     @classmethod
-    def from_parts(cls, cert: Certificate, sig: bytes, log_entry: LogEntry) -> Bundle:
+    def from_parts(
+        cls, cert: Certificate, sig: bytes, log_entry: TransparencyLogEntry
+    ) -> Bundle:
         """
         Construct a Sigstore bundle (of `hashedrekord` type) from its
         constituent parts.
         """
 
         return cls._from_parts(
-            cert, common_v1.MessageSignature(signature=sig), log_entry
+            cert, MessageSignature(signature=base64.b64encode(sig)), log_entry
         )
 
     @classmethod
     def _from_parts(
         cls,
         cert: Certificate,
-        content: common_v1.MessageSignature | dsse.Envelope,
-        log_entry: LogEntry,
+        content: MessageSignature | dsse.Envelope,
+        log_entry: TransparencyLogEntry,
         signed_timestamp: list[TimeStampResponse] | None = None,
     ) -> Bundle:
         """
@@ -666,26 +564,32 @@ class Bundle:
         if signed_timestamp is not None:
             timestamp_verifcation_data.rfc3161_timestamps.extend(
                 [
-                    Rfc3161SignedTimestamp(signed_timestamp=response.as_bytes())
+                    RFC3161SignedTimestamp(
+                        signed_timestamp=base64.b64encode(response.as_bytes())
+                    )
                     for response in signed_timestamp
                 ]
             )
 
-        # Fill in the appropriate variants.
-        if isinstance(content, common_v1.MessageSignature):
-            # mypy will be mystified if types are specified here
-            content_dict: dict[str, Any] = {"message_signature": content}
+        # Fill in the appropriate variant.
+        message_signature = None
+        dsse_envelope = None
+        if isinstance(content, MessageSignature):
+            message_signature = content
         else:
-            content_dict = {"dsse_envelope": content._inner}
+            dsse_envelope = content._inner
 
         inner = _Bundle(
             media_type=Bundle.BundleType.BUNDLE_0_3.value,
             verification_material=bundle_v1.VerificationMaterial(
-                certificate=common_v1.X509Certificate(cert.public_bytes(Encoding.DER)),
-                tlog_entries=[log_entry._to_rekor()],
+                certificate=common_v1.X509Certificate(
+                    raw_bytes=base64.b64encode(cert.public_bytes(Encoding.DER))
+                ),
+                tlog_entries=[log_entry._inner],
                 timestamp_verification_data=timestamp_verifcation_data,
             ),
-            **content_dict,
+            message_signature=message_signature,
+            dsse_envelope=dsse_envelope,
         )
 
         return cls(inner)

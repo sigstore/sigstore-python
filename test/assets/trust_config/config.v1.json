@@ -121,16 +121,18 @@
                 "url": "https://fulcio.example.com",
                 "majorApiVersion": 1,
                 "validFor": {
-                "start": "2023-04-14T21:38:40Z"
-                }
+                    "start": "2023-04-14T21:38:40Z"
+                },
+                "operator": "example.com"
             },
             {
                 "url": "https://fulcio-old.example.com",
                 "majorApiVersion": 1,
                 "validFor": {
-                "start": "2022-04-14T21:38:40Z",
-                "end": "2023-04-14T21:38:40Z"
-                }
+                    "start": "2022-04-14T21:38:40Z",
+                    "end": "2023-04-14T21:38:40Z"
+                },
+                "operator": "example.com"
             }
         ],
         "oidcUrls": [
@@ -139,23 +141,26 @@
                 "majorApiVersion": 1,
                 "validFor": {
                     "start": "2025-04-16T00:00:00Z"
-                }
+                },
+                "operator": "example.com"
             }
-            ],
-            "rekorTlogUrls": [
+        ],
+        "rekorTlogUrls": [
             {
                 "url": "https://rekor.example.com",
                 "majorApiVersion": 1,
                 "validFor": {
                     "start": "2021-01-12T11:53:27Z"
-                }
+                },
+                "operator": "example.com"
             },
             {
                 "url": "https://rekor-v2.example.com",
                 "majorApiVersion": 2,
                 "validFor": {
                     "start": "2021-01-12T11:53:27Z"
-                }
+                },
+                "operator": "example.com"
             }
         ],
         "tsaUrls": [
@@ -164,7 +169,8 @@
                 "majorApiVersion": 1,
                 "validFor": {
                     "start": "2025-04-09T00:00:00Z"
-                }
+                },
+                "operator": "example.com"
             }
         ],
         "rekorTlogConfig": {

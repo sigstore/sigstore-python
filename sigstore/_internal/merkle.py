@@ -23,16 +23,14 @@ The data format for the Merkle tree nodes is described in IETF's RFC 6962.
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import struct
 import typing
 
-from sigstore._utils import HexStr
 from sigstore.errors import VerificationError
 
 if typing.TYPE_CHECKING:
-    from sigstore.models import LogEntry
+    from sigstore.models import TransparencyLogEntry
 
 
 _LEAF_HASH_PREFIX = 0
@@ -54,7 +52,7 @@ def _decomp_inclusion_proof(index: int, size: int) -> tuple[int, int]:
     return inner, border
 
 
-def _chain_inner(seed: bytes, hashes: list[str], log_index: int) -> bytes:
+def _chain_inner(seed: bytes, hashes: list[bytes], log_index: int) -> bytes:
     """
     Computes a subtree hash for a node on or below the tree's right border. Assumes |proof| hashes
     are ordered from lower levels to upper, and |seed| is the initial subtree/leaf hash on the path
@@ -62,7 +60,7 @@ def _chain_inner(seed: bytes, hashes: list[str], log_index: int) -> bytes:
     """
 
     for i in range(len(hashes)):
-        h = bytes.fromhex(hashes[i])
+        h = hashes[i]
         if (log_index >> i) & 1 == 0:
             seed = _hash_children(seed, h)
         else:
@@ -70,14 +68,14 @@ def _chain_inner(seed: bytes, hashes: list[str], log_index: int) -> bytes:
     return seed
 
 
-def _chain_border_right(seed: bytes, hashes: list[str]) -> bytes:
+def _chain_border_right(seed: bytes, hashes: list[bytes]) -> bytes:
     """
     Chains proof hashes along tree borders. This differs from inner chaining because |proof|
     contains only left-side subtree hashes.
     """
 
     for h in hashes:
-        seed = _hash_children(bytes.fromhex(h), seed)
+        seed = _hash_children(h, seed)
     return seed
 
 
@@ -93,9 +91,9 @@ def _hash_leaf(leaf: bytes) -> bytes:
     return hashlib.sha256(data).digest()
 
 
-def verify_merkle_inclusion(entry: LogEntry) -> None:
+def verify_merkle_inclusion(entry: TransparencyLogEntry) -> None:
     """Verify the Merkle Inclusion Proof for a given Rekor entry."""
-    inclusion_proof = entry.inclusion_proof
+    inclusion_proof = entry._inner.inclusion_proof
 
     # Figure out which subset of hashes corresponds to the inner and border nodes.
     inner, border = _decomp_inclusion_proof(
@@ -111,7 +109,7 @@ def verify_merkle_inclusion(entry: LogEntry) -> None:
 
     # The new entry's hash isn't included in the inclusion proof so we should calculate this
     # ourselves.
-    leaf_hash: bytes = _hash_leaf(base64.b64decode(entry.body))
+    leaf_hash: bytes = _hash_leaf(entry._inner.canonicalized_body)
 
     # Now chain the hashes belonging to the inner and border portions. We should expect the
     # calculated hash to match the root hash.
@@ -119,12 +117,10 @@ def verify_merkle_inclusion(entry: LogEntry) -> None:
         leaf_hash, inclusion_proof.hashes[:inner], inclusion_proof.log_index
     )
 
-    calc_hash: HexStr = HexStr(
-        _chain_border_right(intermediate_result, inclusion_proof.hashes[inner:]).hex()
-    )
+    calc_hash = _chain_border_right(intermediate_result, inclusion_proof.hashes[inner:])
 
     if calc_hash != inclusion_proof.root_hash:
         raise VerificationError(
             f"inclusion proof contains invalid root hash: expected {inclusion_proof}, calculated "
-            f"{calc_hash}"
+            f"{calc_hash.hex()}"
         )
