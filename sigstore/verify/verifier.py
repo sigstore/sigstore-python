@@ -215,13 +215,6 @@ class Verifier:
                 raise VerificationError(msg)
 
             timestamp_from_tsa = self._verify_timestamp_authority(bundle)
-            if len(timestamp_from_tsa) < VERIFY_TIMESTAMP_THRESHOLD:
-                msg = (
-                    f"not enough timestamps validated to meet the validation "
-                    f"threshold ({len(timestamp_from_tsa)}/{VERIFY_TIMESTAMP_THRESHOLD})"
-                )
-                raise VerificationError(msg)
-
             verified_timestamps.extend(timestamp_from_tsa)
 
         # If a timestamp from the Transparency Service is available, the Verifier MUST
@@ -232,6 +225,12 @@ class Verifier:
         if (
             timestamp := bundle.log_entry.integrated_time
         ) and bundle.log_entry.inclusion_promise:
+            kv = bundle.log_entry._kind_version
+            if not (kv.kind in ["dsse", "hashedrekord"] and kv.version == "0.0.1"):
+                raise VerificationError(
+                    "Integrated time only supported for dsse/hashedrekord 0.0.1 types"
+                )
+
             verified_timestamps.append(
                 TimestampVerificationResult(
                     source=TimestampSource.TRANSPARENCY_SERVICE,
@@ -320,13 +319,12 @@ class Verifier:
             store.add_cert(parent_cert_ossl)
 
         # (0): Establishing a Time for the Signature
-        # First, establish a time for the signature. This timestamp is required to
+        # First, establish a time for the signature. This is required to
         # validate the certificate chain, so this step comes first.
-        # While this step is optional and only performed if timestamp data has been
-        # provided within the bundle, providing a signed timestamp without a TSA to
-        # verify it result in a VerificationError.
+        # These include TSA timestamps and (in the case of rekor v1 entries)
+        # rekor log integrated time.
         verified_timestamps = self._establish_time(bundle)
-        if not verified_timestamps:
+        if len(verified_timestamps) < VERIFY_TIMESTAMP_THRESHOLD:
             raise VerificationError("not enough sources of verified time")
 
         # (1): verify that the signing certificate is signed by the root
