@@ -29,9 +29,12 @@ from sigstore.sign import SigningContext
 from sigstore.verify.policy import UnsafeNoOp
 
 
-@pytest.mark.parametrize("env", ["staging", "production"])
+# only check the log contents for production: staging is already on
+# rekor v2 and we don't currently support log lookups on rekor v2.
+# This test can likely be removed once prod also uses rekor v2
+@pytest.mark.parametrize("env", ["production"])
 @pytest.mark.ambient_oidc
-def test_sign_rekor_entry_consistent(sign_ctx_and_ident_for_env):
+def test_sign_rekor_entry_consistent(request, sign_ctx_and_ident_for_env):
     ctx_cls, identity = sign_ctx_and_ident_for_env
 
     # NOTE: The actual signer instance is produced lazily, so that parameter
@@ -108,25 +111,20 @@ def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
 
 @pytest.mark.parametrize("env", ["staging", "production"])
 @pytest.mark.ambient_oidc
-def test_identity_proof_claim_lookup(sign_ctx_and_ident_for_env, monkeypatch):
+def test_identity_proof_fallback_claim(sign_ctx_and_ident_for_env, monkeypatch):
     ctx_cls, identity = sign_ctx_and_ident_for_env
 
     ctx: SigningContext = ctx_cls()
     assert identity is not None
 
-    # clear out the known issuers, forcing the `Identity`'s  `proof_claim` to be looked up.
+    # clear out known issuers, forcing the `Identity`'s  `sub` claim to be used
+    # as fall back
     monkeypatch.setattr(sigstore.oidc, "_KNOWN_OIDC_ISSUERS", {})
 
     payload = secrets.token_bytes(32)
 
     with ctx.signer(identity) as signer:
-        expected_entry = signer.sign_artifact(payload).log_entry
-    actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
-
-    assert expected_entry.body == actual_entry.body
-    assert expected_entry.integrated_time == actual_entry.integrated_time
-    assert expected_entry.log_id == actual_entry.log_id
-    assert expected_entry.log_index == actual_entry.log_index
+        signer.sign_artifact(payload)
 
 
 @pytest.mark.staging
