@@ -94,7 +94,8 @@ optional arguments:
 
 <!-- @begin-sigstore-sign-help@ -->
 ```
-usage: sigstore sign [-h] [-v] [--identity-token TOKEN] [--oidc-client-id ID]
+usage: sigstore sign [-h] [-v] [--rekor-version VERSION]
+                     [--identity-token TOKEN] [--oidc-client-id ID]
                      [--oidc-client-secret SECRET]
                      [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                      [--oauth-force-oob] [--no-default-files]
@@ -109,6 +110,10 @@ optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
+  --rekor-version VERSION
+                        Force the rekor transparency log version. Valid values
+                        are [1, 2]. By default the highest available version
+                        is used
 
 OpenID Connect options:
   --identity-token TOKEN
@@ -151,9 +156,9 @@ Output options:
 
 <!-- @begin-sigstore-attest-help@ -->
 ```
-usage: sigstore attest [-h] [-v] --predicate FILE --predicate-type TYPE
-                       [--identity-token TOKEN] [--oidc-client-id ID]
-                       [--oidc-client-secret SECRET]
+usage: sigstore attest [-h] [-v] [--rekor-version VERSION] --predicate FILE
+                       --predicate-type TYPE [--identity-token TOKEN]
+                       [--oidc-client-id ID] [--oidc-client-secret SECRET]
                        [--oidc-disable-ambient-providers] [--oidc-issuer URL]
                        [--oauth-force-oob] [--bundle FILE] [--overwrite]
                        FILE [FILE ...]
@@ -165,6 +170,10 @@ optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
+  --rekor-version VERSION
+                        Force the rekor transparency log version. Valid values
+                        are [1, 2]. By default the highest available version
+                        is used
 
 DSSE options:
   --predicate FILE      Path to the predicate file (default: None)

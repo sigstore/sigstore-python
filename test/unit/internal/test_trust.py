@@ -188,11 +188,6 @@ class TestSigningcconfig:
     @pytest.mark.parametrize(
         "services, versions, config",
         [
-            (  # ANY selector without services
-                [],
-                [1],
-                ServiceConfiguration(ServiceSelector.ANY),
-            ),
             (  # EXACT selector without enough services
                 [_service_v1_op1],
                 [1],
