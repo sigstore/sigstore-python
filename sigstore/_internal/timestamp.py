@@ -68,19 +68,6 @@ class TimestampAuthorityClient:
         Create a new `TimestampAuthorityClient` from the given URL.
         """
         self.url = url
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "Content-Type": "application/timestamp-query",
-                "User-Agent": USER_AGENT,
-            }
-        )
-
-    def __del__(self) -> None:
-        """
-        Terminates the underlying network session.
-        """
-        self.session.close()
 
     def request_timestamp(self, signature: bytes) -> TimeStampResponse:
         """
@@ -104,9 +91,18 @@ class TimestampAuthorityClient:
             msg = f"invalid request: {error}"
             raise TimestampError(msg)
 
+        # Use single use session to avoid potential Session thread safety issues
+        session = requests.Session()
+        session.headers.update(
+            {
+                "Content-Type": "application/timestamp-query",
+                "User-Agent": USER_AGENT,
+            }
+        )
+
         # Send it to the TSA for signing
         try:
-            response = self.session.post(
+            response = session.post(
                 self.url,
                 data=timestamp_request.as_bytes(),
                 timeout=CLIENT_TIMEOUT,

@@ -29,8 +29,13 @@ def get_cli_params(
     bundle_path: Optional[Path] = None,
     signature_path: Optional[Path] = None,
     certificate_path: Optional[Path] = None,
+    trust_config_path: Optional[Path] = None,
 ) -> list[str]:
-    cli_params = ["--staging", "sign"]
+    if trust_config_path is not None:
+        cli_params = ["--trust-config", str(trust_config_path), "sign"]
+    else:
+        cli_params = ["--staging", "sign"]
+
     if output_directory is not None:
         cli_params.extend(["--output-directory", str(output_directory)])
     if bundle_path is not None:
@@ -51,14 +56,16 @@ def get_cli_params(
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration):
+def test_sign_success_default_output_bundle(
+    capsys, sigstore, asset_integration, tmp_path
+):
     artifact = asset_integration("a.txt")
-    expected_output_bundle = artifact.with_name("a.txt.sigstore.json")
+    expected_output_bundle = tmp_path / "a.txt.sigstore.json"
 
-    assert not expected_output_bundle.exists()
     sigstore(
         *get_cli_params(
             artifact_paths=[artifact],
+            output_directory=tmp_path,
         )
     )
 
@@ -73,12 +80,88 @@ def test_sign_success_default_output_bundle(capsys, sigstore, asset_integration)
             input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()
         )
 
-    expected_output_bundle.unlink()
-
     captures = capsys.readouterr()
     assert captures.out.endswith(
         f"Sigstore bundle written to {expected_output_bundle}\n"
     )
+
+
+@pytest.mark.staging
+@pytest.mark.ambient_oidc
+def test_sign_success_multiple_artifacts(capsys, sigstore, asset_integration, tmp_path):
+    artifacts: list[Path] = [
+        asset_integration("a.txt"),
+        asset_integration("b.txt"),
+        asset_integration("c.txt"),
+    ]
+
+    sigstore(
+        *get_cli_params(
+            artifact_paths=artifacts,
+            output_directory=tmp_path,
+        )
+    )
+
+    captures = capsys.readouterr()
+
+    for artifact in artifacts:
+        expected_output_bundle = tmp_path / f"{artifact.name}.sigstore.json"
+
+        assert f"Sigstore bundle written to {expected_output_bundle}\n" in captures.out
+
+        assert expected_output_bundle.exists()
+        verifier = Verifier.staging()
+        with (
+            open(expected_output_bundle, "r") as bundle_file,
+            open(artifact, "rb") as input_file,
+        ):
+            bundle = Bundle.from_json(bundle_file.read())
+            verifier.verify_artifact(
+                input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()
+            )
+
+
+@pytest.mark.staging
+@pytest.mark.ambient_oidc
+def test_sign_success_multiple_artifacts_rekor_v2(
+    capsys, sigstore, asset_integration, asset, tmp_path
+):
+    """This is a copy of test_sign_success_multiple_artifacts that exists to ensure the
+    multi-threaded signing works with rekor v2 as well: this test can be removed when v2
+    is the default
+    """
+
+    artifacts: list[Path] = [
+        asset_integration("a.txt"),
+        asset_integration("b.txt"),
+        asset_integration("c.txt"),
+    ]
+
+    sigstore(
+        *get_cli_params(
+            artifact_paths=artifacts,
+            trust_config_path=asset("trust_config/staging-but-sign-with-rekor-v2.json"),
+            output_directory=tmp_path,
+        )
+    )
+
+    captures = capsys.readouterr()
+
+    for artifact in artifacts:
+        expected_output_bundle = tmp_path / f"{artifact.name}.sigstore.json"
+
+        assert f"Sigstore bundle written to {expected_output_bundle}\n" in captures.out
+
+        assert expected_output_bundle.exists()
+        verifier = Verifier.staging()
+        with (
+            open(expected_output_bundle, "r") as bundle_file,
+            open(artifact, "rb") as input_file,
+        ):
+            bundle = Bundle.from_json(bundle_file.read())
+            verifier.verify_artifact(
+                input_=input_file.read(), bundle=bundle, policy=UnsafeNoOp()
+            )
 
 
 @pytest.mark.staging
@@ -157,14 +240,14 @@ def test_sign_success_no_default_files(capsys, sigstore, asset_integration, tmp_
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration):
+def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration, tmp_path):
     artifact = asset_integration("a.txt")
-    expected_output_bundle = artifact.with_name("a.txt.sigstore.json")
+    expected_output_bundle = tmp_path / "a.txt.sigstore.json"
 
-    assert not expected_output_bundle.exists()
     sigstore(
         *get_cli_params(
             artifact_paths=[artifact],
+            output_directory=tmp_path,
         )
     )
 
@@ -173,6 +256,7 @@ def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration):
     sigstore(
         *get_cli_params(
             artifact_paths=[artifact],
+            output_directory=tmp_path,
             overwrite=True,
         )
     )
@@ -182,6 +266,7 @@ def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration):
         sigstore(
             *get_cli_params(
                 artifact_paths=[artifact],
+                output_directory=tmp_path,
                 overwrite=False,
             )
         )
@@ -191,8 +276,6 @@ def test_sign_overwrite_existing_bundle(capsys, sigstore, asset_integration):
     assert captures.err.endswith(
         f"Refusing to overwrite outputs without --overwrite: {expected_output_bundle}\n"
     )
-
-    expected_output_bundle.unlink()
 
 
 def test_sign_fails_with_default_files_and_bundle_options(
