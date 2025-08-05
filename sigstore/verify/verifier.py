@@ -62,9 +62,9 @@ _logger = logging.getLogger(__name__)
 # From https://github.com/sigstore/sigstore-go/blob/e92142f0734064ebf6001f188b7330a1212245fe/pkg/verify/tsa.go#L29
 MAX_ALLOWED_TIMESTAMP: int = 32
 
-# When verifying a timestamp, this threshold represents the minimum number of required
-# timestamps to consider a signature valid.
-VERIFY_TIMESTAMP_THRESHOLD: int = 1
+# When verifying an entry, this threshold represents the minimum number of required
+# verified times to consider a signature valid.
+VERIFIED_TIME_THRESHOLD: int = 1
 
 
 class Verifier:
@@ -319,12 +319,12 @@ class Verifier:
             store.add_cert(parent_cert_ossl)
 
         # (0): Establishing a Time for the Signature
-        # First, establish a time for the signature. This is required to
+        # First, establish verified times for the signature. This is required to
         # validate the certificate chain, so this step comes first.
         # These include TSA timestamps and (in the case of rekor v1 entries)
         # rekor log integrated time.
         verified_timestamps = self._establish_time(bundle)
-        if len(verified_timestamps) < VERIFY_TIMESTAMP_THRESHOLD:
+        if len(verified_timestamps) < VERIFIED_TIME_THRESHOLD:
             raise VerificationError("not enough sources of verified time")
 
         # (1): verify that the signing certificate is signed by the root

@@ -222,7 +222,7 @@ class TestVerifierWithTimestamp:
     def test_verifier_verify_timestamp(self, verifier, asset, null_policy, monkeypatch):
         # asset is a rekor v1 bundle: set threshold to 2 so both integrated time and the
         # TSA timestamp are required
-        monkeypatch.setattr("sigstore.verify.verifier.VERIFY_TIMESTAMP_THRESHOLD", 2)
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 2)
 
         verifier.verify_artifact(
             asset("tsa/bundle.txt").read_bytes(),
@@ -304,7 +304,7 @@ class TestVerifierWithTimestamp:
     ):
         # asset is a rekor v1 bundle: set threshold to 2 so both integrated time and the
         # TSA timestamp are required
-        monkeypatch.setattr("sigstore.verify.verifier.VERIFY_TIMESTAMP_THRESHOLD", 2)
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 2)
 
         # Set a date before the timestamp range
         verifier._trusted_root.get_timestamp_authorities()[
@@ -331,7 +331,7 @@ class TestVerifierWithTimestamp:
     ):
         # asset is a rekor v1 bundle: set threshold to 2 so both integrated time and the
         # TSA timestamp are required
-        monkeypatch.setattr("sigstore.verify.verifier.VERIFY_TIMESTAMP_THRESHOLD", 2)
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 2)
 
         def verify_function(*args):
             raise rfc3161_client.VerificationError()
@@ -371,7 +371,7 @@ class TestVerifierWithTimestamp:
         """
         # asset is a rekor v1 bundle: set threshold to 2 so both integrated time and the
         # TSA timestamp are required
-        monkeypatch.setattr("sigstore.verify.verifier.VERIFY_TIMESTAMP_THRESHOLD", 2)
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 2)
 
         with pytest.raises(
             VerificationError, match="not enough sources of verified time"
@@ -394,7 +394,7 @@ class TestVerifierWithTimestamp:
     ):
         # asset is a rekor v1 bundle: set threshold to 3 so integrated time and one
         # TSA timestamp are not enough
-        monkeypatch.setattr("sigstore.verify.verifier.VERIFY_TIMESTAMP_THRESHOLD", 3)
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 3)
         with pytest.raises(
             VerificationError, match="not enough sources of verified time"
         ):
