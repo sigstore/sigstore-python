@@ -236,12 +236,6 @@ class Verifier:
         if (
             timestamp := bundle.log_entry.integrated_time
         ) and bundle.log_entry.inclusion_promise:
-            kv = bundle.log_entry._kind_version
-            if not (kv.kind in ["dsse", "hashedrekord"] and kv.version == "0.0.1"):
-                raise VerificationError(
-                    "Integrated time only supported for dsse/hashedrekord 0.0.1 types"
-                )
-
             verified_timestamps.append(
                 TimestampVerificationResult(
                     source=TimestampSource.TRANSPARENCY_SERVICE,
