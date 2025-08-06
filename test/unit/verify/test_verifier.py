@@ -219,7 +219,11 @@ class TestVerifierWithTimestamp:
         verifier._trusted_root._inner.timestamp_authorities = [authority._inner]
         return verifier
 
-    def test_verifier_verify_timestamp(self, verifier, asset, null_policy):
+    def test_verifier_verify_timestamp(self, verifier, asset, null_policy, monkeypatch):
+        # asset is a rekor v1 bundle: set threshold to 2 so both integrated time and the
+        # TSA timestamp are required
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 2)
+
         verifier.verify_artifact(
             asset("tsa/bundle.txt").read_bytes(),
             Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
@@ -297,15 +301,21 @@ class TestVerifierWithTimestamp:
             )
 
     def test_verifier_outside_validity_range(
-        self, caplog, verifier, asset, null_policy
+        self, caplog, verifier, asset, null_policy, monkeypatch
     ):
+        # asset is a rekor v1 bundle: set threshold to 2 so both integrated time and the
+        # TSA timestamp are required
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 2)
+
         # Set a date before the timestamp range
         verifier._trusted_root.get_timestamp_authorities()[
             0
         ]._inner.valid_for.end = datetime(2024, 10, 31, tzinfo=timezone.utc)
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError, match="not enough timestamps"):
+            with pytest.raises(
+                VerificationError, match="not enough sources of verified time"
+            ):
                 verifier.verify_artifact(
                     asset("tsa/bundle.txt").read_bytes(),
                     Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
@@ -320,13 +330,19 @@ class TestVerifierWithTimestamp:
     def test_verifier_rfc3161_error(
         self, verifier, asset, null_policy, caplog, monkeypatch
     ):
+        # asset is a rekor v1 bundle: set threshold to 2 so both integrated time and the
+        # TSA timestamp are required
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 2)
+
         def verify_function(*args):
             raise rfc3161_client.VerificationError()
 
         monkeypatch.setattr(rfc3161_client.verify._Verifier, "verify", verify_function)
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError, match="not enough timestamps"):
+            with pytest.raises(
+                VerificationError, match="not enough sources of verified time"
+            ):
                 verifier.verify_artifact(
                     asset("tsa/bundle.txt").read_bytes(),
                     Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
@@ -346,7 +362,7 @@ class TestVerifierWithTimestamp:
                 null_policy,
             )
 
-    def test_late_timestamp(self, caplog, verifier, asset, null_policy):
+    def test_late_timestamp(self, caplog, verifier, asset, null_policy, monkeypatch):
         """
         Ensures that verifying the signing certificate fails because the timestamp
         is outside the certificate's validity window. The sample bundle
@@ -354,7 +370,13 @@ class TestVerifierWithTimestamp:
         into `sigstore.sign.Signer._finalize_sign()`, just after the entry is posted to Rekor
         but before the timestamp is requested.
         """
-        with pytest.raises(VerificationError, match="not enough timestamps"):
+        # asset is a rekor v1 bundle: set threshold to 2 so both integrated time and the
+        # TSA timestamp are required
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 2)
+
+        with pytest.raises(
+            VerificationError, match="not enough sources of verified time"
+        ):
             verifier.verify_artifact(
                 asset("tsa/bundle.txt").read_bytes(),
                 Bundle.from_json(
@@ -371,8 +393,12 @@ class TestVerifierWithTimestamp:
     def test_verifier_not_enough_timestamp(
         self, verifier, asset, null_policy, monkeypatch
     ):
-        monkeypatch.setattr("sigstore.verify.verifier.VERIFY_TIMESTAMP_THRESHOLD", 2)
-        with pytest.raises(VerificationError, match="not enough timestamps"):
+        # asset is a rekor v1 bundle: set threshold to 3 so integrated time and one
+        # TSA timestamp are not enough
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 3)
+        with pytest.raises(
+            VerificationError, match="not enough sources of verified time"
+        ):
             verifier.verify_artifact(
                 asset("tsa/bundle.txt").read_bytes(),
                 Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
