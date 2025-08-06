@@ -245,13 +245,21 @@ class TestVerifierWithTimestamp:
                 null_policy,
             )
 
-    def test_verifier_no_validity(self, caplog, verifier, asset, null_policy):
+    def test_verifier_no_validity(
+        self, caplog, verifier, asset, null_policy, monkeypatch
+    ):
+        # asset is a rekor v1 bundle: set threshold to 2 so both integrated time and the
+        # TSA timestamp are required
+        monkeypatch.setattr("sigstore.verify.verifier.VERIFIED_TIME_THRESHOLD", 2)
+
         verifier._trusted_root.get_timestamp_authorities()[
             0
         ]._inner.valid_for.end = None
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(VerificationError, match="not enough timestamps"):
+            with pytest.raises(
+                VerificationError, match="not enough sources of verified time"
+            ):
                 verifier.verify_artifact(
                     asset("tsa/bundle.txt").read_bytes(),
                     Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
