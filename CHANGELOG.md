@@ -8,6 +8,11 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Fixed verified time handling so that additional timestamps cannot break
+  otherwise valid signature bundles ([#1492](https://github.com/sigstore/sigstore-python/pull/1492))
+
 ## [3.6.4]
 
 ### Fixed
