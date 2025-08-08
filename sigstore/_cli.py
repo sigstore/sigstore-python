@@ -40,7 +40,6 @@ from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
@@ -58,6 +57,7 @@ from sigstore.oidc import (
     detect_credential,
 )
 from sigstore.sign import Signer, SigningContext
+from sigstore.trust import ClientTrustConfig
 from sigstore.verify import (
     Verifier,
     policy,
