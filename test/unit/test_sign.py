@@ -21,11 +21,11 @@ from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
 
 import sigstore.oidc
 from sigstore._internal.timestamp import TimestampAuthorityClient
-from sigstore._internal.trust import ClientTrustConfig
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.sign import SigningContext
+from sigstore.trust import ClientTrustConfig
 from sigstore.verify.policy import UnsafeNoOp
 
 
