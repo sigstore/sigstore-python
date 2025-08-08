@@ -19,7 +19,7 @@ Exceptions.
 import sys
 from collections.abc import Mapping
 from logging import Logger
-from typing import Any
+from typing import Any, NoReturn
 
 
 class Error(Exception):
@@ -30,7 +30,7 @@ class Error(Exception):
 
         return str(self)
 
-    def log_and_exit(self, logger: Logger, raise_error: bool = False) -> None:
+    def log_and_exit(self, logger: Logger, raise_error: bool = False) -> NoReturn:
         """Prints all relevant error information to stderr and exits."""
 
         remind_verbose = (

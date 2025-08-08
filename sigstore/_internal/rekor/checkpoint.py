@@ -31,7 +31,7 @@ from sigstore.errors import VerificationError
 
 if typing.TYPE_CHECKING:
     from sigstore._internal.trust import RekorKeyring
-    from sigstore.models import LogEntry
+    from sigstore.models import TransparencyLogEntry
 
 
 @dataclass(frozen=True)
@@ -205,25 +205,26 @@ class SignedCheckpoint:
         return cls(signed_note=signed_note, checkpoint=checkpoint)
 
 
-def verify_checkpoint(rekor_keyring: RekorKeyring, entry: LogEntry) -> None:
+def verify_checkpoint(rekor_keyring: RekorKeyring, entry: TransparencyLogEntry) -> None:
     """
     Verify the inclusion proof's checkpoint.
     """
 
-    inclusion_proof = entry.inclusion_proof
-    if inclusion_proof is None:
-        raise VerificationError("Rekor entry has no inclusion proof")
+    inclusion_proof = entry._inner.inclusion_proof
+    if inclusion_proof.checkpoint is None:
+        raise VerificationError("Inclusion proof does not contain a checkpoint")
 
     # verification occurs in two stages:
     # 1) verify the signature on the checkpoint
     # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
-    signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint)
+    signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint.envelope)
     signed_checkpoint.signed_note.verify(
-        rekor_keyring, KeyID(bytes.fromhex(entry.log_id))
+        rekor_keyring,
+        KeyID(entry._inner.log_id.key_id),
     )
 
     checkpoint_hash = signed_checkpoint.checkpoint.log_hash
-    root_hash = inclusion_proof.root_hash
+    root_hash = inclusion_proof.root_hash.hex()
 
     if checkpoint_hash != root_hash:
         raise VerificationError(

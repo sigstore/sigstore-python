@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Client implementation for interacting with Rekor.
+Client implementation for interacting with Rekor (v1).
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from sigstore._internal.rekor import (
 )
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
-from sigstore.models import LogEntry
+from sigstore.models import TransparencyLogEntry
 
 _logger = logging.getLogger(__name__)
 
@@ -120,7 +120,9 @@ class RekorEntries(_Endpoint):
     Represents the individual log entry endpoints on a Rekor instance.
     """
 
-    def get(self, *, uuid: str | None = None, log_index: int | None = None) -> LogEntry:
+    def get(
+        self, *, uuid: str | None = None, log_index: int | None = None
+    ) -> TransparencyLogEntry:
         """
         Retrieve a specific log entry, either by UUID or by log index.
 
@@ -140,12 +142,12 @@ class RekorEntries(_Endpoint):
             resp.raise_for_status()
         except requests.HTTPError as http_error:
             raise RekorClientError(http_error)
-        return LogEntry._from_response(resp.json())
+        return TransparencyLogEntry._from_v1_response(resp.json())
 
     def post(
         self,
         payload: EntryRequestBody,
-    ) -> LogEntry:
+    ) -> TransparencyLogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
         """
@@ -160,7 +162,7 @@ class RekorEntries(_Endpoint):
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
-        return LogEntry._from_response(integrated_entry)
+        return TransparencyLogEntry._from_v1_response(integrated_entry)
 
     @property
     def retrieve(self) -> RekorEntriesRetrieve:
@@ -178,7 +180,7 @@ class RekorEntriesRetrieve(_Endpoint):
     def post(
         self,
         expected_entry: rekor_types.Hashedrekord | rekor_types.Dsse,
-    ) -> LogEntry | None:
+    ) -> TransparencyLogEntry | None:
         """
         Retrieves an extant Rekor entry, identified by its artifact signature,
         artifact hash, and signing certificate.
@@ -202,12 +204,19 @@ class RekorEntriesRetrieve(_Endpoint):
         # We select the oldest entry for our actual return value,
         # since a malicious actor could conceivably spam the log with
         # newer duplicate entries.
-        oldest_entry: LogEntry | None = None
+        oldest_entry: TransparencyLogEntry | None = None
         for result in results:
-            entry = LogEntry._from_response(result)
+            entry = TransparencyLogEntry._from_v1_response(result)
+
+            # We expect every entry in Rekor v1 to have an integrated time.
+            if entry._inner.integrated_time is None:
+                raise ValueError(
+                    f"Rekor v1 gave us an entry without an integrated time: {entry._inner.log_index}"
+                )
+
             if (
                 oldest_entry is None
-                or entry.integrated_time < oldest_entry.integrated_time
+                or entry._inner.integrated_time < oldest_entry._inner.integrated_time  # type: ignore[operator]
             ):
                 oldest_entry = entry
 
@@ -247,7 +256,7 @@ class RekorClient(RekorLogSubmitter):
 
         return RekorLog(f"{self.url}/log")
 
-    def create_entry(self, request: EntryRequestBody) -> LogEntry:
+    def create_entry(self, request: EntryRequestBody) -> TransparencyLogEntry:
         """
         Submit the request to Rekor.
         """

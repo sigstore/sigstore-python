@@ -12,7 +12,9 @@ on:
         required: true
   pull_request:
   schedule:
-    - cron: '0 12 * * *'
+    - cron: "0 12 * * *"
+
+permissions: {}
 
 jobs:
   test_requirements:
