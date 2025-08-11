@@ -8,10 +8,18 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.6.5]
+
 ### Fixed
 
 * Fixed verified time handling so that additional timestamps cannot break
   otherwise valid signature bundles ([#1492](https://github.com/sigstore/sigstore-python/pull/1492))
+
+### Changed
+
+* Added cryptography 45 to list of compatible cryptography releases
+  ([#1498](https://github.com/sigstore/sigstore-python/pull/1498))
+
 
 ## [3.6.4]
 
