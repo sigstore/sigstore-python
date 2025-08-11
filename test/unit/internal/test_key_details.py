@@ -16,7 +16,7 @@ from unittest.mock import Mock
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed25519, padding, rsa
-from sigstore_protobuf_specs.dev.sigstore.common import v1
+from sigstore_models.common.v1 import PublicKeyDetails
 
 from sigstore._internal.key_details import _get_key_details
 
@@ -128,4 +128,4 @@ def test_get_key_details(mock_certificate):
     Ensures that we return a PublicKeyDetails for supported key types and schemes.
     """
     key_details = _get_key_details(mock_certificate)
-    assert isinstance(key_details, v1.PublicKeyDetails)
+    assert isinstance(key_details, PublicKeyDetails)

@@ -17,10 +17,7 @@ import hashlib
 import pytest
 
 from sigstore import dsse
-from sigstore._internal.rekor.client_v2 import (
-    LogEntry,
-)
-from sigstore.models import rekor_v1
+from sigstore.models import TransparencyLogEntry
 
 
 @pytest.mark.staging
@@ -54,8 +51,7 @@ def test_rekor_v2_create_entry_dsse(staging_with_rekorv2):
     with sign_ctx.signer(identity) as signer:
         bundle = signer.sign_dsse(stmt)
 
-    assert isinstance(bundle.log_entry, LogEntry)
-    assert isinstance(bundle.log_entry._to_rekor(), rekor_v1.TransparencyLogEntry)
+    assert isinstance(bundle.log_entry, TransparencyLogEntry)
 
 
 @pytest.mark.staging
@@ -71,5 +67,4 @@ def test_rekor_v2_create_entry_hashed_rekord(staging_with_rekorv2):
     with sign_ctx.signer(identity) as signer:
         bundle = signer.sign_artifact(b"")
 
-    assert isinstance(bundle.log_entry, LogEntry)
-    assert isinstance(bundle.log_entry._to_rekor(), rekor_v1.TransparencyLogEntry)
+    assert isinstance(bundle.log_entry, TransparencyLogEntry)

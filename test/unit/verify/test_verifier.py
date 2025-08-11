@@ -250,11 +250,12 @@ class TestVerifierWithTimestamp:
             ["inclusionPromise", "integratedTime"],
         ),
     )
-    def test_vierifier_verify_no_inclusion_promise_and_integrated_time(
+    def test_verifier_verify_no_inclusion_promise_and_integrated_time(
         self, verifier, asset, null_policy, fields_to_delete
     ):
         """
-        Ensure that we can still verify a Bundle with a rfc3161 timestamp if the SET can't be verified or isn't present.
+        Ensure that we can still verify a Bundle with an RFC 3161 timestamp if the SET isn't present.
+
         There is one exception: When inclusionPromise is present, but integratedTime is not, then we expect a failure
         because the integratedTime is required to verify the inclusionPromise.
         """

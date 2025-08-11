@@ -39,8 +39,10 @@ class TestEnvelope:
         assert evp.signature == b"lol"
 
         serialized = evp.to_json()
-        assert serialized == raw
+        # envelope matches
         assert dsse.Envelope._from_json(serialized) == evp
+        # parsed JSON marches
+        assert json.loads(raw) == evp._inner.to_dict()
 
     def test_missing_signature(self):
         raw = json.dumps(

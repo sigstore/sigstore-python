@@ -17,7 +17,7 @@ import secrets
 
 import pretend
 import pytest
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
+from sigstore_models.common.v1 import HashAlgorithm
 
 import sigstore.oidc
 from sigstore._internal.timestamp import TimestampAuthorityClient
@@ -46,12 +46,15 @@ def test_sign_rekor_entry_consistent(request, sign_ctx_and_ident_for_env):
     with ctx.signer(identity) as signer:
         expected_entry = signer.sign_artifact(payload).log_entry
 
-    actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry.log_index)
+    actual_entry = ctx._rekor.log.entries.get(log_index=expected_entry._inner.log_index)
 
-    assert expected_entry.body == actual_entry.body
-    assert expected_entry.integrated_time == actual_entry.integrated_time
-    assert expected_entry.log_id == actual_entry.log_id
-    assert expected_entry.log_index == actual_entry.log_index
+    assert (
+        expected_entry._inner.canonicalized_body
+        == actual_entry._inner.canonicalized_body
+    )
+    assert expected_entry._inner.integrated_time == actual_entry._inner.integrated_time
+    assert expected_entry._inner.log_id == actual_entry._inner.log_id
+    assert expected_entry._inner.log_index == actual_entry._inner.log_index
 
 
 @pytest.mark.staging

@@ -14,7 +14,7 @@
 import hashlib
 
 import pytest
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import HashAlgorithm
+from sigstore_models.common.v1 import HashAlgorithm
 
 from sigstore.hashes import Hashed
 
