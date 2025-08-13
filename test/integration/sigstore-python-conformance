@@ -16,9 +16,19 @@ trust_config = {
     "mediaType": "application/vnd.dev.sigstore.clienttrustconfig.v0.1+json",
     "signingConfig": {
         "mediaType": "application/vnd.dev.sigstore.signingconfig.v0.2+json",
-        "caUrls": [{"url": "https://fulcio.example.com"}],
+        "caUrls": [{
+            "url": "https://fulcio.example.com",
+            "majorApiVersion": 1,
+            "operator": "",
+            "validFor": {"start": "1970-01-01T01:01:01Z"}
+        }],
         "oidcUrls": [],
-        "rekorTlogUrls": [{"url": "https://rekor.example.com"}],
+        "rekorTlogUrls": [{
+            "url": "https://rekor.example.com",
+            "majorApiVersion": 1,
+            "operator": "",
+            "validFor": {"start": "1970-01-01T01:01:01Z"}
+        }],
         "tsaUrls": [],
         "rekorTlogConfig": {"selector": "ANY"},
         "tsaConfig": {"selector": "ANY"},
