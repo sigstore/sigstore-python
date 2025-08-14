@@ -59,9 +59,9 @@ from sigstore._internal.fulcio import (
 from sigstore._internal.rekor import EntryRequestBody, RekorLogSubmitter
 from sigstore._internal.sct import verify_sct
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
-from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
+from sigstore._internal.trust import KeyringPurpose, TrustedRoot
 from sigstore._utils import sha256_digest
-from sigstore.models import Bundle
+from sigstore.models import Bundle, ClientTrustConfig
 from sigstore.oidc import ExpiredIdentity, IdentityToken
 
 _logger = logging.getLogger(__name__)
