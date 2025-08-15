@@ -31,7 +31,7 @@ from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
 
 if typing.TYPE_CHECKING:
-    from sigstore.models import LogEntry
+    from sigstore.models import TransparencyLogEntry
 
 __all__ = [
     "_hashedrekord_from_parts",
@@ -72,7 +72,7 @@ class RekorLogSubmitter(ABC):
     def create_entry(
         self,
         request: EntryRequestBody,
-    ) -> LogEntry:
+    ) -> TransparencyLogEntry:
         """
         Submit the request to Rekor.
         """

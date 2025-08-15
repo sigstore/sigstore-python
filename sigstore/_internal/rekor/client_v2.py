@@ -13,20 +13,21 @@
 # limitations under the License.
 
 """
-Client implementation for interacting with RekorV2.
+Client implementation for interacting with Rekor v2.
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 
 import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
-from sigstore_protobuf_specs.dev.sigstore.common import v1 as common_v1
-from sigstore_protobuf_specs.dev.sigstore.rekor import v2
-from sigstore_protobuf_specs.io import intoto
+from sigstore_models.common import v1 as common_v1
+from sigstore_models.rekor import v2 as rekor_v2
+from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEntry
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.key_details import _get_key_details
@@ -37,7 +38,7 @@ from sigstore._internal.rekor import (
 )
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
-from sigstore.models import LogEntry
+from sigstore.models import TransparencyLogEntry
 
 _logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class RekorV2Client(RekorLogSubmitter):
         """
         self.url = f"{base_url}/api/v2"
 
-    def create_entry(self, payload: EntryRequestBody) -> LogEntry:
+    def create_entry(self, payload: EntryRequestBody) -> TransparencyLogEntry:
         """
         Submit a new entry for inclusion in the Rekor log.
 
@@ -88,7 +89,8 @@ class RekorV2Client(RekorLogSubmitter):
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
-        return LogEntry._from_dict_rekor(integrated_entry)
+        inner = _TransparencyLogEntry.from_dict(integrated_entry)
+        return TransparencyLogEntry(inner)
 
     @classmethod
     def _build_hashed_rekord_request(
@@ -100,15 +102,17 @@ class RekorV2Client(RekorLogSubmitter):
         """
         Construct a hashed rekord request to submit to Rekor.
         """
-        req = v2.CreateEntryRequest(
-            hashed_rekord_request_v002=v2.HashedRekordRequestV002(
-                digest=hashed_input.digest,
-                signature=v2.Signature(
-                    content=signature,
-                    verifier=v2.Verifier(
+        req = rekor_v2.entry.CreateEntryRequest(
+            hashed_rekord_request_v002=rekor_v2.hashedrekord.HashedRekordRequestV002(
+                digest=base64.b64encode(hashed_input.digest),
+                signature=rekor_v2.verifier.Signature(
+                    content=base64.b64encode(signature),
+                    verifier=rekor_v2.verifier.Verifier(
                         x509_certificate=common_v1.X509Certificate(
-                            raw_bytes=certificate.public_bytes(
-                                encoding=serialization.Encoding.DER
+                            raw_bytes=base64.b64encode(
+                                certificate.public_bytes(
+                                    encoding=serialization.Encoding.DER
+                                )
                             )
                         ),
                         key_details=_get_key_details(certificate),
@@ -125,24 +129,16 @@ class RekorV2Client(RekorLogSubmitter):
         """
         Construct a dsse request to submit to Rekor.
         """
-        req = v2.CreateEntryRequest(
-            dsse_request_v002=v2.DsseRequestV002(
-                envelope=intoto.Envelope(
-                    payload=envelope._inner.payload,
-                    payload_type=envelope._inner.payload_type,
-                    signatures=[
-                        intoto.Signature(
-                            keyid=signature.keyid,
-                            sig=signature.sig,
-                        )
-                        for signature in envelope._inner.signatures
-                    ],
-                ),
+        req = rekor_v2.entry.CreateEntryRequest(
+            dsse_request_v002=rekor_v2.dsse.DSSERequestV002(
+                envelope=envelope._inner,
                 verifiers=[
-                    v2.Verifier(
+                    rekor_v2.verifier.Verifier(
                         x509_certificate=common_v1.X509Certificate(
-                            raw_bytes=certificate.public_bytes(
-                                encoding=serialization.Encoding.DER
+                            raw_bytes=base64.b64encode(
+                                certificate.public_bytes(
+                                    encoding=serialization.Encoding.DER
+                                )
                             )
                         ),
                         key_details=_get_key_details(certificate),

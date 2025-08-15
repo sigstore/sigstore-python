@@ -13,17 +13,15 @@
 # limitations under the License.
 
 """
-Utilities for getting the sigstore_protobuf_specs.dev.sigstore.common.v1.PublicKeyDetails.
+Utilities for getting PublicKeyDetails.
 """
-
-from typing import cast
 
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa
 from cryptography.x509 import Certificate
-from sigstore_protobuf_specs.dev.sigstore.common import v1
+from sigstore_models.common.v1 import PublicKeyDetails
 
 
-def _get_key_details(certificate: Certificate) -> v1.PublicKeyDetails:
+def _get_key_details(certificate: Certificate) -> PublicKeyDetails:
     """
     Determine PublicKeyDetails from the Certificate.
     We disclude the unrecommended types.
@@ -35,28 +33,28 @@ def _get_key_details(certificate: Certificate) -> v1.PublicKeyDetails:
     params = certificate.signature_algorithm_parameters
     if isinstance(public_key, ec.EllipticCurvePublicKey):
         if isinstance(public_key.curve, ec.SECP256R1):
-            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256
+            key_details = PublicKeyDetails.PKIX_ECDSA_P256_SHA_256
         elif isinstance(public_key.curve, ec.SECP384R1):
-            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_384
+            key_details = PublicKeyDetails.PKIX_ECDSA_P384_SHA_384
         elif isinstance(public_key.curve, ec.SECP521R1):
-            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512
+            key_details = PublicKeyDetails.PKIX_ECDSA_P521_SHA_512
         else:
             raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
     elif isinstance(public_key, rsa.RSAPublicKey):
         if public_key.key_size == 3072:
             if isinstance(params, padding.PKCS1v15):
-                key_details = v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256
+                key_details = PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256
             elif isinstance(params, padding.PSS):
-                key_details = v1.PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256
+                key_details = PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256
             else:
                 raise ValueError(
                     f"Unsupported public key type, size, and padding: {type(public_key)}, {public_key.key_size}, {params}"
                 )
         elif public_key.key_size == 4096:
             if isinstance(params, padding.PKCS1v15):
-                key_details = v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256
+                key_details = PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256
             elif isinstance(params, padding.PSS):
-                key_details = v1.PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256
+                key_details = PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256
             else:
                 raise ValueError(
                     f"Unsupported public key type, size, and padding: {type(public_key)}, {public_key.key_size}, {params}"
@@ -64,9 +62,9 @@ def _get_key_details(certificate: Certificate) -> v1.PublicKeyDetails:
         else:
             raise ValueError(f"Unsupported RSA key size: {public_key.key_size}")
     elif isinstance(public_key, ed25519.Ed25519PublicKey):
-        key_details = v1.PublicKeyDetails.PKIX_ED25519
+        key_details = PublicKeyDetails.PKIX_ED25519
     # There is likely no need to explicitly detect PKIX_ED25519_PH, especially since the cryptography
     # library does not yet support Ed25519ph.
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
-    return cast(v1.PublicKeyDetails, key_details)
+    return key_details

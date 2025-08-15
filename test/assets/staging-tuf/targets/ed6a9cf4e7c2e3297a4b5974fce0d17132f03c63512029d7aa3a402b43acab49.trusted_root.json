@@ -14,6 +14,20 @@
       "logId": {
         "keyId": "0y8wo8MtY5wrdiIFohx7sHeI5oKDpK5vQhGHI6G+pJY="
       }
+    },
+    {
+      "baseUrl": "https://log2025-alpha1.rekor.sigstage.dev",
+      "hashAlgorithm": "SHA2_256",
+      "publicKey": {
+        "rawBytes": "MCowBQYDK2VwAyEAPn+AREHoBaZ7wgS1zBqpxmLSGnyhxXj4lFxSdWVB8o8=",
+        "keyDetails": "PKIX_ED25519",
+        "validFor": {
+          "start": "2025-04-16T00:00:00Z"
+        }
+      },
+      "logId": {
+        "keyId": "8w1amZ2S5mJIQkQmPxdMuOrL/oJkvFg9MnQXmeOCXck="
+      }
     }
   ],
   "certificateAuthorities": [

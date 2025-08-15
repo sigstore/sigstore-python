@@ -35,29 +35,8 @@ from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
 )
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import PublicKey as _PublicKey
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
-    PublicKeyDetails as _PublicKeyDetails,
-)
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import TimeRange
-from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
-    CertificateAuthority as _CertificateAuthority,
-)
-from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
-    ClientTrustConfig as _ClientTrustConfig,
-)
-from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
-    Service,
-    ServiceConfiguration,
-    ServiceSelector,
-    TransparencyLogInstance,
-)
-from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
-    SigningConfig as _SigningConfig,
-)
-from sigstore_protobuf_specs.dev.sigstore.trustroot.v1 import (
-    TrustedRoot as _TrustedRoot,
-)
+from sigstore_models.common import v1 as common_v1
+from sigstore_models.trustroot import v1 as trustroot_v1
 
 from sigstore._internal.fulcio.client import FulcioClient
 from sigstore._internal.rekor import RekorLogSubmitter
@@ -70,7 +49,6 @@ from sigstore._utils import (
     PublicKey,
     key_id,
     load_der_public_key,
-    read_embedded,
 )
 from sigstore.errors import Error, MetadataError, TUFError, VerificationError
 
@@ -83,7 +61,9 @@ OIDC_VERSIONS = [1]
 _logger = logging.getLogger(__name__)
 
 
-def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
+def _is_timerange_valid(
+    period: common_v1.TimeRange | None, *, allow_expired: bool
+) -> bool:
     """
     Given a `period`, checks that the the current time is not before `start`. If
     `allow_expired` is `False`, also checks that the current time is not after
@@ -116,19 +96,19 @@ class Key:
     key_id: KeyID
 
     _RSA_SHA_256_DETAILS: ClassVar = {
-        _PublicKeyDetails.PKCS1_RSA_PKCS1V5,
-        _PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256,
-        _PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256,
-        _PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256,
+        common_v1.PublicKeyDetails.PKCS1_RSA_PKCS1V5,
+        common_v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256,
+        common_v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256,
+        common_v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256,
     }
 
     _EC_DETAILS_TO_HASH: ClassVar = {
-        _PublicKeyDetails.PKIX_ECDSA_P256_SHA_256: hashes.SHA256(),
-        _PublicKeyDetails.PKIX_ECDSA_P384_SHA_384: hashes.SHA384(),
-        _PublicKeyDetails.PKIX_ECDSA_P521_SHA_512: hashes.SHA512(),
+        common_v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256: hashes.SHA256(),
+        common_v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_384: hashes.SHA384(),
+        common_v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512: hashes.SHA512(),
     }
 
-    def __init__(self, public_key: _PublicKey) -> None:
+    def __init__(self, public_key: common_v1.PublicKey) -> None:
         """
         Construct a key from the given Sigstore PublicKey message.
         """
@@ -147,7 +127,7 @@ class Key:
             key = load_der_public_key(
                 public_key.raw_bytes, types=(ec.EllipticCurvePublicKey,)
             )
-        elif public_key.key_details == _PublicKeyDetails.PKIX_ED25519:
+        elif public_key.key_details == common_v1.PublicKeyDetails.PKIX_ED25519:
             hash_algorithm = None
             key = load_der_public_key(
                 public_key.raw_bytes, types=(ed25519.Ed25519PublicKey,)
@@ -198,7 +178,7 @@ class Keyring:
     Represents a set of keys, each of which is a potentially valid verifier.
     """
 
-    def __init__(self, public_keys: list[_PublicKey] = []):
+    def __init__(self, public_keys: list[common_v1.PublicKey] = []):
         """
         Create a new `Keyring`, with `keys` as the initial set of verifying keys.
         """
@@ -263,7 +243,7 @@ class CertificateAuthority:
     Certificate Authority used in a Trusted Root configuration.
     """
 
-    def __init__(self, inner: _CertificateAuthority):
+    def __init__(self, inner: trustroot_v1.CertificateAuthority):
         """
         Construct a new `CertificateAuthority`.
 
@@ -278,7 +258,7 @@ class CertificateAuthority:
         """
         Create a CertificateAuthority directly from JSON.
         """
-        inner = _CertificateAuthority().from_json(Path(path).read_bytes())
+        inner = trustroot_v1.CertificateAuthority.from_json(Path(path).read_bytes())
         return cls(inner)
 
     def _verify(self) -> None:
@@ -335,7 +315,9 @@ class SigningConfig:
             """Returns the variant's string value."""
             return self.value
 
-    def __init__(self, inner: _SigningConfig, tlog_version: int | None = None):
+    def __init__(
+        self, inner: trustroot_v1.SigningConfig, tlog_version: int | None = None
+    ):
         """
         Construct a new `SigningConfig`.
 
@@ -385,19 +367,19 @@ class SigningConfig:
         path: str,
     ) -> SigningConfig:
         """Create a new signing config from file"""
-        inner = _SigningConfig().from_json(Path(path).read_bytes())
+        inner = trustroot_v1.SigningConfig.from_json(Path(path).read_bytes())
         return cls(inner)
 
     @staticmethod
     def _get_valid_services(
-        services: list[Service],
+        services: list[trustroot_v1.Service],
         supported_versions: list[int],
-        config: ServiceConfiguration | None,
-    ) -> list[Service]:
+        config: trustroot_v1.ServiceConfiguration | None,
+    ) -> list[trustroot_v1.Service]:
         """Return supported services, taking SigningConfig restrictions into account"""
 
         # split services by operator, only include valid services
-        services_by_operator: dict[str, list[Service]] = defaultdict(list)
+        services_by_operator: dict[str, list[trustroot_v1.Service]] = defaultdict(list)
         for service in services:
             if service.major_api_version not in supported_versions:
                 continue
@@ -409,21 +391,26 @@ class SigningConfig:
 
         # build a list of services but make sure we only include one service per operator
         # and use the highest version available for that operator
-        result: list[Service] = []
+        result: list[trustroot_v1.Service] = []
         for op_services in services_by_operator.values():
             op_services.sort(key=lambda s: s.major_api_version)
             result.append(op_services[-1])
 
         # Depending on ServiceSelector, prune the result list
-        if not config or config.selector == ServiceSelector.ALL:
+        if not config or config.selector == trustroot_v1.ServiceSelector.ALL:
             return result
 
-        if config.selector == ServiceSelector.UNDEFINED:
-            raise ValueError("Undefined is not a valid signing config ServiceSelector")
-
         # handle EXACT and ANY selectors
-        count = config.count if config.selector == ServiceSelector.EXACT else 1
-        if config.selector == ServiceSelector.EXACT and len(result) < count:
+        count = (
+            config.count
+            if config.selector == trustroot_v1.ServiceSelector.EXACT and config.count
+            else 1
+        )
+
+        if (
+            config.selector == trustroot_v1.ServiceSelector.EXACT
+            and len(result) < count
+        ):
             raise ValueError(
                 f"Expected {count} services in signing config, found {len(result)}"
             )
@@ -482,7 +469,7 @@ class TrustedRoot:
             """Returns the variant's string value."""
             return self.value
 
-    def __init__(self, inner: _TrustedRoot):
+    def __init__(self, inner: trustroot_v1.TrustedRoot):
         """
         Construct a new `TrustedRoot`.
 
@@ -509,12 +496,12 @@ class TrustedRoot:
         path: str,
     ) -> TrustedRoot:
         """Create a new trust root from file"""
-        inner = _TrustedRoot().from_json(Path(path).read_bytes())
+        inner = trustroot_v1.TrustedRoot.from_json(Path(path).read_bytes())
         return cls(inner)
 
     def _get_tlog_keys(
-        self, tlogs: list[TransparencyLogInstance], purpose: KeyringPurpose
-    ) -> Iterable[_PublicKey]:
+        self, tlogs: list[trustroot_v1.TransparencyLogInstance], purpose: KeyringPurpose
+    ) -> Iterable[common_v1.PublicKey]:
         """
         Yields an iterator of public keys for transparency log instances that
         are suitable for `purpose`.
@@ -531,14 +518,18 @@ class TrustedRoot:
     def rekor_keyring(self, purpose: KeyringPurpose) -> RekorKeyring:
         """Return keyring with keys for Rekor."""
 
-        keys: list[_PublicKey] = list(self._get_tlog_keys(self._inner.tlogs, purpose))
+        keys: list[common_v1.PublicKey] = list(
+            self._get_tlog_keys(self._inner.tlogs, purpose)
+        )
         if len(keys) == 0:
             raise MetadataError("Did not find any Rekor keys in trusted root")
         return RekorKeyring(Keyring(keys))
 
     def ct_keyring(self, purpose: KeyringPurpose) -> CTKeyring:
         """Return keyring with key for CTFE."""
-        ctfes: list[_PublicKey] = list(self._get_tlog_keys(self._inner.ctlogs, purpose))
+        ctfes: list[common_v1.PublicKey] = list(
+            self._get_tlog_keys(self._inner.ctlogs, purpose)
+        )
         if not ctfes:
             raise MetadataError("CTFE keys not found in trusted root")
         return CTKeyring(Keyring(ctfes))
@@ -593,7 +584,7 @@ class ClientTrustConfig:
         """
         Deserialize the given client trust config.
         """
-        inner = _ClientTrustConfig().from_json(raw)
+        inner = trustroot_v1.ClientTrustConfig.from_json(raw)
         return cls(inner)
 
     @classmethod
@@ -634,51 +625,30 @@ class ClientTrustConfig:
         updater = TrustUpdater(url, offline)
 
         tr_path = updater.get_trusted_root_path()
-        inner_tr = _TrustedRoot().from_json(Path(tr_path).read_bytes())
+        inner_tr = trustroot_v1.TrustedRoot.from_json(Path(tr_path).read_bytes())
 
         try:
             sc_path = updater.get_signing_config_path()
-            inner_sc = _SigningConfig().from_json(Path(sc_path).read_bytes())
+            inner_sc = trustroot_v1.SigningConfig.from_json(Path(sc_path).read_bytes())
         except TUFError as e:
-            # TUF repo may not have signing config yet: hard code values for prod:
-            # https://github.com/sigstore/sigstore-python/issues/1388
-            if url == DEFAULT_TUF_URL:
-                embedded = read_embedded("signing_config.v0.2.json", url)
-                inner_sc = _SigningConfig().from_json(embedded)
-            else:
-                raise e
+            raise e
 
         return cls(
-            _ClientTrustConfig(
-                ClientTrustConfig.ClientTrustConfigType.CONFIG_0_1,
-                inner_tr,
-                inner_sc,
+            trustroot_v1.ClientTrustConfig(
+                media_type=ClientTrustConfig.ClientTrustConfigType.CONFIG_0_1.value,
+                trusted_root=inner_tr,
+                signing_config=inner_sc,
             )
         )
 
-    def __init__(self, inner: _ClientTrustConfig) -> None:
+    def __init__(self, inner: trustroot_v1.ClientTrustConfig) -> None:
         """
         @api private
         """
         self._inner = inner
-        self._verify()
 
         # This can be used to enforce a specific rekor major version in signingconfig
         self.force_tlog_version: int | None = None
-
-    def _verify(self) -> None:
-        """
-        Performs various feats of heroism to ensure that the client trust config
-        is well-formed.
-        """
-
-        # The client trust config must have a recognized media type.
-        try:
-            ClientTrustConfig.ClientTrustConfigType(self._inner.media_type)
-        except ValueError:
-            raise Error(
-                f"unsupported client trust config format: {self._inner.media_type}"
-            )
 
     @property
     def trusted_root(self) -> TrustedRoot:

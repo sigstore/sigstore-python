@@ -38,6 +38,7 @@ with signing_ctx.signer(identity, cache=True) as signer:
 
 from __future__ import annotations
 
+import base64
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -47,10 +48,7 @@ import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
-from sigstore_protobuf_specs.dev.sigstore.common.v1 import (
-    HashOutput,
-    MessageSignature,
-)
+from sigstore_models.common.v1 import HashOutput, MessageSignature
 
 from sigstore import dsse
 from sigstore import hashes as sigstore_hashes
@@ -190,7 +188,9 @@ class Signer:
 
         # Submit the proposed entry to the transparency log
         entry = self._signing_ctx._rekor.create_entry(proposed_entry)
-        _logger.debug(f"Transparency log entry created with index: {entry.log_index}")
+        _logger.debug(
+            f"Transparency log entry created with index: {entry._inner.log_index}"
+        )
 
         return Bundle._from_parts(cert, content, entry, signed_timestamp)
 
@@ -247,9 +247,9 @@ class Signer:
         content = MessageSignature(
             message_digest=HashOutput(
                 algorithm=hashed_input.algorithm,
-                digest=hashed_input.digest,
+                digest=base64.b64encode(hashed_input.digest),
             ),
-            signature=artifact_signature,
+            signature=base64.b64encode(artifact_signature),
         )
 
         # Create the proposed hashedrekord entry

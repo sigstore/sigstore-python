@@ -37,8 +37,9 @@ dependencies = [
   "rich >= 13,< 15",
   "rfc8785 ~= 0.1.2",
   "rfc3161-client >= 1.0.3,< 1.1.0",
-  # NOTE(ww): Both under active development, so strictly pinned.
-  "sigstore-protobuf-specs == 0.5.0",
+  # Both sigstore-models and sigstore-rekor types are unstable
+  # so we pin them conservatively.
+  "sigstore-models == 0.0.5",
   "sigstore-rekor-types == 0.0.18",
   "tuf ~= 6.0",
   "platformdirs ~= 4.2",
@@ -58,11 +59,11 @@ Documentation = "https://sigstore.github.io/sigstore-python/"
 test = ["pytest", "pytest-cov", "pretend", "coverage[toml]"]
 lint = [
   "bandit",
-  "interrogate >= 1.7.0",
+  # "interrogate >= 1.7.0",
   "mypy ~= 1.1",
   # NOTE(ww): ruff is under active development, so we pin conservatively here
   # and let Dependabot periodically perform this update.
-  "ruff < 0.12.6",
+  "ruff < 0.12.10",
   "types-requests",
   "types-pyOpenSSL",
 ]

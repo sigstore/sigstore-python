@@ -39,8 +39,8 @@ from OpenSSL.crypto import (
 from pydantic import ValidationError
 from rfc3161_client import TimeStampResponse, VerifierBuilder
 from rfc3161_client import VerificationError as Rfc3161VerificationError
-from sigstore_protobuf_specs.dev.sigstore.common import v1
-from sigstore_protobuf_specs.dev.sigstore.rekor import v2
+from sigstore_models.common import v1
+from sigstore_models.rekor import v2
 
 from sigstore import dsse
 from sigstore._internal.rekor import _hashedrekord_from_parts
@@ -62,9 +62,9 @@ _logger = logging.getLogger(__name__)
 # From https://github.com/sigstore/sigstore-go/blob/e92142f0734064ebf6001f188b7330a1212245fe/pkg/verify/tsa.go#L29
 MAX_ALLOWED_TIMESTAMP: int = 32
 
-# When verifying a timestamp, this threshold represents the minimum number of required
-# timestamps to consider a signature valid.
-VERIFY_TIMESTAMP_THRESHOLD: int = 1
+# When verifying an entry, this threshold represents the minimum number of required
+# verified times to consider a signature valid.
+VERIFIED_TIME_THRESHOLD: int = 1
 
 
 class Verifier:
@@ -175,9 +175,13 @@ class Verifier:
 
         Returns the number of valid signed timestamp in the bundle.
         """
-        timestamp_responses = (
-            bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
-        )
+        timestamp_responses = []
+        if (
+            timestamp_verification_data
+            := bundle.verification_material.timestamp_verification_data
+        ):
+            timestamp_responses = timestamp_verification_data.rfc3161_timestamps
+
         if len(timestamp_responses) > MAX_ALLOWED_TIMESTAMP:
             msg = f"too many signed timestamp: {len(timestamp_responses)} > {MAX_ALLOWED_TIMESTAMP}"
             raise VerificationError(msg)
@@ -206,7 +210,7 @@ class Verifier:
 
         # If a timestamp from the timestamping service is available, the Verifier MUST
         # perform path validation using the timestamp from the Timestamping Service.
-        if bundle.verification_material.timestamp_verification_data.rfc3161_timestamps:
+        if bundle.verification_material.timestamp_verification_data:
             if not self._trusted_root.get_timestamp_authorities():
                 msg = (
                     "no Timestamp Authorities have been provided to validate this "
@@ -215,13 +219,6 @@ class Verifier:
                 raise VerificationError(msg)
 
             timestamp_from_tsa = self._verify_timestamp_authority(bundle)
-            if len(timestamp_from_tsa) < VERIFY_TIMESTAMP_THRESHOLD:
-                msg = (
-                    f"not enough timestamps validated to meet the validation "
-                    f"threshold ({len(timestamp_from_tsa)}/{VERIFY_TIMESTAMP_THRESHOLD})"
-                )
-                raise VerificationError(msg)
-
             verified_timestamps.extend(timestamp_from_tsa)
 
         # If a timestamp from the Transparency Service is available, the Verifier MUST
@@ -230,8 +227,14 @@ class Verifier:
         # promise that cryptographically binds it. We verify the inclusion promise
         # itself later, as part of log entry verification.
         if (
-            timestamp := bundle.log_entry.integrated_time
-        ) and bundle.log_entry.inclusion_promise:
+            timestamp := bundle.log_entry._inner.integrated_time
+        ) and bundle.log_entry._inner.inclusion_promise:
+            kv = bundle.log_entry._inner.kind_version
+            if not (kv.kind in ["dsse", "hashedrekord"] and kv.version == "0.0.1"):
+                raise VerificationError(
+                    "Integrated time only supported for dsse/hashedrekord 0.0.1 types"
+                )
+
             verified_timestamps.append(
                 TimestampVerificationResult(
                     source=TimestampSource.TRANSPARENCY_SERVICE,
@@ -320,13 +323,12 @@ class Verifier:
             store.add_cert(parent_cert_ossl)
 
         # (0): Establishing a Time for the Signature
-        # First, establish a time for the signature. This timestamp is required to
+        # First, establish verified times for the signature. This is required to
         # validate the certificate chain, so this step comes first.
-        # While this step is optional and only performed if timestamp data has been
-        # provided within the bundle, providing a signed timestamp without a TSA to
-        # verify it result in a VerificationError.
+        # These include TSA timestamps and (in the case of rekor v1 entries)
+        # rekor log integrated time.
         verified_timestamps = self._establish_time(bundle)
-        if not verified_timestamps:
+        if len(verified_timestamps) < VERIFIED_TIME_THRESHOLD:
             raise VerificationError("not enough sources of verified time")
 
         # (1): verify that the signing certificate is signed by the root
@@ -429,17 +431,17 @@ class Verifier:
         # Instead, we manually pick apart the entry body below and verify
         # the parts we can (namely the payload hash and signature list).
         entry = bundle.log_entry
-        if entry._kind_version.kind != "dsse":
+        if entry._inner.kind_version.kind != "dsse":
             raise VerificationError(
-                f"Expected entry type dsse, got {entry._kind_version.kind}"
+                f"Expected entry type dsse, got {entry._inner.kind_version.kind}"
             )
-        if entry._kind_version.version == "0.0.2":
+        if entry._inner.kind_version.version == "0.0.2":
             _validate_dsse_v002_entry_body(bundle)
-        elif entry._kind_version.version == "0.0.1":
+        elif entry._inner.kind_version.version == "0.0.1":
             _validate_dsse_v001_entry_body(bundle)
         else:
             raise VerificationError(
-                f"Unsupported dsse version {entry._kind_version.version}"
+                f"Unsupported dsse version {entry._inner.kind_version.version}"
             )
 
         return (envelope._inner.payload_type, envelope._inner.payload)
@@ -485,18 +487,18 @@ class Verifier:
         # (8): verify the consistency of the log entry's body against
         #      the other bundle materials (and input being verified).
         entry = bundle.log_entry
-        if entry._kind_version.kind != "hashedrekord":
+        if entry._inner.kind_version.kind != "hashedrekord":
             raise VerificationError(
-                f"Expected entry type hashedrekord, got {entry._kind_version.kind}"
+                f"Expected entry type hashedrekord, got {entry._inner.kind_version.kind}"
             )
 
-        if entry._kind_version.version == "0.0.2":
-            _validate_hashedrekord_v002_entry_body(bundle)
-        elif entry._kind_version.version == "0.0.1":
+        if entry._inner.kind_version.version == "0.0.2":
+            _validate_hashedrekord_v002_entry_body(bundle, hashed_input)
+        elif entry._inner.kind_version.version == "0.0.1":
             _validate_hashedrekord_v001_entry_body(bundle, hashed_input)
         else:
             raise VerificationError(
-                f"Unsupported hashedrekord version {entry._kind_version.version}"
+                f"Unsupported hashedrekord version {entry._inner.kind_version.version}"
             )
 
 
@@ -511,7 +513,9 @@ def _validate_dsse_v001_entry_body(bundle: Bundle) -> None:
             "cannot perform DSSE verification on a bundle without a DSSE envelope"
         )
     try:
-        entry_body = rekor_types.Dsse.model_validate_json(base64.b64decode(entry.body))
+        entry_body = rekor_types.Dsse.model_validate_json(
+            entry._inner.canonicalized_body
+        )
     except ValidationError as exc:
         raise VerificationError(f"invalid DSSE log entry: {exc}")
 
@@ -549,7 +553,7 @@ def _validate_dsse_v002_entry_body(bundle: Bundle) -> None:
             "cannot perform DSSE verification on a bundle without a DSSE envelope"
         )
     try:
-        v2_body = v2.Entry().from_json(base64.b64decode(entry.body))
+        v2_body = v2.entry.Entry.from_json(entry._inner.canonicalized_body)
     except ValidationError as exc:
         raise VerificationError(f"invalid DSSE log entry: {exc}")
 
@@ -564,8 +568,8 @@ def _validate_dsse_v002_entry_body(bundle: Bundle) -> None:
         raise VerificationError("DSSE entry payload hash does not match bundle")
 
     v2_signatures = [
-        v2.Signature(
-            content=signature.sig,
+        v2.verifier.Signature(
+            content=base64.b64encode(signature.sig),
             verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
         )
         for signature in envelope._inner.signatures
@@ -587,7 +591,7 @@ def _validate_hashedrekord_v001_entry_body(
         hashed_input,
     )
     actual_body = rekor_types.Hashedrekord.model_validate_json(
-        base64.b64decode(entry.body)
+        entry._inner.canonicalized_body
     )
     if expected_body != actual_body:
         raise VerificationError(
@@ -595,7 +599,9 @@ def _validate_hashedrekord_v001_entry_body(
         )
 
 
-def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
+def _validate_hashedrekord_v002_entry_body(
+    bundle: Bundle, hashed_input: Hashed
+) -> None:
     """
     Validate Entry body for hashedrekord v002.
     """
@@ -604,32 +610,32 @@ def _validate_hashedrekord_v002_entry_body(bundle: Bundle) -> None:
         raise VerificationError(
             "invalid hashedrekord log entry: missing message signature"
         )
-    v2_expected_body = v2.Entry(
-        kind=entry._kind_version.kind,
-        api_version=entry._kind_version.version,
-        spec=v2.Spec(
-            hashed_rekord_v002=v2.HashedRekordLogEntryV002(
+    v2_expected_body = v2.entry.Entry(
+        kind=entry._inner.kind_version.kind,
+        api_version=entry._inner.kind_version.version,
+        spec=v2.entry.Spec(
+            hashed_rekord_v002=v2.hashedrekord.HashedRekordLogEntryV002(
                 data=v1.HashOutput(
-                    algorithm=bundle._inner.message_signature.message_digest.algorithm,
-                    digest=bundle._inner.message_signature.message_digest.digest,
+                    algorithm=hashed_input.algorithm,
+                    digest=base64.b64encode(hashed_input.digest),
                 ),
-                signature=v2.Signature(
-                    content=bundle._inner.message_signature.signature,
+                signature=v2.verifier.Signature(
+                    content=base64.b64encode(bundle._inner.message_signature.signature),
                     verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
                 ),
             )
         ),
     )
-    v2_actual_body = v2.Entry().from_json(base64.b64decode(entry.body))
+    v2_actual_body = v2.entry.Entry.from_json(entry._inner.canonicalized_body)
     if v2_expected_body != v2_actual_body:
         raise VerificationError(
             "transparency log entry is inconsistent with other materials"
         )
 
 
-def _v2_verifier_from_certificate(certificate: Certificate) -> v2.Verifier:
+def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verifier:
     """
-    Return a Rekor v2 protobuf Verifier for the signing certificate.
+    Return a Rekor v2 Verifier for the signing certificate.
 
     This method decides which signature algorithms are supported for verification
     (in a rekor v2 entry), see
@@ -651,9 +657,11 @@ def _v2_verifier_from_certificate(certificate: Certificate) -> v2.Verifier:
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
 
-    return v2.Verifier(
+    return v2.verifier.Verifier(
         x509_certificate=v1.X509Certificate(
-            certificate.public_bytes(encoding=serialization.Encoding.DER)
+            raw_bytes=base64.b64encode(
+                certificate.public_bytes(encoding=serialization.Encoding.DER)
+            )
         ),
-        key_details=cast(v1.PublicKeyDetails, key_details),
+        key_details=key_details,
     )
