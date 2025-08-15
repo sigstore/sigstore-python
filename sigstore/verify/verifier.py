@@ -51,7 +51,7 @@ from sigstore._internal.sct import (
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
 from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
-from sigstore.errors import VerificationError
+from sigstore.errors import CertValidationError, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle
 from sigstore.verify.policy import VerificationPolicy
@@ -144,9 +144,8 @@ class Verifier:
             verifier = builder.build()
             try:
                 verifier.verify_message(timestamp_response, message)
-            except Rfc3161VerificationError as e:
-                _logger.debug("Unable to verify Timestamp with CA.")
-                _logger.exception(e)
+            except Rfc3161VerificationError:
+                _logger.debug("Unable to verify Timestamp with CA.", exc_info=True)
                 continue
 
             if (
@@ -273,7 +272,7 @@ class Verifier:
             # and chain should contain only CA certificates
             return store_ctx.get_verified_chain()[1:]
         except X509StoreContextError as e:
-            raise VerificationError(f"failed to build chain: {e}")
+            raise CertValidationError(f"failed to build TSA chain: {e}")
 
     def _verify_common_signing_cert(
         self, bundle: Bundle, policy: VerificationPolicy

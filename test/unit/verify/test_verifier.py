@@ -385,11 +385,6 @@ class TestVerifierWithTimestamp:
                 null_policy,
             )
 
-        assert (
-            "Error while verifying certificates: Unable to verify pkcs7 signature"
-            in caplog.records[0].message
-        )
-
     def test_verifier_not_enough_timestamp(
         self, verifier, asset, null_policy, monkeypatch
     ):
