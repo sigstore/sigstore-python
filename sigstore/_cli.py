@@ -1096,6 +1096,7 @@ def _verify_identity(args: argparse.Namespace) -> None:
                 "A certificate chain was not valid, are you using the correct Sigstore instance?"
             )
             _logger.error(f"FAIL: {file_or_digest}")
+            exit(1)
         except Error as exc:
             _logger.error(f"FAIL: {file_or_digest}")
             exc.log_and_exit(_logger, args.verbose >= 1)
@@ -1149,6 +1150,7 @@ def _verify_github(args: argparse.Namespace) -> None:
                 "A certificate chain was not valid, are you using the correct Sigstore instance?"
             )
             _logger.error(f"FAIL: {file_or_digest}")
+            exit(1)
         except Error as exc:
             _logger.error(f"FAIL: {file_or_digest}")
             exc.log_and_exit(_logger, args.verbose >= 1)
