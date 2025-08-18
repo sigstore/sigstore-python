@@ -272,7 +272,9 @@ class Verifier:
             # and chain should contain only CA certificates
             return store_ctx.get_verified_chain()[1:]
         except X509StoreContextError as e:
-            raise CertValidationError(f"failed to build TSA chain: {e}")
+            raise CertValidationError(
+                f"failed to build timestamp certificate chain: {e}"
+            )
 
     def _verify_common_signing_cert(
         self, bundle: Bundle, policy: VerificationPolicy

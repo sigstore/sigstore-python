@@ -1091,13 +1091,12 @@ def _verify_identity(args: argparse.Namespace) -> None:
             print(f"OK: {file_or_digest}", file=sys.stderr)
             if statement is not None:
                 print(statement._contents.decode())
-        except CertValidationError:
-            _logger.warning(
-                "A certificate chain was not valid, are you using the correct Sigstore instance?"
-            )
-            _logger.error(f"FAIL: {file_or_digest}")
-            exit(1)
         except Error as exc:
+            if isinstance(exc, CertValidationError):
+                _logger.warning(
+                    "A certificate chain was not valid, are you using the correct Sigstore instance?"
+                )
+
             _logger.error(f"FAIL: {file_or_digest}")
             exc.log_and_exit(_logger, args.verbose >= 1)
 
@@ -1145,13 +1144,12 @@ def _verify_github(args: argparse.Namespace) -> None:
             print(f"OK: {file_or_digest}", file=sys.stderr)
             if statement is not None:
                 print(statement._contents)
-        except CertValidationError:
-            _logger.warning(
-                "A certificate chain was not valid, are you using the correct Sigstore instance?"
-            )
-            _logger.error(f"FAIL: {file_or_digest}")
-            exit(1)
         except Error as exc:
+            if isinstance(exc, CertValidationError):
+                _logger.warning(
+                    "A certificate chain was not valid, are you using the correct Sigstore instance?"
+                )
+
             _logger.error(f"FAIL: {file_or_digest}")
             exc.log_and_exit(_logger, args.verbose >= 1)
 
