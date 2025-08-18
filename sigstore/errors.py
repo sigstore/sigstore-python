@@ -125,3 +125,11 @@ class VerificationError(Error):
     """
     Raised whenever any phase or subcomponent of Sigstore verification fails.
     """
+
+
+class CertValidationError(VerificationError):
+    """
+    Raised when a TSA certificate chain fails to validate during Sigstore verification.
+
+    This is used by CLI to hint that an incorrect Sigstore instance may have been used
+    """
