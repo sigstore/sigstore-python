@@ -46,7 +46,7 @@ from sigstore.dsse._predicate import (
     SLSAPredicateV0_2,
     SLSAPredicateV1_0,
 )
-from sigstore.errors import Error, VerificationError
+from sigstore.errors import CertValidationError, Error, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle, InvalidBundle
 from sigstore.oidc import (
@@ -1106,6 +1106,11 @@ def _verify_identity(args: argparse.Namespace) -> None:
             if statement is not None:
                 print(statement._contents.decode())
         except Error as exc:
+            if isinstance(exc, CertValidationError):
+                _logger.warning(
+                    "A certificate chain was not valid, are you using the correct Sigstore instance?"
+                )
+
             _logger.error(f"FAIL: {file_or_digest}")
             exc.log_and_exit(_logger, args.verbose >= 1)
 
@@ -1154,6 +1159,11 @@ def _verify_github(args: argparse.Namespace) -> None:
             if statement is not None:
                 print(statement._contents)
         except Error as exc:
+            if isinstance(exc, CertValidationError):
+                _logger.warning(
+                    "A certificate chain was not valid, are you using the correct Sigstore instance?"
+                )
+
             _logger.error(f"FAIL: {file_or_digest}")
             exc.log_and_exit(_logger, args.verbose >= 1)
 
