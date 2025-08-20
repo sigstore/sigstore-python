@@ -178,4 +178,14 @@ update-embedded-root: $(VENV)/pyvenv.cfg
 	cp ~/.local/share/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/root.json \
 		sigstore/_store/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/root.json
 	cp ~/.cache/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/trusted_root.json \
-		sigstore/_store/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/trusted_root.json
+		~/.cache/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/signing_config.v0.2.json \
+		sigstore/_store/https%3A%2F%2Ftuf-repo-cdn.sigstore.dev/
+
+update-embedded-root-staging: $(VENV)/pyvenv.cfg
+	. $(VENV_BIN)/activate && \
+		python -m sigstore plumbing update-trust-root
+	cp ~/.local/share/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstage.dev/root.json \
+		sigstore/_store/https%3A%2F%2Ftuf-repo-cdn.sigstage.dev/root.json
+	cp ~/.cache/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstage.dev/trusted_root.json \
+		~/.cache/sigstore-python/tuf/https%3A%2F%2Ftuf-repo-cdn.sigstage.dev/signing_config.v0.2.json \
+		sigstore/_store/https%3A%2F%2Ftuf-repo-cdn.sigstage.dev/
