@@ -36,7 +36,8 @@ def test_verifier_production():
     assert verifier is not None
 
 
-def test_verifier_staging(mock_staging_tuf):
+@pytest.mark.staging
+def test_verifier_staging():
     verifier = Verifier.staging()
     assert verifier is not None
 
@@ -51,7 +52,7 @@ def test_verifier_one_verification(signing_materials, null_policy):
 
 
 @pytest.mark.staging
-def test_verifier_inconsistent_log_entry(signing_bundle, null_policy, mock_staging_tuf):
+def test_verifier_inconsistent_log_entry(signing_bundle, null_policy):
     (file, bundle) = signing_bundle("bundle_cve_2022_36056.txt")
 
     verifier = Verifier.staging()
