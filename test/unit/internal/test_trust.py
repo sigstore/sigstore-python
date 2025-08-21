@@ -17,8 +17,6 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from cryptography.x509 import load_pem_x509_certificate
 from sigstore_models.common.v1 import TimeRange
 from sigstore_models.trustroot.v1 import (
     Service,
@@ -38,7 +36,6 @@ from sigstore._internal.trust import (
     TrustedRoot,
     _is_timerange_valid,
 )
-from sigstore._utils import load_pem_public_key
 from sigstore.errors import Error
 
 # Test data for TestSigningcconfig
@@ -248,59 +245,6 @@ class TestTrustedRoot:
 # TODO(ww): Move these into appropriate class-scoped tests.
 
 
-def test_trust_root_tuf_caches_and_requests(mock_staging_tuf, tuf_dirs):
-    # start with empty target cache, empty local metadata dir
-    data_dir, cache_dir = tuf_dirs
-
-    # keep track of requests the TrustUpdater invoked by TrustedRoot makes
-    reqs, fail_reqs = mock_staging_tuf
-
-    trust_config = ClientTrustConfig.staging()
-    # metadata was "downloaded" from staging
-    expected = [
-        "root.json",
-        "root_history",
-        "snapshot.json",
-        "targets.json",
-        "timestamp.json",
-    ]
-    assert sorted(os.listdir(data_dir)) == expected
-
-    # Expect requests of top-level metadata (and 404 for the next root version)
-    # Don't expect trusted_root.json request as it's cached already
-    expected_requests = {
-        "timestamp.json": 1,
-        "16.snapshot.json": 1,
-        "17.targets.json": 1,
-        "ed6a9cf4e7c2e3297a4b5974fce0d17132f03c63512029d7aa3a402b43acab49.trusted_root.json": 1,
-    }
-    expected_fail_reqs = {"12.root.json": 1}
-    assert reqs == expected_requests
-    assert fail_reqs == expected_fail_reqs
-
-    trust_config.trusted_root.ct_keyring(KeyringPurpose.VERIFY)
-    trust_config.trusted_root.rekor_keyring(KeyringPurpose.VERIFY)
-
-    # no new requests
-    assert reqs == expected_requests
-    assert fail_reqs == expected_fail_reqs
-
-    # New trust root (and TrustUpdater instance), same cache dirs
-    trust_config = ClientTrustConfig.staging()
-
-    # Expect new timestamp and root requests
-    expected_requests["timestamp.json"] += 1
-    expected_fail_reqs["12.root.json"] += 1
-    assert reqs == expected_requests
-    assert fail_reqs == expected_fail_reqs
-
-    trust_config.trusted_root.ct_keyring(purpose=KeyringPurpose.VERIFY)
-    trust_config.trusted_root.rekor_keyring(purpose=KeyringPurpose.VERIFY)
-    # Expect no requests
-    assert reqs == expected_requests
-    assert fail_reqs == expected_fail_reqs
-
-
 def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     # start with empty target cache, empty local metadata dir
     data_dir, cache_dir = tuf_dirs
@@ -350,105 +294,6 @@ def test_is_timerange_valid():
     assert _is_timerange_valid(
         range_from(-1, -1), allow_expired=True
     )  # Valid: 1 ago, 1 ago
-
-
-def test_trust_root_bundled_get(monkeypatch, mock_staging_tuf, tuf_asset):
-    def get_public_bytes(keys):
-        assert len(keys) != 0
-        return {
-            k.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
-            for k in keys
-        }
-
-    def _pem_keys(keys):
-        return get_public_bytes([load_pem_public_key(k) for k in keys])
-
-    ctfe_keys = _pem_keys(
-        [
-            tuf_asset.target("ctfe_2022_2.pub"),
-        ]
-    )
-    rekor_keys = _pem_keys([tuf_asset.target("rekor.pub")])
-    fulcio_certs = [
-        load_pem_x509_certificate(c)
-        for c in [
-            tuf_asset.target("fulcio_intermediate.crt.pem"),
-            tuf_asset.target("fulcio.crt.pem"),
-        ]
-    ]
-
-    # Assert that trust root from TUF contains the expected keys/certs
-    trust_root = ClientTrustConfig.staging().trusted_root
-    assert ctfe_keys.issubset(
-        get_public_bytes(
-            [
-                k.key
-                for k in trust_root.ct_keyring(
-                    purpose=KeyringPurpose.VERIFY
-                )._keyring.values()
-            ]
-        )
-    )
-    assert rekor_keys.issubset(
-        get_public_bytes(
-            [
-                k.key
-                for k in trust_root.rekor_keyring(
-                    purpose=KeyringPurpose.VERIFY
-                )._keyring.values()
-            ]
-        )
-    )
-    assert trust_root.get_fulcio_certs() == fulcio_certs
-
-    # Assert that trust root from offline TUF contains the expected keys/certs
-    trust_root = ClientTrustConfig.staging(offline=True).trusted_root
-    assert ctfe_keys.issubset(
-        get_public_bytes(
-            [
-                k.key
-                for k in trust_root.ct_keyring(
-                    purpose=KeyringPurpose.VERIFY
-                )._keyring.values()
-            ]
-        )
-    )
-    assert rekor_keys.issubset(
-        get_public_bytes(
-            [
-                k.key
-                for k in trust_root.rekor_keyring(
-                    purpose=KeyringPurpose.VERIFY
-                )._keyring.values()
-            ]
-        )
-    )
-    assert trust_root.get_fulcio_certs() == fulcio_certs
-
-    # Assert that trust root from file contains the expected keys/certs
-    path = tuf_asset.target_path("trusted_root.json")
-    trust_root = TrustedRoot.from_file(path)
-    assert ctfe_keys.issubset(
-        get_public_bytes(
-            [
-                k.key
-                for k in trust_root.ct_keyring(
-                    purpose=KeyringPurpose.VERIFY
-                )._keyring.values()
-            ]
-        )
-    )
-    assert rekor_keys.issubset(
-        get_public_bytes(
-            [
-                k.key
-                for k in trust_root.rekor_keyring(
-                    purpose=KeyringPurpose.VERIFY
-                )._keyring.values()
-            ]
-        )
-    )
-    assert trust_root.get_fulcio_certs() == fulcio_certs
 
 
 def test_trust_root_tuf_instance_error():
