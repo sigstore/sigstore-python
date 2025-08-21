@@ -165,24 +165,26 @@ class SignedNote:
 
     def verify(self, rekor_keyring: RekorKeyring, key_id: KeyID) -> None:
         """
-        Verify the `SignedNote` using the given RekorKeyring by verifying
-        each contained signature.
+        Verify the `SignedNote` using the given RekorKeyring and KeyID.
         """
 
         note = str.encode(self.note)
 
         for sig in self.signatures:
-            if sig.sig_hash != key_id[:4]:
-                raise VerificationError(
-                    "checkpoint: sig_hash hint does not match expected key_id"
-                )
+            if sig.sig_hash == key_id[:4]:
+                try:
+                    rekor_keyring.verify(
+                        key_id=key_id,
+                        signature=base64.b64decode(sig.signature),
+                        data=note,
+                    )
+                    return
+                except VerificationError as sig_err:
+                    raise VerificationError(f"checkpoint: invalid signature: {sig_err}")
 
-            try:
-                rekor_keyring.verify(
-                    key_id=key_id, signature=base64.b64decode(sig.signature), data=note
-                )
-            except VerificationError as sig_err:
-                raise VerificationError(f"checkpoint: invalid signature: {sig_err}")
+        raise VerificationError(
+            f"checkpoint: Signature not found for log ID {key_id.hex()}"
+        )
 
 
 @dataclass(frozen=True)
