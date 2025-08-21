@@ -41,6 +41,7 @@ jobs:
   # This is a separate job so that only actions/deploy-pages has the necessary permissions.
   deploy:
     needs: build
+    if: github.repository == 'sigstore/sigstore-python'
     runs-on: ubuntu-latest
     permissions:
       # NOTE: Needed to push to the repository.
