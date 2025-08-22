@@ -140,7 +140,6 @@ def test_sign_success_multiple_artifacts_rekor_v2(
     sigstore(
         *get_cli_params(
             artifact_paths=artifacts,
-            trust_config_path=asset("trust_config/staging-but-sign-with-rekor-v2.json"),
             output_directory=tmp_path,
         )
     )

@@ -31,7 +31,6 @@ from cryptography.x509 import Certificate, load_pem_x509_certificate
 from id import (
     detect_credential,
 )
-from sigstore_models.trustroot.v1 import Service
 from tuf.api.exceptions import DownloadHTTPError
 from tuf.ngclient import FetcherInterface, updater
 
@@ -226,38 +225,6 @@ def staging() -> tuple[type[SigningContext], type[Verifier], IdentityToken]:
 
     def signer():
         return SigningContext.from_trust_config(ClientTrustConfig.staging())
-
-    verifier = Verifier.staging
-
-    # Detect env variable for local interactive tests.
-    token = os.getenv("SIGSTORE_IDENTITY_TOKEN_staging")
-    if not token:
-        # If the variable is not defined, try getting an ambient token.
-        token = detect_credential(TEST_CLIENT_ID)
-
-    return signer, verifier, IdentityToken(token)
-
-
-@pytest.fixture
-def staging_with_rekorv2() -> tuple[
-    type[SigningContext], type[Verifier], IdentityToken
-]:
-    """
-    Returns a SigningContext, Verifier, and IdentityToken for the staging environment.
-    The signingContext will use the Rekor V2 instance even if it is not yet enabled in
-    staging signing config.
-    """
-
-    def signer():
-        trust_config = ClientTrustConfig.staging()
-        trust_config.signing_config._tlogs.append(
-            Service(
-                url="https://log2025-alpha1.rekor.sigstage.dev",
-                major_api_version=2,
-                operator="sigstage.dev",
-            )
-        )
-        return SigningContext.from_trust_config(trust_config)
 
     verifier = Verifier.staging
 
