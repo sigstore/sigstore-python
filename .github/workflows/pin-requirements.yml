@@ -77,9 +77,7 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
-        run: |
-          pip install "pip < 25.1" # workaround issue 1426
-          pip install pip-tools
+        run: pip install pip-tools
 
       - name: Compute version from tag
         run: |
