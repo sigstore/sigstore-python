@@ -30,13 +30,13 @@ from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
-    ClientTrustConfig,
     KeyringPurpose,
     SigningConfig,
     TrustedRoot,
     _is_timerange_valid,
 )
 from sigstore.errors import Error
+from sigstore.models import ClientTrustConfig
 
 # Test data for TestSigningcconfig
 _service_v1_op1 = Service(url="url1", major_api_version=1, operator="op1")

@@ -40,17 +40,14 @@ from sigstore_models.trustroot import v1 as trustroot_v1
 
 from sigstore._internal.fulcio.client import FulcioClient
 from sigstore._internal.rekor import RekorLogSubmitter
-from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
-from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
 from sigstore._utils import (
     KeyID,
     PublicKey,
     key_id,
     load_der_public_key,
 )
-from sigstore.errors import Error, MetadataError, TUFError, VerificationError
+from sigstore.errors import Error, MetadataError, VerificationError
 
 # Versions supported by this client
 REKOR_VERSIONS = [1, 2]
@@ -407,6 +404,9 @@ class SigningConfig:
         """
         Returns the rekor transparency log clients to sign with.
         """
+        from sigstore._internal.rekor.client import RekorClient
+        from sigstore._internal.rekor.client_v2 import RekorV2Client
+
         result: list[RekorLogSubmitter] = []
         for tlog in self._tlogs:
             if tlog.major_api_version == 1:
@@ -547,102 +547,3 @@ class TrustedRoot:
             for cert_chain in self._inner.timestamp_authorities
         ]
         return certificate_authorities
-
-
-class ClientTrustConfig:
-    """
-    Represents a Sigstore client's trust configuration, including a root of trust.
-    """
-
-    class ClientTrustConfigType(str, Enum):
-        """
-        Known Sigstore client trust config media types.
-        """
-
-        CONFIG_0_1 = "application/vnd.dev.sigstore.clienttrustconfig.v0.1+json"
-
-        def __str__(self) -> str:
-            """Returns the variant's string value."""
-            return self.value
-
-    @classmethod
-    def from_json(cls, raw: str) -> ClientTrustConfig:
-        """
-        Deserialize the given client trust config.
-        """
-        inner = trustroot_v1.ClientTrustConfig.from_json(raw)
-        return cls(inner)
-
-    @classmethod
-    def production(
-        cls,
-        offline: bool = False,
-    ) -> ClientTrustConfig:
-        """Create new trust config from Sigstore production TUF repository.
-
-        If `offline`, will use data in local TUF cache. Otherwise will
-        update the data from remote TUF repository.
-        """
-        return cls.from_tuf(DEFAULT_TUF_URL, offline)
-
-    @classmethod
-    def staging(
-        cls,
-        offline: bool = False,
-    ) -> ClientTrustConfig:
-        """Create new trust config from Sigstore staging TUF repository.
-
-        If `offline`, will use data in local TUF cache. Otherwise will
-        update the data from remote TUF repository.
-        """
-        return cls.from_tuf(STAGING_TUF_URL, offline)
-
-    @classmethod
-    def from_tuf(
-        cls,
-        url: str,
-        offline: bool = False,
-    ) -> ClientTrustConfig:
-        """Create a new trust config from a TUF repository.
-
-        If `offline`, will use data in local TUF cache. Otherwise will
-        update the trust config from remote TUF repository.
-        """
-        updater = TrustUpdater(url, offline)
-
-        tr_path = updater.get_trusted_root_path()
-        inner_tr = trustroot_v1.TrustedRoot.from_json(Path(tr_path).read_bytes())
-
-        try:
-            sc_path = updater.get_signing_config_path()
-            inner_sc = trustroot_v1.SigningConfig.from_json(Path(sc_path).read_bytes())
-        except TUFError as e:
-            raise e
-
-        return cls(
-            trustroot_v1.ClientTrustConfig(
-                media_type=ClientTrustConfig.ClientTrustConfigType.CONFIG_0_1.value,
-                trusted_root=inner_tr,
-                signing_config=inner_sc,
-            )
-        )
-
-    def __init__(self, inner: trustroot_v1.ClientTrustConfig) -> None:
-        """
-        @api private
-        """
-        self._inner = inner
-
-    @property
-    def trusted_root(self) -> TrustedRoot:
-        """
-        Return the interior root of trust, as a `TrustedRoot`.
-        """
-        return TrustedRoot(self._inner.trusted_root)
-
-    @property
-    def signing_config(self) -> SigningConfig:
-        """
-        Return the interior root of trust, as a `SigningConfig`.
-        """
-        return SigningConfig(self._inner.signing_config)

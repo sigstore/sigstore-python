@@ -38,7 +38,6 @@ from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
@@ -48,7 +47,7 @@ from sigstore.dsse._predicate import (
 )
 from sigstore.errors import CertValidationError, Error, VerificationError
 from sigstore.hashes import Hashed
-from sigstore.models import Bundle, InvalidBundle
+from sigstore.models import Bundle, ClientTrustConfig, InvalidBundle
 from sigstore.oidc import (
     ExpiredIdentity,
     IdentityToken,

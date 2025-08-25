@@ -49,11 +49,11 @@ from sigstore._internal.sct import (
     verify_sct,
 )
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
-from sigstore._internal.trust import ClientTrustConfig, KeyringPurpose, TrustedRoot
+from sigstore._internal.trust import KeyringPurpose, TrustedRoot
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import CertValidationError, VerificationError
 from sigstore.hashes import Hashed
-from sigstore.models import Bundle
+from sigstore.models import Bundle, ClientTrustConfig
 from sigstore.verify.policy import VerificationPolicy
 
 _logger = logging.getLogger(__name__)

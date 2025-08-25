@@ -65,6 +65,9 @@ All versions prior to 0.9.0 are untracked.
   * SigningConfig now has methods that return actual clients (like `RekorClient`) instead of
     just URLs. The returned clients are also filtered according to SigningConfig contents.
     [#1407](https://github.com/sigstore/sigstore-python/pull/1407)
+  * The ClientTrustConfig class has been moved from the private _internal package to a public
+    module (sigstore.models). This change formally adds the class to the project's public API,
+    making it available for use in other projects. [#1496](https://github.com/sigstore/sigstore-python/pull/1496)
 * `--trust-config` now requires a file with SigningConfig v0.2, and is able to fully
   configure the used Sigstore instance [#1358]/(https://github.com/sigstore/sigstore-python/pull/1358)
 * By default (when `--trust-config` is not used) the whole trust configuration now

@@ -37,9 +37,8 @@ from tuf.ngclient import FetcherInterface, updater
 from sigstore._internal import tuf
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.trust import ClientTrustConfig
 from sigstore._utils import sha256_digest
-from sigstore.models import Bundle
+from sigstore.models import Bundle, ClientTrustConfig
 from sigstore.oidc import IdentityToken
 from sigstore.sign import SigningContext
 from sigstore.verify.verifier import Verifier
