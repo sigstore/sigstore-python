@@ -100,7 +100,7 @@ jobs:
         if: ${{ matrix.conf.os == 'ubuntu-latest' }}
 
   all-tests-pass:
-    if: always()
+    if: always() && (github.event_name != 'schedule' || github.repository == 'sigstore/sigstore-python')
 
     needs:
       - test
