@@ -22,12 +22,10 @@ from sigstore.models import TransparencyLogEntry
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_rekor_v2_create_entry_dsse(staging_with_rekorv2):
+def test_rekor_v2_create_entry_dsse(staging):
     # This is not a real unit test: it requires not only staging rekor but also TUF
     # fulcio and oidc -- maybe useful only until we have real integration tests in place
-    sign_ctx_cls, _, identity = staging_with_rekorv2
-
-    # Hack to run Signer.sign() with staging rekor v2
+    sign_ctx_cls, _, identity = staging
     sign_ctx = sign_ctx_cls()
 
     stmt = (
@@ -56,12 +54,10 @@ def test_rekor_v2_create_entry_dsse(staging_with_rekorv2):
 
 @pytest.mark.staging
 @pytest.mark.ambient_oidc
-def test_rekor_v2_create_entry_hashed_rekord(staging_with_rekorv2):
+def test_rekor_v2_create_entry_hashed_rekord(staging):
     # This is not a real unit test: it requires not only staging rekor but also TUF
     # fulcio and oidc -- maybe useful only until we have real integration tests in place
-    sign_ctx_cls, _, identity = staging_with_rekorv2
-
-    # Hack to run Signer.sign() with staging rekor v2
+    sign_ctx_cls, _, identity = staging
     sign_ctx = sign_ctx_cls()
 
     with sign_ctx.signer(identity) as signer:

@@ -7,12 +7,15 @@ on:
       - series/*
   pull_request:
   schedule:
-    - cron: "0 12 * * *"
+    - cron: "0 11 * * *"
+  workflow_dispatch:
 
 permissions: {}
 
 jobs:
   test:
+    # Avoid scheduled runs in forks
+    if: github.event_name != 'schedule' || github.repository == 'sigstore/sigstore-python'
     permissions:
       # Needed to access the workflow's OIDC identity.
       id-token: write
