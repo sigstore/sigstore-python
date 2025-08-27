@@ -11,6 +11,7 @@ permissions: {}
 
 jobs:
   staging-tests:
+    if: github.event_name != 'schedule' || github.repository == 'sigstore/sigstore-python'
     runs-on: ubuntu-latest
     permissions:
       # Needed to access the workflow's OIDC identity.
