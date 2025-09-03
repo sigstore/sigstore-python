@@ -59,7 +59,8 @@ if "--staging" in fixed_args:
     command.append("--staging")
     fixed_args.remove("--staging")
 
-# We may get "--trusted-root" as argument but sigstore-python wants "--trust-config":
+# We may get "--trusted-root" and "--signing-config" as argument but sigstore-python
+# wants "--trust-config":
 trusted_root_path = None
 with suppress(ValueError):
     i = fixed_args.index("--trusted-root")
@@ -67,12 +68,25 @@ with suppress(ValueError):
     fixed_args.pop(i)
     fixed_args.pop(i)
 
+signing_config_path = None
+with suppress(ValueError):
+    i = fixed_args.index("--signing-config")
+    signing_config_path = fixed_args[i + 1]
+    fixed_args.pop(i)
+    fixed_args.pop(i)
+
+
 # If we did get a trustedroot, write a matching trustconfig into a temp file
+# Use given signingconfig if possible, otherwise use the fake one in template
 with NamedTemporaryFile(mode="wt") as temp_file:
     if trusted_root_path is not None:
         with open(trusted_root_path) as f:
             trusted_root = json.load(f)
         trust_config["trustedRoot"] = trusted_root
+        if signing_config_path is not None:
+            with open(signing_config_path) as f:
+                signing_config = json.load(f)
+            trust_config["signingConfig"] = signing_config
 
         json.dump(trust_config, temp_file)
         temp_file.flush()
