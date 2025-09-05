@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import sys
+from datetime import datetime, timezone
 from typing import IO, NewType, Union
 from urllib import parse
 
@@ -33,7 +34,7 @@ from cryptography.x509 import (
     load_der_x509_certificate,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
-from sigstore_models.common.v1 import HashAlgorithm
+from sigstore_models.common.v1 import HashAlgorithm, TimeRange
 
 from sigstore import hashes as sigstore_hashes
 from sigstore.errors import VerificationError
@@ -354,3 +355,25 @@ def cert_is_leaf(cert: Certificate) -> bool:
         return ExtendedKeyUsageOID.CODE_SIGNING in extended_key_usage.value  # type: ignore[operator]
     except ExtensionNotFound:
         raise VerificationError("invalid X.509 certificate: missing ExtendedKeyUsage")
+
+
+def is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
+    """
+    Given a `period`, checks that the the current time is not before `start`. If
+    `allow_expired` is `False`, also checks that the current time is not after
+    `end`.
+    """
+    now = datetime.now(timezone.utc)
+
+    # If there was no validity period specified, the key is always valid.
+    if not period:
+        return True
+
+    # Active: if the current time is before the starting period, we are not yet
+    # valid.
+    if now < period.start:
+        return False
+
+    # If we want Expired keys, the key is valid at this point. Otherwise, check
+    # that we are within range.
+    return allow_expired or (period.end is None or now <= period.end)

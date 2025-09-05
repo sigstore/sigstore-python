@@ -59,11 +59,13 @@ All versions prior to 0.9.0 are untracked.
 ### Changed
 
 * API:
-  * ClientTrustConfig now provides methods `production()`, `staging()`and `from_tuf()`
+  * `TrustedRoot`, `SigningConfig`, and `ClientTrustConfig` are now exposed in
+    `sigstore.models`. [#1496](https://github.com/sigstore/sigstore-python/pull/1496)
+  * `ClientTrustConfig` now provides methods `production()`, `staging()`and `from_tuf()`
     to get access to current client configuration (trusted keys & certificates,
     URLs and their validity periods). [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
-  * SigningConfig now has methods that return actual clients (like `RekorClient`) instead of
-    just URLs. The returned clients are also filtered according to SigningConfig contents.
+  * `SigningConfig` now has methods that return actual clients (like `RekorClient`) instead of
+    just URLs. The returned clients are also filtered according to `SigningConfig` contents.
     [#1407](https://github.com/sigstore/sigstore-python/pull/1407)
 * `--trust-config` now requires a file with SigningConfig v0.2, and is able to fully
   configure the used Sigstore instance [#1358]/(https://github.com/sigstore/sigstore-python/pull/1358)
