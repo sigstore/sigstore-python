@@ -26,7 +26,7 @@ jobs:
       - name: install sigstore-python
         run: python -m pip install .
 
-      - uses: sigstore/sigstore-conformance@a7ac671d8e55553de127c8b1ad96d8d416315e83 # v0.0.19
+      - uses: sigstore/sigstore-conformance@1d8b0cdd88fa7fb5a8510e51faf6ccad8c96f10a # v0.0.20
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance
           xfail: "test_verify*intoto-with-custom-trust-root]" # see issue 1442
