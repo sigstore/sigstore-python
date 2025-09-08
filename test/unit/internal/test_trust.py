@@ -30,13 +30,15 @@ from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
-    ClientTrustConfig,
     KeyringPurpose,
+)
+from sigstore._utils import is_timerange_valid
+from sigstore.errors import Error
+from sigstore.models import (
+    ClientTrustConfig,
     SigningConfig,
     TrustedRoot,
-    _is_timerange_valid,
 )
-from sigstore.errors import Error
 
 # Test data for TestSigningcconfig
 _service_v1_op1 = Service(url="url1", major_api_version=1, operator="op1")
@@ -271,22 +273,22 @@ def test_is_timerange_valid():
         )
 
     # Test None should always be valid
-    assert _is_timerange_valid(None, allow_expired=False)
-    assert _is_timerange_valid(None, allow_expired=True)
+    assert is_timerange_valid(None, allow_expired=False)
+    assert is_timerange_valid(None, allow_expired=True)
 
     # Test lower bound conditions
-    assert _is_timerange_valid(
+    assert is_timerange_valid(
         range_from(-1, 1), allow_expired=False
     )  # Valid: 1 ago, 1 from now
-    assert not _is_timerange_valid(
+    assert not is_timerange_valid(
         range_from(1, 1), allow_expired=False
     )  # Invalid: 1 from now, 1 from now
 
     # Test upper bound conditions
-    assert not _is_timerange_valid(
+    assert not is_timerange_valid(
         range_from(-1, -1), allow_expired=False
     )  # Invalid: 1 ago, 1 ago
-    assert _is_timerange_valid(
+    assert is_timerange_valid(
         range_from(-1, -1), allow_expired=True
     )  # Valid: 1 ago, 1 ago
 
