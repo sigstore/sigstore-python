@@ -8,81 +8,96 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [4.0.0]
+
+This is a major release with a host of API and functionality changes. The major new feature
+is Rekor v2 support but many other changes are also included, see list below.
+
 ### Added
 
-* Added `LogEntry._kind_version`, which is now parsed earlier upon receipt from the rekor API,
-  either from the root of the response, or from the reponse's inner base64-encoded JSON `body`.
-  [#1370](https://github.com/sigstore/sigstore-python/pull/1370)
-
-* Added support for ed25519 keys.
-  [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
-* API: `IdentityToken` now supports `client_id` for audience claim validation.
+* cli: Add `--rekor-version` to `sign` command arguments: This can be useful
+  if Sigstore instance provides multiple rekor versions and user wants to
+  override the default choice
+  [#1471](https://github.com/sigstore/sigstore-python/pull/1471)
+* cli: Support parallel signing. When multiple artifacts are signed, the rekor
+  requests are submitted in parallel: this is especially useful with rekor v2.
+  [#1468](https://github.com/sigstore/sigstore-python/pull/1468), [#1478](https://github.com/sigstore/sigstore-python/pull/1478),
+  [#1485](https://github.com/sigstore/sigstore-python/pull/1485)
+* oidc (API): Allow custom audience claims via API
   [#1402](https://github.com/sigstore/sigstore-python/pull/1402)
-
-* Added a `RekorV2Client` for posting new entries to a Rekor V2 instance.
-  [#1400](https://github.com/sigstore/sigstore-python/pull/1422)
-
-* Added a function for determining the `key_details` of a certificate`.
-  [#1456](https://github.com/sigstore/sigstore-python/pull/1456)
-
-### Fixed
-
-* Avoid instantiation issues with `TransparencyLogEntry` when `InclusionPromise` is not present.
-
-* TSA: Changed the Timestamp Authority requests to explicitly use sha256 for message digests.
-  [#1373](https://github.com/sigstore/sigstore-python/pull/1373)
-
-* TSA: Correctly verify timestamps with hashes other than SHA-256. Currently supported
-  algorithms are SHA-256, SHA-384, SHA-512.
-  [#1373](https://github.com/sigstore/sigstore-python/pull/1373)
-
-* Fixed the certificate validity period check for Timestamp Authorities (TSA).
-  Certificates need not have an end date, while still requiring a start date.
-  [#1368](https://github.com/sigstore/sigstore-python/pull/1368)
-
-* Made Rekor client more compatible with Rekor v2 by removing trailing slashes
-  from endpoints ([#1366](https://github.com/sigstore/sigstore-python/pull/1366))
-
-* Verify: verify that all established times (timestamps or the log integration time)
-  are within the signing certificate validity period. At least one established time is
-  still required.
-  [#1381](https://github.com/sigstore/sigstore-python/pull/1381)
-
-* CI: Timestamp Authority tests use latest release, not latest tag, of
-  [sigstore/timestamp-authority](https://github.com/sigstore/timestamp-authority)
-  [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
-
-* Tests: Updated the `staging` and `sign_ctx_and_ident_for_env` fixtures to use the new methods
-  for generating a `SigningContext`.
-  [#1409](https://github.com/sigstore/sigstore-python/pull/1409)
+* rekor (API): Support rekor v2 (aka rekor-tiles) in both verification and signing.
+  [#1370](https://github.com/sigstore/sigstore-python/pull/1370), [#1422](https://github.com/sigstore/sigstore-python/pull/1422),
+  [#1432](https://github.com/sigstore/sigstore-python/pull/1432)
+* trust (API): Make TrustedRoot, SigningConfig and ClientTrustConfig public API
+  [#1496](https://github.com/sigstore/sigstore-python/pull/1496)
 
 ### Changed
 
-* API:
-  * `TrustedRoot`, `SigningConfig`, and `ClientTrustConfig` are now exposed in
-    `sigstore.models`. [#1496](https://github.com/sigstore/sigstore-python/pull/1496)
-  * `ClientTrustConfig` now provides methods `production()`, `staging()`and `from_tuf()`
-    to get access to current client configuration (trusted keys & certificates,
-    URLs and their validity periods). [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
-  * `SigningConfig` now has methods that return actual clients (like `RekorClient`) instead of
-    just URLs. The returned clients are also filtered according to `SigningConfig` contents.
-    [#1407](https://github.com/sigstore/sigstore-python/pull/1407)
-* `--trust-config` now requires a file with SigningConfig v0.2, and is able to fully
-  configure the used Sigstore instance [#1358]/(https://github.com/sigstore/sigstore-python/pull/1358)
-* By default (when `--trust-config` is not used) the whole trust configuration now
-  comes from the TUF repository [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
-* If the user provided TSA urls, rfc3161 timestamps are now fetched **before** submitting
-  entries to rekor. [#1463](https://github.com/sigstore/sigstore-python/pull/1463)
+* cli: Improve verify UX when wrong instance is used
+  [#1510](https://github.com/sigstore/sigstore-python/pull/1510)
+* deps: replace sigstore_protobuf_specs dependency with sigstore-models
+  [#1470](https://github.com/sigstore/sigstore-python/pull/1470)
+* infra: Various testing improvements
+  [#1377](https://github.com/sigstore/sigstore-python/pull/1377), [#1406](https://github.com/sigstore/sigstore-python/pull/1406),
+  [#1409](https://github.com/sigstore/sigstore-python/pull/1409), [#1523](https://github.com/sigstore/sigstore-python/pull/1523),
+  [#1519](https://github.com/sigstore/sigstore-python/pull/1519), [#1416](https://github.com/sigstore/sigstore-python/pull/1416),
+  [#1484](https://github.com/sigstore/sigstore-python/pull/1484)
+* infra: Remove pip-tools workaround
+  [#1521](https://github.com/sigstore/sigstore-python/pull/1521)
+* infra: Conformance client updates
+  [#1505](https://github.com/sigstore/sigstore-python/pull/1505), [#1443](https://github.com/sigstore/sigstore-python/pull/1443)
+* trust: Update embedded TUF root
+  [#1515](https://github.com/sigstore/sigstore-python/pull/1515)
+* trust (API): TrustConfig now provides the `production()`and `staging()` helpers. Similar methods were removed from
+  SigningConfig, TrustedRoot, SigningContext and Issuer. Use TrustConfig everywhere in code base.
+  [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
+* trust (API): support SigningConfig v0.2, remove support for v0.1. The new format now fully defines the
+  sigstore instance the client uses. `SigningConfig` class now has methods to return actual clients
+  (like RekorClient) instead of just URLs for that sigstore instance. The `--trust-config` cli option now
+  expects the trust config to contain a v0.2 SigningConfig.
+  [#1358](https://github.com/sigstore/sigstore-python/pull/1358), [#1407](https://github.com/sigstore/sigstore-python/pull/1407)
+* trust: Support ed25519 keys in trusted root
+  [#1377](https://github.com/sigstore/sigstore-python/pull/1377)
 
-### Removed
- * API:
-  * `Issuer.production()` and `Issuer.staging()` have been removed: Use
-    `Issuer()` instead with relevant URL. The current public good production and
-    staging URLs are available via the `ClientTrustConfig` object.
-    [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
-  * `SigningContext.production()` and `SigningContext.staging()` have been removed:
-    Use `SigningContext.from_trust_config()` instead.
-    [#1363](https://github.com/sigstore/sigstore-python/pull/1363)
+### Fixed
+
+* rekor: resolve circular import of LogEntry
+  [#1458](https://github.com/sigstore/sigstore-python/pull/1458)
+* rekor: Fix checkpoint signature lookup when there are multiple signatures
+  [#1514](https://github.com/sigstore/sigstore-python/pull/1514)
+* rekor: Fix entry handling so inclusion promise is optional
+  [#1382](https://github.com/sigstore/sigstore-python/pull/1382)
+* rekor: Avoid trailing slash in post to /entries
+  [#1366](https://github.com/sigstore/sigstore-python/pull/1366)
+* sign: fetch TSA timestamps before submitting an entry to rekor
+  [#1463](https://github.com/sigstore/sigstore-python/pull/1463)
+* timestamp: Specify sha256 in TSA timestamp request
+  [#1373](https://github.com/sigstore/sigstore-python/pull/1373)
+* trust: Fail less hard when trusted root contains unknown keys
+  [#1424](https://github.com/sigstore/sigstore-python/pull/1424)
+* verify: Fix TSA cert chain construction (fixes issue in the case where certificate is not embedded in
+  the timestamp)
+  [#1482](https://github.com/sigstore/sigstore-python/pull/1482)
+* verify: Use TSA hash algorithm specified in the timestamp (SHA-256, SHA-384 and SHA-512 are supported)
+  [#1385](https://github.com/sigstore/sigstore-python/pull/1385)
+* verify: Check artifact signing time against all established times
+  [#1381](https://github.com/sigstore/sigstore-python/pull/1381)
+* verify: Handle unset TSA timestamp validity end
+  [#1368](https://github.com/sigstore/sigstore-python/pull/1368)
+
+
+## [3.6.5]
+
+### Fixed
+
+* Fixed verified time handling so that additional timestamps cannot break
+  otherwise valid signature bundles ([#1492](https://github.com/sigstore/sigstore-python/pull/1492))
+ 
+### Changed
+
+* Added cryptography 45 to list of compatible cryptography releases
+  ([#1498](https://github.com/sigstore/sigstore-python/pull/1498))
+
 
 ## [3.6.4]
 
@@ -699,7 +714,9 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.6.4...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/sigstore/sigstore-python/compare/v3.6.5...v4.0.0
+[3.6.5]: https://github.com/sigstore/sigstore-python/compare/v3.6.4...v3.6.5
 [3.6.4]: https://github.com/sigstore/sigstore-python/compare/v3.6.3...v3.6.4
 [3.6.3]: https://github.com/sigstore/sigstore-python/compare/v3.6.2...v3.6.3
 [3.6.2]: https://github.com/sigstore/sigstore-python/compare/v3.6.1...v3.6.2
