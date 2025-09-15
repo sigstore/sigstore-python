@@ -16,16 +16,16 @@ is Rekor v2 support but many other changes are also included, see list below.
 ### Added
 
 * cli: Add `--rekor-version` to `sign` command arguments: This can be useful
-  if Sigstore instance provides multiple rekor versions and user wants to
+  if Sigstore instance provides multiple Rekor versions and user wants to
   override the default choice
   [#1471](https://github.com/sigstore/sigstore-python/pull/1471)
-* cli: Support parallel signing. When multiple artifacts are signed, the rekor
-  requests are submitted in parallel: this is especially useful with rekor v2.
+* cli: Support parallel signing. When multiple artifacts are signed, the Rekor
+  requests are submitted in parallel: this is especially useful with Rekor v2.
   [#1468](https://github.com/sigstore/sigstore-python/pull/1468), [#1478](https://github.com/sigstore/sigstore-python/pull/1478),
   [#1485](https://github.com/sigstore/sigstore-python/pull/1485)
 * oidc (API): Allow custom audience claims via API
   [#1402](https://github.com/sigstore/sigstore-python/pull/1402)
-* rekor (API): Support rekor v2 (aka rekor-tiles) in both verification and signing.
+* rekor (API): Support Rekor v2 (aka rekor-tiles) in both verification and signing.
   [#1370](https://github.com/sigstore/sigstore-python/pull/1370), [#1422](https://github.com/sigstore/sigstore-python/pull/1422),
   [#1432](https://github.com/sigstore/sigstore-python/pull/1432)
 * trust (API): Make TrustedRoot, SigningConfig and ClientTrustConfig public API
@@ -37,15 +37,6 @@ is Rekor v2 support but many other changes are also included, see list below.
   [#1510](https://github.com/sigstore/sigstore-python/pull/1510)
 * deps: replace sigstore_protobuf_specs dependency with sigstore-models
   [#1470](https://github.com/sigstore/sigstore-python/pull/1470)
-* infra: Various testing improvements
-  [#1377](https://github.com/sigstore/sigstore-python/pull/1377), [#1406](https://github.com/sigstore/sigstore-python/pull/1406),
-  [#1409](https://github.com/sigstore/sigstore-python/pull/1409), [#1523](https://github.com/sigstore/sigstore-python/pull/1523),
-  [#1519](https://github.com/sigstore/sigstore-python/pull/1519), [#1416](https://github.com/sigstore/sigstore-python/pull/1416),
-  [#1484](https://github.com/sigstore/sigstore-python/pull/1484)
-* infra: Remove pip-tools workaround
-  [#1521](https://github.com/sigstore/sigstore-python/pull/1521)
-* infra: Conformance client updates
-  [#1505](https://github.com/sigstore/sigstore-python/pull/1505), [#1443](https://github.com/sigstore/sigstore-python/pull/1443)
 * trust: Update embedded TUF root
   [#1515](https://github.com/sigstore/sigstore-python/pull/1515)
 * trust (API): TrustConfig now provides the `production()`and `staging()` helpers. Similar methods were removed from
@@ -69,7 +60,7 @@ is Rekor v2 support but many other changes are also included, see list below.
   [#1382](https://github.com/sigstore/sigstore-python/pull/1382)
 * rekor: Avoid trailing slash in post to /entries
   [#1366](https://github.com/sigstore/sigstore-python/pull/1366)
-* sign: fetch TSA timestamps before submitting an entry to rekor
+* sign: fetch TSA timestamps before submitting an entry to Rekor
   [#1463](https://github.com/sigstore/sigstore-python/pull/1463)
 * timestamp: Specify sha256 in TSA timestamp request
   [#1373](https://github.com/sigstore/sigstore-python/pull/1373)
