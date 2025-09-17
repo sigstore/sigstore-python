@@ -26,7 +26,7 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
-  "cryptography >= 42, < 46",
+  "cryptography >= 42, < 47",
   "id >= 1.1.0",
   "importlib_resources ~= 5.7; python_version < '3.11'",
   "pyasn1 ~= 0.6",
