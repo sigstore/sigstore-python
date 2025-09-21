@@ -19,6 +19,7 @@ TUF functionality for `sigstore-python`.
 from __future__ import annotations
 
 import logging
+import shutil
 from functools import lru_cache
 from pathlib import Path
 from urllib import parse
@@ -47,7 +48,10 @@ def _get_dirs(url: str) -> tuple[Path, Path]:
     app_name = "sigstore-python"
     app_author = "sigstore"
 
-    repo_base = parse.quote(url, safe="")
+    # not canonicalization, just handling trailing slash as common mistake:
+    _url = url.rstrip("/")
+
+    repo_base = parse.quote(_url, safe="")
 
     tuf_data_dir = Path(platformdirs.user_data_dir(app_name, app_author)) / "tuf"
     tuf_cache_dir = Path(platformdirs.user_cache_dir(app_name, app_author)) / "tuf"
@@ -122,6 +126,21 @@ class TrustUpdater:
                 self._updater.refresh()
             except Exception as e:
                 raise TUFError("Failed to refresh TUF metadata") from e
+
+    @classmethod
+    def trust_instance(self, url: str, root: Path) -> None:
+        """Trust a new Sigstore instance.
+
+        No checks are made for the validity of the root metadata.
+        """
+        metadata_dir, _ = _get_dirs(url)
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+
+        dst = metadata_dir / "root.json"
+        if dst.is_file():
+            raise ValueError(f"Instance {url} has already been initialized in {dst}")
+
+        shutil.copyfile(root, dst)
 
     @lru_cache()
     def get_trusted_root_path(self) -> str:
