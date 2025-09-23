@@ -92,7 +92,8 @@ class TUFError(Error):
         """Returns diagnostics specialized to the wrapped TUF error."""
         details = TUFError._details.get(
             type(self.__context__),
-            "Please report this issue at <https://github.com/sigstore/sigstore-python/issues/new>.",
+            "Please check any Sigstore instance related arguments and consider "
+            "reporting the issue at <https://github.com/sigstore/sigstore-python/issues/new>.",
         )
 
         return f"""\

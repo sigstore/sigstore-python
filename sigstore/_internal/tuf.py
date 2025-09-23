@@ -113,16 +113,17 @@ class TrustUpdater:
                 # or local metadata exists already (after "sigstore trust-instance")
                 root_json = bootstrap_root.read_bytes() if bootstrap_root else None
 
-            self._updater = Updater(
-                metadata_dir=str(self._metadata_dir),
-                metadata_base_url=url,
-                target_base_url=parse.urljoin(f"{url}/", "targets/"),
-                target_dir=str(self._targets_dir),
-                config=UpdaterConfig(app_user_agent=f"sigstore-python/{__version__}"),
-                bootstrap=root_json,
-            )
-
             try:
+                self._updater = Updater(
+                    metadata_dir=str(self._metadata_dir),
+                    metadata_base_url=url,
+                    target_base_url=parse.urljoin(f"{url}/", "targets/"),
+                    target_dir=str(self._targets_dir),
+                    config=UpdaterConfig(
+                        app_user_agent=f"sigstore-python/{__version__}"
+                    ),
+                    bootstrap=root_json,
+                )
                 self._updater.refresh()
             except Exception as e:
                 raise TUFError("Failed to refresh TUF metadata") from e
