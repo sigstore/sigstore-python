@@ -552,14 +552,14 @@ def _parser() -> argparse.ArgumentParser:
     )
     _add_shared_oidc_options(get_identity_token)
 
-    # `sigstore init-instance`
-    init_instance = subcommands.add_parser(
-        "init-instance",
+    # `sigstore trust-instance`
+    trust_instance = subcommands.add_parser(
+        "trust-instance",
         help="Initialize trust for a Sigstore instance",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[parent_parser],
     )
-    init_instance.add_argument(
+    trust_instance.add_argument(
         "root",
         metavar="ROOT",
         type=Path,
@@ -647,8 +647,8 @@ def main(args: list[str] | None = None) -> None:
                 _verify_github(args)
         elif args.subcommand == "get-identity-token":
             _get_identity_token(args)
-        elif args.subcommand == "init-instance":
-            _init_instance(args)
+        elif args.subcommand == "trust-instance":
+            _trust_instance(args)
         elif args.subcommand == "plumbing":
             if args.plumbing_subcommand == "fix-bundle":
                 _fix_bundle(args)
@@ -660,7 +660,7 @@ def main(args: list[str] | None = None) -> None:
         e.log_and_exit(_logger, args.verbose >= 1)
 
 
-def _init_instance(args: argparse.Namespace) -> None:
+def _trust_instance(args: argparse.Namespace) -> None:
     """
     Initialize trust for a Sigstore instance
     """
@@ -669,7 +669,7 @@ def _init_instance(args: argparse.Namespace) -> None:
     if not root.is_file():
         _invalid_arguments(args, f"Input must be a file: {root}")
     if instance is None:
-        _invalid_arguments(args, "init-instance requires '--instance URL'")
+        _invalid_arguments(args, "trust-instance requires '--instance URL'")
 
     try:
         TrustUpdater.trust_instance(instance, root)

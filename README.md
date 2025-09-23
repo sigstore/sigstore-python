@@ -78,7 +78,7 @@ positional arguments:
     get-identity-token
                        retrieve and return a Sigstore-compatible OpenID
                        Connect token
-    init-instance      Initialize trust for a Sigstore instance
+    trust-instance     Initialize trust for a Sigstore instance
     plumbing           developer-only plumbing operations
 
 optional arguments:
