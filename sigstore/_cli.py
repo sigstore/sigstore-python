@@ -38,7 +38,6 @@ from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
-from sigstore._internal.tuf import TrustUpdater
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
@@ -671,11 +670,9 @@ def _trust_instance(args: argparse.Namespace) -> None:
     if instance is None:
         _invalid_arguments(args, "trust-instance requires '--instance URL'")
 
-    try:
-        TrustUpdater.trust_instance(instance, root)
-    except ValueError as e:
-        # instance is already configured
-        _logger.warning(e)
+    # ClientTrustConfig construction verifies the root is valid, and
+    # stores it in the local metadata store for future use
+    _ = ClientTrustConfig.from_tuf(instance, bootstrap_root=root)
 
 
 def _get_identity_token(args: argparse.Namespace) -> None:
