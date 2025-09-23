@@ -1256,12 +1256,7 @@ def _get_trust_config(args: argparse.Namespace) -> ClientTrustConfig:
     if args.trust_config:
         trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
     elif args.instance:
-        try:
-            trust_config = ClientTrustConfig.from_tuf(args.instance, offline=offline)
-        except FileNotFoundError:
-            raise ValueError(
-                f"Instance {args.instance} trust seems to not be initialized."
-            )
+        trust_config = ClientTrustConfig.from_tuf(args.instance, offline=offline)
     elif args.staging:
         trust_config = ClientTrustConfig.staging(offline=offline)
     else:
