@@ -48,12 +48,12 @@ jobs:
       - name: Fetch testing oidc token
         uses: sigstore-conformance/extremely-dangerous-public-oidc-beacon@b517a742e5a3db9e3cbf8e2e1c792b36982f78db # main
       - name: Sign 
-        run: python -m sigstore --staging sign --identity-token $(cat oidc-token.txt) README.md
+        run: python -m sigstore --staging sign --identity-token $(cat oidc-token.txt) test/assets/a.txt
       - name: upload signature bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ matrix.os }}-bundle
-          path: README.md.sigstore.json
+          path: test/assets/a.txt.sigstore.json
           if-no-files-found: error
           retention-days: 1
   verify:
@@ -83,4 +83,5 @@ jobs:
         run: |
           python -m sigstore --staging verify github --verbose \
             --cert-identity "https://github.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main" \
-            README.md
+            --bundle a.txt.sigstore.json \
+            test/assets/a.txt
