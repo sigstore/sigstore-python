@@ -1067,7 +1067,7 @@ def _collect_verification_state(
 
             # Load the signature
             _logger.debug(f"Using signature from: {materials.signature}")
-            b64_signature = materials.signature.read_text()
+            b64_signature = materials.signature.read_text(encoding="utf-8")
             signature = base64.b64decode(b64_signature)
 
             # When using "detached" materials, we *must* retrieve the log
