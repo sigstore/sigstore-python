@@ -686,16 +686,16 @@ def _sign_file_threaded(
 
     if outputs.signature is not None:
         signature = base64.b64encode(result.signature).decode()
-        with outputs.signature.open(mode="w") as io:
+        with outputs.signature.open(mode="w", encoding="utf-8") as io:
             print(signature, file=io)
 
     if outputs.certificate is not None:
         cert_pem = signer._signing_cert().public_bytes(Encoding.PEM).decode()
-        with outputs.certificate.open(mode="w") as io:
+        with outputs.certificate.open(mode="w", encoding="utf-8") as io:
             print(cert_pem, file=io)
 
     if outputs.bundle is not None:
-        with outputs.bundle.open(mode="w") as io:
+        with outputs.bundle.open(mode="w", encoding="utf-8") as io:
             print(result.to_json(), file=io)
 
 
@@ -769,7 +769,7 @@ def _attest(args: argparse.Namespace) -> None:
         _invalid_arguments(args, f"Predicate must be a file: {predicate_path}")
 
     try:
-        with open(predicate_path, "r") as f:
+        with open(predicate_path, "r", encoding="utf-8") as f:
             predicate = json.load(f)
             # We do a basic sanity check using our Pydantic models to see if the
             # contents of the predicate file match the specified predicate type.

@@ -73,7 +73,7 @@ def test_attest_success_default_output_bundle(
 
     assert expected_output_bundle.exists()
     verifier = Verifier.staging()
-    with open(expected_output_bundle, "r") as bundle_file:
+    with open(expected_output_bundle, "r", encoding="utf-8") as bundle_file:
         bundle = Bundle.from_json(bundle_file.read())
         verifier.verify_dsse(bundle=bundle, policy=UnsafeNoOp())
 
