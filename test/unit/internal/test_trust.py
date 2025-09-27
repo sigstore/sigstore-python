@@ -33,7 +33,7 @@ from sigstore._internal.trust import (
     KeyringPurpose,
 )
 from sigstore._utils import is_timerange_valid
-from sigstore.errors import Error
+from sigstore.errors import Error, TUFError
 from sigstore.models import (
     ClientTrustConfig,
     SigningConfig,
@@ -294,9 +294,8 @@ def test_is_timerange_valid():
 
 
 def test_trust_root_tuf_instance_error():
-    # Expect file not found since embedded root.json is not found and
-    # no local metadata is found
-    with pytest.raises(FileNotFoundError):
+    # embedded root.json is not found and no local metadata is found
+    with pytest.raises(TUFError):
         ClientTrustConfig.from_tuf("foo.bar")
 
 
