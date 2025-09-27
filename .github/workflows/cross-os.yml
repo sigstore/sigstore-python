@@ -1,0 +1,87 @@
+# Copyright 2025 The Sigstore Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Cross-platform sign and verify
+on:
+  push:
+    branches:
+      - main
+      - series/*
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  sign:
+    name: Sign on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, macos, windows]
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: "3.x"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+      - run: pip install .
+      - name: Fetch testing oidc token
+        uses: sigstore-conformance/extremely-dangerous-public-oidc-beacon@b517a742e5a3db9e3cbf8e2e1c792b36982f78db # main
+      - name: Sign 
+        run: python -m sigstore --staging sign --identity-token $(cat oidc-token.txt) test/assets/a.txt
+      - name: upload signature bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.os }}-bundle
+          path: test/assets/a.txt.sigstore.json
+          if-no-files-found: error
+          retention-days: 1
+  verify:
+    name: Verify ${{ matrix.signed-with-os }} bundle on ${{ matrix.os }}
+    if: ${{ always() }} # don't stop some verification if one of the signing jobs failed
+    needs: [sign]
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false # Don't cancel other jobs if one fails
+      matrix:
+        os: [ubuntu, macos, windows]
+        signed-with-os: [ubuntu, macos, windows]
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: "3.x"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+      - run: pip install .
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: ${{ matrix.signed-with-os }}-bundle
+      - name: Verify
+        run: |
+          python -m sigstore --staging verify github --verbose \
+            --cert-identity "https://github.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main" \
+            --bundle a.txt.sigstore.json \
+            test/assets/a.txt
