@@ -72,7 +72,7 @@ def test_sign_success_default_output_bundle(
     assert expected_output_bundle.exists()
     verifier = Verifier.staging()
     with (
-        open(expected_output_bundle, "r") as bundle_file,
+        open(expected_output_bundle, "r", encoding="utf-8") as bundle_file,
         open(artifact, "rb") as input_file,
     ):
         bundle = Bundle.from_json(bundle_file.read())
@@ -112,7 +112,7 @@ def test_sign_success_multiple_artifacts(capsys, sigstore, asset_integration, tm
         assert expected_output_bundle.exists()
         verifier = Verifier.staging()
         with (
-            open(expected_output_bundle, "r") as bundle_file,
+            open(expected_output_bundle, "r", encoding="utf-8") as bundle_file,
             open(artifact, "rb") as input_file,
         ):
             bundle = Bundle.from_json(bundle_file.read())
@@ -154,7 +154,7 @@ def test_sign_success_multiple_artifacts_rekor_v2(
         assert expected_output_bundle.exists()
         verifier = Verifier.staging()
         with (
-            open(expected_output_bundle, "r") as bundle_file,
+            open(expected_output_bundle, "r", encoding="utf-8") as bundle_file,
             open(artifact, "rb") as input_file,
         ):
             bundle = Bundle.from_json(bundle_file.read())
