@@ -66,18 +66,21 @@ class TrustUpdater:
     production and staging instances) in the application resources.
     """
 
-    def __init__(self, url: str, offline: bool = False) -> None:
+    def __init__(
+        self, url: str, offline: bool = False, bootstrap_root: Path | None = None
+    ) -> None:
         """
         Create a new `TrustUpdater`, pulling from the given `url`.
 
         TrustUpdater expects that either embedded data contains
-        a root.json for this url or that local data has been initialized
-        already.
+        a root.json for this url or that `bootstrap_root` is provided as argument.
 
         If not `offline`, TrustUpdater will update the TUF metadata from
         the remote repository.
         """
-        self._repo_url = url
+        # not canonicalization, just handling trailing slash as common mistake:
+        url = url.rstrip("/")
+
         self._metadata_dir, self._targets_dir = _get_dirs(url)
 
         # Populate targets cache so we don't have to download these versions
@@ -90,7 +93,7 @@ class TrustUpdater:
                     data = read_embedded(artifact, url)
                     artifact_path.write_bytes(data)
                 except FileNotFoundError:
-                    pass  # this is ok: e.g. signing_config is not in prod repository yet
+                    pass  # this is ok: we only have embedded data for specific repos
 
         _logger.debug(f"TUF metadata: {self._metadata_dir}")
         _logger.debug(f"TUF targets cache: {self._targets_dir}")
@@ -103,22 +106,24 @@ class TrustUpdater:
         else:
             # Initialize and update the toplevel TUF metadata
             try:
-                root_json = read_embedded("root.json", url)
+                root_json: bytes | None = read_embedded("root.json", url)
             except FileNotFoundError:
-                # embedded root not found: we can still initialize _if_ the local metadata
-                # exists already
-                root_json = None
-
-            self._updater = Updater(
-                metadata_dir=str(self._metadata_dir),
-                metadata_base_url=self._repo_url,
-                target_base_url=parse.urljoin(f"{self._repo_url}/", "targets/"),
-                target_dir=str(self._targets_dir),
-                config=UpdaterConfig(app_user_agent=f"sigstore-python/{__version__}"),
-                bootstrap=root_json,
-            )
+                # We do not have embedded root metadata for this URL: we can still
+                # initialize _if_ given bootstrap root (i.e. during "sigstore trust-instance")
+                # or local metadata exists already (after "sigstore trust-instance")
+                root_json = bootstrap_root.read_bytes() if bootstrap_root else None
 
             try:
+                self._updater = Updater(
+                    metadata_dir=str(self._metadata_dir),
+                    metadata_base_url=url,
+                    target_base_url=parse.urljoin(f"{url}/", "targets/"),
+                    target_dir=str(self._targets_dir),
+                    config=UpdaterConfig(
+                        app_user_agent=f"sigstore-python/{__version__}"
+                    ),
+                    bootstrap=root_json,
+                )
                 self._updater.refresh()
             except Exception as e:
                 raise TUFError("Failed to refresh TUF metadata") from e
