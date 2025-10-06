@@ -87,10 +87,15 @@ optional arguments:
                        times to increase verbosity (default: 0)
   -V, --version        show program's version number and exit
   --staging            Use sigstore's staging instance, instead of the default
-                       production instance (default: False)
+                       production instance. Mutually exclusive with other
+                       instance configuration arguments. (default: False)
   --instance URL       Use a given Sigstore instance URL, instead of the
-                       default production instance (default: None)
-  --trust-config FILE  The client trust configuration to use (default: None)
+                       default production instance. Mutually exclusive with
+                       other instance configuration arguments. (default: None)
+  --trust-config FILE  Use given client trust configuration instead of using
+                       the default production instance. Mutually exclusive
+                       with other instance configuration arguments. (default:
+                       None)
 ```
 <!-- @end-sigstore-help@ -->
 

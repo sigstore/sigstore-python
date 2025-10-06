@@ -263,19 +263,28 @@ def _parser() -> argparse.ArgumentParser:
         "--staging",
         action="store_true",
         default=_boolify_env("SIGSTORE_STAGING"),
-        help="Use sigstore's staging instance, instead of the default production instance",
+        help=(
+            "Use sigstore's staging instance, instead of the default production instance."
+            " Mutually exclusive with other instance configuration arguments."
+        ),
     )
     global_instance_options.add_argument(
         "--instance",
         metavar="URL",
         type=str,
-        help="Use a given Sigstore instance URL, instead of the default production instance",
+        help=(
+            "Use a given Sigstore instance URL, instead of the default production instance."
+            " Mutually exclusive with other instance configuration arguments."
+        ),
     )
     global_instance_options.add_argument(
         "--trust-config",
         metavar="FILE",
         type=Path,
-        help="The client trust configuration to use",
+        help=(
+            "Use given client trust configuration instead of using the default production"
+            " instance. Mutually exclusive with other instance configuration arguments."
+        ),
     )
     subcommands = parser.add_subparsers(
         required=True,
