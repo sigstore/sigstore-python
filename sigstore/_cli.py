@@ -263,13 +263,28 @@ def _parser() -> argparse.ArgumentParser:
         "--staging",
         action="store_true",
         default=_boolify_env("SIGSTORE_STAGING"),
-        help="Use sigstore's staging instances, instead of the default production instances",
+        help=(
+            "Use sigstore's staging instance, instead of the default production instance."
+            " Mutually exclusive with other instance configuration arguments."
+        ),
+    )
+    global_instance_options.add_argument(
+        "--instance",
+        metavar="URL",
+        type=str,
+        help=(
+            "Use a given Sigstore instance URL, instead of the default production instance."
+            " Mutually exclusive with other instance configuration arguments."
+        ),
     )
     global_instance_options.add_argument(
         "--trust-config",
         metavar="FILE",
         type=Path,
-        help="The client trust configuration to use",
+        help=(
+            "Use given client trust configuration instead of using the default production"
+            " instance. Mutually exclusive with other instance configuration arguments."
+        ),
     )
     subcommands = parser.add_subparsers(
         required=True,
@@ -545,6 +560,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     _add_shared_oidc_options(get_identity_token)
 
+    # `sigstore trust-instance`
+    trust_instance = subcommands.add_parser(
+        "trust-instance",
+        help="Initialize trust for a Sigstore instance",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[parent_parser],
+    )
+    trust_instance.add_argument(
+        "root",
+        metavar="ROOT",
+        type=Path,
+        help="The TUF root metadata for the instance",
+    )
+
     # `sigstore plumbing`
     plumbing = subcommands.add_parser(
         "plumbing",
@@ -626,6 +655,8 @@ def main(args: list[str] | None = None) -> None:
                 _verify_github(args)
         elif args.subcommand == "get-identity-token":
             _get_identity_token(args)
+        elif args.subcommand == "trust-instance":
+            _trust_instance(args)
         elif args.subcommand == "plumbing":
             if args.plumbing_subcommand == "fix-bundle":
                 _fix_bundle(args)
@@ -635,6 +666,22 @@ def main(args: list[str] | None = None) -> None:
             _invalid_arguments(args, f"Unknown subcommand: {args.subcommand}")
     except Error as e:
         e.log_and_exit(_logger, args.verbose >= 1)
+
+
+def _trust_instance(args: argparse.Namespace) -> None:
+    """
+    Initialize trust for a Sigstore instance
+    """
+    root: Path = args.root
+    instance: str | None = args.instance
+    if not root.is_file():
+        _invalid_arguments(args, f"Input must be a file: {root}")
+    if instance is None:
+        _invalid_arguments(args, "trust-instance requires '--instance URL'")
+
+    # ClientTrustConfig construction verifies the root is valid, and
+    # stores it in the local metadata store for future use
+    _ = ClientTrustConfig.from_tuf(instance, bootstrap_root=root)
 
 
 def _get_identity_token(args: argparse.Namespace) -> None:
@@ -1210,13 +1257,15 @@ def _get_trust_config(args: argparse.Namespace) -> ClientTrustConfig:
     Return the client trust configuration (Sigstore service URLs, key material and lifetimes)
 
     The configuration may come from explicit argument (--trust-config) or from the TUF
-    repository of the used Sigstore instance.
+    repository of the used Sigstore instance (--staging or --instance).
     """
     # Not all commands provide --offline
     offline = getattr(args, "offline", False)
 
     if args.trust_config:
         trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
+    elif args.instance:
+        trust_config = ClientTrustConfig.from_tuf(args.instance, offline=offline)
     elif args.staging:
         trust_config = ClientTrustConfig.staging(offline=offline)
     else:

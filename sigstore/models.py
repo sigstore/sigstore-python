@@ -929,13 +929,14 @@ class ClientTrustConfig:
         cls,
         url: str,
         offline: bool = False,
+        bootstrap_root: Path | None = None,
     ) -> ClientTrustConfig:
         """Create a new trust config from a TUF repository.
 
         If `offline`, will use data in local TUF cache. Otherwise will
         update the trust config from remote TUF repository.
         """
-        updater = TrustUpdater(url, offline)
+        updater = TrustUpdater(url, offline, bootstrap_root)
 
         tr_path = updater.get_trusted_root_path()
         inner_tr = trustroot_v1.TrustedRoot.from_json(Path(tr_path).read_bytes())

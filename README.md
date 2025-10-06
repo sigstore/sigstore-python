@@ -64,7 +64,9 @@ Top-level:
 
 <!-- @begin-sigstore-help@ -->
 ```
-usage: sigstore [-h] [-v] [-V] [--staging | --trust-config FILE] COMMAND ...
+usage: sigstore [-h] [-v] [-V]
+                [--staging | --instance URL | --trust-config FILE]
+                COMMAND ...
 
 a tool for signing and verifying Python package distributions
 
@@ -76,6 +78,7 @@ positional arguments:
     get-identity-token
                        retrieve and return a Sigstore-compatible OpenID
                        Connect token
+    trust-instance     Initialize trust for a Sigstore instance
     plumbing           developer-only plumbing operations
 
 optional arguments:
@@ -83,9 +86,16 @@ optional arguments:
   -v, --verbose        run with additional debug logging; supply multiple
                        times to increase verbosity (default: 0)
   -V, --version        show program's version number and exit
-  --staging            Use sigstore's staging instances, instead of the
-                       default production instances (default: False)
-  --trust-config FILE  The client trust configuration to use (default: None)
+  --staging            Use sigstore's staging instance, instead of the default
+                       production instance. Mutually exclusive with other
+                       instance configuration arguments. (default: False)
+  --instance URL       Use a given Sigstore instance URL, instead of the
+                       default production instance. Mutually exclusive with
+                       other instance configuration arguments. (default: None)
+  --trust-config FILE  Use given client trust configuration instead of using
+                       the default production instance. Mutually exclusive
+                       with other instance configuration arguments. (default:
+                       None)
 ```
 <!-- @end-sigstore-help@ -->
 
