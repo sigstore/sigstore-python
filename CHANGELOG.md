@@ -14,6 +14,8 @@ All versions prior to 0.9.0 are untracked.
 
 * Improved error message when verifying bundles with rekor v2 entries
   ([#1565](https://github.com/sigstore/sigstore-python/pull/1565))
+* Added cryptography 46 to list of compatible cryptography releases
+  ([#1566](https://github.com/sigstore/sigstore-python/pull/1566))
 
 ## [3.6.5]
 
