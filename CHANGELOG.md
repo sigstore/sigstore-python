@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.6.6]
+
+### Changed
+
+* Improved error message when verifying bundles with rekor v2 entries
+  ([#1565](https://github.com/sigstore/sigstore-python/pull/1565))
+
 ## [3.6.5]
 
 ### Fixed
