@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [4.1.0]
+
 ### Added
 
 * cli: Support using other Sigstore instances with `--instance URL`.
