@@ -8,6 +8,28 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [4.1.0]
+
+### Added
+
+* cli: Support using other Sigstore instances with `--instance URL`.
+  New instances are trusted with new top level command `trust-instance ROOTFILE`.
+  [#1548](https://github.com/sigstore/sigstore-python/pull/1548)
+
+### Changed
+
+* Added cryptography 46 to list of compatible cryptography releases
+  ([#1544](https://github.com/sigstore/sigstore-python/pull/1544))
+* Improved error message when verifying bundles with unsupported log entry versions
+  ([#1569](https://github.com/sigstore/sigstore-python/pull/1569))
+
+### Fixed
+
+* cli: Always read/write UTF-8. This fixes an issue on Windows where the platform
+  default encoding was used: the issue has existed for a while, but became more visible
+  with signature bundles that contain rekor2 entries.
+  [#1553](https://github.com/sigstore/sigstore-python/pull/1553)
+
 ## [4.0.0]
 
 This is a major release with a host of API and functionality changes. The major new feature
@@ -76,6 +98,14 @@ is Rekor v2 support but many other changes are also included, see list below.
 * verify: Handle unset TSA timestamp validity end
   [#1368](https://github.com/sigstore/sigstore-python/pull/1368)
 
+## [3.6.6]
+
+### Changed
+
+* Improved error message when verifying bundles with rekor v2 entries
+  ([#1565](https://github.com/sigstore/sigstore-python/pull/1565))
+* Added cryptography 46 to list of compatible cryptography releases
+  ([#1566](https://github.com/sigstore/sigstore-python/pull/1566))
 
 ## [3.6.5]
 
