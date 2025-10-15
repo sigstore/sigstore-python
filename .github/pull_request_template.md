@@ -2,9 +2,9 @@
 Thanks for opening a pull request! Please do not just delete this text.  The three fields below are mandatory.
 
 Please remember to:
-- This PR requires an issue. If it is a new feature, the issue should proceed the PR and will have allowed sufficent time for discussions to take place. Pleases use
+- This PR requires an issue. If it is a new feature, the issue should proceed the PR and will have allowed sufficient time for discussions to take place. Use
 issue tags such as "Closes #XYZ" or "Resolves sigstore/repo-name#XYZ".
-  [documentation](https://docs.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword)
+- add [documentation](https://docs.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword)
 - ensure your commits are signed-off, as sigstore uses the [DCO](https://en.wikipedia.org/wiki/Developer_Certificate_of_Origin) using `git commit -s`, or `git commit -s --amend` if you want to amend already existing commits
 
 Thank you :)
