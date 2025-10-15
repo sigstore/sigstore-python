@@ -8,6 +8,15 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.5.4]
+
+### Fixed
+
+* Do not fail hard if trust root contains unsupported keys
+  (Backport of [#1424](https://github.com/sigstore/sigstore-python/pull/1424))
+* Fix bug in rekor key lookup
+  (Backport of [#1350](https://github.com/sigstore/sigstore-python/pull/1350))
+
 ## [3.5.3]
 
 ### Fixed
