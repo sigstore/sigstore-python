@@ -41,7 +41,7 @@ jobs:
         uses: sigstore-conformance/extremely-dangerous-public-oidc-beacon@b517a742e5a3db9e3cbf8e2e1c792b36982f78db # main
       - name: Sign 
         run: |
-          python -m sigstore --staging sign --bundle artifact.sigstore.json --identity-token $(cat oidc-token.txt) test/assets/a.txt
+          python -m sigstore --staging sign --bundle artifact-rekor2.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=2 test/assets/a.txt
           python -m sigstore --staging sign --bundle artifact-rekor1.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=1 test/assets/a.txt
       - name: upload signature bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -74,14 +74,14 @@ jobs:
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: bundle
-      - name: Verify
+      - name: Verify (Rekor v2)
         if: matrix.version != 'v3.6.5'
         run: |
           python -m sigstore --staging verify github --verbose \
             --cert-identity "https://github.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main" \
-            --bundle artifact.sigstore.json \
+            --bundle artifact-rekor2.sigstore.json \
             test/assets/a.txt
-      - name: Verify (rekor v1)
+      - name: Verify (Rekor v1)
         run: |
           python -m sigstore --staging verify github --verbose \
             --cert-identity "https://github.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main" \
