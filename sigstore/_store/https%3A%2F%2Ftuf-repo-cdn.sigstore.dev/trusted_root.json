@@ -14,6 +14,20 @@
       "logId": {
         "keyId": "wNI9atQGlz+VWfO6LRygH4QUfY/8W4RFwiT5i5WRgB0="
       }
+    },
+    {
+      "baseUrl": "https://log2025-1.rekor.sigstore.dev",
+      "hashAlgorithm": "SHA2_256",
+      "publicKey": {
+        "rawBytes": "MCowBQYDK2VwAyEAt8rlp1knGwjfbcXAYPYAkn0XiLz1x8O4t0YkEhie244=",
+        "keyDetails": "PKIX_ED25519",
+        "validFor": {
+          "start": "2025-09-23T00:00:00Z"
+        }
+      },
+      "logId": {
+        "keyId": "zxGZFVvd0FEmjR8WrFwMdcAJ9vtaY/QXf44Y1wUeP6A="
+      }
     }
   ],
   "certificateAuthorities": [
