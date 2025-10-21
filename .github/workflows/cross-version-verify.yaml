@@ -38,7 +38,7 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: pip install .
       - name: Fetch testing oidc token
-        uses: sigstore-conformance/extremely-dangerous-public-oidc-beacon@b517a742e5a3db9e3cbf8e2e1c792b36982f78db # main
+        uses: sigstore-conformance/extremely-dangerous-public-oidc-beacon@039e3afae9c6fde85c8c6c83f8b3e634a9e9fa94 # main
       - name: Sign 
         run: |
           python -m sigstore --staging sign --bundle artifact-rekor2.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=2 test/assets/a.txt
