@@ -46,7 +46,7 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: pip install .
       - name: Fetch testing oidc token
-        uses: sigstore-conformance/extremely-dangerous-public-oidc-beacon@039e3afae9c6fde85c8c6c83f8b3e634a9e9fa94 # main
+        uses: sigstore-conformance/extremely-dangerous-public-oidc-beacon@4a8befcc16064dac9e97f210948d226e5c869bdc # v1.0.0
       - name: Sign 
         run: python -m sigstore --staging sign --identity-token $(cat oidc-token.txt) test/assets/a.txt
       - name: upload signature bundle
