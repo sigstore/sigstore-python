@@ -18,6 +18,7 @@ Client trust configuration and trust root management for sigstore-python.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -56,6 +57,8 @@ from sigstore._utils import (
     load_der_public_key,
 )
 from sigstore.errors import Error, MetadataError, VerificationError
+
+_logger = logging.getLogger(__name__)
 
 
 def _is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool:
@@ -164,8 +167,11 @@ class Keyring:
         self._keyring: dict[KeyID, Key] = {}
 
         for public_key in public_keys:
-            key = Key(public_key)
-            self._keyring[key.key_id] = key
+            try:
+                key = Key(public_key)
+                self._keyring[key.key_id] = key
+            except VerificationError as e:
+                _logger.warning(f"Failed to load a trusted root key: {e}")
 
     def verify(self, *, key_id: KeyID, signature: bytes, data: bytes) -> None:
         """
@@ -333,8 +339,8 @@ class TrustedRoot:
         """Return keyring with keys for Rekor."""
 
         keys: list[_PublicKey] = list(self._get_tlog_keys(self._inner.tlogs, purpose))
-        if len(keys) != 1:
-            raise MetadataError("Did not find one Rekor key in trusted root")
+        if len(keys) == 0:
+            raise MetadataError("Did not find any Rekor keys in trusted root")
         return RekorKeyring(Keyring(keys))
 
     def ct_keyring(self, purpose: KeyringPurpose) -> CTKeyring:
