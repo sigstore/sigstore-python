@@ -8,6 +8,15 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.5.6]
+
+This is the last planned release in 3.5.x series: All users should upgrade to
+a newer release series.
+
+### Fixed
+
+* Release process fix for [3.5.5]
+
 ## [3.5.5]
 
 This is the last planned release in 3.5.x series: All users should upgrade to
@@ -569,7 +578,8 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.5...series/3.5.x
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.5.6...series/3.5.x
+[3.5.6]: https://github.com/sigstore/sigstore-python/compare/v3.5.5...v3.5.6
 [3.5.5]: https://github.com/sigstore/sigstore-python/compare/v3.5.4...v3.5.5
 [3.5.4]: https://github.com/sigstore/sigstore-python/compare/v3.5.3...v3.5.4
 [3.5.3]: https://github.com/sigstore/sigstore-python/compare/v3.5.2...v3.5.3
