@@ -19,20 +19,27 @@ Example:
 
 ```python
 from pathlib import Path
-
-from sigstore.sign import SigningContext
+from sigstore.models import ClientTrustConfig
 from sigstore.oidc import Issuer
+from sigstore.sign import SigningContext
 
-issuer = Issuer.production()
-identity = issuer.identity_token()
+artifact_path = Path("README.md")
 
-# The artifact to sign
-artifact = Path("foo.txt").read_bytes()
+# Construct OIDC Issuer and SigningContext for the
+# Sigstore Public Good instance
+trust_config = ClientTrustConfig.production()
+issuer = Issuer(trust_config.signing_config.get_oidc_url())
+context = SigningContext.from_trust_config(trust_config)
 
-signing_ctx = SigningContext.production()
-with signing_ctx.signer(identity, cache=True) as signer:
-    result = signer.sign_artifact(artifact)
-    print(result)
+# Get an identity token from OIDC provider using interactive auth
+token = issuer.identity_token()
+
+# Sign artifact with the identity
+with context.signer(token, cache = True) as signer:
+    bundle = signer.sign_artifact(artifact_path.read_bytes())
+
+with Path("README.md.sigstore.json").open("w") as f:
+    f.write(bundle.to_json())
 ```
 """
 
