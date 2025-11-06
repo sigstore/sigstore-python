@@ -41,20 +41,23 @@ def _get_key_details(certificate: Certificate) -> PublicKeyDetails:
         else:
             raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
     elif isinstance(public_key, rsa.RSAPublicKey):
-        if public_key.key_size == 3072:
+        if public_key.key_size == 2048:
+            if isinstance(params, padding.PKCS1v15):
+                key_details = PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256
+            else:
+                raise ValueError(
+                    f"Unsupported public key type, size, and padding: {type(public_key)}, {public_key.key_size}, {params}"
+                )
+        elif public_key.key_size == 3072:
             if isinstance(params, padding.PKCS1v15):
                 key_details = PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256
-            elif isinstance(params, padding.PSS):
-                key_details = PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256
             else:
                 raise ValueError(
                     f"Unsupported public key type, size, and padding: {type(public_key)}, {public_key.key_size}, {params}"
                 )
         elif public_key.key_size == 4096:
             if isinstance(params, padding.PKCS1v15):
-                key_details = PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256
-            elif isinstance(params, padding.PSS):
-                key_details = PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256
+                key_details = PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256
             else:
                 raise ValueError(
                     f"Unsupported public key type, size, and padding: {type(public_key)}, {public_key.key_size}, {params}"
