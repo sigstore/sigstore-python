@@ -15,6 +15,7 @@
 from unittest.mock import Mock
 
 import pytest
+from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed25519, padding, rsa
 from sigstore_models.common.v1 import PublicKeyDetails
@@ -84,12 +85,26 @@ def test_get_key_details(mock_certificate):
     assert isinstance(key_details, PublicKeyDetails)
 
 
+def delayed_crypto_mock(mock_func, error_msg):
+    # execute mock_func, mark test as skipped if cryptography does not support this algo.
+    # This is done so missing support does not break the negative test collection
+    try:
+        data = mock_func()
+        return pytest.param(data, error_msg)
+    except UnsupportedAlgorithm as e:
+        return pytest.param(
+            None,
+            error_msg,
+            marks=pytest.mark.skip(reason=f"missing cryptography support: {e}"),
+        )
+
+
 @pytest.mark.parametrize(
     "mock_certificate, error_msg",
     [
         # Unsupported EC curve
-        (
-            Mock(
+        delayed_crypto_mock(
+            lambda: Mock(
                 public_key=Mock(
                     return_value=ec.generate_private_key(ec.SECT163K1()).public_key()
                 )
@@ -97,8 +112,8 @@ def test_get_key_details(mock_certificate):
             "Unsupported EC curve: sect163k1",
         ),
         # Unsupported RSA padding
-        (
-            Mock(
+        delayed_crypto_mock(
+            lambda: Mock(
                 public_key=Mock(
                     return_value=rsa.generate_private_key(
                         public_exponent=65537, key_size=2048
@@ -111,8 +126,8 @@ def test_get_key_details(mock_certificate):
             ),
             "Unsupported public key type, size, and padding",
         ),
-        (
-            Mock(
+        delayed_crypto_mock(
+            lambda: Mock(
                 public_key=Mock(
                     return_value=rsa.generate_private_key(
                         public_exponent=65537, key_size=3072
@@ -125,8 +140,8 @@ def test_get_key_details(mock_certificate):
             ),
             "Unsupported public key type, size, and padding",
         ),
-        (
-            Mock(
+        delayed_crypto_mock(
+            lambda: Mock(
                 public_key=Mock(
                     return_value=rsa.generate_private_key(
                         public_exponent=65537, key_size=4096
@@ -140,8 +155,8 @@ def test_get_key_details(mock_certificate):
             "Unsupported public key type, size, and padding",
         ),
         # Unsupported RSA key size
-        (
-            Mock(
+        delayed_crypto_mock(
+            lambda: Mock(
                 public_key=Mock(
                     return_value=rsa.generate_private_key(
                         public_exponent=65537, key_size=1024
@@ -152,8 +167,8 @@ def test_get_key_details(mock_certificate):
             "Unsupported RSA key size: 1024",
         ),
         # Unsupported key type
-        (
-            Mock(
+        delayed_crypto_mock(
+            lambda: Mock(
                 public_key=Mock(
                     return_value=dsa.generate_private_key(key_size=1024).public_key()
                 )
