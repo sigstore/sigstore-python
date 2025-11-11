@@ -29,4 +29,7 @@ jobs:
       - uses: sigstore/sigstore-conformance@48320dc345b60e599a447a3d321b71b310c687bb # v0.0.23
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance
+          client_sha: ${{ github.sha }}
+          client_sha_url: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          workflow_run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           xfail: "test_verify*intoto-with-custom-trust-root]" # see issue 1442
