@@ -9,7 +9,7 @@
     
     Users who need to operationalize offline verification may wish to do this
     by distributing their own trust configuration; see
-    [Custom root of trust](./custom_trust.md).
+    [Custom instance with local configuration](./custom_trust.md#using-a-custom-instance-with-local-configuration).
 
 During verification, there are two kinds of network access that `sigstore-python`
 *can* perform:
