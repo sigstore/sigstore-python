@@ -6,6 +6,8 @@ on:
       - main
   workflow_dispatch:
   pull_request:
+  schedule:
+    - cron: "45 7 * * 1,4"
 
 permissions: {}
 
@@ -30,3 +32,24 @@ jobs:
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance
           xfail: "test_verify*intoto-with-custom-trust-root]" # see issue 1442
+
+  file-issue-on-failure:
+    needs: [conformance]
+    if: failure() && github.event_name == 'schedule' && github.repository == 'sigstore/sigstore-python'
+    permissions:
+      issues: write # required to file an issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: File an issue for conformance test failure
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[CI] Scheduled conformance test failed`,
+              body: `
+            A scheduled conformance test failed, see [run details](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).
+            `
+            });
