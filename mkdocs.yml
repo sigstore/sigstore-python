@@ -33,7 +33,7 @@ nav:
   - Verifying: verify.md
   - Policy: policy.md
   - Advanced:
-      - Custom Root of Trust: advanced/custom_trust.md
+      - Custom Sigstore Instances: advanced/custom_trust.md
       - Offline Verification: advanced/offline.md
   # begin-api-section
   - API:
