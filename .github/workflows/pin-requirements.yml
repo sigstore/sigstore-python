@@ -130,12 +130,21 @@ jobs:
           git push -f origin "origin/main:${SIGSTORE_PIN_REQUIREMENTS_BRANCH}"
 
       - name: Open pull request
-        uses: peter-evans/create-pull-request@84ae59a2cdc2258d6fa0732dd66352dddae2a412 # v7.0.9
-        with:
-          title: |
-            Update pinned requirements for ${{ env.SIGSTORE_RELEASE_TAG }}
-          body: |
-            Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${{ env.SIGSTORE_RELEASE_TAG }}>.
-          base: main
-          branch: ${{ env.SIGSTORE_PIN_REQUIREMENTS_BRANCH }}
-          delete-branch: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Try to create a new PR, or update if it already exists
+          # NOTE: Branch deletion after merge is handled by repository settings
+          PR_TITLE="Update pinned requirements for ${SIGSTORE_RELEASE_TAG}"
+          PR_BODY="Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${SIGSTORE_RELEASE_TAG}>."
+          
+          if ! gh pr create \
+            --title "${PR_TITLE}" \
+            --body "${PR_BODY}" \
+            --base main \
+            --head "${SIGSTORE_PIN_REQUIREMENTS_BRANCH}"; then
+            # PR already exists, update it
+            gh pr edit "${SIGSTORE_PIN_REQUIREMENTS_BRANCH}" \
+              --title "${PR_TITLE}" \
+              --body "${PR_BODY}"
+          fi
