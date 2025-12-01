@@ -129,7 +129,7 @@ jobs:
         # Confusingly, this action also supports updating releases, not
         # just creating them. This is what we want here, since we've manually
         # created the release that triggered the action.
-        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           # smoketest-artifacts/ contains the signatures and certificates.
           files: |
