@@ -73,14 +73,14 @@ jobs:
           done
 
       - name: Upload built packages
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: built-packages
           path: ./dist/
           if-no-files-found: warn
 
       - name: Upload smoketest-artifacts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: smoketest-artifacts
           path: smoketest-artifacts/
@@ -94,7 +94,7 @@ jobs:
       attestations: write # To persist the attestation files.
     steps:
       - name: Download artifacts directories # goes to current working directory
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
       - name: Generate build provenance
         uses: actions/attest-build-provenance@v3
         with:
@@ -108,7 +108,7 @@ jobs:
       id-token: write
     steps:
       - name: Download artifacts directories # goes to current working directory
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
 
       - name: publish
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
@@ -123,7 +123,7 @@ jobs:
       contents: write
     steps:
       - name: Download artifacts directories # goes to current working directory
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
 
       - name: Upload artifacts to github
         # Confusingly, this action also supports updating releases, not
