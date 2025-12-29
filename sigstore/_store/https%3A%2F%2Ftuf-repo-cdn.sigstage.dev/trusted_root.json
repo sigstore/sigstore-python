@@ -37,11 +37,26 @@
         "rawBytes": "MCowBQYDK2VwAyEAkrA8Ou2FtN7kYXCP/lpvF8vQrvh4nj+91+PWOGGzfGc=",
         "keyDetails": "PKIX_ED25519",
         "validFor": {
-          "start": "2025-08-08T00:00:00Z"
+          "start": "2025-08-08T00:00:00Z",
+          "end": "2025-09-28T00:00:00Z"
         }
       },
       "logId": {
         "keyId": "KfSiSX2iRLyhK62SUVL47vVcqqRx/RAewpKJm8IdZTo="
+      }
+    },
+    {
+      "baseUrl": "https://log2025-alpha3.rekor.sigstage.dev",
+      "hashAlgorithm": "SHA2_256",
+      "publicKey": {
+        "rawBytes": "MCowBQYDK2VwAyEAlD3dVc8yaP25mPtT/sJ59D3LLxGBgW/qYrM6x6KmOqk=",
+        "keyDetails": "PKIX_ED25519",
+        "validFor": {
+          "start": "2025-09-22T00:00:00Z"
+        }
+      },
+      "logId": {
+        "keyId": "09OnDKEw7/hpZiYVPoTRzRbglHk0sylsUovegnRUlJY="
       }
     }
   ],

@@ -22,10 +22,19 @@
   ],
   "rekorTlogUrls": [
     {
+      "url": "https://log2025-alpha3.rekor.sigstage.dev",
+      "majorApiVersion": 2,
+      "validFor": {
+        "start": "2025-09-22T11:00:00Z"
+      },
+      "operator": "sigstore.dev"
+    },
+    {
       "url": "https://log2025-alpha2.rekor.sigstage.dev",
       "majorApiVersion": 2,
       "validFor": {
-        "start": "2025-08-20T07:24:08Z"
+        "start": "2025-08-20T07:24:08Z",
+        "end": "2025-09-22T11:00:00Z"
       },
       "operator": "sigstore.dev"
     },
