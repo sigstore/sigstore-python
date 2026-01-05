@@ -184,6 +184,10 @@ class _OAuthSession:
         )
 
     @property
+    def state(self) -> str:
+        return self._state
+
+    @property
     def code_challenge(self) -> str:
         return B64Str(
             base64.urlsafe_b64encode(
