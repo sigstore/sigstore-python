@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Removed
+
+* Removed support for Python 3.9 as it is end-of-life
+  ([#1645](https://github.com/sigstore/sigstore-python/pull/1645))
+
+
 ## [4.1.0]
 
 ### Added
