@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
-from typing import Optional
 
 import pytest
 
@@ -25,11 +24,11 @@ def get_cli_params(
     artifact_paths: list[Path],
     overwrite: bool = False,
     no_default_files: bool = False,
-    output_directory: Optional[Path] = None,
-    bundle_path: Optional[Path] = None,
-    signature_path: Optional[Path] = None,
-    certificate_path: Optional[Path] = None,
-    trust_config_path: Optional[Path] = None,
+    output_directory: Path | None = None,
+    bundle_path: Path | None = None,
+    signature_path: Path | None = None,
+    certificate_path: Path | None = None,
+    trust_config_path: Path | None = None,
 ) -> list[str]:
     if trust_config_path is not None:
         cli_params = ["--trust-config", str(trust_config_path), "sign"]

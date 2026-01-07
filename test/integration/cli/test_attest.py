@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pathlib import Path
-from typing import Optional
 
 import pytest
 
@@ -27,7 +26,7 @@ def get_cli_params(
     pred_path: Path,
     artifact_path: Path,
     overwrite: bool = False,
-    bundle_path: Optional[Path] = None,
+    bundle_path: Path | None = None,
 ) -> list[str]:
     cli_params = [
         "--staging",
