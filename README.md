@@ -41,7 +41,7 @@ else!
 
 ## Installation
 
-`sigstore` requires Python 3.9 or newer, and can be installed directly via `pip`:
+`sigstore` requires Python 3.10 or newer, and can be installed directly via `pip`:
 
 ```console
 python -m pip install sigstore
