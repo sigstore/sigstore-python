@@ -19,10 +19,9 @@ import datetime
 import os
 import re
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from io import BytesIO
 from pathlib import Path
-from typing import Callable
 from urllib.parse import urlparse
 
 import jwt

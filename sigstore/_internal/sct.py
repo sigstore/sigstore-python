@@ -19,7 +19,6 @@ Utilities for verifying signed certificate timestamps.
 import logging
 import struct
 from datetime import timezone
-from typing import Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -47,7 +46,7 @@ _logger = logging.getLogger(__name__)
 
 
 def _pack_signed_entry(
-    sct: SignedCertificateTimestamp, cert: Certificate, issuer_key_id: Optional[bytes]
+    sct: SignedCertificateTimestamp, cert: Certificate, issuer_key_id: bytes | None
 ) -> bytes:
     fields = []
     if sct.entry_type == LogEntryType.X509_CERTIFICATE:
@@ -92,7 +91,7 @@ def _pack_signed_entry(
 def _pack_digitally_signed(
     sct: SignedCertificateTimestamp,
     cert: Certificate,
-    issuer_key_id: Optional[KeyID],
+    issuer_key_id: KeyID | None,
 ) -> bytes:
     """
     Packs the contents of `cert` (and some pieces of `sct`) into a structured

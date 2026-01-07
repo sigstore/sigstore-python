@@ -41,7 +41,7 @@ else!
 
 ## Installation
 
-`sigstore` requires Python 3.9 or newer, and can be installed directly via `pip`:
+`sigstore` requires Python 3.10 or newer, and can be installed directly via `pip`:
 
 ```console
 python -m pip install sigstore
@@ -81,7 +81,7 @@ positional arguments:
     trust-instance     Initialize trust for a Sigstore instance
     plumbing           developer-only plumbing operations
 
-optional arguments:
+options:
   -h, --help           show this help message and exit
   -v, --verbose        run with additional debug logging; supply multiple
                        times to increase verbosity (default: 0)
@@ -116,7 +116,7 @@ usage: sigstore sign [-h] [-v] [--rekor-version VERSION]
 positional arguments:
   FILE                  The file to sign
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
@@ -176,7 +176,7 @@ usage: sigstore attest [-h] [-v] [--rekor-version VERSION] --predicate FILE
 positional arguments:
   FILE                  The file to sign
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
@@ -228,7 +228,7 @@ usage: sigstore verify identity [-h] [-v] [--certificate FILE]
                                 URL
                                 FILE_OR_DIGEST [FILE_OR_DIGEST ...]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)
@@ -267,7 +267,7 @@ usage: sigstore verify github [-h] [-v] [--certificate FILE]
                               [--ref REF]
                               FILE_OR_DIGEST [FILE_OR_DIGEST ...]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -v, --verbose         run with additional debug logging; supply multiple
                         times to increase verbosity (default: 0)

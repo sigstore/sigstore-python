@@ -24,7 +24,7 @@ import time
 import urllib.parse
 import webbrowser
 from datetime import datetime, timezone
-from typing import NoReturn, Optional, cast
+from typing import NoReturn, cast
 
 import id
 import jwt
@@ -407,6 +407,6 @@ def detect_credential(client_id: str = _DEFAULT_CLIENT_ID) -> str | None:
     """Calls `id.detect_credential`, but wraps exceptions with our own exception type."""
 
     try:
-        return cast(Optional[str], id.detect_credential(client_id))
+        return cast(str | None, id.detect_credential(client_id))
     except id.IdentityError as exc:
         IdentityError.raise_from_id(exc)

@@ -23,7 +23,7 @@ import sys
 from concurrent import futures
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn, Union
+from typing import Any, NoReturn, TypeAlias, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -32,7 +32,6 @@ from rich.console import Console
 from rich.logging import RichHandler
 from sigstore_models.bundle.v1 import Bundle as RawBundle
 from sigstore_models.common.v1 import HashAlgorithm
-from typing_extensions import TypeAlias
 
 from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
