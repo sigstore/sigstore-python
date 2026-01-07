@@ -39,7 +39,7 @@ dependencies = [
   "rfc3161-client >= 1.0.3,< 1.1.0",
   # Both sigstore-models and sigstore-rekor types are unstable
   # so we pin them conservatively.
-  "sigstore-models == 0.0.5",
+  "sigstore-models == 0.0.6",
   "sigstore-rekor-types == 0.0.18",
   "tuf ~= 6.0",
   "platformdirs ~= 4.2",
