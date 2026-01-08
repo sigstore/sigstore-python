@@ -128,7 +128,7 @@ class TransparencyLogEntry:
         body_entry: ProposedEntry = TypeAdapter(ProposedEntry).validate_json(
             base64.b64decode(entry["body"])
         )
-        if not isinstance(body_entry, (Hashedrekord, Dsse)):
+        if not isinstance(body_entry, Hashedrekord | Dsse):
             raise InvalidBundle("log entry is not of expected type")
 
         raw_inclusion_proof = entry["verification"]["inclusionProof"]

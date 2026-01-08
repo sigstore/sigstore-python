@@ -130,7 +130,7 @@ class _OAuthFlow:
 
 
 class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, _format: str, *_args: Any) -> None:
+    def log_message(self, format: str, *_args: Any) -> None:
         pass
 
     def do_GET(self) -> None:
@@ -177,7 +177,6 @@ class _OAuthSession:
         self._client_secret = client_secret
         self._issuer = issuer
         self._state = str(uuid.uuid4())
-        self._nonce = str(uuid.uuid4())
 
         self.code_verifier = B64Str(
             base64.urlsafe_b64encode(os.urandom(32)).rstrip(b"=").decode()
@@ -197,7 +196,7 @@ class _OAuthSession:
         # Defensive programming: we don't have a nice way to limit the
         # lifetime of the OAuth session here, so we use the internal
         # "poison" flag to check if we're attempting to reuse it in a way
-        # that would compromise the flow's security (i.e. nonce reuse).
+        # that would compromise the flow's security (i.e. state reuse).
         if self.__poison:
             raise IdentityError("internal error: OAuth endpoint misuse")
         else:
@@ -216,7 +215,6 @@ class _OAuthSession:
             "code_challenge": self.code_challenge,
             "code_challenge_method": "S256",
             "state": self._state,
-            "nonce": self._nonce,
         }
 
 
