@@ -211,7 +211,7 @@ def verify_sct(
                 f"SCT verify: Invalid issuer pubkey basicConstraint (not a CA): {issuer_pubkey}"
             )
 
-        if not isinstance(issuer_pubkey, (rsa.RSAPublicKey, ec.EllipticCurvePublicKey)):
+        if not isinstance(issuer_pubkey, rsa.RSAPublicKey | ec.EllipticCurvePublicKey):
             raise VerificationError(
                 f"SCT verify: invalid issuer pubkey format (not ECDSA or RSA): {issuer_pubkey}"
             )
