@@ -65,6 +65,20 @@ def test_verifier_inconsistent_log_entry(signing_bundle, null_policy):
 
 
 @pytest.mark.staging
+def test_verifier_digest_mismatch(signing_bundle, null_policy):
+    """The signature is over correct content, but digest documented in bundle is wrong"""
+    (file, bundle) = signing_bundle("bundle.txt")
+    bundle._inner.message_signature.message_digest.digest = b""
+
+    verifier = Verifier.staging()
+    with pytest.raises(
+        VerificationError,
+        match="digest mismatch",
+    ):
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+@pytest.mark.staging
 def test_verifier_multiple_verifications(signing_materials, null_policy):
     verifier = Verifier.staging()
 
