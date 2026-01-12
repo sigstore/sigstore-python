@@ -103,7 +103,7 @@ class HTTPResponse:
         Returns:
             The response body decoded as UTF-8
         """
-        return self.text
+        return self._response.data.decode("utf-8")
 
     def json(self) -> Any:
         """
@@ -112,7 +112,7 @@ class HTTPResponse:
         Returns:
             The parsed JSON data
         """
-        return self.json()
+        return self._response.json()
 
 
 def request(
