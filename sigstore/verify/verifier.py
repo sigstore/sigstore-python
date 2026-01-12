@@ -470,22 +470,24 @@ class Verifier:
         self._verify_common_signing_cert(bundle, policy)
 
         hashed_input = sha256_digest(input_)
+        bundle_signature = bundle._inner.message_signature
+        if bundle_signature is None:
+            raise VerificationError("Missing bundle message signature")
 
         # signature is verified over input digest, but if the bundle documents the digest we still
         # want to ensure it matches the input digest:
         if (
-            bundle._inner.message_signature.message_digest is not None
-            and hashed_input.digest
-            != bundle._inner.message_signature.message_digest.digest
+            bundle_signature.message_digest is not None
+            and hashed_input.digest != bundle_signature.message_digest.digest
         ):
-            raise VerificationError("Message digest mismatch")
+            raise VerificationError("Bundle message digest mismatch")
 
         # (7): verify that the signature was signed by the public key in the signing certificate.
         try:
             signing_key = bundle.signing_certificate.public_key()
             signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
             signing_key.verify(
-                bundle._inner.message_signature.signature,  # type: ignore[union-attr]
+                bundle_signature.signature,
                 hashed_input.digest,
                 ec.ECDSA(hashed_input._as_prehashed()),
             )
