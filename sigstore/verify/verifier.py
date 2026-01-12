@@ -471,9 +471,13 @@ class Verifier:
 
         hashed_input = sha256_digest(input_)
 
-        # signature is verified over input digest, but ensure that digest documented in bundle
-        # matches input digest anyway:
-        if hashed_input.digest != bundle._inner.message_signature.message_digest.digest:
+        # signature is verified over input digest, but if the bundle documents the digest we still
+        # want to ensure it matches the input digest:
+        if (
+            bundle._inner.message_signature.message_digest is not None
+            and hashed_input.digest
+            != bundle._inner.message_signature.message_digest.digest
+        ):
             raise VerificationError("Message digest mismatch")
 
         # (7): verify that the signature was signed by the public key in the signing certificate.
