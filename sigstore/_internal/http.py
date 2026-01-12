@@ -73,7 +73,7 @@ class HTTPResponse:
     Wrapper around urllib3 HTTPResponse for easier usage.
     """
 
-    def __init__(self, response: urllib3.BaseHTTPResponse):  # type: ignore[type-arg]
+    def __init__(self, response: urllib3.BaseHTTPResponse):
         """
         Create a new HTTPResponse.
 
@@ -103,7 +103,7 @@ class HTTPResponse:
         Returns:
             The response body decoded as UTF-8
         """
-        return self._data.decode("utf-8")
+        return self.text
 
     def json(self) -> Any:
         """
@@ -112,7 +112,7 @@ class HTTPResponse:
         Returns:
             The parsed JSON data
         """
-        return json.loads(self.text)
+        return self.json()
 
 
 def request(
