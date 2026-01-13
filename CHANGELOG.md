@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* verification now ensures that artifact digest documented in bundle and the real digest match
+  (this is a bundle consistency check: bundle signature was always verified over real digest)
+  ([#1652](https://github.com/sigstore/sigstore-python/pull/1652))
+
 ### Removed
 
 * Removed support for Python 3.9 as it is end-of-life
