@@ -102,11 +102,6 @@ def _pack_digitally_signed(
     The format of the digitally signed data is described in IETF's RFC 6962.
     """
 
-    # No extensions are currently specified, so we treat the presence
-    # of any extension bytes as suspicious.
-    if len(sct.extension_bytes) != 0:
-        raise VerificationError("Unexpected trailing extension bytes")
-
     # This constructs the "core" `signed_entry` field, which is either
     # the public bytes of the cert *or* the TBSPrecertificate (with some
     # filtering), depending on whether our SCT is for a precertificate.
