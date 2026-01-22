@@ -16,11 +16,23 @@ All versions prior to 0.9.0 are untracked.
 * verification now ensures that artifact digest documented in bundle and the real digest match
   (this is a bundle consistency check: bundle signature was always verified over real digest)
   ([#1652](https://github.com/sigstore/sigstore-python/pull/1652))
+* Fix issue with Signed Certificate Timestamp parsing where extensions
+  were not allowed by sigstore-python
+  ([1657](https://github.com/sigstore/sigstore-python/pull/1657), [1659](https://github.com/sigstore/sigstore-python/pull/1659))
+
+### Changed
+
+* Update supported public key algorithms
+  ([#1604](https://github.com/sigstore/sigstore-python/pull/1604))
+* trust: Update embedded TUF root
+  ([#1589](https://github.com/sigstore/sigstore-python/pull/1589))
 
 ### Removed
 
 * Removed support for Python 3.9 as it is end-of-life
   ([#1645](https://github.com/sigstore/sigstore-python/pull/1645))
+* Removed unused nonce in Oauth flow
+  ([#1649](https://github.com/sigstore/sigstore-python/pull/1649))
 
 
 ## [4.1.0]
