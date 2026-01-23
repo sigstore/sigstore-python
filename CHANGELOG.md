@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [4.2.0]
+
 ### Fixed
 
 * Add state validation to OIDC flow to prevent Cross-site request forgery
@@ -762,7 +764,9 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.2.0...HEAD
+[4.2.0]: https://github.com/sigstore/sigstore-python/compare/v4.1.0...v4.2.0
+[4.1.0]: https://github.com/sigstore/sigstore-python/compare/v4.0.0...v4.1.0
 [4.0.0]: https://github.com/sigstore/sigstore-python/compare/v3.6.5...v4.0.0
 [3.6.5]: https://github.com/sigstore/sigstore-python/compare/v3.6.4...v3.6.5
 [3.6.4]: https://github.com/sigstore/sigstore-python/compare/v3.6.3...v3.6.4
