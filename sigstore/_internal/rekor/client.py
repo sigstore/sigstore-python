@@ -23,7 +23,7 @@ import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import rekor_types
 import requests
@@ -38,7 +38,9 @@ from sigstore._internal.rekor import (
 )
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
-from sigstore.models import TransparencyLogEntry
+
+if TYPE_CHECKING:
+    from sigstore.models import TransparencyLogEntry
 
 _logger = logging.getLogger(__name__)
 
@@ -142,6 +144,8 @@ class RekorEntries(_Endpoint):
             resp.raise_for_status()
         except requests.HTTPError as http_error:
             raise RekorClientError(http_error)
+        from sigstore.models import TransparencyLogEntry
+
         return TransparencyLogEntry._from_v1_response(resp.json())
 
     def post(
@@ -162,6 +166,8 @@ class RekorEntries(_Endpoint):
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
+        from sigstore.models import TransparencyLogEntry
+
         return TransparencyLogEntry._from_v1_response(integrated_entry)
 
     @property
@@ -204,6 +210,8 @@ class RekorEntriesRetrieve(_Endpoint):
         # We select the oldest entry for our actual return value,
         # since a malicious actor could conceivably spam the log with
         # newer duplicate entries.
+        from sigstore.models import TransparencyLogEntry
+
         oldest_entry: TransparencyLogEntry | None = None
         for result in results:
             entry = TransparencyLogEntry._from_v1_response(result)
