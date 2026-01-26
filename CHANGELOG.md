@@ -8,6 +8,15 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [3.6.7]
+
+* Fix issue with Signed Certificate Timestamp parsing issue where extensions
+  were not allowed by sigstore-python
+  ([1657](https://github.com/sigstore/sigstore-python/issues/1657), [1659](https://github.com/sigstore/sigstore-python/issues/1659))
+* Add state validation to OIDC flow to prevent cross-site request forgery
+  during OIDC authorization
+  ([GHSA-hm8f-75xx-w2vr](https://github.com/sigstore/sigstore-python/security/advisories/GHSA-hm8f-75xx-w2vr))
+
 ## [3.6.6]
 
 ### Changed
@@ -646,6 +655,9 @@ This is a corrective release for [2.1.1].
 
 <!--Release URLs -->
 [Unreleased]: https://github.com/sigstore/sigstore-python/compare/v3.6.4...HEAD
+[3.6.7]: https://github.com/sigstore/sigstore-python/compare/v3.6.6...v3.6.7
+[3.6.6]: https://github.com/sigstore/sigstore-python/compare/v3.6.5...v3.6.6
+[3.6.5]: https://github.com/sigstore/sigstore-python/compare/v3.6.4...v3.6.5
 [3.6.4]: https://github.com/sigstore/sigstore-python/compare/v3.6.3...v3.6.4
 [3.6.3]: https://github.com/sigstore/sigstore-python/compare/v3.6.2...v3.6.3
 [3.6.2]: https://github.com/sigstore/sigstore-python/compare/v3.6.1...v3.6.2

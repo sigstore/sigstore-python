@@ -102,11 +102,6 @@ def _pack_digitally_signed(
     The format of the digitally signed data is described in IETF's RFC 6962.
     """
 
-    # No extensions are currently specified, so we treat the presence
-    # of any extension bytes as suspicious.
-    if len(sct.extension_bytes) != 0:
-        raise VerificationError("Unexpected trailing extension bytes")
-
     # This constructs the "core" `signed_entry` field, which is either
     # the public bytes of the cert *or* the TBSPrecertificate (with some
     # filtering), depending on whether our SCT is for a precertificate.
@@ -115,7 +110,7 @@ def _pack_digitally_signed(
     # Assemble a format string with the certificate length baked in and then pack the digitally
     # signed data
     # fmt: off
-    pattern = f"!BBQH{len(signed_entry)}sH"
+    pattern = f"!BBQH{len(signed_entry)}sH{len(sct.extension_bytes)}s"
     timestamp = sct.timestamp.replace(tzinfo=timezone.utc)
     data = struct.pack(
         pattern,
@@ -125,6 +120,7 @@ def _pack_digitally_signed(
         sct.entry_type.value,               # entry_type (x509_entry(0) | precert_entry(1))
         signed_entry,                       # select(entry_type) -> signed_entry (see above)
         len(sct.extension_bytes),           # extensions (opaque CtExtensions<0..2^16-1>)
+        sct.extension_bytes,
     )
     # fmt: on
 
