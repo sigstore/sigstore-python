@@ -312,6 +312,10 @@ class Issuer:
                     raise IdentityError(
                         f"Error response from auth endpoint: {auth_error[0]}"
                     )
+
+                if server.auth_response["state"][0] != server.oauth_session.state:
+                    raise IdentityError("OAuth state mismatch")
+
                 code = server.auth_response["code"][0]
             else:
                 # In the out-of-band case, we wait until the user provides the code

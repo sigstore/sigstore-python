@@ -10,6 +10,9 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+* Add state validation to OIDC flow to prevent Cross-site request forgery
+  during OIDC authorization
+  ([GHSA-hm8f-75xx-w2vr](https://github.com/sigstore/sigstore-python/security/advisories/GHSA-hm8f-75xx-w2vr))
 * verification now ensures that artifact digest documented in bundle and the real digest match
   (this is a bundle consistency check: bundle signature was always verified over real digest)
   ([#1652](https://github.com/sigstore/sigstore-python/pull/1652))
