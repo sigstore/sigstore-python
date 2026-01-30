@@ -290,9 +290,9 @@ email-validator==2.3.0 \
     --hash=sha256:80f13f623413e6b197ae73bb10bf4eb0908faf509ad8362c5edeb0be7fd450b4 \
     --hash=sha256:9fc05c37f2f6cf439ff414f8fc46d917929974a82244c20eb10231ba60c54426
     # via pydantic
-id==1.5.0 \
-    --hash=sha256:292cb8a49eacbbdbce97244f47a97b4c62540169c976552e497fd57df0734c1d \
-    --hash=sha256:f1434e1cef91f2cbb8a4ec64663d5a23b9ed43ef44c4c957d02583d61714c658
+id==1.6.0 \
+    --hash=sha256:2c18a2a7c71f9ef5ae203b0f2d0ce0e47eeb9f80de5d803a5197ceb5d2a47f20 \
+    --hash=sha256:4ca6e16f99e34d87ff2d9044fdf3bf278fcff33de56745a3734af9101fff6269
     # via sigstore
 idna==3.10 \
     --hash=sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9 \
@@ -461,9 +461,7 @@ pyopenssl==25.3.0 \
 requests==2.32.5 \
     --hash=sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6 \
     --hash=sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf
-    # via
-    #   id
-    #   sigstore
+    # via sigstore
 rfc3161-client==1.0.5 \
     --hash=sha256:078e4bbf0770ddc472e2ca96cf1e23efd0c313e6682b4c2c9765e1fdf09f55a3 \
     --hash=sha256:09c47582ecea2ca4a3debf8a1eda775cc3d5ae1379da40272cc065d32e639a7a \
@@ -525,5 +523,6 @@ urllib3==2.6.3 \
     --hash=sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed \
     --hash=sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4
     # via
+    #   id
     #   requests
     #   tuf
