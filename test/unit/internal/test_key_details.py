@@ -106,10 +106,12 @@ def delayed_crypto_mock(mock_func, error_msg):
         delayed_crypto_mock(
             lambda: Mock(
                 public_key=Mock(
-                    return_value=ec.generate_private_key(ec.SECT163K1()).public_key()
+                    return_value=ec.generate_private_key(
+                        ec.BrainpoolP256R1()
+                    ).public_key()
                 )
             ),
-            "Unsupported EC curve: sect163k1",
+            "Unsupported EC curve: brainpoolP256r1",
         ),
         # Unsupported RSA padding
         delayed_crypto_mock(
