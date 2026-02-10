@@ -102,9 +102,11 @@ def delayed_crypto_mock(mock_func, error_msg):
 class DummyCurve(ec.EllipticCurve):
     name = "dummycurve"
 
+    @property
     def key_size(self):
         return 69420
 
+    @property
     def group_order(self):
         return 69420
 
