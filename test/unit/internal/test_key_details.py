@@ -99,6 +99,18 @@ def delayed_crypto_mock(mock_func, error_msg):
         )
 
 
+class DummyCurve(ec.EllipticCurve):
+    name = "dummycurve"
+
+    @property
+    def key_size(self):
+        return 69420
+
+    @property
+    def group_order(self):
+        return 69420
+
+
 @pytest.mark.parametrize(
     "mock_certificate, error_msg",
     [
@@ -106,10 +118,10 @@ def delayed_crypto_mock(mock_func, error_msg):
         delayed_crypto_mock(
             lambda: Mock(
                 public_key=Mock(
-                    return_value=ec.generate_private_key(ec.SECT163K1()).public_key()
+                    return_value=ec.generate_private_key(DummyCurve()).public_key()
                 )
             ),
-            "Unsupported EC curve: sect163k1",
+            "Unsupported EC curve: dummycurve",
         ),
         # Unsupported RSA padding
         delayed_crypto_mock(
