@@ -8,6 +8,7 @@ import json
 import os
 import sys
 from contextlib import suppress
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 # The signing config in this trust_config is not used: it's just here
@@ -97,6 +98,52 @@ with NamedTemporaryFile(mode="wt") as temp_file:
     # `sigstore` requires `verify identity` for identity based verifications.
     subcommand, *fixed_args = fixed_args
     if subcommand == "sign":
+        if "--in-toto" in fixed_args:
+            # Handle DSSE signing via library call
+            fixed_args.remove("--in-toto")
+
+            from sigstore.dsse import Statement
+            from sigstore.models import ClientTrustConfig
+            from sigstore.oidc import IdentityToken
+            from sigstore.sign import SigningContext
+
+            identity_token = None
+            bundle_path = None
+            try:
+                i = fixed_args.index("--identity-token")
+                identity_token = fixed_args[i + 1]
+                i = fixed_args.index("--bundle")
+                bundle_path = fixed_args[i + 1]
+            except (ValueError, IndexError):
+                raise ValueError("Missing required arguments for DSSE signing")
+
+            # The statement is always the last argument in the protocol
+            input_file = fixed_args[-1]
+
+            # Direct library call
+            with open(input_file, "rb") as f:
+                statement_bytes = f.read()
+
+            statement = Statement(statement_bytes)
+
+            if trusted_root_path is not None:
+                trust_config_obj = ClientTrustConfig.from_json(Path(temp_file.name).read_text())
+            else:
+                trust_config_obj = ClientTrustConfig.production()
+                if "--staging" in sys.argv:
+                    trust_config_obj = ClientTrustConfig.staging()
+
+            context = SigningContext.from_trust_config(trust_config_obj)
+            token = IdentityToken(identity_token)
+
+            with context.signer(token) as signer:
+                bundle = signer.sign_dsse(statement)
+
+            with open(bundle_path, "w") as f:
+                f.write(bundle.to_json())
+
+            # Exit successfully after handling DSSE
+            sys.exit(0)
         command.append("sign")
     elif subcommand == "verify":
         command.extend(["verify", "identity"])
