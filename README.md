@@ -318,7 +318,9 @@ best effort critical bug fixes for the latest 3.6.x release.
    verified with sigstore-python 4 and above
 1. verifying without a network connection results in HTTP errors: By default
    sigstore-python checks for updates to the trusted key material on every
-   startup. This can be avoided temporarily with `--offline`
+   startup. This can be avoided temporarily with `--offline` but please read the
+   [documentation](https://sigstore.github.io/sigstore-python/advanced/offline/)
+   for caveats
 1. Signing results in HTTP errors: Signing with sigstore-python depends on multiple
    Sigstore services. Retrying on failure may be a useful workaround if any of
    these services fail but filing issues for specific failures is appreciated
