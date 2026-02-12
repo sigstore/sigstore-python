@@ -311,10 +311,11 @@ best effort critical bug fixes for the latest 3.6.x release.
 
 ### Common issues
 
-1. _bundle contains a transparency log entry that is incompatible with
-   this version of sigstore-python_ means an upgrade is necessary:
-   Signature bundles with Rekor v2 transparency log entries can only be
-   verified with sigstore-python 4.x
+1. "_bundle contains a transparency log entry that is incompatible with
+   this version of sigstore-python_" (as well as "_not enough sources of
+   verified time_") means an upgrade is necessary to verify this signature
+   bundle: Signature bundles with Rekor v2 transparency log entries can only be
+   verified with sigstore-python 4 and above
 1. verifying without a network connection results in HTTP errors: By default
    sigstore-python checks for updates to the trusted key material on every
    startup. This can be avoided temporarily with `--offline`
