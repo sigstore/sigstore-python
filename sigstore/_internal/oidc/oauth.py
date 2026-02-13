@@ -130,6 +130,9 @@ class _OAuthFlow:
 
 
 class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
+    # Short socket timeout to prevent blocking serve_forever() on idle connections
+    timeout = 1
+
     def log_message(self, format: str, *_args: Any) -> None:
         pass
 
@@ -142,6 +145,8 @@ class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
         if server.auth_response is not None:
             _logger.debug(f"{self.path} unavailable (teardown)")
             self.send_response(404)
+            self.end_headers()
+            self.close_connection = True
             return None
 
         r = urllib.parse.urlsplit(self.path)
@@ -156,14 +161,18 @@ class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            self.close_connection = True
             server.auth_response = urllib.parse.parse_qs(r.query)
         elif r.path == server.auth_request_path:
             self.send_response(302)
             self.send_header("Location", server.auth_endpoint)
             self.end_headers()
+            self.close_connection = True
         else:
             # Anything else sends a "Not Found" response.
             self.send_response(404)
+            self.end_headers()
+            self.close_connection = True
 
 
 OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"

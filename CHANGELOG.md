@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Fixed ~60s hang after completing browser-based OIDC authentication.
+  The OIDC redirect server had incomplete HTTP responses and no connection
+  management, causing a keep-alive deadlock with the browser.
+
 ## [4.2.0]
 
 ### Fixed
