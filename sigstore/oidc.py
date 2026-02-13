@@ -274,6 +274,7 @@ class Issuer:
         client_id: str = _DEFAULT_CLIENT_ID,
         client_secret: str = "",
         force_oob: bool = False,
+        redirect_port: int = 0,
     ) -> IdentityToken:
         """
         Retrieves and returns an `IdentityToken` from the current `Issuer`, via OAuth.
@@ -283,6 +284,11 @@ class Issuer:
         The `force_oob` flag controls the kind of flow performed. When `False` (the default),
         this function attempts to open the user's web browser before falling back to
         an out-of-band flow. When `True`, the out-of-band flow is always used.
+
+        The `redirect_port` parameter controls the port used for the local redirect server
+        during the OAuth flow. When `0` (the default), an ephemeral port is chosen by the OS.
+        Set this to a specific port number when your OIDC provider requires a pre-registered
+        redirect URI with a fixed port.
         """
 
         # This function and the components that it relies on are based off of:
@@ -291,7 +297,9 @@ class Issuer:
         from sigstore._internal.oidc.oauth import _OAuthFlow
 
         code: str
-        with _OAuthFlow(client_id, client_secret, self) as server:
+        with _OAuthFlow(
+            client_id, client_secret, self, redirect_port=redirect_port
+        ) as server:
             # Launch web browser
             if not force_oob and webbrowser.open(server.base_uri):
                 print("Waiting for browser interaction...", file=sys.stderr)
