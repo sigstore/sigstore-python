@@ -24,6 +24,7 @@ else!
     * [Generic identities](#generic-identities)
     * [Signatures from GitHub Actions](#signatures-from-github-actions)
   * [Advanced usage](#advanced-usage)
+* [Troubleshooting](#troubleshooting)
 * [Documentation](#documentation)
 * [Licensing](#licensing)
 * [Community](#community)
@@ -301,6 +302,32 @@ Verification options:
                         (default: None)
 ```
 <!-- @end-sigstore-verify-github-help@ -->
+
+## Troubleshooting
+
+First, please make sure you are using a recent and supported release:
+sigstore-python project provides support for the latest release and
+best effort critical bug fixes for the latest 3.6.x release.
+
+### Common issues
+
+1. "_bundle contains a transparency log entry that is incompatible with
+   this version of sigstore-python_" (as well as "_not enough sources of
+   verified time_") means an upgrade is necessary to verify this signature
+   bundle: Signature bundles with Rekor v2 transparency log entries can only be
+   verified with sigstore-python 4 and above
+1. verifying without a network connection results in HTTP errors: By default
+   sigstore-python checks for updates to the trusted key material on every
+   startup. This can be avoided temporarily with `--offline` but please read the
+   [documentation](https://sigstore.github.io/sigstore-python/advanced/offline/)
+   for caveats
+1. Signing results in HTTP errors: Signing with sigstore-python depends on multiple
+   Sigstore services. Retrying on failure may be a useful workaround if any of
+   these services fail but filing issues for specific failures is appreciated
+
+### My problem is something else
+
+Please [open an issue](https://github.com/sigstore/sigstore-python/issues/new?template=bug.md) or ask in the [slack channel](#community).
 
 ## Documentation
 
