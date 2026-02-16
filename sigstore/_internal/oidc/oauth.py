@@ -140,13 +140,16 @@ class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
         _logger.debug(f"GET: {self.path} with {dict(self.headers)}")
         server = cast(_OAuthRedirectServer, self.server)
 
+        # The redirect server only needs one request per connection.
+        # Close conn immediately to prevent keep-alive from blocking.
+        self.close_connection = True
+
         # If the auth response has already been populated, the main thread will be stopping this
         # thread and accessing the auth response shortly so we should stop servicing any requests.
         if server.auth_response is not None:
             _logger.debug(f"{self.path} unavailable (teardown)")
             self.send_response(404)
             self.end_headers()
-            self.close_connection = True
             return None
 
         r = urllib.parse.urlsplit(self.path)
@@ -161,18 +164,15 @@ class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
-            self.close_connection = True
             server.auth_response = urllib.parse.parse_qs(r.query)
         elif r.path == server.auth_request_path:
             self.send_response(302)
             self.send_header("Location", server.auth_endpoint)
             self.end_headers()
-            self.close_connection = True
         else:
             # Anything else sends a "Not Found" response.
             self.send_response(404)
             self.end_headers()
-            self.close_connection = True
 
 
 OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
