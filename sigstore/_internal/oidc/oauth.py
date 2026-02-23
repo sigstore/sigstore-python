@@ -130,6 +130,9 @@ class _OAuthFlow:
 
 
 class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
+    # Short socket timeout to prevent blocking serve_forever() on idle connections
+    timeout = 1
+
     def log_message(self, format: str, *_args: Any) -> None:
         pass
 
@@ -137,11 +140,16 @@ class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
         _logger.debug(f"GET: {self.path} with {dict(self.headers)}")
         server = cast(_OAuthRedirectServer, self.server)
 
+        # The redirect server only needs one request per connection.
+        # Close conn immediately to prevent keep-alive from blocking.
+        self.close_connection = True
+
         # If the auth response has already been populated, the main thread will be stopping this
         # thread and accessing the auth response shortly so we should stop servicing any requests.
         if server.auth_response is not None:
             _logger.debug(f"{self.path} unavailable (teardown)")
             self.send_response(404)
+            self.end_headers()
             return None
 
         r = urllib.parse.urlsplit(self.path)
@@ -164,6 +172,7 @@ class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
         else:
             # Anything else sends a "Not Found" response.
             self.send_response(404)
+            self.end_headers()
 
 
 OOB_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob"
