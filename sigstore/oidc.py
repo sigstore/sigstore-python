@@ -18,6 +18,7 @@ API for retrieving OIDC tokens.
 
 from __future__ import annotations
 
+import base64
 import logging
 import sys
 import time
@@ -28,10 +29,10 @@ from typing import NoReturn
 
 import id
 import jwt
-import requests
+import urllib3
 from pydantic import BaseModel, StrictStr
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import http
 from sigstore.errors import Error, NetworkError
 
 # See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
@@ -244,21 +245,18 @@ class Issuer:
         which is then used to bootstrap the issuer's state (such
         as authorization and token endpoints).
         """
-        self.session = requests.Session()
-        self.session.headers.update({"User-Agent": USER_AGENT})
-
         oidc_config_url = urllib.parse.urljoin(
             f"{base_url}/", ".well-known/openid-configuration"
         )
 
         try:
-            resp: requests.Response = self.session.get(oidc_config_url, timeout=30)
-        except (requests.ConnectionError, requests.Timeout) as exc:
+            resp = http.get(oidc_config_url, timeout=30)
+        except (urllib3.exceptions.HTTPError, urllib3.exceptions.TimeoutError) as exc:
             raise NetworkError from exc
 
         try:
             resp.raise_for_status()
-        except requests.HTTPError as http_error:
+        except http.HTTPError as http_error:
             raise IssuerError from http_error
 
         try:
@@ -333,19 +331,32 @@ class Issuer:
             client_secret,
         )
         logging.debug(f"PAYLOAD: data={data}")
+
+        # Build Authorization header for basic auth
+        credentials = f"{auth[0]}:{auth[1]}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+        headers = {
+            "Authorization": f"Basic {encoded_credentials}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+
+        # Convert data dict to URL-encoded form data
+        encoded_data = urllib.parse.urlencode(data).encode()
+
         try:
-            resp = self.session.post(
+            resp = http.request(
+                "POST",
                 self.oidc_config.token_endpoint,
-                data=data,
-                auth=auth,
+                data=encoded_data,
+                headers=headers,
                 timeout=30,
             )
-        except (requests.ConnectionError, requests.Timeout) as exc:
+        except (urllib3.exceptions.HTTPError, urllib3.exceptions.TimeoutError) as exc:
             raise NetworkError from exc
 
         try:
             resp.raise_for_status()
-        except requests.HTTPError as http_error:
+        except http.HTTPError as http_error:
             raise IdentityError(
                 f"Token request failed with {resp.status_code}"
             ) from http_error

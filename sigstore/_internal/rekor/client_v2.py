@@ -22,14 +22,13 @@ import base64
 import json
 import logging
 
-import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 from sigstore_models.common import v1 as common_v1
 from sigstore_models.rekor import v2 as rekor_v2
 from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEntry
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import http
 from sigstore._internal.key_details import _get_key_details
 from sigstore._internal.rekor import (
     EntryRequestBody,
@@ -66,25 +65,14 @@ class RekorV2Client(RekorLogSubmitter):
         """
         _logger.debug(f"proposed: {json.dumps(payload)}")
 
-        # Use a short lived session to avoid potential issues with multi-threading:
-        # Session thread-safety is ambiguous
-        session = requests.Session()
-        session.headers.update(
-            {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "User-Agent": USER_AGENT,
-            }
-        )
-
-        resp = session.post(
+        resp = http.post(
             f"{self.url}/log/entries",
-            json=payload,
+            json_data=payload,
         )
 
         try:
             resp.raise_for_status()
-        except requests.HTTPError as http_error:
+        except http.HTTPError as http_error:
             raise RekorClientError(http_error)
 
         integrated_entry = resp.json()
