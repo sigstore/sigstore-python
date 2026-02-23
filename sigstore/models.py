@@ -53,6 +53,8 @@ from sigstore._internal.fulcio.client import FulcioClient
 from sigstore._internal.merkle import verify_merkle_inclusion
 from sigstore._internal.rekor import RekorLogSubmitter
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
+from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
@@ -757,12 +759,8 @@ class SigningConfig:
         result: list[RekorLogSubmitter] = []
         for tlog in self._tlogs:
             if tlog.major_api_version == 1:
-                from sigstore._internal.rekor.client import RekorClient
-
                 result.append(RekorClient(tlog.url))
             elif tlog.major_api_version == 2:
-                from sigstore._internal.rekor.client_v2 import RekorV2Client
-
                 result.append(RekorV2Client(tlog.url))
             else:
                 raise AssertionError(f"Unexpected Rekor v{tlog.major_api_version}")

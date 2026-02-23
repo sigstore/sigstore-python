@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+from typing import TYPE_CHECKING
 
 import requests
 from cryptography.hazmat.primitives import serialization
@@ -38,7 +39,9 @@ from sigstore._internal.rekor import (
 )
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
-from sigstore.models import TransparencyLogEntry
+
+if TYPE_CHECKING:
+    from sigstore.models import TransparencyLogEntry
 
 _logger = logging.getLogger(__name__)
 
@@ -89,6 +92,8 @@ class RekorV2Client(RekorLogSubmitter):
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
+        from sigstore.models import TransparencyLogEntry
+
         inner = _TransparencyLogEntry.from_dict(integrated_entry)
         return TransparencyLogEntry(inner)
 
