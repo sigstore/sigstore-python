@@ -26,11 +26,10 @@ from dataclasses import dataclass
 from typing import Any
 
 import rekor_types
-import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import http
 from sigstore._internal.rekor import (
     EntryRequestBody,
     RekorClientError,
@@ -73,21 +72,8 @@ class RekorLogInfo:
 
 
 class _Endpoint(ABC):
-    def __init__(self, url: str, session: requests.Session | None = None) -> None:
-        # Note that _Endpoint may not be thread be safe if the same Session is provided
-        # to an _Endpoint in multiple threads
+    def __init__(self, url: str) -> None:
         self.url = url
-        if session is None:
-            session = requests.Session()
-            session.headers.update(
-                {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "User-Agent": USER_AGENT,
-                }
-            )
-
-        self.session = session
 
 
 class RekorLog(_Endpoint):
@@ -99,10 +85,10 @@ class RekorLog(_Endpoint):
         """
         Returns information about the Rekor instance's log.
         """
-        resp: requests.Response = self.session.get(self.url)
+        resp = http.get(self.url)
         try:
             resp.raise_for_status()
-        except requests.HTTPError as http_error:
+        except http.HTTPError as http_error:
             raise RekorClientError(http_error)
         return RekorLogInfo.from_response(resp.json())
 
@@ -112,7 +98,7 @@ class RekorLog(_Endpoint):
         Returns a `RekorEntries` capable of accessing detailed information
         about individual log entries.
         """
-        return RekorEntries(f"{self.url}/entries", session=self.session)
+        return RekorEntries(f"{self.url}/entries")
 
 
 class RekorEntries(_Endpoint):
@@ -131,16 +117,14 @@ class RekorEntries(_Endpoint):
         if not (bool(uuid) ^ bool(log_index)):
             raise ValueError("uuid or log_index required, but not both")
 
-        resp: requests.Response
-
         if uuid is not None:
-            resp = self.session.get(f"{self.url}/{uuid}")
+            resp = http.get(f"{self.url}/{uuid}")
         else:
-            resp = self.session.get(self.url, params={"logIndex": log_index})
+            resp = http.get(self.url, params={"logIndex": log_index})
 
         try:
             resp.raise_for_status()
-        except requests.HTTPError as http_error:
+        except http.HTTPError as http_error:
             raise RekorClientError(http_error)
         return TransparencyLogEntry._from_v1_response(resp.json())
 
@@ -154,10 +138,10 @@ class RekorEntries(_Endpoint):
 
         _logger.debug(f"proposed: {json.dumps(payload)}")
 
-        resp: requests.Response = self.session.post(self.url, json=payload)
+        resp = http.post(self.url, json_data=payload)
         try:
             resp.raise_for_status()
-        except requests.HTTPError as http_error:
+        except http.HTTPError as http_error:
             raise RekorClientError(http_error)
 
         integrated_entry = resp.json()
@@ -169,7 +153,7 @@ class RekorEntries(_Endpoint):
         """
         Returns a `RekorEntriesRetrieve` capable of retrieving entries.
         """
-        return RekorEntriesRetrieve(f"{self.url}/retrieve/", session=self.session)
+        return RekorEntriesRetrieve(f"{self.url}/retrieve/")
 
 
 class RekorEntriesRetrieve(_Endpoint):
@@ -190,11 +174,11 @@ class RekorEntriesRetrieve(_Endpoint):
         """
         data = {"entries": [expected_entry.model_dump(mode="json", by_alias=True)]}
 
-        resp: requests.Response = self.session.post(self.url, json=data)
+        resp = http.post(self.url, json_data=data)
         try:
             resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            if http_error.response and http_error.response.status_code == 404:
+        except http.HTTPError as http_error:
+            if http_error.status == 404:
                 return None
             raise RekorClientError(http_error)
 
