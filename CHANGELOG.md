@@ -10,6 +10,10 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+* Fixed `_cert_is_ca` in SCT verification ignoring the return value of
+  `cert_is_ca`, which caused certificates without a `BasicConstraints`
+  extension to pass the issuer CA check incorrectly.
+
 * Fixed ~60s hang after completing browser-based OIDC authentication.
   The OIDC redirect server had incomplete HTTP responses and no connection
   management, causing a keep-alive deadlock with the browser.
