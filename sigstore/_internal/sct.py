@@ -170,11 +170,10 @@ def _get_signed_certificate_timestamp(
 def _cert_is_ca(cert: Certificate) -> bool:
     _logger.debug(f"Found {cert.subject} as issuer, verifying if it is a ca")
     try:
-        cert_is_ca(cert)
+        return cert_is_ca(cert)
     except VerificationError as e:
         _logger.debug(f"Invalid {cert.subject}: failed to validate as a CA: {e}")
         return False
-    return True
 
 
 def verify_sct(
