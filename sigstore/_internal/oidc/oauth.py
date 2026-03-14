@@ -87,9 +87,9 @@ AUTH_SUCCESS_HTML = """
       </div>
       <div class="anchor">
         <div class="links">
-          <a href="https://sigstore.dev/" class="link login"><span class="sigstore">sigstore</span> home <span class="arrow">→</span></a>
-          <a href="https://docs.sigstore.dev/" class="link login"><span class="sigstore">sigstore</span> documentation <span class="arrow">→</span></a>
-          <a href="https://blog.sigstore.dev/" class="link"><span class="sigstore">sigstore</span> blog <span class="arrow">→</span></a>
+          <a href="https://sigstore.dev/" class="link login"><span class="sigstore">sigstore</span> home <span class="arrow">&rarr;</span></a>
+          <a href="https://docs.sigstore.dev/" class="link login"><span class="sigstore">sigstore</span> documentation <span class="arrow">&rarr;</span></a>
+          <a href="https://blog.sigstore.dev/" class="link"><span class="sigstore">sigstore</span> blog <span class="arrow">&rarr;</span></a>
         </div>
       </div>
     </div>
@@ -102,12 +102,18 @@ AUTH_SUCCESS_HTML = """
 
 
 class _OAuthFlow:
-    def __init__(self, client_id: str, client_secret: str, issuer: Issuer):
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        issuer: Issuer,
+        redirect_port: int = 0,
+    ):
         self._client_id = client_id
         self._client_secret = client_secret
         self._issuer = issuer
         self._server = _OAuthRedirectServer(
-            self._client_id, self._client_secret, self._issuer
+            self._client_id, self._client_secret, self._issuer, port=redirect_port
         )
         self._server_thread = threading.Thread(
             target=lambda server: server.serve_forever(),
@@ -232,8 +238,14 @@ class _OAuthSession:
 
 
 class _OAuthRedirectServer(http.server.HTTPServer):
-    def __init__(self, client_id: str, client_secret: str, issuer: Issuer) -> None:
-        super().__init__(("localhost", 0), _OAuthRedirectHandler)
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        issuer: Issuer,
+        port: int = 0,
+    ) -> None:
+        super().__init__(("localhost", port), _OAuthRedirectHandler)
         self.oauth_session = _OAuthSession(client_id, client_secret, issuer)
         self.auth_response: dict[str, list[str]] | None = None
         self._is_out_of_band = False
