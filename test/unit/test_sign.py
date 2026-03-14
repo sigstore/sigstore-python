@@ -11,22 +11,86 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import hashlib
 import logging
 import secrets
 
 import pretend
 import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509.oid import NameOID
 from sigstore_models.common.v1 import HashAlgorithm
 
 import sigstore.oidc
+import sigstore.sign
+from sigstore._internal.fulcio.client import FulcioCertificateSigningResponse
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import ClientTrustConfig
-from sigstore.sign import SigningContext
+from sigstore.sign import Signer, SigningContext
 from sigstore.verify.policy import UnsafeNoOp
+
+
+def test_csr_subject_is_stub_for_non_ascii_identity(dummy_jwt, monkeypatch):
+    # Regression test for https://github.com/sigstore/sigstore-python/issues/1507.
+    # The CSR subject must be a fixed ASCII stub regardless of the identity
+    # claim value, because Fulcio ignores the CSR subject entirely and
+    # non-ASCII values (e.g. emojis in GHA environment names) produce an
+    # invalid IA5String encoding that Fulcio rejects with a 400.
+    now = int(datetime.datetime.now().timestamp())
+    token_str = dummy_jwt(
+        {
+            "aud": "sigstore",
+            "sub": "repo:org/repo:environment:deploy\U0001f680",
+            "iat": now,
+            "nbf": now,
+            "exp": now + 600,
+            "iss": "hxxps://unknown.issuer.example.com/auth",
+        }
+    )
+    identity_token = sigstore.oidc.IdentityToken(token_str)
+    # The identity contains a non-ASCII emoji character.
+    assert "\U0001f680" in identity_token.identity
+
+    captured_csrs: list = []
+
+    def fake_post(csr, token):
+        captured_csrs.append(csr)
+        # Return a minimal fake response; _signing_cert will try to call
+        # verify_sct on it, which we also patch out below.
+        fake_cert = pretend.stub(
+            not_valid_after_utc=datetime.datetime(
+                9999, 1, 1, tzinfo=datetime.timezone.utc
+            )
+        )
+        return FulcioCertificateSigningResponse(cert=fake_cert, chain=[])
+
+    monkeypatch.setattr(sigstore.sign, "verify_sct", lambda *a, **kw: None)
+
+    fake_signing_cert_endpoint = pretend.stub(post=fake_post)
+    fake_fulcio = pretend.stub(signing_cert=fake_signing_cert_endpoint)
+    fake_trusted_root = pretend.stub(
+        ct_keyring=lambda *a: pretend.stub(verify=lambda *a: None)
+    )
+    fake_rekor = pretend.stub()
+    ctx = SigningContext(
+        fulcio=fake_fulcio,
+        rekor=fake_rekor,
+        trusted_root=fake_trusted_root,
+    )
+
+    signer = Signer(identity_token, ctx, cache=False)
+    signer._Signer__cached_private_key = ec.generate_private_key(ec.SECP256R1())
+    signer._signing_cert()
+
+    assert len(captured_csrs) == 1
+    csr = captured_csrs[0]
+    email_attrs = csr.subject.get_attributes_for_oid(NameOID.EMAIL_ADDRESS)
+    assert len(email_attrs) == 1
+    assert email_attrs[0].value == "user@example.com"
 
 
 # only check the log contents for production: staging is already on
