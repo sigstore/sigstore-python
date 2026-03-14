@@ -141,14 +141,21 @@ class Signer:
         else:
             _logger.debug("Retrieving signed certificate...")
 
-            # Build an X.509 Certificate Signing Request
+            # Build an X.509 Certificate Signing Request.
+            # Fulcio ignores the CSR subject entirely; it derives the
+            # certificate's identity from the OIDC token, not from this
+            # field. We use a fixed stub value here instead of the actual
+            # identity claim so that non-ASCII characters (e.g. emojis in
+            # GitHub Actions environment names) don't produce an invalid
+            # IA5String-encoded email attribute and cause a Fulcio 400.
+            # See: https://github.com/sigstore/fulcio/issues/863
             builder = (
                 x509.CertificateSigningRequestBuilder()
                 .subject_name(
                     x509.Name(
                         [
                             x509.NameAttribute(
-                                NameOID.EMAIL_ADDRESS, self._identity_token._identity
+                                NameOID.EMAIL_ADDRESS, "user@example.com"
                             ),
                         ]
                     )
