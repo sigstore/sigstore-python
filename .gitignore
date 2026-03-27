@@ -8,6 +8,7 @@ html/
 dist/
 .python-version
 build
+.DS_Store
 
 # Ignore some file types that may litter the root directory
 *.txt
