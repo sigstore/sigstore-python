@@ -90,7 +90,7 @@ def load_pem_public_key(
     if not isinstance(key, types):
         raise VerificationError(f"invalid key format: not one of {types}")
 
-    return key  # type: ignore[return-value]
+    return key
 
 
 def load_der_public_key(
@@ -114,7 +114,7 @@ def load_der_public_key(
     if not isinstance(key, types):
         raise VerificationError(f"invalid key format: not one of {types}")
 
-    return key  # type: ignore[return-value]
+    return key
 
 
 def base64_encode_pem_cert(cert: Certificate) -> B64Str:
