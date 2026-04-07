@@ -20,6 +20,8 @@ import enum
 from dataclasses import dataclass
 from datetime import datetime
 
+import threading
+
 import requests
 from rfc3161_client import (
     TimestampRequestBuilder,
@@ -68,6 +70,23 @@ class TimestampAuthorityClient:
         Create a new `TimestampAuthorityClient` from the given URL.
         """
         self.url = url
+        self._thread_local = threading.local()
+
+    @property
+    def _session(self) -> requests.Session:
+        """
+        Lazy-initialized thread-local session object
+        """
+        if not hasattr(self._thread_local, "session"):
+            session = requests.Session()
+            session.headers.update(
+                {
+                    "Content-Type": "application/timestamp-query",
+                    "User-Agent": USER_AGENT,
+                }
+            )
+            self._thread_local.session = session
+        return self._thread_local.session
 
     def request_timestamp(self, signature: bytes) -> TimeStampResponse:
         """
@@ -75,6 +94,8 @@ class TimestampAuthorityClient:
 
         This method generates a RFC3161 Timestamp Request and sends it to a TSA.
         The received response is parsed but *not* cryptographically verified.
+
+        request_timestamp() can be called from multiple threads.
 
         Raises a TimestampError on failure.
         """
@@ -91,18 +112,9 @@ class TimestampAuthorityClient:
             msg = f"invalid request: {error}"
             raise TimestampError(msg)
 
-        # Use single use session to avoid potential Session thread safety issues
-        session = requests.Session()
-        session.headers.update(
-            {
-                "Content-Type": "application/timestamp-query",
-                "User-Agent": USER_AGENT,
-            }
-        )
-
         # Send it to the TSA for signing
         try:
-            response = session.post(
+            response = self._session.post(
                 self.url,
                 data=timestamp_request.as_bytes(),
                 timeout=CLIENT_TIMEOUT,
