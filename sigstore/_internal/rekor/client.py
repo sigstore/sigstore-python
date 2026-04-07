@@ -21,11 +21,10 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import threading
 from abc import ABC
 from dataclasses import dataclass
 from typing import Any
-
-import threading
 
 import rekor_types
 import requests
@@ -256,7 +255,7 @@ class RekorClient(RekorLogSubmitter):
                 }
             )
             self._thread_local.session = session
-        return self._thread_local.session
+        return self._thread_local.session  # type: ignore[no-any-return]
 
     @property
     def log(self) -> RekorLog:

@@ -21,7 +21,6 @@ from __future__ import annotations
 import base64
 import json
 import logging
-
 import threading
 
 import requests
@@ -74,7 +73,7 @@ class RekorV2Client(RekorLogSubmitter):
                 }
             )
             self._thread_local.session = session
-        return self._thread_local.session
+        return self._thread_local.session  # type: ignore[no-any-return]
 
     def create_entry(self, payload: EntryRequestBody) -> TransparencyLogEntry:
         """

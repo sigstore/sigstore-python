@@ -17,10 +17,9 @@ Utilities to deal with sources of signed time.
 """
 
 import enum
+import threading
 from dataclasses import dataclass
 from datetime import datetime
-
-import threading
 
 import requests
 from rfc3161_client import (
@@ -86,7 +85,7 @@ class TimestampAuthorityClient:
                 }
             )
             self._thread_local.session = session
-        return self._thread_local.session
+        return self._thread_local.session  # type: ignore[no-any-return]
 
     def request_timestamp(self, signature: bytes) -> TimeStampResponse:
         """
