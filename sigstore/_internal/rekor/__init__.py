@@ -23,9 +23,9 @@ import typing
 from abc import ABC, abstractmethod
 
 import rekor_types
-import requests
 from cryptography.x509 import Certificate
 
+from sigstore._internal import http
 from sigstore._utils import base64_encode_pem_cert
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
@@ -45,20 +45,17 @@ class RekorClientError(Exception):
     A generic error in the Rekor client.
     """
 
-    def __init__(self, http_error: requests.HTTPError):
+    def __init__(self, http_error: http.HTTPError):
         """
-        Create a new `RekorClientError` from the given `requests.HTTPError`.
+        Create a new `RekorClientError` from the given `http.HTTPError`.
         """
-        if http_error.response is not None:
-            try:
-                error = rekor_types.Error.model_validate_json(http_error.response.text)
-                super().__init__(f"{error.code}: {error.message}")
-            except Exception:
-                super().__init__(
-                    f"Rekor returned an unknown error with HTTP {http_error.response.status_code}"
-                )
-        else:
-            super().__init__(f"Unexpected Rekor error: {http_error}")
+        try:
+            error = rekor_types.Error.model_validate_json(http_error.body or "")
+            super().__init__(f"{error.code}: {error.message}")
+        except Exception:
+            super().__init__(
+                f"Rekor returned an unknown error with HTTP {http_error.status}"
+            )
 
 
 class RekorLogSubmitter(ABC):

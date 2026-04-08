@@ -251,7 +251,7 @@ class TestSignWithTSA:
             with sig_ctx.signer(identity) as signer:
                 bundle = signer.sign_artifact(hashed)
 
-        assert caplog.records[0].message.startswith("Unable to use invalid-url")
+        assert caplog.records[0].message.startswith("Failed to resolve 'invalid-url'")
         assert (
             bundle.verification_material.timestamp_verification_data.rfc3161_timestamps
         )

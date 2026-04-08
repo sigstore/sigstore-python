@@ -25,7 +25,6 @@ from abc import ABC
 from dataclasses import dataclass
 from urllib.parse import urljoin
 
-import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import (
     Certificate,
@@ -33,7 +32,7 @@ from cryptography.x509 import (
     load_pem_x509_certificate,
 )
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import http
 from sigstore._utils import B64Str
 from sigstore.oidc import IdentityToken
 
@@ -71,9 +70,8 @@ class FulcioClientError(Exception):
 
 
 class _Endpoint(ABC):
-    def __init__(self, url: str, session: requests.Session) -> None:
+    def __init__(self, url: str) -> None:
         self.url = url
-        self.session = session
 
 
 def _serialize_cert_request(req: CertificateSigningRequest) -> str:
@@ -102,17 +100,20 @@ class FulcioSigningCert(_Endpoint):
             "Content-Type": "application/json",
             "Accept": "application/pem-certificate-chain",
         }
-        resp: requests.Response = self.session.post(
-            url=self.url, data=_serialize_cert_request(req), headers=headers
+        resp = http.post(
+            url=self.url, data=_serialize_cert_request(req).encode(), headers=headers
         )
         try:
             resp.raise_for_status()
-        except requests.HTTPError as http_error:
+        except http.HTTPError as http_error:
             # See if we can optionally add a message
-            if http_error.response:
-                text = json.loads(http_error.response.text)
-                if "message" in http_error.response.text:
-                    raise FulcioClientError(text["message"]) from http_error
+            if http_error.body:
+                try:
+                    text = json.loads(http_error.body)
+                    if "message" in text:
+                        raise FulcioClientError(text["message"]) from http_error
+                except (json.JSONDecodeError, KeyError):
+                    pass
             raise FulcioClientError from http_error
 
         try:
@@ -141,10 +142,10 @@ class FulcioTrustBundle(_Endpoint):
 
     def get(self) -> FulcioTrustBundleResponse:
         """Get the certificate chains from Fulcio"""
-        resp: requests.Response = self.session.get(self.url)
+        resp = http.get(self.url)
         try:
             resp.raise_for_status()
-        except requests.HTTPError as http_error:
+        except http.HTTPError as http_error:
             raise FulcioClientError from http_error
 
         trust_bundle_json = resp.json()
@@ -165,33 +166,17 @@ class FulcioClient:
         """Initialize the client"""
         _logger.debug(f"Fulcio client using URL: {url}")
         self.url = url
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": USER_AGENT,
-            }
-        )
-
-    def __del__(self) -> None:
-        """
-        Destroys the underlying network session.
-        """
-        self.session.close()
 
     @property
     def signing_cert(self) -> FulcioSigningCert:
         """
         Returns a model capable of interacting with Fulcio's signing certificate endpoints.
         """
-        return FulcioSigningCert(
-            urljoin(self.url, SIGNING_CERT_ENDPOINT), session=self.session
-        )
+        return FulcioSigningCert(urljoin(self.url, SIGNING_CERT_ENDPOINT))
 
     @property
     def trust_bundle(self) -> FulcioTrustBundle:
         """
         Returns a model capable of interacting with Fulcio's trust bundle endpoints.
         """
-        return FulcioTrustBundle(
-            urljoin(self.url, TRUST_BUNDLE_ENDPOINT), session=self.session
-        )
+        return FulcioTrustBundle(urljoin(self.url, TRUST_BUNDLE_ENDPOINT))

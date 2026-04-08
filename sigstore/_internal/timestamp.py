@@ -20,7 +20,7 @@ import enum
 from dataclasses import dataclass
 from datetime import datetime
 
-import requests
+import urllib3
 from rfc3161_client import (
     TimestampRequestBuilder,
     TimeStampResponse,
@@ -28,7 +28,7 @@ from rfc3161_client import (
 )
 from rfc3161_client.base import HashAlgorithm
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import http
 
 CLIENT_TIMEOUT: int = 5
 
@@ -91,30 +91,22 @@ class TimestampAuthorityClient:
             msg = f"invalid request: {error}"
             raise TimestampError(msg)
 
-        # Use single use session to avoid potential Session thread safety issues
-        session = requests.Session()
-        session.headers.update(
-            {
-                "Content-Type": "application/timestamp-query",
-                "User-Agent": USER_AGENT,
-            }
-        )
-
         # Send it to the TSA for signing
         try:
-            response = session.post(
+            response = http.post(
                 self.url,
                 data=timestamp_request.as_bytes(),
+                headers={"Content-Type": "application/timestamp-query"},
                 timeout=CLIENT_TIMEOUT,
             )
             response.raise_for_status()
-        except requests.RequestException as error:
+        except (urllib3.exceptions.HTTPError, http.HTTPError) as error:
             msg = f"error while sending the request to the TSA: {error}"
             raise TimestampError(msg)
 
         # Check that we can parse the response but do not *verify* it
         try:
-            timestamp_response = decode_timestamp_response(response.content)
+            timestamp_response = decode_timestamp_response(response._data)
         except ValueError as e:
             msg = f"invalid response: {e}"
             raise TimestampError(msg)
