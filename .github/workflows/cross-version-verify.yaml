@@ -42,8 +42,9 @@ jobs:
       - name: Sign 
         run: |
           touch artifact
-          python -m sigstore --staging sign --bundle artifact-rekor2.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=2 artifact
-          python -m sigstore --staging sign --bundle artifact-rekor1.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=1 artifact
+          python -m sigstore --staging sign --bundle artifact-staging-rekor2.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=2 artifact
+          python -m sigstore --staging sign --bundle artifact-staging-rekor1.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=1 artifact
+          python -m sigstore sign --bundle artifact-prod-rekor1.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=1 artifact
       - name: upload signature bundle
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -52,13 +53,24 @@ jobs:
           if-no-files-found: error
           retention-days: 1
   verify:
-    name: Verify with ${{ matrix.version }}
+    name: Verify with ${{ matrix.version }} on ${{ matrix.env }}
     needs: [sign]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # Don't cancel other jobs if one fails
       matrix:
-        version: [3.5.6, 3.6.6, 4.0.0, 4.1.0, 4.2.0]
+        # hand crafted list of old versions we care about
+        version: [3.5.6, 3.6.7, 4.0.0, 4.1.0, 4.2.0]
+        env: [staging, prod]
+        exclude:
+          # exclude staging for versions with https://github.com/sigstore/sigstore-python/issues/1656
+          - env: staging
+            version: 3.5.6
+          - env: staging
+            version: 4.0.0
+          - env: staging
+            version: 4.1.0
+
     steps:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -69,15 +81,22 @@ jobs:
           name: bundle
       - run: touch artifact
       - name: Verify (Rekor v2)
-        if: startsWith(matrix.version, '3.') != true
+        # Rekor v2 is currently only available on staging, and only supported on sigstore-python 4.x
+        if: startsWith(matrix.version, '3.') != true && matrix.env == 'staging'
+        env:
+          ENV_OPT: ${{ matrix.env == 'staging' && '--staging' || '' }}
+          BUNDLE: artifact-${{matrix.env}}-rekor2.sigstore.json
         run: |
-          python -m sigstore --staging verify github --verbose \
+          python -m sigstore $ENV_OPT verify github --verbose \
             --cert-identity "https://github.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main" \
-            --bundle artifact-rekor2.sigstore.json \
+            --bundle artifact-staging-rekor2.sigstore.json \
             artifact
       - name: Verify (Rekor v1)
+        env:
+          ENV_OPT: ${{ matrix.env == 'staging' && '--staging' || '' }}
+          BUNDLE: artifact-${{matrix.env}}-rekor1.sigstore.json
         run: |
-          python -m sigstore --staging verify github --verbose \
+          python -m sigstore $ENV_OPT verify github --verbose \
             --cert-identity "https://github.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main" \
-            --bundle artifact-rekor1.sigstore.json \
+            --bundle $BUNDLE \
             artifact
