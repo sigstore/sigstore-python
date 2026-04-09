@@ -89,7 +89,7 @@ jobs:
         run: |
           python -m sigstore $ENV_OPT verify github --verbose \
             --cert-identity "https://github.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main" \
-            --bundle artifact-staging-rekor2.sigstore.json \
+            --bundle $BUNDLE \
             artifact
       - name: Verify (Rekor v1)
         env:
