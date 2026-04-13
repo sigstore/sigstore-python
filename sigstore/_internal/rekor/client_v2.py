@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import threading
 
 import requests
 from cryptography.hazmat.primitives import serialization
@@ -55,6 +56,24 @@ class RekorV2Client(RekorLogSubmitter):
         Create a new `RekorV2Client` from the given URL.
         """
         self.url = f"{base_url}/api/v2"
+        self._thread_local = threading.local()
+
+    @property
+    def _session(self) -> requests.Session:
+        """
+        Lazy-initialized thread-local session object
+        """
+        if not hasattr(self._thread_local, "session"):
+            session = requests.Session()
+            session.headers.update(
+                {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "User-Agent": USER_AGENT,
+                }
+            )
+            self._thread_local.session = session
+        return self._thread_local.session  # type: ignore[no-any-return]
 
     def create_entry(self, payload: EntryRequestBody) -> TransparencyLogEntry:
         """
@@ -63,21 +82,12 @@ class RekorV2Client(RekorLogSubmitter):
         Note that this call can take a fairly long time as the log
         only responds after the entry has been included in the log.
         https://github.com/sigstore/rekor-tiles/blob/main/CLIENTS.md#handling-longer-requests
+
+        create_entry() can be called from multiple threads.
         """
         _logger.debug(f"proposed: {json.dumps(payload)}")
 
-        # Use a short lived session to avoid potential issues with multi-threading:
-        # Session thread-safety is ambiguous
-        session = requests.Session()
-        session.headers.update(
-            {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "User-Agent": USER_AGENT,
-            }
-        )
-
-        resp = session.post(
+        resp = self._session.post(
             f"{self.url}/log/entries",
             json=payload,
         )

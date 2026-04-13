@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import threading
 from abc import ABC
 from dataclasses import dataclass
 from typing import Any
@@ -73,20 +74,10 @@ class RekorLogInfo:
 
 
 class _Endpoint(ABC):
-    def __init__(self, url: str, session: requests.Session | None = None) -> None:
-        # Note that _Endpoint may not be thread be safe if the same Session is provided
+    def __init__(self, url: str, session: requests.Session) -> None:
+        # Note that _Endpoint may not be thread safe if the same Session is provided
         # to an _Endpoint in multiple threads
         self.url = url
-        if session is None:
-            session = requests.Session()
-            session.headers.update(
-                {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "User-Agent": USER_AGENT,
-                }
-            )
-
         self.session = session
 
 
@@ -231,6 +222,7 @@ class RekorClient(RekorLogSubmitter):
         Create a new `RekorClient` from the given URL.
         """
         self.url = f"{url}/api/v1"
+        self._thread_local = threading.local()
 
     @classmethod
     def production(cls) -> RekorClient:
@@ -249,16 +241,35 @@ class RekorClient(RekorLogSubmitter):
         return cls(STAGING_REKOR_URL)
 
     @property
+    def _session(self) -> requests.Session:
+        """
+        Lazy-initialized thread-local session object
+        """
+        if not hasattr(self._thread_local, "session"):
+            session = requests.Session()
+            session.headers.update(
+                {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "User-Agent": USER_AGENT,
+                }
+            )
+            self._thread_local.session = session
+        return self._thread_local.session  # type: ignore[no-any-return]
+
+    @property
     def log(self) -> RekorLog:
         """
         Returns a `RekorLog` adapter for making requests to a Rekor log.
         """
 
-        return RekorLog(f"{self.url}/log")
+        return RekorLog(f"{self.url}/log", session=self._session)
 
     def create_entry(self, request: EntryRequestBody) -> TransparencyLogEntry:
         """
         Submit the request to Rekor.
+
+        create_entry() can be called from multiple threads.
         """
         return self.log.entries.post(request)
 
