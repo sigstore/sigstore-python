@@ -46,7 +46,9 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: pip install .
       - name: Fetch testing oidc token
-        uses: sigstore-conformance/extremely-dangerous-public-oidc-beacon@4a8befcc16064dac9e97f210948d226e5c869bdc # v1.0.0
+        run: |
+          curl --fail --retry 3 --output oidc-token.txt \
+            https://storage.googleapis.com/sigstore-conformance-testing-token/untrusted-testing-token.txt
       - name: Sign 
         run: python -m sigstore --staging sign --identity-token $(cat oidc-token.txt) test/assets/a.txt
       - name: upload signature bundle
@@ -81,7 +83,8 @@ jobs:
           name: ${{ matrix.signed-with-os }}-bundle
       - name: Verify
         run: |
-          python -m sigstore --staging verify github --verbose \
-            --cert-identity "https://github.com/sigstore-conformance/extremely-dangerous-public-oidc-beacon/.github/workflows/extremely-dangerous-oidc-beacon.yml@refs/heads/main" \
+          python -m sigstore --staging verify identity --verbose \
+            --cert-identity "untrusted-sa@sigstore-conformance.iam.gserviceaccount.com" \
+            --cert-oidc-issuer "https://accounts.google.com" \
             --bundle a.txt.sigstore.json \
             test/assets/a.txt
