@@ -93,7 +93,7 @@ jobs:
           ENV_OPT: ${{ matrix.env == 'staging' && '--staging' || '' }}
           BUNDLE: artifact-${{matrix.env}}-rekor1.sigstore.json
         run: |
-          python -m sigstore $ENV_OPT verify identity --verbose \
+          sigstore $ENV_OPT verify identity --verbose \
             --cert-identity "untrusted-sa@sigstore-conformance.iam.gserviceaccount.com" \
             --cert-oidc-issuer "https://accounts.google.com" \
             --bundle $BUNDLE \
