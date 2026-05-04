@@ -18,17 +18,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           # NOTE: We intentionally don't use a cache in the release step,
           # to reduce the risk of cache poisoning.
-          python-version: "3.x"
-
-      - name: deps
-        run: python -m pip install -U build
+          enable-cache: false
 
       - name: build
-        run: python -m build
+        run: make package
 
       - name: sign
         run: |
@@ -87,7 +84,7 @@ jobs:
           if-no-files-found: warn
 
   generate-provenance:
-    needs: [build]
+    needs: [ build ]
     runs-on: ubuntu-latest
     permissions:
       id-token: write # To sign the provenance.
@@ -101,7 +98,7 @@ jobs:
           subject-path: "built-packages/*"
 
   release-pypi:
-    needs: [build, generate-provenance]
+    needs: [ build, generate-provenance ]
     runs-on: ubuntu-latest
     permissions:
       # Used to authenticate to PyPI via OIDC.
@@ -116,7 +113,7 @@ jobs:
           packages-dir: built-packages/
 
   release-github:
-    needs: [build, generate-provenance]
+    needs: [ build, generate-provenance ]
     runs-on: ubuntu-latest
     permissions:
       # Needed to upload release assets.
@@ -142,7 +139,7 @@ jobs:
       pull-requests: write
       contents: write
     # Workflow depends on uploaded release assets.
-    needs: [release-github]
+    needs: [ release-github ]
     # Only trigger workflow on full releases.
     if: ${{ !github.event.release.prerelease }}
     uses: ./.github/workflows/pin-requirements.yml
