@@ -3,7 +3,7 @@ name: Check embedded root
 on:
   workflow_dispatch:
   schedule:
-    - cron: '13 13 * * 3'
+    - cron: "13 13 * * 3"
 
 jobs:
   check-embedded-root:
@@ -16,11 +16,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: "3.x"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Setup environment
         run: make dev
@@ -29,7 +25,6 @@ jobs:
         run: |
           make update-embedded-root
           git diff --exit-code
-
 
       - if: failure()
         name: Create an issue if embedded root is not up-to-date
@@ -40,9 +35,9 @@ jobs:
             const body = `
             The Sigstore [TUF repository](https://tuf-repo-cdn.sigstore.dev/) contents have changed: the data embedded
             in sigstore-python sources can be updated. This is not urgent but will improve cold-cache performance.
-            
+
             Run \`make update-embedded-root\` to update the embedded data.
-            
+
             This issue was filed by _${context.workflow}_ [workflow run](${context.serverUrl}/${repo}/actions/runs/${context.runId}).
             `
 

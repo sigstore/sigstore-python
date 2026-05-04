@@ -31,11 +31,14 @@ jobs:
       - uses: sigstore/sigstore-conformance@4d66ba3cb0c9c95f705c757c0f5e226d3f4d5151 # v0.0.27
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance
-          xfail: "test_verify*intoto-with-custom-trust-root] test_verify*managed-key-happy-path] test_verify*managed-key-and-trusted-root]" # see issues 1442, 1244
+          xfail: "test_verify*intoto-with-custom-trust-root]
+            test_verify*managed-key-happy-path]
+            test_verify*managed-key-and-trusted-root]" # see issues 1442, 1244
 
   file-issue-on-failure:
-    needs: [conformance]
-    if: failure() && github.event_name == 'schedule' && github.repository == 'sigstore/sigstore-python'
+    needs: [ conformance ]
+    if: failure() && github.event_name == 'schedule' && github.repository ==
+      'sigstore/sigstore-python'
     permissions:
       issues: write # required to file an issue
     runs-on: ubuntu-latest

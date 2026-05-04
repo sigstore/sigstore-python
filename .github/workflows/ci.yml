@@ -15,7 +15,8 @@ permissions: {}
 jobs:
   test:
     # Avoid scheduled runs in forks
-    if: github.event_name != 'schedule' || github.repository == 'sigstore/sigstore-python'
+    if: github.event_name != 'schedule' || github.repository ==
+      'sigstore/sigstore-python'
     permissions:
       # Needed to access the workflow's OIDC identity.
       id-token: write
@@ -38,15 +39,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: ${{ matrix.conf.py }}
-          allow-prereleases: true
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: deps
-        run: make dev SIGSTORE_EXTRA=test
+        run: make dev
 
       - name: test (offline)
         if: matrix.conf.os == 'ubuntu-latest'
@@ -91,7 +87,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: test (interactive)
-        if: (github.event_name != 'pull_request') || !github.event.pull_request.head.repo.fork
+        if: (github.event_name != 'pull_request') ||
+          !github.event.pull_request.head.repo.fork
         run: make test-interactive TEST_ARGS="-vv --showlocals"
 
       - uses: ./.github/actions/upload-coverage
@@ -100,7 +97,8 @@ jobs:
         if: ${{ matrix.conf.os == 'ubuntu-latest' }}
 
   all-tests-pass:
-    if: always() && (github.event_name != 'schedule' || github.repository == 'sigstore/sigstore-python')
+    if: always() && (github.event_name != 'schedule' || github.repository ==
+      'sigstore/sigstore-python')
 
     needs:
       - test
