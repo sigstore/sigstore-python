@@ -22,7 +22,10 @@ jobs:
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: install sigstore-python
-        run: uv tool install .
+        run: |
+          uv venv
+          uv pip install .
+          echo "$(pwd)/.venv/bin" >> ${GITHUB_PATH}
 
       - uses: sigstore/sigstore-conformance@4d66ba3cb0c9c95f705c757c0f5e226d3f4d5151 # v0.0.27
         with:
