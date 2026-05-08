@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* `Issuer.identity_token` accepts an optional `redirect_port` argument to bind
+  the local OAuth redirect server to a fixed port, for OIDC providers that
+  require a pre-registered redirect URI without `localhost` port wildcards
+  ([#1029](https://github.com/sigstore/sigstore-python/issues/1029))
+
 ### Fixed
 
 * Fixed ~60s hang after completing browser-based OIDC authentication.
