@@ -25,7 +25,7 @@ jobs:
       SIGSTORE_REF: ${{ inputs.ref }}
     strategy:
       matrix:
-        python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python_version: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
 
     steps:
       - name: Populate reference from context
@@ -38,12 +38,11 @@ jobs:
           ref: ${{ env.SIGSTORE_REF }}
           persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        name: Install Python ${{ matrix.python_version }}
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: ${{ matrix.python_version }}
-          allow-prereleases: true
-          cache: "pip"
 
       - name: Run test install
-        run: python -m pip install --require-hashes --no-deps -r install/requirements.txt
+        run: |
+          uv venv
+          uv pip install --require-hashes --no-deps -r install/requirements.txt

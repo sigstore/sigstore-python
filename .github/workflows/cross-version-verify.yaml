@@ -31,22 +31,17 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: "3.x"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
-      - run: pip install .
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
       - name: Fetch testing oidc token
         run: |
           curl --fail --retry 3 --output oidc-token.txt \
             https://storage.googleapis.com/sigstore-conformance-testing-token/untrusted-testing-token.txt
-      - name: Sign 
+      - name: Sign
         run: |
           touch artifact
-          python -m sigstore --staging sign --bundle artifact-staging-rekor2.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=2 artifact
-          python -m sigstore --staging sign --bundle artifact-staging-rekor1.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=1 artifact
-          python -m sigstore sign --bundle artifact-prod-rekor1.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=1 artifact
+          uv run python -m sigstore --staging sign --bundle artifact-staging-rekor2.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=2 artifact
+          uv run python -m sigstore --staging sign --bundle artifact-staging-rekor1.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=1 artifact
+          uv run python -m sigstore sign --bundle artifact-prod-rekor1.sigstore.json --identity-token $(cat oidc-token.txt) --rekor-version=1 artifact
       - name: upload signature bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -56,14 +51,14 @@ jobs:
           retention-days: 1
   verify:
     name: Verify with ${{ matrix.version }} on ${{ matrix.env }}
-    needs: [sign]
+    needs: [ sign ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false # Don't cancel other jobs if one fails
       matrix:
         # hand crafted list of old versions we care about
-        version: [3.5.6, 3.6.7, 4.0.0, 4.1.0, 4.2.0]
-        env: [staging, prod]
+        version: [ 3.5.6, 3.6.7, 4.0.0, 4.1.0, 4.2.0 ]
+        env: [ staging, prod ]
         exclude:
           # exclude staging for versions with https://github.com/sigstore/sigstore-python/issues/1656
           - env: staging
@@ -74,10 +69,9 @@ jobs:
             version: 4.1.0
 
     steps:
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: "3.x"
-      - run: pip install sigstore==${{ matrix.version }}
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      - run: |
+          uv tool install --prerelease=allow sigstore==${{ matrix.version }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: bundle
@@ -89,7 +83,7 @@ jobs:
           ENV_OPT: ${{ matrix.env == 'staging' && '--staging' || '' }}
           BUNDLE: artifact-${{matrix.env}}-rekor2.sigstore.json
         run: |
-          python -m sigstore $ENV_OPT verify identity --verbose \
+          sigstore $ENV_OPT verify identity --verbose \
             --cert-identity "untrusted-sa@sigstore-conformance.iam.gserviceaccount.com" \
             --cert-oidc-issuer "https://accounts.google.com" \
             --bundle $BUNDLE \
@@ -99,7 +93,7 @@ jobs:
           ENV_OPT: ${{ matrix.env == 'staging' && '--staging' || '' }}
           BUNDLE: artifact-${{matrix.env}}-rekor1.sigstore.json
         run: |
-          python -m sigstore $ENV_OPT verify identity --verbose \
+          sigstore $ENV_OPT verify identity --verbose \
             --cert-identity "untrusted-sa@sigstore-conformance.iam.gserviceaccount.com" \
             --cert-oidc-issuer "https://accounts.google.com" \
             --bundle $BUNDLE \

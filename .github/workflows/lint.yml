@@ -17,14 +17,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version: "3.x"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
-
-      - name: deps
-        run: make dev SIGSTORE_EXTRA=lint
+          python-version: "3.10"
 
       - name: lint
         run: make lint
@@ -38,14 +33,9 @@ jobs:
 
       # NOTE: We intentionally check --help rendering against our minimum Python,
       # since it changes slightly between Python versions.
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "3.10"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
-
-      - name: deps
-        run: make dev
 
       - name: check-readme
         run: make check-readme
@@ -74,14 +64,9 @@ jobs:
           persist-credentials: false
 
       # NOTE: We intentionally check test certificates against our minimum supported Python.
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "3.10"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
-
-      - name: deps
-        run: make dev
 
       - name: ensure testcase generation does not regress
         run: make gen-x509-testcases
