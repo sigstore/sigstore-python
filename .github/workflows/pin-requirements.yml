@@ -70,14 +70,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version-file: install/.python-version
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
+          working-directory: install
 
       - name: Install dependencies
-        run: pip install pip-tools
+        run: uv install pip-tools
 
       - name: Compute version from tag
         run: |
@@ -101,7 +99,9 @@ jobs:
     with:
       # We can't use `env` variables in this context.
       # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
-      ref: ${{ needs.update-pinned-requirements.outputs.sigstore-pin-requirements-branch }}
+      ref: ${{
+        needs.update-pinned-requirements.outputs.sigstore-pin-requirements-branch
+        }}
 
   create-pr:
     needs:
@@ -115,7 +115,9 @@ jobs:
 
     env:
       SIGSTORE_RELEASE_TAG: ${{ needs.update-pinned-requirements.outputs.sigstore-release-tag }}
-      SIGSTORE_PIN_REQUIREMENTS_BRANCH: ${{ needs.update-pinned-requirements.outputs.sigstore-pin-requirements-branch }}
+      SIGSTORE_PIN_REQUIREMENTS_BRANCH: ${{
+        needs.update-pinned-requirements.outputs.sigstore-pin-requirements-branch
+        }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -137,7 +139,7 @@ jobs:
           # NOTE: Branch deletion after merge is handled by repository settings
           PR_TITLE="Update pinned requirements for ${SIGSTORE_RELEASE_TAG}"
           PR_BODY="Pins dependencies for <https://github.com/sigstore/sigstore-python/releases/tag/${SIGSTORE_RELEASE_TAG}>."
-          
+
           if ! gh pr create \
             --title "${PR_TITLE}" \
             --body "${PR_BODY}" \
