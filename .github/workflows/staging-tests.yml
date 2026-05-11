@@ -11,7 +11,8 @@ permissions: {}
 
 jobs:
   staging-tests:
-    if: github.event_name != 'schedule' || github.repository == 'sigstore/sigstore-python'
+    if: github.event_name != 'schedule' || github.repository ==
+      'sigstore/sigstore-python'
     runs-on: ubuntu-latest
     permissions:
       # Needed to access the workflow's OIDC identity.
@@ -24,11 +25,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: "3.x"
-          cache: "pip"
-          cache-dependency-path: pyproject.toml
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: staging tests
         env:
@@ -39,17 +36,13 @@ jobs:
           # staging instances instead.
           # We also don't bother to build distributions.
 
-          python -m venv staging-env
-
-          ./staging-env/bin/python -m pip install .
-
           # Our signing target is not important here, so we just sign
           # the README in the repository.
-          ./staging-env/bin/python -m sigstore --verbose --staging sign README.md
+          uv run sigstore --verbose --staging sign README.md
 
           # Verification also requires a different Rekor instance, so we
           # also test it.
-          ./staging-env/bin/python -m sigstore --verbose --staging verify identity \
+          uv run sigstore --verbose --staging verify identity \
             --cert-oidc-issuer https://token.actions.githubusercontent.com \
             --cert-identity ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/staging-tests.yml@${GITHUB_REF} \
             README.md
