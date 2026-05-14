@@ -45,7 +45,6 @@ from sigstore_models.common import v1
 from sigstore_models.rekor import v2
 
 from sigstore import dsse
-from sigstore.dsse import _pae
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
@@ -54,6 +53,7 @@ from sigstore._internal.sct import (
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
 from sigstore._internal.trust import KeyringPurpose
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
+from sigstore.dsse import _pae
 from sigstore.errors import CertValidationError, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle, ClientTrustConfig, TrustedRoot
@@ -644,7 +644,9 @@ def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
 
     expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
     algorithm, hash_func = _hash_for_key_details(expected_verifier.key_details)
-    pae_digest = hash_func(_pae(envelope._inner.payload_type, envelope._inner.payload)).digest()
+    pae_digest = hash_func(
+        _pae(envelope._inner.payload_type, envelope._inner.payload)
+    ).digest()
 
     expected_body = v2.entry.Entry(
         kind=entry._inner.kind_version.kind,
@@ -739,7 +741,7 @@ def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verif
 
 def _hash_for_key_details(
     key_details: v1.PublicKeyDetails,
-) -> tuple[v1.HashAlgorithm, Callable[[bytes], "hashlib._Hash"]]:
+) -> tuple[v1.HashAlgorithm, Callable[[bytes], hashlib._Hash]]:
     """
     Map a `PublicKeyDetails` to the externalized hash function and matching
     `HashAlgorithm` per the algorithm registry. Only signing algorithms with
