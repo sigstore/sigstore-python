@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -36,6 +36,43 @@ def test_get_identity_token_bad_code(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda _: "hunter2")
     with pytest.raises(IdentityError, match=r"^Token request failed with .+$"):
         Issuer("https://oauth2.sigstage.dev/auth").identity_token(force_oob=True)
+
+
+def test_identity_token_passes_redirect_port():
+    """
+    Verify that identity_token() forwards redirect_port to the OAuth flow.
+    """
+    with (
+        patch("sigstore._internal.oidc.oauth._OAuthFlow") as MockOAuthFlow,
+        patch("sigstore.oidc.requests.Session") as MockSession,
+        patch("sigstore.oidc.webbrowser.open"),
+        patch("sigstore.oidc.IdentityToken"),
+    ):
+        mock_server = MagicMock()
+        MockOAuthFlow.return_value.__enter__.return_value = mock_server
+        mock_server.is_oob.return_value = False
+        mock_server.base_uri = "http://localhost:8080"
+        mock_server.redirect_uri = "http://localhost:8080/auth/callback"
+        mock_server.oauth_session.state = "s"
+        mock_server.auth_response = {"code": ["c"], "state": ["s"]}
+
+        mock_config_response = MagicMock()
+        mock_config_response.json.return_value = {
+            "authorization_endpoint": "https://auth.example.com",
+            "token_endpoint": "https://token.example.com",
+        }
+        mock_config_response.raise_for_status.return_value = None
+        MockSession.return_value.get.side_effect = [mock_config_response]
+
+        mock_token_response = MagicMock()
+        mock_token_response.json.return_value = {"access_token": "t"}
+        mock_token_response.raise_for_status.return_value = None
+        MockSession.return_value.post.return_value = mock_token_response
+
+        issuer = Issuer("https://issuer.example.com")
+        issuer.identity_token(redirect_port=8080)
+
+        MockOAuthFlow.assert_called_once_with(ANY, ANY, ANY, redirect_port=8080)
 
 
 def test_identity_token_csrf_protection():
