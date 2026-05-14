@@ -8,18 +8,25 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [4.3.0]
+
 ### Added
 
-* `Issuer.identity_token` accepts an optional `redirect_port` argument to bind
-  the local OAuth redirect server to a fixed port, for OIDC providers that
-  require a pre-registered redirect URI without `localhost` port wildcards
+* `Issuer.identity_token` accepts an optional `redirect_port` argument to
+  accomodate OIDC providers that require pre-registered redirect URIs
   ([#1029](https://github.com/sigstore/sigstore-python/issues/1029))
 
 ### Fixed
 
-* Fixed ~60s hang after completing browser-based OIDC authentication.
-  The OIDC redirect server had incomplete HTTP responses and no connection
-  management, causing a keep-alive deadlock with the browser.
+* Fix ~60s keep-alive deadlock in browser-based OIDC authentication
+  ([#1693](https://github.com/sigstore/sigstore-python/pull/1693))
+* Avoid over-using connections when signing many artifacts: Use one connection
+  per thread ([#1732](https://github.com/sigstore/sigstore-python/pull/1732))
+
+### Changed
+
+* Added cryptography 47, 48 to list of compatible cryptography releases
+  ([#1773](https://github.com/sigstore/sigstore-python/pull/1773))
 
 ## [4.2.0]
 
@@ -777,10 +784,13 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.2.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.3.0...HEAD
+[4.3.0]: https://github.com/sigstore/sigstore-python/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/sigstore/sigstore-python/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/sigstore/sigstore-python/compare/v4.0.0...v4.1.0
 [4.0.0]: https://github.com/sigstore/sigstore-python/compare/v3.6.5...v4.0.0
+[3.6.7]: https://github.com/sigstore/sigstore-python/compare/v3.6.6...v3.6.7
+[3.6.6]: https://github.com/sigstore/sigstore-python/compare/v3.6.5...v3.6.6
 [3.6.5]: https://github.com/sigstore/sigstore-python/compare/v3.6.4...v3.6.5
 [3.6.4]: https://github.com/sigstore/sigstore-python/compare/v3.6.3...v3.6.4
 [3.6.3]: https://github.com/sigstore/sigstore-python/compare/v3.6.2...v3.6.3
