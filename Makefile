@@ -7,7 +7,7 @@ ALL_PY_SRCS := $(shell find $(PY_MODULE) -name '*.py') \
 	$(shell find docs/scripts -name '*.py') \
 
 # Optionally overridden by the user, if they're using a virtual environment manager.
-VENV ?= env
+VENV ?= .venv
 
 # On Windows, venv scripts/shims are under `Scripts` instead of `bin`.
 VENV_BIN := $(VENV)/bin
@@ -49,10 +49,7 @@ all:
 	@echo "Run my targets individually!"
 
 $(VENV)/pyvenv.cfg: pyproject.toml
-	# Create our Python 3 virtual environment
-	python3 -m venv $(VENV)
-	$(VENV_BIN)/python -m pip install --upgrade pip
-	$(VENV_BIN)/python -m pip install -e .[$(SIGSTORE_EXTRA)]
+	uv sync --dev
 
 .PHONY: dev
 dev: $(VENV)/pyvenv.cfg
@@ -63,24 +60,21 @@ run: $(VENV)/pyvenv.cfg
 
 .PHONY: lint
 lint: $(VENV)/pyvenv.cfg
-	. $(VENV_BIN)/activate && \
-		ruff format --check $(ALL_PY_SRCS) && \
-		ruff check $(ALL_PY_SRCS) && \
-		mypy $(PY_MODULE) && \
-		bandit -c pyproject.toml -r $(PY_MODULE) && \
-		python docs/scripts/gen_ref_pages.py --check
+	uv run --dev ruff format --check $(ALL_PY_SRCS)
+	uv run --dev ruff check $(ALL_PY_SRCS)
+	uv run --dev mypy $(PY_MODULE)
+	uv run --dev bandit -c pyproject.toml -r $(PY_MODULE)
+	uv run --dev python docs/scripts/gen_ref_pages.py --check
 
 .PHONY: reformat
 reformat: $(VENV)/pyvenv.cfg
-	. $(VENV_BIN)/activate && \
-		ruff check --fix $(ALL_PY_SRCS) && \
-		ruff format $(ALL_PY_SRCS)
+	uv run --dev ruff check --fix $(ALL_PY_SRCS)
+	uv run --dev ruff format $(ALL_PY_SRCS)
 
 .PHONY: test
 test: $(VENV)/pyvenv.cfg
-	. $(VENV_BIN)/activate && \
-		$(TEST_ENV) pytest --cov-append --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
-		python -m coverage report -m $(COV_ARGS)
+	$(TEST_ENV) uv run --dev pytest --cov-append --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
+		uv run --dev python -m coverage report -m $(COV_ARGS)
 
 .PHONY: test-interactive
 test-interactive: TEST_ENV += \
@@ -103,8 +97,7 @@ doc: $(VENV)/pyvenv.cfg
 
 .PHONY: package
 package: $(VENV)/pyvenv.cfg
-	. $(VENV_BIN)/activate && \
-		python3 -m build
+	uv build
 
 .PHONY: release
 release: $(VENV)/pyvenv.cfg
