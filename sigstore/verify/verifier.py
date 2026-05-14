@@ -19,7 +19,9 @@ Verification API machinery.
 from __future__ import annotations
 
 import base64
+import hashlib
 import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import cast
 
@@ -43,6 +45,7 @@ from sigstore_models.common import v1
 from sigstore_models.rekor import v2
 
 from sigstore import dsse
+from sigstore.dsse import _pae
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
@@ -431,18 +434,23 @@ class Verifier:
         # *cannot* verify, since the envelope is uncanonicalized JSON.
         # Instead, we manually pick apart the entry body below and verify
         # the parts we can (namely the payload hash and signature list).
+        #
+        # Rekor v2 (entry kind=hashedrekord/0.0.2) records DSSE envelopes as
+        # hashedrekord entries whose digest covers PAE(payloadType, payload)
+        # and whose signature.content equals envelope.signatures[0].sig.
+        # See rekor-v2-spec §6.1.4.
         entry = bundle.log_entry
-        if entry._inner.kind_version.kind != "dsse":
-            raise VerificationError(
-                f"Expected entry type dsse, got {entry._inner.kind_version.kind}"
-            )
-        if entry._inner.kind_version.version == "0.0.2":
+        kind = entry._inner.kind_version.kind
+        version = entry._inner.kind_version.version
+        if kind == "hashedrekord" and version == "0.0.2":
+            _validate_hashedrekord_v002_dsse_entry_body(bundle)
+        elif kind == "dsse" and version == "0.0.2":
             _validate_dsse_v002_entry_body(bundle)
-        elif entry._inner.kind_version.version == "0.0.1":
+        elif kind == "dsse" and version == "0.0.1":
             _validate_dsse_v001_entry_body(bundle)
         else:
             raise VerificationError(
-                f"Unsupported dsse version {entry._inner.kind_version.version}"
+                f"Unsupported DSSE log entry type: {kind}/{version}"
             )
 
         return (envelope._inner.payload_type, envelope._inner.payload)
@@ -611,6 +619,56 @@ def _validate_hashedrekord_v001_entry_body(
         )
 
 
+def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
+    """
+    Validate Entry body for a Rekor v2 DSSE envelope encoded as a
+    hashedrekord/0.0.2 entry (rekor-v2-spec §6.1.4).
+
+    The expected entry body has:
+      - data.digest = Hash(PAE(payloadType, payload)), where Hash is the
+        externalized hash function of the entry's signing algorithm.
+      - data.algorithm = the matching HashAlgorithm.
+      - signature.content = envelope.signatures[0].sig.
+      - signature.verifier = the bundle's signing certificate.
+    """
+    entry = bundle.log_entry
+    envelope = bundle._dsse_envelope
+    if envelope is None:
+        raise VerificationError(
+            "cannot perform DSSE verification on a bundle without a DSSE envelope"
+        )
+    if len(envelope._inner.signatures) != 1:
+        raise VerificationError(
+            "DSSE envelope must have exactly one signature for hashedrekord encoding"
+        )
+
+    expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
+    algorithm, hash_func = _hash_for_key_details(expected_verifier.key_details)
+    pae_digest = hash_func(_pae(envelope._inner.payload_type, envelope._inner.payload)).digest()
+
+    expected_body = v2.entry.Entry(
+        kind=entry._inner.kind_version.kind,
+        api_version=entry._inner.kind_version.version,
+        spec=v2.entry.Spec(
+            hashed_rekord_v002=v2.hashedrekord.HashedRekordLogEntryV002(
+                data=v1.HashOutput(
+                    algorithm=algorithm,
+                    digest=base64.b64encode(pae_digest),
+                ),
+                signature=v2.verifier.Signature(
+                    content=base64.b64encode(envelope.signature),
+                    verifier=expected_verifier,
+                ),
+            )
+        ),
+    )
+    actual_body = v2.entry.Entry.from_json(entry._inner.canonicalized_body)
+    if expected_body != actual_body:
+        raise VerificationError(
+            "transparency log entry is inconsistent with other materials"
+        )
+
+
 def _validate_hashedrekord_v002_entry_body(
     bundle: Bundle, hashed_input: Hashed
 ) -> None:
@@ -676,4 +734,42 @@ def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verif
             )
         ),
         key_details=key_details,
+    )
+
+
+def _hash_for_key_details(
+    key_details: v1.PublicKeyDetails,
+) -> tuple[v1.HashAlgorithm, Callable[[bytes], "hashlib._Hash"]]:
+    """
+    Map a `PublicKeyDetails` to the externalized hash function and matching
+    `HashAlgorithm` per the algorithm registry. Only signing algorithms with
+    an externalized prehash are eligible to sign a hashedrekord entry, so
+    ed25519 (pure) is rejected.
+    """
+    sha256_algos = {
+        v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256,
+        v1.PublicKeyDetails.PKIX_ECDSA_P256_HMAC_SHA_256,
+        v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256,
+        v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256,
+        v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256,
+        v1.PublicKeyDetails.PKIX_RSA_PSS_2048_SHA256,
+        v1.PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256,
+        v1.PublicKeyDetails.PKIX_RSA_PSS_4096_SHA256,
+        v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256,
+        v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_256,
+    }
+    sha384_algos = {v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_384}
+    sha512_algos = {
+        v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512,
+        v1.PublicKeyDetails.PKIX_ED25519_PH,
+    }
+    if key_details in sha256_algos:
+        return v1.HashAlgorithm.SHA2_256, hashlib.sha256
+    if key_details in sha384_algos:
+        return v1.HashAlgorithm.SHA2_384, hashlib.sha384
+    if key_details in sha512_algos:
+        return v1.HashAlgorithm.SHA2_512, hashlib.sha512
+    raise VerificationError(
+        f"signing algorithm {key_details} has no externalized prehash; "
+        "cannot be used for a hashedrekord entry (rekor-v2-spec §6.1.4)"
     )

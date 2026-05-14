@@ -19,6 +19,7 @@ Client implementation for interacting with Rekor v2.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import logging
 import threading
@@ -37,7 +38,7 @@ from sigstore._internal.rekor import (
     RekorClientError,
     RekorLogSubmitter,
 )
-from sigstore.dsse import Envelope
+from sigstore.dsse import Envelope, _pae
 from sigstore.hashes import Hashed
 from sigstore.models import TransparencyLogEntry
 
@@ -137,13 +138,25 @@ class RekorV2Client(RekorLogSubmitter):
         cls, envelope: Envelope, certificate: Certificate
     ) -> EntryRequestBody:
         """
-        Construct a dsse request to submit to Rekor.
+        Construct a hashedrekord request for a DSSE envelope.
+
+        Rekor v2 only supports the hashedrekord entry type; DSSE envelopes are
+        uploaded as a hashedrekord whose digest is `Hash(PAE(payloadType,
+        payload))` and whose `signature.content` equals
+        `envelope.signatures[0].sig`. See rekor-v2-spec §6.1.4.
+
+        sigstore-python only signs with ECDSA P-256, so the hash function is
+        always SHA-256 here. A general implementation would select the hash
+        function from the signing algorithm per the algorithm registry.
         """
+        pae = _pae(envelope._inner.payload_type, envelope._inner.payload)
+        digest = hashlib.sha256(pae).digest()
         req = rekor_v2.entry.CreateEntryRequest(
-            dsse_request_v002=rekor_v2.dsse.DSSERequestV002(
-                envelope=envelope._inner,
-                verifiers=[
-                    rekor_v2.verifier.Verifier(
+            hashed_rekord_request_v002=rekor_v2.hashedrekord.HashedRekordRequestV002(
+                digest=base64.b64encode(digest),
+                signature=rekor_v2.verifier.Signature(
+                    content=base64.b64encode(envelope.signature),
+                    verifier=rekor_v2.verifier.Verifier(
                         x509_certificate=common_v1.X509Certificate(
                             raw_bytes=base64.b64encode(
                                 certificate.public_bytes(
@@ -152,8 +165,8 @@ class RekorV2Client(RekorLogSubmitter):
                             )
                         ),
                         key_details=_get_key_details(certificate),
-                    )
-                ],
+                    ),
+                ),
             )
         )
         return EntryRequestBody(req.to_dict())
