@@ -427,24 +427,19 @@ class Verifier:
 
         # (8): verify the consistency of the log entry's body against
         #      the other bundle materials.
-        # NOTE: This is very slightly weaker than the consistency check
-        # for hashedrekord entries, due to how inclusion is recorded for DSSE:
-        # the included entry for DSSE includes an envelope hash that we
-        # *cannot* verify, since the envelope is uncanonicalized JSON.
-        # Instead, we manually pick apart the entry body below and verify
-        # the parts we can (namely the payload hash and signature list).
-        #
-        # Rekor v2 (entry kind=hashedrekord/0.0.2) records DSSE envelopes as
-        # hashedrekord entries whose digest covers PAE(payloadType, payload)
-        # and whose signature.content equals envelope.signatures[0].sig.
-        # See rekor-v2-spec §6.1.4.
+        # Rekor v2 records DSSE envelopes as hashedrekord/0.0.2 entries whose
+        # digest covers PAE(payloadType, payload) and whose signature.content
+        # equals envelope.signatures[0].sig (rekor-v2-spec §6.1.4). Rekor v1
+        # used a dsse/0.0.1 entry, which is slightly weaker than the
+        # hashedrekord consistency check: dsse entries record an envelope
+        # hash that we *cannot* verify (the envelope is uncanonicalized JSON),
+        # so we manually pick apart the entry body and verify the parts we
+        # can (payload hash and signature list).
         entry = bundle.log_entry
         kind = entry._inner.kind_version.kind
         version = entry._inner.kind_version.version
         if kind == "hashedrekord" and version == "0.0.2":
             _validate_hashedrekord_v002_dsse_entry_body(bundle)
-        elif kind == "dsse" and version == "0.0.2":
-            _validate_dsse_v002_entry_body(bundle)
         elif kind == "dsse" and version == "0.0.1":
             _validate_dsse_v001_entry_body(bundle)
         else:
@@ -558,42 +553,6 @@ def _validate_dsse_v001_entry_body(bundle: Bundle) -> None:
         for signature in envelope._inner.signatures
     ]
     if signatures != entry_body.spec.root.signatures:
-        raise VerificationError("log entry signatures do not match bundle")
-
-
-def _validate_dsse_v002_entry_body(bundle: Bundle) -> None:
-    """
-    Validate Entry body for dsse v002.
-    """
-    entry = bundle.log_entry
-    envelope = bundle._dsse_envelope
-    if envelope is None:
-        raise VerificationError(
-            "cannot perform DSSE verification on a bundle without a DSSE envelope"
-        )
-    try:
-        v2_body = v2.entry.Entry.from_json(entry._inner.canonicalized_body)
-    except ValidationError as exc:
-        raise VerificationError(f"invalid DSSE log entry: {exc}")
-
-    if v2_body.spec.dsse_v002 is None:
-        raise VerificationError("invalid DSSE log entry: missing dsse_v002 field")
-
-    if v2_body.spec.dsse_v002.payload_hash.algorithm != v1.HashAlgorithm.SHA2_256:
-        raise VerificationError("expected SHA256 hash in DSSE entry")
-
-    digest = sha256_digest(envelope._inner.payload).digest
-    if v2_body.spec.dsse_v002.payload_hash.digest != digest:
-        raise VerificationError("DSSE entry payload hash does not match bundle")
-
-    v2_signatures = [
-        v2.verifier.Signature(
-            content=base64.b64encode(signature.sig),
-            verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
-        )
-        for signature in envelope._inner.signatures
-    ]
-    if v2_signatures != v2_body.spec.dsse_v002.signatures:
         raise VerificationError("log entry signatures do not match bundle")
 
 
