@@ -38,7 +38,7 @@ from sigstore._internal.rekor import (
     RekorClientError,
     RekorLogSubmitter,
 )
-from sigstore.dsse import Envelope, _pae
+from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
 from sigstore.models import TransparencyLogEntry
 
@@ -141,16 +141,15 @@ class RekorV2Client(RekorLogSubmitter):
         Construct a hashedrekord request for a DSSE envelope.
 
         Rekor v2 only supports the hashedrekord entry type; DSSE envelopes are
-        uploaded as a hashedrekord whose digest is `Hash(PAE(payloadType,
-        payload))` and whose `signature.content` equals
-        `envelope.signatures[0].sig`. See rekor-v2-spec §6.1.4.
+        uploaded as a hashedrekord whose digest is `Hash(envelope.pae())` and
+        whose `signature.content` equals `envelope.signatures[0].sig`. See
+        rekor-v2-spec §6.1.4.
 
         sigstore-python only signs with ECDSA P-256, so the hash function is
         always SHA-256 here. A general implementation would select the hash
         function from the signing algorithm per the algorithm registry.
         """
-        pae = _pae(envelope._inner.payload_type, envelope._inner.payload)
-        digest = hashlib.sha256(pae).digest()
+        digest = hashlib.sha256(envelope.pae()).digest()
         req = rekor_v2.entry.CreateEntryRequest(
             hashed_rekord_request_v002=rekor_v2.hashedrekord.HashedRekordRequestV002(
                 digest=base64.b64encode(digest),
