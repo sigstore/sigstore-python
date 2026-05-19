@@ -67,7 +67,6 @@ dev = [
   # NOTE(ww): ruff is under active development, so we pin conservatively here
   # and let Dependabot periodically perform this update.
   "ruff<0.15.16",
-  "types-requests",
   "types-pyOpenSSL",
   "mkdocs-material[imaging]",
   "mkdocstrings-python",
