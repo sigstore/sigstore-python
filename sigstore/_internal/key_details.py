@@ -13,12 +13,108 @@
 # limitations under the License.
 
 """
-Utilities for getting PublicKeyDetails.
+Utilities for PublicKeyDetails and the algorithm registry.
 """
+
+from __future__ import annotations
+
+import hashlib
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa
 from cryptography.x509 import Certificate
-from sigstore_models.common.v1 import PublicKeyDetails
+from sigstore_models.common.v1 import HashAlgorithm, PublicKeyDetails
+
+
+@dataclass(frozen=True)
+class AlgorithmDetails:
+    """Details for a single entry in the algorithm registry."""
+
+    key_details: PublicKeyDetails
+    hash_algorithm: HashAlgorithm
+    hash_func: Callable[[bytes], hashlib._Hash] | None
+
+
+# Algorithm registry table.
+# See https://github.com/sigstore/architecture-docs/blob/main/algorithm-registry.md
+_ALGORITHM_REGISTRY: list[AlgorithmDetails] = [
+    # RSA PKCS1v15
+    AlgorithmDetails(
+        PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256,
+        HashAlgorithm.SHA2_256,
+        hashlib.sha256,
+    ),
+    AlgorithmDetails(
+        PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256,
+        HashAlgorithm.SHA2_256,
+        hashlib.sha256,
+    ),
+    AlgorithmDetails(
+        PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256,
+        HashAlgorithm.SHA2_256,
+        hashlib.sha256,
+    ),
+    # ECDSA
+    AlgorithmDetails(
+        PublicKeyDetails.PKIX_ECDSA_P256_SHA_256,
+        HashAlgorithm.SHA2_256,
+        hashlib.sha256,
+    ),
+    AlgorithmDetails(
+        PublicKeyDetails.PKIX_ECDSA_P384_SHA_384,
+        HashAlgorithm.SHA2_384,
+        hashlib.sha384,
+    ),
+    AlgorithmDetails(
+        PublicKeyDetails.PKIX_ECDSA_P521_SHA_512,
+        HashAlgorithm.SHA2_512,
+        hashlib.sha512,
+    ),
+    # Ed25519
+    AlgorithmDetails(
+        PublicKeyDetails.PKIX_ED25519,
+        HashAlgorithm.HASH_ALGORITHM_UNSPECIFIED,
+        None,
+    ),
+    AlgorithmDetails(
+        PublicKeyDetails.PKIX_ED25519_PH,
+        HashAlgorithm.SHA2_512,
+        hashlib.sha512,
+    ),
+]
+
+_DETAILS_BY_KEY: dict[PublicKeyDetails, AlgorithmDetails] = {
+    entry.key_details: entry for entry in _ALGORITHM_REGISTRY
+}
+
+
+def _get_algorithm_details(key_details: PublicKeyDetails) -> AlgorithmDetails:
+    """
+    Look up algorithm details by ``PublicKeyDetails`` enum value.
+    """
+    details = _DETAILS_BY_KEY.get(key_details)
+    if details is None:
+        raise ValueError(f"unknown signature algorithm: {key_details}")
+    return details
+
+
+def _get_prehash(
+    key_details: PublicKeyDetails,
+) -> tuple[HashAlgorithm, Callable[[bytes], hashlib._Hash]]:
+    """
+    Return the externalized hash function for a signing algorithm.
+
+    Only algorithms with an externalized prehash can be used in hashedrekord
+    entries. Pure ed25519 (no prehash) raises ``ValueError``.
+    """
+    details = _get_algorithm_details(key_details)
+    if details.hash_func is None:
+        raise ValueError(
+            f"signing algorithm {key_details} has no externalized prehash; "
+            "cannot be used for a hashedrekord entry (rekor-v2-spec §6.1.4)"
+        )
+    return details.hash_algorithm, details.hash_func
 
 
 def _get_key_details(certificate: Certificate) -> PublicKeyDetails:

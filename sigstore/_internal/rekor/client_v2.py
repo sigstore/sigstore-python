@@ -19,7 +19,6 @@ Client implementation for interacting with Rekor v2.
 from __future__ import annotations
 
 import base64
-import hashlib
 import json
 import logging
 import threading
@@ -32,7 +31,7 @@ from sigstore_models.rekor import v2 as rekor_v2
 from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEntry
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.key_details import _get_key_details
+from sigstore._internal.key_details import _get_key_details, _get_prehash
 from sigstore._internal.rekor import (
     EntryRequestBody,
     RekorClientError,
@@ -144,12 +143,10 @@ class RekorV2Client(RekorLogSubmitter):
         uploaded as a hashedrekord whose digest is `Hash(envelope.pae())` and
         whose `signature.content` equals `envelope.signatures[0].sig`. See
         rekor-v2-spec §6.1.4.
-
-        sigstore-python only signs with ECDSA P-256, so the hash function is
-        always SHA-256 here. A general implementation would select the hash
-        function from the signing algorithm per the algorithm registry.
         """
-        digest = hashlib.sha256(envelope.pae()).digest()
+        key_details = _get_key_details(certificate)
+        _, hash_func = _get_prehash(key_details)
+        digest = hash_func(envelope.pae()).digest()
         req = rekor_v2.entry.CreateEntryRequest(
             hashed_rekord_request_v002=rekor_v2.hashedrekord.HashedRekordRequestV002(
                 digest=base64.b64encode(digest),
@@ -163,7 +160,7 @@ class RekorV2Client(RekorLogSubmitter):
                                 )
                             )
                         ),
-                        key_details=_get_key_details(certificate),
+                        key_details=key_details,
                     ),
                 ),
             )

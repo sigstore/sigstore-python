@@ -19,9 +19,7 @@ Verification API machinery.
 from __future__ import annotations
 
 import base64
-import hashlib
 import logging
-from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import cast
 
@@ -45,6 +43,7 @@ from sigstore_models.common import v1
 from sigstore_models.rekor import v2
 
 from sigstore import dsse
+from sigstore._internal.key_details import _get_key_details, _get_prehash
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
@@ -601,7 +600,7 @@ def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
         )
 
     expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
-    algorithm, hash_func = _hash_for_key_details(expected_verifier.key_details)
+    algorithm, hash_func = _get_prehash(expected_verifier.key_details)
     pae_digest = hash_func(envelope.pae()).digest()
 
     expected_body = v2.entry.Entry(
@@ -665,69 +664,14 @@ def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verif
     """
     Return a Rekor v2 Verifier for the signing certificate.
 
-    This method decides which signature algorithms are supported for verification
-    (in a rekor v2 entry), see
-    https://github.com/sigstore/architecture-docs/blob/main/algorithm-registry.md.
-    Note that actual signature verification happens in verify_artifact() and
-    verify_dsse(): New keytypes need to be added here and in those methods.
+    Key-to-algorithm mapping is handled by the algorithm registry via
+    `_get_key_details`.
     """
-    public_key = certificate.public_key()
-
-    if isinstance(public_key, ec.EllipticCurvePublicKey):
-        if isinstance(public_key.curve, ec.SECP256R1):
-            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256
-        elif isinstance(public_key.curve, ec.SECP384R1):
-            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_384
-        elif isinstance(public_key.curve, ec.SECP521R1):
-            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512
-        else:
-            raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
-    else:
-        raise ValueError(f"Unsupported public key type: {type(public_key)}")
-
     return v2.verifier.Verifier(
         x509_certificate=v1.X509Certificate(
             raw_bytes=base64.b64encode(
                 certificate.public_bytes(encoding=serialization.Encoding.DER)
             )
         ),
-        key_details=key_details,
-    )
-
-
-def _hash_for_key_details(
-    key_details: v1.PublicKeyDetails,
-) -> tuple[v1.HashAlgorithm, Callable[[bytes], hashlib._Hash]]:
-    """
-    Map a `PublicKeyDetails` to the externalized hash function and matching
-    `HashAlgorithm` per the algorithm registry. Only signing algorithms with
-    an externalized prehash are eligible to sign a hashedrekord entry, so
-    ed25519 (pure) is rejected.
-    """
-    sha256_algos = {
-        v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256,
-        v1.PublicKeyDetails.PKIX_ECDSA_P256_HMAC_SHA_256,
-        v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256,
-        v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256,
-        v1.PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256,
-        v1.PublicKeyDetails.PKIX_RSA_PSS_2048_SHA256,
-        v1.PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256,
-        v1.PublicKeyDetails.PKIX_RSA_PSS_4096_SHA256,
-        v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_256,
-        v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_256,
-    }
-    sha384_algos = {v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_384}
-    sha512_algos = {
-        v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512,
-        v1.PublicKeyDetails.PKIX_ED25519_PH,
-    }
-    if key_details in sha256_algos:
-        return v1.HashAlgorithm.SHA2_256, hashlib.sha256
-    if key_details in sha384_algos:
-        return v1.HashAlgorithm.SHA2_384, hashlib.sha384
-    if key_details in sha512_algos:
-        return v1.HashAlgorithm.SHA2_512, hashlib.sha512
-    raise VerificationError(
-        f"signing algorithm {key_details} has no externalized prehash; "
-        "cannot be used for a hashedrekord entry (rekor-v2-spec §6.1.4)"
+        key_details=_get_key_details(certificate),
     )
