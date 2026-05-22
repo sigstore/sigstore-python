@@ -109,7 +109,7 @@ def _get_prehash(
     entries. Pure ed25519 (no prehash) raises ``ValueError``.
     """
     details = _get_algorithm_details(key_details)
-    if details.hash_func is None:
+    if details.hash_algorithm is None or details.hash_func is None:
         raise ValueError(
             f"signing algorithm {key_details} has no externalized prehash; "
             "cannot be used for a hashedrekord entry (rekor-v2-spec §6.1.4)"
