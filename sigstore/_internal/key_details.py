@@ -32,7 +32,7 @@ class AlgorithmDetails:
     """Details for a single entry in the algorithm registry."""
 
     key_details: PublicKeyDetails
-    hash_algorithm: HashAlgorithm
+    hash_algorithm: HashAlgorithm | None
     hash_func: Callable[[bytes], hashlib._Hash] | None
 
 
@@ -74,7 +74,7 @@ _ALGORITHM_REGISTRY: list[AlgorithmDetails] = [
     # Ed25519
     AlgorithmDetails(
         PublicKeyDetails.PKIX_ED25519,
-        HashAlgorithm.HASH_ALGORITHM_UNSPECIFIED,
+        None,
         None,
     ),
     AlgorithmDetails(
