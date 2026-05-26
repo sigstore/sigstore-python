@@ -246,6 +246,12 @@ class Envelope:
         """Return the decoded bytes of the Envelope signature."""
         return self._signature_bytes
 
+    def pae(self) -> bytes:
+        """
+        Return the PAE encoding of this envelope's `payloadType` and `payload`.
+        """
+        return _pae(self._inner.payload_type, self._inner.payload)
+
 
 def _pae(type_: str, body: bytes) -> bytes:
     """

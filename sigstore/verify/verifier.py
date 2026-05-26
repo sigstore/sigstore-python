@@ -43,6 +43,7 @@ from sigstore_models.common import v1
 from sigstore_models.rekor import v2
 
 from sigstore import dsse
+from sigstore._internal.key_details import _get_key_details, _get_prehash
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
@@ -425,24 +426,24 @@ class Verifier:
 
         # (8): verify the consistency of the log entry's body against
         #      the other bundle materials.
-        # NOTE: This is very slightly weaker than the consistency check
-        # for hashedrekord entries, due to how inclusion is recorded for DSSE:
-        # the included entry for DSSE includes an envelope hash that we
-        # *cannot* verify, since the envelope is uncanonicalized JSON.
-        # Instead, we manually pick apart the entry body below and verify
-        # the parts we can (namely the payload hash and signature list).
+        # Rekor v2 records DSSE envelopes as hashedrekord/0.0.2 entries whose
+        # digest covers PAE(payloadType, payload) and whose signature.content
+        # equals envelope.signatures[0].sig (rekor-v2-spec §6.1.4). Rekor v1
+        # used a dsse/0.0.1 entry, which is slightly weaker than the
+        # hashedrekord consistency check: dsse entries record an envelope
+        # hash that we *cannot* verify (the envelope is uncanonicalized JSON),
+        # so we manually pick apart the entry body and verify the parts we
+        # can (payload hash and signature list).
         entry = bundle.log_entry
-        if entry._inner.kind_version.kind != "dsse":
-            raise VerificationError(
-                f"Expected entry type dsse, got {entry._inner.kind_version.kind}"
-            )
-        if entry._inner.kind_version.version == "0.0.2":
-            _validate_dsse_v002_entry_body(bundle)
-        elif entry._inner.kind_version.version == "0.0.1":
+        kind = entry._inner.kind_version.kind
+        version = entry._inner.kind_version.version
+        if kind == "hashedrekord" and version == "0.0.2":
+            _validate_hashedrekord_v002_dsse_entry_body(bundle)
+        elif kind == "dsse" and version == "0.0.1":
             _validate_dsse_v001_entry_body(bundle)
         else:
             raise VerificationError(
-                f"Unsupported dsse version {entry._inner.kind_version.version}"
+                f"Unsupported DSSE log entry type: {kind}/{version}"
             )
 
         return (envelope._inner.payload_type, envelope._inner.payload)
@@ -554,42 +555,6 @@ def _validate_dsse_v001_entry_body(bundle: Bundle) -> None:
         raise VerificationError("log entry signatures do not match bundle")
 
 
-def _validate_dsse_v002_entry_body(bundle: Bundle) -> None:
-    """
-    Validate Entry body for dsse v002.
-    """
-    entry = bundle.log_entry
-    envelope = bundle._dsse_envelope
-    if envelope is None:
-        raise VerificationError(
-            "cannot perform DSSE verification on a bundle without a DSSE envelope"
-        )
-    try:
-        v2_body = v2.entry.Entry.from_json(entry._inner.canonicalized_body)
-    except ValidationError as exc:
-        raise VerificationError(f"invalid DSSE log entry: {exc}")
-
-    if v2_body.spec.dsse_v002 is None:
-        raise VerificationError("invalid DSSE log entry: missing dsse_v002 field")
-
-    if v2_body.spec.dsse_v002.payload_hash.algorithm != v1.HashAlgorithm.SHA2_256:
-        raise VerificationError("expected SHA256 hash in DSSE entry")
-
-    digest = sha256_digest(envelope._inner.payload).digest
-    if v2_body.spec.dsse_v002.payload_hash.digest != digest:
-        raise VerificationError("DSSE entry payload hash does not match bundle")
-
-    v2_signatures = [
-        v2.verifier.Signature(
-            content=base64.b64encode(signature.sig),
-            verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
-        )
-        for signature in envelope._inner.signatures
-    ]
-    if v2_signatures != v2_body.spec.dsse_v002.signatures:
-        raise VerificationError("log entry signatures do not match bundle")
-
-
 def _validate_hashedrekord_v001_entry_body(
     bundle: Bundle, hashed_input: Hashed
 ) -> None:
@@ -605,6 +570,56 @@ def _validate_hashedrekord_v001_entry_body(
     actual_body = rekor_types.Hashedrekord.model_validate_json(
         entry._inner.canonicalized_body
     )
+    if expected_body != actual_body:
+        raise VerificationError(
+            "transparency log entry is inconsistent with other materials"
+        )
+
+
+def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
+    """
+    Validate Entry body for a Rekor v2 DSSE envelope encoded as a
+    hashedrekord/0.0.2 entry (rekor-v2-spec §6.1.4).
+
+    The expected entry body has:
+      - data.digest = Hash(PAE(payloadType, payload)), where Hash is the
+        externalized hash function of the entry's signing algorithm.
+      - data.algorithm = the matching HashAlgorithm.
+      - signature.content = envelope.signatures[0].sig.
+      - signature.verifier = the bundle's signing certificate.
+    """
+    entry = bundle.log_entry
+    envelope = bundle._dsse_envelope
+    if envelope is None:
+        raise VerificationError(
+            "cannot perform DSSE verification on a bundle without a DSSE envelope"
+        )
+    if len(envelope._inner.signatures) != 1:
+        raise VerificationError(
+            "DSSE envelope must have exactly one signature for hashedrekord encoding"
+        )
+
+    expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
+    algorithm, hash_func = _get_prehash(expected_verifier.key_details)
+    pae_digest = hash_func(envelope.pae()).digest()
+
+    expected_body = v2.entry.Entry(
+        kind=entry._inner.kind_version.kind,
+        api_version=entry._inner.kind_version.version,
+        spec=v2.entry.Spec(
+            hashed_rekord_v002=v2.hashedrekord.HashedRekordLogEntryV002(
+                data=v1.HashOutput(
+                    algorithm=algorithm,
+                    digest=base64.b64encode(pae_digest),
+                ),
+                signature=v2.verifier.Signature(
+                    content=base64.b64encode(envelope.signature),
+                    verifier=expected_verifier,
+                ),
+            )
+        ),
+    )
+    actual_body = v2.entry.Entry.from_json(entry._inner.canonicalized_body)
     if expected_body != actual_body:
         raise VerificationError(
             "transparency log entry is inconsistent with other materials"
@@ -649,31 +664,14 @@ def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verif
     """
     Return a Rekor v2 Verifier for the signing certificate.
 
-    This method decides which signature algorithms are supported for verification
-    (in a rekor v2 entry), see
-    https://github.com/sigstore/architecture-docs/blob/main/algorithm-registry.md.
-    Note that actual signature verification happens in verify_artifact() and
-    verify_dsse(): New keytypes need to be added here and in those methods.
+    Key-to-algorithm mapping is handled by the algorithm registry via
+    `_get_key_details`.
     """
-    public_key = certificate.public_key()
-
-    if isinstance(public_key, ec.EllipticCurvePublicKey):
-        if isinstance(public_key.curve, ec.SECP256R1):
-            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P256_SHA_256
-        elif isinstance(public_key.curve, ec.SECP384R1):
-            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P384_SHA_384
-        elif isinstance(public_key.curve, ec.SECP521R1):
-            key_details = v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512
-        else:
-            raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
-    else:
-        raise ValueError(f"Unsupported public key type: {type(public_key)}")
-
     return v2.verifier.Verifier(
         x509_certificate=v1.X509Certificate(
             raw_bytes=base64.b64encode(
                 certificate.public_bytes(encoding=serialization.Encoding.DER)
             )
         ),
-        key_details=key_details,
+        key_details=_get_key_details(certificate),
     )

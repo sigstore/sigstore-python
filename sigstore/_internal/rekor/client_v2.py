@@ -31,7 +31,7 @@ from sigstore_models.rekor import v2 as rekor_v2
 from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEntry
 
 from sigstore._internal import USER_AGENT
-from sigstore._internal.key_details import _get_key_details
+from sigstore._internal.key_details import _get_key_details, _get_prehash
 from sigstore._internal.rekor import (
     EntryRequestBody,
     RekorClientError,
@@ -137,13 +137,22 @@ class RekorV2Client(RekorLogSubmitter):
         cls, envelope: Envelope, certificate: Certificate
     ) -> EntryRequestBody:
         """
-        Construct a dsse request to submit to Rekor.
+        Construct a hashedrekord request for a DSSE envelope.
+
+        Rekor v2 only supports the hashedrekord entry type; DSSE envelopes are
+        uploaded as a hashedrekord whose digest is `Hash(envelope.pae())` and
+        whose `signature.content` equals `envelope.signatures[0].sig`. See
+        rekor-v2-spec §6.1.4.
         """
+        key_details = _get_key_details(certificate)
+        _, hash_func = _get_prehash(key_details)
+        digest = hash_func(envelope.pae()).digest()
         req = rekor_v2.entry.CreateEntryRequest(
-            dsse_request_v002=rekor_v2.dsse.DSSERequestV002(
-                envelope=envelope._inner,
-                verifiers=[
-                    rekor_v2.verifier.Verifier(
+            hashed_rekord_request_v002=rekor_v2.hashedrekord.HashedRekordRequestV002(
+                digest=base64.b64encode(digest),
+                signature=rekor_v2.verifier.Signature(
+                    content=base64.b64encode(envelope.signature),
+                    verifier=rekor_v2.verifier.Verifier(
                         x509_certificate=common_v1.X509Certificate(
                             raw_bytes=base64.b64encode(
                                 certificate.public_bytes(
@@ -151,9 +160,9 @@ class RekorV2Client(RekorLogSubmitter):
                                 )
                             )
                         ),
-                        key_details=_get_key_details(certificate),
-                    )
-                ],
+                        key_details=key_details,
+                    ),
+                ),
             )
         )
         return EntryRequestBody(req.to_dict())
