@@ -25,6 +25,10 @@ All versions prior to 0.9.0 are untracked.
 
 ### Changed
 
+* With Rekor v2 DSSE signing/verification now uses Hashedrekord log entries.
+  This is based on Rekor v2 spec change:
+  https://github.com/sigstore/architecture-docs/pull/63
+  ([#1776](https://github.com/sigstore/sigstore-python/pull/1776))
 * Added cryptography 47, 48 to list of compatible cryptography releases
   ([#1773](https://github.com/sigstore/sigstore-python/pull/1773))
 
