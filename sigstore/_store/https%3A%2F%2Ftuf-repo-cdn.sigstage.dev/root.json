@@ -2,11 +2,11 @@
  "signatures": [
   {
    "keyid": "aa61e09f6af7662ac686cf0c6364079f63d3e7a86836684eeced93eace3acd81",
-   "sig": "3045022100d404545c87d31829c26820dc963389ef8497dbb1a712e08f5e81ce5a92c3ec600220314d108bc9e827c1a67610d1c90d5fb9a426ccc8bde009fb663c292b1728e6a4"
+   "sig": "304502201419a6f003291be4cd00c110a00e9d9b152a78181ed3c54edf9d22a79938276f022100f751058c6c3eb6aecf277db367b4858d3612abd1ad96c40fd71ebbd26c944055"
   },
   {
    "keyid": "61f9609d2655b346fcebccd66b509d5828168d5e447110e261f0bcc8553624bc",
-   "sig": "304402204cbe823ca173f04c4fd59cb01941efbd9f2b9452f405a3cd1c5bcb7481a818f902201cb4223b74b8e54f5de44936ae3c7adef32959da8d7d9625d23e464263c39e97"
+   "sig": "3045022007313e0afd5f282a1383a4f8f7a150e266a059420e1036eee222ce0053e36a67022100dfb05a4d1e6be2f43ce30f030783ff7a747cda5d84f341fd03b06dff32fba5bd"
   },
   {
    "keyid": "9471fbda95411d10109e467ad526082d15f14a38de54ea2ada9687ab39d8e237",
@@ -20,7 +20,7 @@
  "signed": {
   "_type": "root",
   "consistent_snapshot": true,
-  "expires": "2026-05-22T19:23:14Z",
+  "expires": "2026-10-16T19:39:43Z",
   "keys": {
    "0374a9e18a20a2103736cb4277e2fdd7f8453642c7d9eaf4ad8aee9cf2d47bb5": {
     "keytype": "ecdsa",
@@ -100,7 +100,7 @@
    }
   },
   "spec_version": "1.0",
-  "version": 13,
+  "version": 14,
   "x-tuf-on-ci-expiry-period": 182,
   "x-tuf-on-ci-signing-period": 35
  }

@@ -126,6 +126,20 @@
       "logId": {
         "keyId": "KzC83GiIyeLh2CYpXnQfSDkxlgLynDPLXkNA/rKshno="
       }
+    },
+    {
+      "baseUrl": "https://log2026-1.ctfe.sigstage.dev",
+      "hashAlgorithm":"SHA2_256",
+      "publicKey": {
+        "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEv8+Fp+klTMlOd0FU+eekotPzlaF9orvv9ZgdLXq5+MmoGThLNigXIapXjW0lujsU6+ZHKZ6UPzSuz+V8YxLoQw==",
+        "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+        "validFor": {
+          "start": "2026-01-14T00:00:00Z"
+        }
+      },
+      "logId": {
+        "keyId": "PmBxU3RuGJLgkLI2sUl2Jy9ntE1vks5vdxFKtyKgprY="
+      }
     }
   ],
   "timestampAuthorities": [
