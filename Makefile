@@ -60,21 +60,21 @@ run: $(VENV)/pyvenv.cfg
 
 .PHONY: lint
 lint: $(VENV)/pyvenv.cfg
-	uv run --dev ruff format --check $(ALL_PY_SRCS)
-	uv run --dev ruff check $(ALL_PY_SRCS)
-	uv run --dev mypy $(PY_MODULE)
-	uv run --dev bandit -c pyproject.toml -r $(PY_MODULE)
-	uv run --dev python docs/scripts/gen_ref_pages.py --check
+	uv run --locked --dev ruff format --check $(ALL_PY_SRCS)
+	uv run --locked --dev ruff check $(ALL_PY_SRCS)
+	uv run --locked --dev mypy $(PY_MODULE)
+	uv run --locked --dev bandit -c pyproject.toml -r $(PY_MODULE)
+	uv run --locked --dev python docs/scripts/gen_ref_pages.py --check
 
 .PHONY: reformat
 reformat: $(VENV)/pyvenv.cfg
-	uv run --dev ruff check --fix $(ALL_PY_SRCS)
-	uv run --dev ruff format $(ALL_PY_SRCS)
+	uv run --locked --dev ruff check --fix $(ALL_PY_SRCS)
+	uv run --locked --dev ruff format $(ALL_PY_SRCS)
 
 .PHONY: test
 test: $(VENV)/pyvenv.cfg
-	$(TEST_ENV) uv run --dev pytest --cov-append --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
-		uv run --dev python -m coverage report -m $(COV_ARGS)
+	$(TEST_ENV) uv run --locked --dev pytest --cov-append --cov=$(PY_MODULE) $(T) $(TEST_ARGS) && \
+		uv run --locked --dev python -m coverage report -m $(COV_ARGS)
 
 .PHONY: test-interactive
 test-interactive: TEST_ENV += \
