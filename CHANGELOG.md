@@ -29,8 +29,10 @@ All versions prior to 0.9.0 are untracked.
   This is based on Rekor v2 spec change:
   https://github.com/sigstore/architecture-docs/pull/63
   ([#1776](https://github.com/sigstore/sigstore-python/pull/1776))
-* Added cryptography 47, 48 to list of compatible cryptography releases
+* sigstore is now compatible with cryptography 48 and tuf 7
   ([#1773](https://github.com/sigstore/sigstore-python/pull/1773))
+* Embedded TUF metadata has been updated
+  ([#1785](https://github.com/sigstore/sigstore-python/pull/1785))
 
 ## [4.2.0]
 
