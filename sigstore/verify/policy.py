@@ -461,11 +461,11 @@ class Identity:
         if self._issuer:
             self._issuer.verify(cert)
 
-        # Build a set of all valid identities.
+        # Build the sets of valid identities from the certificate's SANs.
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName).value
-        all_sans = set(san_ext.get_values_for_type(RFC822Name))
-        all_sans.update(san_ext.get_values_for_type(UniformResourceIdentifier))
-        all_sans.update(
+        email_sans = set(san_ext.get_values_for_type(RFC822Name))
+        other_sans = set(san_ext.get_values_for_type(UniformResourceIdentifier))
+        other_sans.update(
             [
                 on.value.decode()
                 for on in san_ext.get_values_for_type(OtherName)
@@ -473,8 +473,15 @@ class Identity:
             ]
         )
 
-        verified = self._identity in all_sans
+        # Email (RFC822Name) identities are matched case-insensitively: email
+        # addresses are not case-sensitive in practice and Fulcio normalizes
+        # them, so "FoO@baR.coM" should match a "foo@bar.com" SAN. URI and
+        # "other name" SANs remain exact matches.
+        verified = self._identity in other_sans or self._identity.casefold() in {
+            email.casefold() for email in email_sans
+        }
         if not verified:
+            all_sans = email_sans | other_sans
             raise VerificationError(
                 f"Certificate's SANs do not match {self._identity}; actual SANs: {all_sans}"
             )

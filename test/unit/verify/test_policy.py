@@ -151,6 +151,17 @@ class TestIdentity:
         ):
             policy_.verify(bundle.signing_certificate)
 
+    def test_succeeds_email_case_insensitive(self, signing_bundle):
+        # The certificate's email SAN is "a@tny.town"; an identity that differs
+        # only in case must still verify (see #459 in sigstore/model-transparency).
+        _, bundle = signing_bundle("bundle.txt")
+        policy_ = policy.Identity(
+            identity="A@TnY.ToWn",
+            issuer="https://github.com/login/oauth",
+        )
+
+        policy_.verify(bundle.signing_certificate)
+
 
 class TestSingleExtPolicy:
     def test_succeeds(self, signing_bundle):
