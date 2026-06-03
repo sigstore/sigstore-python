@@ -54,7 +54,6 @@ from datetime import datetime, timezone
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509.oid import NameOID
 from sigstore_models.common.v1 import HashOutput, MessageSignature
 
 from sigstore import dsse
@@ -120,34 +119,21 @@ class Signer:
         """
         Build the X.509 Certificate Signing Request submitted to Fulcio.
 
-        Fulcio does not use the CSR's subject (see sigstore/fulcio#863): the
-        certificate's identity is taken from the OIDC token, not from this
-        field. We historically embedded the token's identity as an
-        EMAIL_ADDRESS attribute, but that attribute is encoded as an
-        IA5String, which is ASCII-only. Some issuers (e.g. GitHub Actions,
-        whose `sub` claim can contain a non-ASCII environment name) yield
-        identities that are not ASCII. pyca/cryptography does not reject those,
-        so we would emit a CSR whose IA5String holds non-ASCII bytes; Fulcio's
-        stricter ASN.1 parser then rejects it with HTTP 400 (see
-        sigstore/sigstore-python#1507). Since the subject is unused, we only
-        include the attribute when it is ASCII-safe and otherwise leave the
-        subject empty.
+        The CSR carries an empty subject. Fulcio does not validate or use the
+        CSR's subject (see sigstore/fulcio#863): the certificate's identity is
+        taken from the OIDC token, not from this field. We previously embedded
+        the token's identity as an EMAIL_ADDRESS attribute, but that attribute
+        is encoded as an IA5String (ASCII-only). Some issuers (e.g. GitHub
+        Actions, whose `sub` claim can contain a non-ASCII environment name)
+        yield non-ASCII identities; pyca/cryptography does not reject those, so
+        we emitted a CSR whose IA5String held non-ASCII bytes, which Fulcio's
+        stricter ASN.1 parser then rejected with HTTP 400 (see
+        sigstore/sigstore-python#1507). Since the subject is unused, we omit it
+        entirely.
         """
-        subject_attributes = []
-        try:
-            self._identity_token._identity.encode("ascii")
-        except UnicodeEncodeError:
-            _logger.debug("identity is not ASCII; omitting it from the CSR subject")
-        else:
-            subject_attributes.append(
-                x509.NameAttribute(
-                    NameOID.EMAIL_ADDRESS, self._identity_token._identity
-                )
-            )
-
         builder = (
             x509.CertificateSigningRequestBuilder()
-            .subject_name(x509.Name(subject_attributes))
+            .subject_name(x509.Name([]))
             .add_extension(
                 x509.BasicConstraints(ca=False, path_length=None),
                 critical=True,

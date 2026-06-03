@@ -14,7 +14,7 @@ All versions prior to 0.9.0 are untracked.
   example a GitHub Actions `sub` claim containing a non-ASCII environment
   name). The identity was embedded as an ASCII-only IA5String email
   attribute, producing malformed DER that Fulcio rejected with HTTP 400.
-  The unused subject attribute is now omitted when the identity is not ASCII
+  The CSR subject is unused by Fulcio, so it is now omitted entirely
   ([#1507](https://github.com/sigstore/sigstore-python/issues/1507))
 
 ## [4.3.0]
