@@ -14,16 +14,77 @@
 import hashlib
 import secrets
 
+import cryptography.x509 as x509
 import pretend
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509.oid import NameOID
 from sigstore_models.common.v1 import HashAlgorithm
 
 import sigstore.oidc
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import VerificationError
 from sigstore.hashes import Hashed
-from sigstore.sign import SigningContext
+from sigstore.sign import Signer, SigningContext
 from sigstore.verify.policy import UnsafeNoOp
+
+
+def _signer_with_identity(identity: str) -> Signer:
+    """
+    Build a `Signer` wired up just enough to exercise CSR construction,
+    without any network access or a real identity token.
+    """
+    signer = Signer.__new__(Signer)
+    signer._identity_token = pretend.stub(_identity=identity)
+    signer._Signer__cached_private_key = ec.generate_private_key(ec.SECP256R1())
+    return signer
+
+
+def _email_attributes(csr: x509.CertificateSigningRequest) -> list[str]:
+    return [
+        attr.value for attr in csr.subject.get_attributes_for_oid(NameOID.EMAIL_ADDRESS)
+    ]
+
+
+def test_build_csr_ascii_identity_unchanged():
+    # An ASCII identity is still embedded as an EMAIL_ADDRESS attribute, and
+    # the CSR round-trips through DER without loss.
+    identity = "foo@example.com"
+    csr = _signer_with_identity(identity)._build_csr()
+
+    assert _email_attributes(csr) == [identity]
+
+    der = csr.public_bytes(serialization.Encoding.DER)
+    reparsed = x509.load_der_x509_csr(der)
+    assert _email_attributes(reparsed) == [identity]
+
+
+def test_build_csr_non_ascii_identity_produces_valid_csr():
+    # Regression test for sigstore/sigstore-python#1507. A non-ASCII identity
+    # (e.g. a GitHub Actions `sub` with a non-ASCII environment name) must not
+    # be encoded into an ASCII-only IA5String EMAIL_ADDRESS attribute, which
+    # produces malformed DER that Fulcio rejects with HTTP 400.
+    identity = "repo:foo/bar:environment:prod-\U0001f600"
+    assert any(ord(ch) > 0x7F for ch in identity)
+
+    csr = _signer_with_identity(identity)._build_csr()
+
+    # The non-ASCII identity is dropped rather than smuggled into an IA5String,
+    # leaving an empty (but valid) subject.
+    assert _email_attributes(csr) == []
+    assert len(csr.subject) == 0
+
+    # The CSR serializes to DER and re-parses cleanly, and no IA5String subject
+    # attribute carries non-ASCII bytes (the malformed-DER condition Fulcio
+    # rejects). On the unpatched code the EMAIL_ADDRESS attribute would contain
+    # the non-ASCII identity here.
+    der = csr.public_bytes(serialization.Encoding.DER)
+    reparsed = x509.load_der_x509_csr(der)
+    assert _email_attributes(reparsed) == []
+    for attr in reparsed.subject:
+        if isinstance(attr.value, str):
+            attr.value.encode("ascii")
 
 
 # only check the log contents for production: staging is already on
