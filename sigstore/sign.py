@@ -54,7 +54,6 @@ from datetime import datetime, timezone
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509.oid import NameOID
 from sigstore_models.common.v1 import HashOutput, MessageSignature
 
 from sigstore import dsse
@@ -116,6 +115,32 @@ class Signer:
             return ec.generate_private_key(ec.SECP256R1())
         return self.__cached_private_key
 
+    def _build_csr(self) -> x509.CertificateSigningRequest:
+        """
+        Build the X.509 Certificate Signing Request submitted to Fulcio.
+
+        The CSR carries an empty subject. Fulcio does not validate or use the
+        CSR's subject (see sigstore/fulcio#863): the certificate's identity is
+        taken from the OIDC token, not from this field. We previously embedded
+        the token's identity as an EMAIL_ADDRESS attribute, but that attribute
+        is encoded as an IA5String (ASCII-only). Some issuers (e.g. GitHub
+        Actions, whose `sub` claim can contain a non-ASCII environment name)
+        yield non-ASCII identities; pyca/cryptography does not reject those, so
+        we emitted a CSR whose IA5String held non-ASCII bytes, which Fulcio's
+        stricter ASN.1 parser then rejected with HTTP 400 (see
+        sigstore/sigstore-python#1507). Since the subject is unused, we omit it
+        entirely.
+        """
+        builder = (
+            x509.CertificateSigningRequestBuilder()
+            .subject_name(x509.Name([]))
+            .add_extension(
+                x509.BasicConstraints(ca=False, path_length=None),
+                critical=True,
+            )
+        )
+        return builder.sign(self._private_key, hashes.SHA256())
+
     def _signing_cert(
         self,
     ) -> x509.Certificate:
@@ -141,24 +166,7 @@ class Signer:
         else:
             _logger.debug("Retrieving signed certificate...")
 
-            # Build an X.509 Certificate Signing Request
-            builder = (
-                x509.CertificateSigningRequestBuilder()
-                .subject_name(
-                    x509.Name(
-                        [
-                            x509.NameAttribute(
-                                NameOID.EMAIL_ADDRESS, self._identity_token._identity
-                            ),
-                        ]
-                    )
-                )
-                .add_extension(
-                    x509.BasicConstraints(ca=False, path_length=None),
-                    critical=True,
-                )
-            )
-            certificate_request = builder.sign(self._private_key, hashes.SHA256())
+            certificate_request = self._build_csr()
 
             certificate_response = self._signing_ctx._fulcio.signing_cert.post(
                 certificate_request, self._identity_token
