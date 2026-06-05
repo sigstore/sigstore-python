@@ -21,10 +21,11 @@ All versions prior to 0.9.0 are untracked.
   The OIDC redirect server had incomplete HTTP responses and no connection
   management, causing a keep-alive deadlock with the browser.
 
-* `policy.Identity` now matches email (RFC822Name) SANs case-insensitively, so
-  an expected identity that differs only in case (for example `FoO@baR.coM`
-  versus a `foo@bar.com` SAN) verifies successfully. URI and other SAN types
-  are still matched exactly.
+* `policy.Identity` now matches the domain part of email (RFC822Name) SANs
+  case-insensitively, so an expected identity whose domain differs only in case
+  (for example `a@TnY.ToWn` versus an `a@tny.town` SAN) verifies successfully.
+  The local part stays case-sensitive (per RFC 5321 it can be case-significant),
+  and URI and other SAN types are still matched exactly.
   ([sigstore/model-transparency#459](https://github.com/sigstore/model-transparency/issues/459))
 
 ## [4.2.0]
