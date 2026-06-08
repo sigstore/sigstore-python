@@ -19,7 +19,7 @@ Everything in these APIs is considered internal and unstable, and is not
 subject to any stability guarantees.
 """
 
-from requests import __version__ as requests_version
+from requests import __version__ as requests_version  # type: ignore[attr-defined]
 
 from sigstore import __version__ as sigstore_version
 
