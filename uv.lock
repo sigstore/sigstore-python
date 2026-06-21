@@ -1672,7 +1672,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cryptography", specifier = ">=42,<49" },
+    { name = "cryptography", specifier = ">=42" },
     { name = "id", specifier = ">=1.1.0" },
     { name = "importlib-resources", marker = "python_full_version < '3.11'", specifier = "~=5.7" },
     { name = "platformdirs", specifier = "~=4.2" },
