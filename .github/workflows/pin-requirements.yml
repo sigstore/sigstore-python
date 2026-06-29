@@ -74,9 +74,6 @@ jobs:
         with:
           working-directory: install
 
-      - name: Install dependencies
-        run: uv install pip-tools
-
       - name: Compute version from tag
         run: |
           echo "SIGSTORE_RELEASE_VERSION=$(echo "${SIGSTORE_RELEASE_TAG}" | sed 's/^v//')" >> "${GITHUB_ENV}"
@@ -86,7 +83,10 @@ jobs:
           cd install
 
           echo "sigstore==${SIGSTORE_RELEASE_VERSION}" > requirements.in
-          pip-compile --allow-unsafe --generate-hashes --upgrade --output-file=requirements.txt requirements.in
+          uvx --from pip-tools pip-compile \
+              --allow-unsafe --generate-hashes --upgrade \
+              --output-file=requirements.txt \
+              requirements.in
 
       - name: Commit changes and push to branch
         run: |
