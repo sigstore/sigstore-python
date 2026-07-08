@@ -19,6 +19,7 @@ Rekor Checkpoint machinery.
 from __future__ import annotations
 
 import base64
+import binascii
 import re
 import struct
 import typing
@@ -80,8 +81,15 @@ class LogCheckpoint(BaseModel):
         if len(origin) == 0:
             raise VerificationError("malformed LogCheckpoint: empty origin")
 
-        log_size = int(lines[1])
-        root_hash = base64.b64decode(lines[2]).hex()
+        try:
+            log_size = int(lines[1])
+        except ValueError:
+            raise VerificationError("malformed LogCheckpoint: invalid log size")
+
+        try:
+            root_hash = base64.b64decode(lines[2]).hex()
+        except binascii.Error:
+            raise VerificationError("malformed LogCheckpoint: invalid root hash")
 
         return LogCheckpoint(
             origin=origin,
