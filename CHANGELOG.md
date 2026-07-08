@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* A malformed checkpoint in a bundle's inclusion proof now raises
+  `VerificationError` during verification, instead of leaking a raw
+  `ValueError` or `binascii.Error`
+  ([#1826](https://github.com/sigstore/sigstore-python/pull/1826))
+
 ## [4.4.0]
 
 ### Changed
