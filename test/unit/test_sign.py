@@ -13,6 +13,7 @@
 # limitations under the License.
 import hashlib
 import secrets
+from datetime import datetime, timedelta, timezone
 
 import cryptography.x509 as x509
 import pretend
@@ -70,6 +71,18 @@ def test_build_csr_non_ascii_identity_produces_valid_csr():
     der = csr.public_bytes(serialization.Encoding.DER)
     reparsed = x509.load_der_x509_csr(der)
     assert len(reparsed.subject) == 0
+
+
+def test_signer_uses_valid_cached_certificate_with_expired_identity():
+    cert = pretend.stub(
+        not_valid_after_utc=datetime.now(timezone.utc) + timedelta(minutes=5)
+    )
+
+    signer = Signer.__new__(Signer)
+    signer._identity_token = pretend.stub(in_validity_period=lambda: False)
+    signer._Signer__cached_signing_certificate = cert
+
+    assert signer._signing_cert() is cert
 
 
 # only check the log contents for production: staging is already on
