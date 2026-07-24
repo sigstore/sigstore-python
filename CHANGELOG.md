@@ -56,6 +56,13 @@ All versions prior to 0.9.0 are untracked.
 * Embedded TUF metadata has been updated
   ([#1785](https://github.com/sigstore/sigstore-python/pull/1785))
 
+* `policy.Identity` now matches the domain part of email (RFC822Name) SANs
+  case-insensitively, so an expected identity whose domain differs only in case
+  (for example `a@TnY.ToWn` versus an `a@tny.town` SAN) verifies successfully.
+  The local part stays case-sensitive (per RFC 5321 it can be case-significant),
+  and URI and other SAN types are still matched exactly.
+  ([sigstore/model-transparency#459](https://github.com/sigstore/model-transparency/issues/459))
+
 ## [4.2.0]
 
 ### Fixed
