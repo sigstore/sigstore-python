@@ -13,7 +13,6 @@
 # limitations under the License.
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
 
 import cryptography.x509 as x509
 import pretend
@@ -73,16 +72,20 @@ def test_build_csr_non_ascii_identity_produces_valid_csr():
     assert len(reparsed.subject) == 0
 
 
-def test_signer_uses_valid_cached_certificate_with_expired_identity():
-    cert = pretend.stub(
-        not_valid_after_utc=datetime.now(timezone.utc) + timedelta(minutes=5)
-    )
+@pytest.mark.staging
+@pytest.mark.ambient_oidc
+def test_signer_uses_valid_cached_certificate_with_expired_identity(staging):
+    ctx_cls, _, identity = staging
+    ctx: SigningContext = ctx_cls()
+    assert identity is not None
 
-    signer = Signer.__new__(Signer)
-    signer._identity_token = pretend.stub(in_validity_period=lambda: False)
-    signer._Signer__cached_signing_certificate = cert
-
-    assert signer._signing_cert() is cert
+    # Constructing a cached signer obtains its certificate while the token is
+    # valid. Expire the local token afterward, then perform a real signing
+    # operation: it must reuse the still-valid cached certificate.
+    with ctx.signer(identity) as signer:
+        identity._exp = 0
+        assert not signer._identity_token.in_validity_period()
+        signer.sign_artifact(secrets.token_bytes(32))
 
 
 # only check the log contents for production: staging is already on
