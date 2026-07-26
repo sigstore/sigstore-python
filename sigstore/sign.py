@@ -151,36 +151,35 @@ class Signer:
         the returned certificate is present in Fulcio's CT log.
         """
 
-        # Our CSR cannot possibly succeed if our underlying identity token
-        # is expired.
-        if not self._identity_token.in_validity_period():
-            raise ExpiredIdentity
-
-        # If it exists, verify if the current certificate is expired
+        # If a cached certificate exists, use it until it expires.
         if self.__cached_signing_certificate:
             not_valid_after = self.__cached_signing_certificate.not_valid_after_utc
             if datetime.now(timezone.utc) > not_valid_after:
                 raise ExpiredCertificate
             return self.__cached_signing_certificate
 
-        else:
-            _logger.debug("Retrieving signed certificate...")
+        # Our CSR cannot possibly succeed if our underlying identity token
+        # is expired.
+        if not self._identity_token.in_validity_period():
+            raise ExpiredIdentity
 
-            certificate_request = self._build_csr()
+        _logger.debug("Retrieving signed certificate...")
 
-            certificate_response = self._signing_ctx._fulcio.signing_cert.post(
-                certificate_request, self._identity_token
-            )
+        certificate_request = self._build_csr()
 
-            verify_sct(
-                certificate_response.cert,
-                certificate_response.chain,
-                self._signing_ctx._trusted_root.ct_keyring(KeyringPurpose.SIGN),
-            )
+        certificate_response = self._signing_ctx._fulcio.signing_cert.post(
+            certificate_request, self._identity_token
+        )
 
-            _logger.debug("Successfully verified SCT...")
+        verify_sct(
+            certificate_response.cert,
+            certificate_response.chain,
+            self._signing_ctx._trusted_root.ct_keyring(KeyringPurpose.SIGN),
+        )
 
-            return certificate_response.cert
+        _logger.debug("Successfully verified SCT...")
+
+        return certificate_response.cert
 
     def _finalize_sign(
         self,
