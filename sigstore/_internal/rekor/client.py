@@ -181,7 +181,7 @@ class RekorEntriesRetrieve(_Endpoint):
         """
         data = {"entries": [expected_entry.model_dump(mode="json", by_alias=True)]}
 
-        resp: requests.Response = self.session.post(self.url, json=data)  # type: ignore[arg-type]
+        resp: requests.Response = self.session.post(self.url, json=data)
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
