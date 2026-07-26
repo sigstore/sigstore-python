@@ -8,8 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [4.5.0]
+
 ### Fixed
 
+* Signing reuses a valid cached certificate before checking whether the OIDC
+  identity token has expired.
+  ([#1838](https://github.com/sigstore/sigstore-python/pull/1838))
 * A malformed checkpoint in a bundle's inclusion proof now raises
   `VerificationError` during verification, instead of leaking a raw
   `ValueError` or `binascii.Error`
@@ -812,7 +817,9 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.3.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.5.0...HEAD
+[4.5.0]: https://github.com/sigstore/sigstore-python/compare/v4.4.0...v4.5.0
+[4.4.0]: https://github.com/sigstore/sigstore-python/compare/v4.3.0...v4.4.0
 [4.3.0]: https://github.com/sigstore/sigstore-python/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/sigstore/sigstore-python/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/sigstore/sigstore-python/compare/v4.0.0...v4.1.0
