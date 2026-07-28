@@ -30,7 +30,7 @@ import typing
 from sigstore.errors import VerificationError
 
 if typing.TYPE_CHECKING:
-    from sigstore.models import TransparencyLogEntry
+    from sigstore._internal.rekor.entry import TransparencyLogEntry
 
 
 _LEAF_HASH_PREFIX = 0

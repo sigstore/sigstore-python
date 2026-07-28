@@ -19,6 +19,7 @@ Exceptions.
 import sys
 from collections.abc import Mapping
 from logging import Logger
+from textwrap import dedent
 from typing import Any, NoReturn
 
 
@@ -134,3 +135,43 @@ class CertValidationError(VerificationError):
 
     This is used by CLI to hint that an incorrect Sigstore instance may have been used
     """
+
+
+class InvalidBundle(Error):
+    """
+    Raised when the associated `Bundle` is invalid in some way.
+    """
+
+    def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
+
+        return dedent(
+            f"""\
+        An issue occurred while parsing the Sigstore bundle.
+
+        The provided bundle is malformed and may have been modified maliciously.
+
+        Additional context:
+
+        {self}
+        """
+        )
+
+
+class IncompatibleEntry(InvalidBundle):
+    """
+    Raised when the log entry within the `Bundle` has an incompatible KindVersion.
+    """
+
+    def diagnostics(self) -> str:
+        """Returns diagnostics for the error."""
+
+        return dedent(
+            f"""\
+        The provided bundle contains a transparency log entry that is incompatible with this version of sigstore-python. Please upgrade your verifying client.
+
+        Additional context:
+
+        {self}
+        """
+        )

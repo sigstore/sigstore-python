@@ -37,9 +37,9 @@ from sigstore._internal.rekor import (
     RekorClientError,
     RekorLogSubmitter,
 )
+from sigstore._internal.rekor.entry import TransparencyLogEntry
 from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
-from sigstore.models import TransparencyLogEntry
 
 _logger = logging.getLogger(__name__)
 

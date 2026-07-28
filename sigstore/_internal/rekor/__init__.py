@@ -31,7 +31,7 @@ from sigstore.dsse import Envelope
 from sigstore.hashes import Hashed
 
 if typing.TYPE_CHECKING:
-    from sigstore.models import TransparencyLogEntry
+    from sigstore._internal.rekor.entry import TransparencyLogEntry
 
 __all__ = [
     "_hashedrekord_from_parts",

@@ -31,8 +31,8 @@ from sigstore._utils import KeyID
 from sigstore.errors import VerificationError
 
 if typing.TYPE_CHECKING:
+    from sigstore._internal.rekor.entry import TransparencyLogEntry
     from sigstore._internal.trust import RekorKeyring
-    from sigstore.models import TransparencyLogEntry
 
 
 @dataclass(frozen=True)
