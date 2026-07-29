@@ -83,10 +83,24 @@ jobs:
           cd install
 
           echo "sigstore==${SIGSTORE_RELEASE_VERSION}" > requirements.in
-          uv run --only-dev pip-compile \
-              --allow-unsafe --generate-hashes --upgrade \
-              --output-file=requirements.txt \
-              requirements.in
+
+          # PyPI index propagation can take a couple of minutes after a new release.
+          # Retry pip-compile up to 10 times with a 30-second delay between attempts.
+          n=0
+          until [ "$n" -ge 10 ]; do
+            uv run --only-dev pip-compile \
+                --allow-unsafe --generate-hashes --upgrade \
+                --output-file=requirements.txt \
+                requirements.in && break
+            n=$((n+1))
+            echo "pip-compile failed; sigstore==${SIGSTORE_RELEASE_VERSION} may not be indexed on PyPI yet. Retrying in 30s ($n/10)..."
+            sleep 30
+          done
+
+          if [ "$n" -ge 10 ]; then
+            echo "pip-compile failed after 10 attempts."
+            exit 1
+          fi
 
       - name: Commit changes and push to branch
         run: |
