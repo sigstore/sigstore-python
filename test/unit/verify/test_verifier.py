@@ -24,8 +24,8 @@ import rfc3161_client
 
 from sigstore._internal.trust import CertificateAuthority
 from sigstore.dsse import StatementBuilder, Subject
-from sigstore.errors import VerificationError
-from sigstore.models import Bundle
+from sigstore.errors import MetadataError, VerificationError
+from sigstore.models import Bundle, TrustedRoot
 from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
 
@@ -40,6 +40,18 @@ def test_verifier_production():
 def test_verifier_staging():
     verifier = Verifier.staging()
     assert verifier is not None
+
+
+def test_verifier_no_tlogs(asset):
+    """A trusted root without transparency logs is rejected with a sigstore error."""
+    trusted_root = TrustedRoot.from_file(
+        str(asset("trusted_root/trustedroot.no_tlogs.json"))
+    )
+
+    with pytest.raises(
+        MetadataError, match="Transparency log instances not found in trusted root"
+    ):
+        Verifier(trusted_root=trusted_root)
 
 
 @pytest.mark.staging
