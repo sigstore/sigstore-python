@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* A `TrustedRoot` without transparency log instances now raises `MetadataError`
+  when constructing a `Verifier`, instead of leaking a raw `IndexError`
+  ([#1853](https://github.com/sigstore/sigstore-python/pull/1853))
+
 ## [4.5.0]
 
 ### Fixed
