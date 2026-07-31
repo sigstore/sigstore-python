@@ -80,7 +80,7 @@ def tuf_asset():
             try:
                 path = next(matches)
             except StopIteration as e:
-                raise Exception(f"Unable to match {name} in targets/") from e
+                raise RuntimeError(f"Unable to match {name} in targets/") from e
 
             if next(matches, None) is None:
                 return path

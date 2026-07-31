@@ -130,7 +130,14 @@ exclude_dirs = ["./test"]
 [tool.ruff.lint]
 extend-select = ["I", "UP"]
 ignore = [
+  "TRY004", # invalid type does not always lead to TypeError in this code base
   "UP007", # https://github.com/pydantic/pydantic/issues/4146
   "UP011",
   "UP015",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test/**" = [
+  "BLE001", # blind exception handling is fine in tests
+  "S110", # try-except-pass is fine in tests
 ]
