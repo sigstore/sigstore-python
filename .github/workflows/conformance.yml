@@ -13,6 +13,13 @@ permissions: {}
 
 jobs:
   conformance:
+    name: Conformance (${{ matrix.environment }})
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - production
+          - staging
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,9 +34,11 @@ jobs:
           uv pip install .
           echo "$(pwd)/.venv/bin" >> ${GITHUB_PATH}
 
-      - uses: sigstore/sigstore-conformance@21533cde107c734ebc153c3e3a24d75fc9811a36 # v0.0.29
+      - name: Run conformance tests
+        uses: sigstore/sigstore-conformance@21533cde107c734ebc153c3e3a24d75fc9811a36 # v0.0.29
         with:
           entrypoint: ${{ github.workspace }}/test/integration/sigstore-python-conformance
+          environment: ${{ matrix.environment }}
           xfail: "test_verify*intoto-with-custom-trust-root]
             test_verify*managed-key-happy-path]
             test_verify*managed-key-and-trusted-root]" # see issues 1442, 1244
