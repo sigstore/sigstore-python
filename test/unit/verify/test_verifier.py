@@ -107,7 +107,7 @@ def test_verifier_bundle_artifact(signing_bundle, null_policy, filename):
     ("a.dsse.staging-rekor-v2.txt",),
 )
 def test_verifier_bundle_dsse(signing_bundle, null_policy, filename):
-    (file, bundle) = signing_bundle(filename)
+    (_file, bundle) = signing_bundle(filename)
 
     verifier = Verifier.staging()
     verifier.verify_dsse(bundle, null_policy)
@@ -327,15 +327,15 @@ class TestVerifierWithTimestamp:
             0
         ]._inner.valid_for.end = datetime(2024, 10, 31, tzinfo=timezone.utc)
 
-        with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(
-                VerificationError, match="not enough sources of verified time"
-            ):
-                verifier.verify_artifact(
-                    asset("tsa/bundle.txt").read_bytes(),
-                    Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
-                    null_policy,
-                )
+        with (
+            caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"),
+            pytest.raises(VerificationError, match="not enough sources"),
+        ):
+            verifier.verify_artifact(
+                asset("tsa/bundle.txt").read_bytes(),
+                Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
+                null_policy,
+            )
 
         assert (
             "Unable to verify Timestamp because not in CA time range."
@@ -354,15 +354,15 @@ class TestVerifierWithTimestamp:
 
         monkeypatch.setattr(rfc3161_client.verify._Verifier, "verify", verify_function)
 
-        with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
-            with pytest.raises(
-                VerificationError, match="not enough sources of verified time"
-            ):
-                verifier.verify_artifact(
-                    asset("tsa/bundle.txt").read_bytes(),
-                    Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
-                    null_policy,
-                )
+        with (
+            caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"),
+            pytest.raises(VerificationError, match="not enough sources"),
+        ):
+            verifier.verify_artifact(
+                asset("tsa/bundle.txt").read_bytes(),
+                Bundle.from_json(asset("tsa/bundle.txt.sigstore").read_bytes()),
+                null_policy,
+            )
 
         assert caplog.records[0].message == "Unable to verify Timestamp with CA."
 

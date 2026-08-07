@@ -63,7 +63,7 @@ from sigstore._internal.trust import (
 )
 from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
 from sigstore._utils import KeyID, cert_is_leaf, cert_is_root_ca, is_timerange_valid
-from sigstore.errors import Error, MetadataError, TUFError, VerificationError
+from sigstore.errors import Error, MetadataError, VerificationError
 
 # Versions supported by this client
 REKOR_VERSIONS = [1, 2]
@@ -965,11 +965,8 @@ class ClientTrustConfig:
         tr_path = updater.get_trusted_root_path()
         inner_tr = trustroot_v1.TrustedRoot.from_json(Path(tr_path).read_bytes())
 
-        try:
-            sc_path = updater.get_signing_config_path()
-            inner_sc = trustroot_v1.SigningConfig.from_json(Path(sc_path).read_bytes())
-        except TUFError as e:
-            raise e
+        sc_path = updater.get_signing_config_path()
+        inner_sc = trustroot_v1.SigningConfig.from_json(Path(sc_path).read_bytes())
 
         return cls(
             trustroot_v1.ClientTrustConfig(

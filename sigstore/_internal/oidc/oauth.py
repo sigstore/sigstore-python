@@ -156,7 +156,7 @@ class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
             _logger.debug(f"{self.path} unavailable (teardown)")
             self.send_response(404)
             self.end_headers()
-            return None
+            return
 
         r = urllib.parse.urlsplit(self.path)
 
