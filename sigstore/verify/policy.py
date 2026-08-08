@@ -461,11 +461,11 @@ class Identity:
         if self._issuer:
             self._issuer.verify(cert)
 
-        # Build a set of all valid identities.
+        # Build the sets of valid identities from the certificate's SANs.
         san_ext = cert.extensions.get_extension_for_class(SubjectAlternativeName).value
-        all_sans = set(san_ext.get_values_for_type(RFC822Name))
-        all_sans.update(san_ext.get_values_for_type(UniformResourceIdentifier))
-        all_sans.update(
+        email_sans = set(san_ext.get_values_for_type(RFC822Name))
+        other_sans = set(san_ext.get_values_for_type(UniformResourceIdentifier))
+        other_sans.update(
             [
                 on.value.decode()
                 for on in san_ext.get_values_for_type(OtherName)
@@ -473,8 +473,23 @@ class Identity:
             ]
         )
 
-        verified = self._identity in all_sans
+        # Email (RFC822Name) identities are matched with the domain compared
+        # case-insensitively, while the local part stays case-sensitive. Per
+        # RFC 5321 the local part can be case-significant, so we must not fold
+        # it; the domain is case-insensitive, so "a@TnY.ToWn" matches an
+        # "a@tny.town" SAN. URI and "other name" SANs remain exact matches.
+        def _normalize_email(value: str) -> str:
+            local, sep, domain = value.rpartition("@")
+            if not sep:
+                # No "@" present: nothing to normalize, compare as-is.
+                return value
+            return f"{local}@{domain.casefold()}"
+
+        verified = self._identity in other_sans or _normalize_email(
+            self._identity
+        ) in {_normalize_email(email) for email in email_sans}
         if not verified:
+            all_sans = email_sans | other_sans
             raise VerificationError(
                 f"Certificate's SANs do not match {self._identity}; actual SANs: {all_sans}"
             )
