@@ -24,6 +24,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import ClassVar, NewType
+from urllib.parse import urlparse
 
 import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature
@@ -190,7 +191,85 @@ class Keyring:
             raise VerificationError("keyring: invalid signature")
 
 
-RekorKeyring = NewType("RekorKeyring", Keyring)
+@dataclass(frozen=True)
+class _RekorVerifier:
+    """A Rekor key and the signed-note names that identify its log."""
+
+    key: Key
+    names: frozenset[str]
+
+
+def _rekor_log_names(base_url: str) -> frozenset[str]:
+    """Return the signed-note names represented by a Rekor base URL."""
+
+    base_url = base_url.rstrip("/")
+    parsed = urlparse(base_url if "://" in base_url else f"//{base_url}")
+    names = {base_url}
+    if parsed.netloc:
+        names.add(parsed.netloc)
+    if parsed.hostname:
+        names.add(parsed.hostname)
+    return frozenset(names)
+
+
+class RekorKeyring:
+    """A keyring that tracks Rekor log and checkpoint key identifiers."""
+
+    def __init__(self, tlogs: list[trustroot_v1.TransparencyLogInstance]):
+        self._keyring: dict[KeyID, list[Key]] = {}
+        self._checkpoint_keyring: dict[KeyID, list[_RekorVerifier]] = {}
+        self._keys: list[Key] = []
+
+        for tlog in tlogs:
+            try:
+                key = Key(tlog.public_key)
+            except VerificationError as e:
+                _logger.warning(f"Failed to load a trusted root key: {e}")
+                continue
+
+            self._keys.append(key)
+            log_id = KeyID(tlog.log_id.key_id)
+            self._keyring.setdefault(log_id, []).append(key)
+
+            checkpoint_key_id = (
+                KeyID(tlog.checkpoint_key_id.key_id)
+                if tlog.checkpoint_key_id is not None
+                else KeyID(log_id[:4])
+            )
+            verifier = _RekorVerifier(key=key, names=_rekor_log_names(tlog.base_url))
+            self._checkpoint_keyring.setdefault(checkpoint_key_id, []).append(verifier)
+
+    def verify(self, *, key_id: KeyID, signature: bytes, data: bytes) -> None:
+        """Verify a Rekor inclusion promise, using its log ID as a hint."""
+
+        candidates = self._keyring.get(key_id, self._keys)
+        for candidate in candidates:
+            try:
+                candidate.verify(signature, data)
+                return
+            except InvalidSignature:
+                pass
+
+        raise VerificationError("keyring: invalid signature")
+
+    def verify_checkpoint(
+        self, *, name: str, key_id: KeyID, signature: bytes, data: bytes
+    ) -> None:
+        """Verify a checkpoint signature identified by signed-note name and key ID."""
+
+        candidates = self._checkpoint_keyring.get(key_id, [])
+        for candidate in candidates:
+            if name not in candidate.names:
+                continue
+            try:
+                candidate.key.verify(signature, data)
+                return
+            except InvalidSignature:
+                pass
+
+        raise VerificationError("keyring: invalid checkpoint signature")
+
+
 CTKeyring = NewType("CTKeyring", Keyring)
 
 

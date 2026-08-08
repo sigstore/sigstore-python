@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Rekor checkpoint verification now uses `checkpoint_key_id` and the log name
+  from the trusted root, falling back to `log_id` for older trust roots.
+  ([#1364](https://github.com/sigstore/sigstore-python/issues/1364))
+
 ## [4.5.0]
 
 ### Fixed
