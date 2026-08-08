@@ -13,11 +13,12 @@
 # limitations under the License.
 
 
+import base64
 import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sigstore_models.common.v1 import TimeRange
+from sigstore_models.common.v1 import LogId, TimeRange
 from sigstore_models.trustroot.v1 import (
     Service,
     ServiceConfiguration,
@@ -228,6 +229,17 @@ class TestTrustedRoot:
         assert len(root.ct_keyring(KeyringPurpose.VERIFY)._keyring) == 2
         assert root.get_fulcio_certs() is not None
         assert root.get_timestamp_authorities() is not None
+
+    def test_rekor_keyring_tracks_checkpoint_key_id(self, asset):
+        root = TrustedRoot.from_file(asset("trusted_root/trustedroot.v1.json"))
+        checkpoint_key_id = b"\x01\x02\x03\x04"
+        root._inner.tlogs[0].checkpoint_key_id = LogId(
+            key_id=base64.b64encode(checkpoint_key_id)
+        )
+
+        keyring = root.rekor_keyring(KeyringPurpose.VERIFY)
+
+        assert checkpoint_key_id in keyring._checkpoint_keyring
 
     def test_bad_media_type(self, asset):
         path = asset("trusted_root/trustedroot.badtype.json")
