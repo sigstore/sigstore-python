@@ -27,7 +27,12 @@ import rekor_types
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509 import Certificate, ExtendedKeyUsage, KeyUsage
+from cryptography.x509 import (
+    Certificate,
+    ExtendedKeyUsage,
+    KeyUsage,
+    UnsupportedGeneralNameType,
+)
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from cryptography.x509.verification import (
     Criticality,
@@ -270,7 +275,7 @@ class Verifier:
         try:
             # The verified chain includes the end-entity certificate, which callers omit.
             return verifier.verify(certificate, []).chain[1:]
-        except X509VerificationError as e:
+        except (X509VerificationError, UnsupportedGeneralNameType) as e:
             raise CertValidationError(
                 f"failed to build timestamp certificate chain: {e}"
             )
