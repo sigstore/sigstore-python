@@ -27,14 +27,21 @@ import rekor_types
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509 import Certificate, ExtendedKeyUsage, KeyUsage
+from cryptography.x509 import (
+    Certificate,
+    ExtendedKeyUsage,
+    KeyUsage,
+    UnsupportedGeneralNameType,
+)
 from cryptography.x509.oid import ExtendedKeyUsageOID
-from OpenSSL.crypto import (
-    X509,
-    X509Store,
-    X509StoreContext,
-    X509StoreContextError,
-    X509StoreFlags,
+from cryptography.x509.verification import (
+    Criticality,
+    ExtensionPolicy,
+    PolicyBuilder,
+    Store,
+)
+from cryptography.x509.verification import (
+    VerificationError as X509VerificationError,
 )
 from pydantic import ValidationError
 from rfc3161_client import TimeStampResponse, VerifierBuilder
@@ -80,10 +87,7 @@ class Verifier:
         `trusted_root` is the `TrustedRoot` object containing the root of trust
         for the verification process.
         """
-        self._fulcio_certificate_chain: list[X509] = [
-            X509.from_cryptography(parent_cert)
-            for parent_cert in trusted_root.get_fulcio_certs()
-        ]
+        self._fulcio_certificate_chain = trusted_root.get_fulcio_certs()
         self._trusted_root = trusted_root
 
         # this is an ugly hack needed for verifying "detached" materials
@@ -244,35 +248,34 @@ class Verifier:
         return verified_timestamps
 
     def _verify_chain_at_time(
-        self, certificate: X509, timestamp_result: TimestampVerificationResult
-    ) -> list[X509]:
+        self, certificate: Certificate, timestamp_result: TimestampVerificationResult
+    ) -> list[Certificate]:
         """
         Verify the validity of the certificate chain at the given time.
 
         Raises a VerificationError if the chain can't be built or be verified.
         """
-        # NOTE: The `X509Store` object cannot have its time reset once the `set_time`
-        # method been called on it. To get around this, we construct a new one in each
-        # call.
-        store = X509Store()
-        # NOTE: By explicitly setting the flags here, we ensure that OpenSSL's
-        # PARTIAL_CHAIN default does not change on us. Enabling PARTIAL_CHAIN
-        # would be strictly more conformant of OpenSSL, but we currently
-        # *want* the "long" chain behavior of performing path validation
-        # down to a self-signed root.
-        store.set_flags(X509StoreFlags.X509_STRICT)
-        for parent_cert_ossl in self._fulcio_certificate_chain:
-            store.add_cert(parent_cert_ossl)
-
-        store.set_time(timestamp_result.time)
-
-        store_ctx = X509StoreContext(store, certificate)
+        # Client verifiers normally require the client-auth EKU. Fulcio certificates
+        # instead use code-signing, which is checked separately below; overriding
+        # only the EKU validators preserves the remaining default extension policies.
+        ca_policy = ExtensionPolicy.webpki_defaults_ca().may_be_present(
+            ExtendedKeyUsage, Criticality.NON_CRITICAL, None
+        )
+        ee_policy = ExtensionPolicy.webpki_defaults_ee().may_be_present(
+            ExtendedKeyUsage, Criticality.NON_CRITICAL, None
+        )
+        verifier = (
+            PolicyBuilder()
+            .store(Store(self._fulcio_certificate_chain))
+            .time(timestamp_result.time)
+            .extension_policies(ca_policy=ca_policy, ee_policy=ee_policy)
+            .build_client_verifier()
+        )
 
         try:
-            # get_verified_chain returns the full chain including the end-entity certificate
-            # and chain should contain only CA certificates
-            return store_ctx.get_verified_chain()[1:]
-        except X509StoreContextError as e:
+            # The verified chain includes the end-entity certificate, which callers omit.
+            return verifier.verify(certificate, []).chain[1:]
+        except (X509VerificationError, UnsupportedGeneralNameType) as e:
             raise CertValidationError(
                 f"failed to build timestamp certificate chain: {e}"
             )
@@ -311,19 +314,6 @@ class Verifier:
 
         cert = bundle.signing_certificate
 
-        # NOTE: The `X509Store` object currently cannot have its time reset once the `set_time`
-        # method been called on it. To get around this, we construct a new one for every `verify`
-        # call.
-        store = X509Store()
-        # NOTE: By explicitly setting the flags here, we ensure that OpenSSL's
-        # PARTIAL_CHAIN default does not change on us. Enabling PARTIAL_CHAIN
-        # would be strictly more conformant of OpenSSL, but we currently
-        # *want* the "long" chain behavior of performing path validation
-        # down to a self-signed root.
-        store.set_flags(X509StoreFlags.X509_STRICT)
-        for parent_cert_ossl in self._fulcio_certificate_chain:
-            store.add_cert(parent_cert_ossl)
-
         # (0): Establishing a Time for the Signature
         # First, establish verified times for the signature. This is required to
         # validate the certificate chain, so this step comes first.
@@ -336,16 +326,15 @@ class Verifier:
         # (1): verify that the signing certificate is signed by the root
         #      certificate and that the signing certificate was valid at the
         #      time of signing.
-        cert_ossl = X509.from_cryptography(cert)
-        chain: list[X509] = []
+        chain: list[Certificate] = []
         for vts in verified_timestamps:
-            chain = self._verify_chain_at_time(cert_ossl, vts)
+            chain = self._verify_chain_at_time(cert, vts)
 
         # (2): verify the signing certificate's SCT.
         try:
             verify_sct(
                 cert,
-                [parent_cert.to_cryptography() for parent_cert in chain],
+                chain,
                 self._trusted_root.ct_keyring(KeyringPurpose.VERIFY),
             )
         except VerificationError as e:
