@@ -26,10 +26,9 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
-  "cryptography >= 42",
+  "cryptography >= 47",
   "id >= 1.1.0",
   "importlib_resources ~= 5.7; python_version < '3.11'",
-  "pyasn1 ~= 0.6",
   "pydantic >= 2,< 3",
   "pyjwt >= 2.1",
   "pyOpenSSL >= 23.0.0",
@@ -134,3 +133,6 @@ ignore = [
   "UP011",
   "UP015",
 ]
+
+[tool.uv]
+exclude-newer = "P7D"

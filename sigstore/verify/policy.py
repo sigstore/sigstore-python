@@ -23,6 +23,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Protocol
 
+from cryptography.hazmat import asn1
 from cryptography.x509 import (
     Certificate,
     ExtensionNotFound,
@@ -32,8 +33,6 @@ from cryptography.x509 import (
     SubjectAlternativeName,
     UniformResourceIdentifier,
 )
-from pyasn1.codec.der.decoder import decode as der_decode
-from pyasn1.type.char import UTF8String
 
 from sigstore.errors import VerificationError
 
@@ -131,7 +130,7 @@ class _SingleX509ExtPolicyV2(_SingleX509ExtPolicy):
 
         # NOTE(ww): mypy is confused by the `Extension[ExtensionType]` returned
         # by `get_extension_for_oid` above.
-        ext_value = der_decode(ext.value, UTF8String)[0].decode()  # type: ignore[attr-defined]
+        ext_value = asn1.decode_der(str, ext.value)  # type: ignore[attr-defined]
         if ext_value != self._value:
             raise VerificationError(
                 f"Certificate's {self.__class__.__name__} does not match "
