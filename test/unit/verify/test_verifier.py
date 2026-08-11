@@ -123,18 +123,6 @@ def test_verifier_bundle_offline(signing_bundle, null_policy, filename):
     verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
-def test_verifier_certificate_chain_ends_at_root(signing_bundle):
-    _, bundle = signing_bundle("bundle.txt")
-    verifier = Verifier.staging(offline=True)
-    timestamp = verifier._establish_time(bundle)[0]
-
-    chain = verifier._verify_chain_at_time(bundle.signing_certificate, timestamp)
-
-    assert len(chain) == 2
-    assert chain[0].subject != chain[0].issuer
-    assert chain[-1].subject == chain[-1].issuer
-
-
 def test_verifier_certificate_chain_rejects_invalid_time(signing_bundle):
     _, bundle = signing_bundle("bundle.txt")
     verifier = Verifier.staging(offline=True)

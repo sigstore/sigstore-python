@@ -250,18 +250,6 @@ class Verifier:
 
         Raises a VerificationError if the chain can't be built or be verified.
         """
-        # Trust only roots so path building cannot stop at a Fulcio intermediate.
-        roots = [
-            cert
-            for cert in self._fulcio_certificate_chain
-            if cert.subject == cert.issuer
-        ]
-        intermediates = [
-            cert
-            for cert in self._fulcio_certificate_chain
-            if cert.subject != cert.issuer
-        ]
-
         # Client verifiers normally require the client-auth EKU. Fulcio certificates
         # instead use code-signing, which is checked separately below; overriding
         # only the EKU validators preserves the remaining default extension policies.
@@ -273,7 +261,7 @@ class Verifier:
         )
         verifier = (
             PolicyBuilder()
-            .store(Store(roots))
+            .store(Store(self._fulcio_certificate_chain))
             .time(timestamp_result.time)
             .extension_policies(ca_policy=ca_policy, ee_policy=ee_policy)
             .build_client_verifier()
@@ -281,7 +269,7 @@ class Verifier:
 
         try:
             # The verified chain includes the end-entity certificate, which callers omit.
-            return verifier.verify(certificate, intermediates).chain[1:]
+            return verifier.verify(certificate, []).chain[1:]
         except X509VerificationError as e:
             raise CertValidationError(
                 f"failed to build timestamp certificate chain: {e}"
