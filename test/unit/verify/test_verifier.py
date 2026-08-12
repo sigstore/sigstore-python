@@ -24,7 +24,7 @@ import rfc3161_client
 
 from sigstore._internal.trust import CertificateAuthority
 from sigstore.dsse import StatementBuilder, Subject
-from sigstore.errors import VerificationError
+from sigstore.errors import CertValidationError, VerificationError
 from sigstore.models import Bundle
 from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
@@ -121,6 +121,18 @@ def test_verifier_bundle_offline(signing_bundle, null_policy, filename):
 
     verifier = Verifier.staging(offline=True)
     verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+def test_verifier_certificate_chain_rejects_invalid_time(signing_bundle):
+    _, bundle = signing_bundle("bundle.txt")
+    verifier = Verifier.staging(offline=True)
+    timestamp = verifier._establish_time(bundle)[0]
+    timestamp.time = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+    with pytest.raises(
+        CertValidationError, match="failed to build timestamp certificate chain"
+    ):
+        verifier._verify_chain_at_time(bundle.signing_certificate, timestamp)
 
 
 @pytest.mark.staging
