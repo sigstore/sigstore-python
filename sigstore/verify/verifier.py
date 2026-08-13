@@ -59,7 +59,7 @@ from sigstore._internal.sct import (
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
 from sigstore._internal.trust import KeyringPurpose
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
-from sigstore.errors import CertValidationError, VerificationError
+from sigstore.errors import CertValidationError, MetadataError, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle, ClientTrustConfig, TrustedRoot
 from sigstore.verify.policy import VerificationPolicy
@@ -92,6 +92,8 @@ class Verifier:
 
         # this is an ugly hack needed for verifying "detached" materials
         # In reality we should be choosing the rekor instance based on the logid
+        if not trusted_root._inner.tlogs:
+            raise MetadataError("No transparency logs found in trusted root")
         url = trusted_root._inner.tlogs[0].base_url
         self._rekor = RekorClient(url)
 

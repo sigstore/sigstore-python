@@ -24,10 +24,41 @@ import rfc3161_client
 
 from sigstore._internal.trust import CertificateAuthority
 from sigstore.dsse import StatementBuilder, Subject
-from sigstore.errors import CertValidationError, VerificationError
+from sigstore.errors import CertValidationError, MetadataError, VerificationError
 from sigstore.models import Bundle
 from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
+
+
+def test_verifier_init_no_transparency_logs():
+    """
+    `Verifier.__init__` raises a structured `MetadataError` (rather than an
+    unhandled `IndexError`) when given a `trusted_root` with no
+    transparency logs. See #1822.
+    """
+    trusted_root = pretend.stub(
+        get_fulcio_certs=pretend.call_recorder(lambda: []),
+        _inner=pretend.stub(tlogs=[]),
+    )
+
+    with pytest.raises(MetadataError, match="No transparency logs"):
+        Verifier(trusted_root=trusted_root)
+
+
+def test_verifier_init_with_transparency_logs():
+    """
+    `Verifier.__init__` succeeds and picks the first transparency log's
+    `base_url` when `trusted_root` has at least one, proving the new
+    `MetadataError` guard doesn't affect the happy path.
+    """
+    tlog = pretend.stub(base_url="https://rekor.example.com")
+    trusted_root = pretend.stub(
+        get_fulcio_certs=pretend.call_recorder(lambda: []),
+        _inner=pretend.stub(tlogs=[tlog]),
+    )
+
+    verifier = Verifier(trusted_root=trusted_root)
+    assert verifier._rekor.url == "https://rekor.example.com/api/v1"
 
 
 @pytest.mark.production
