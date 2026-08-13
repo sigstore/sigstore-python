@@ -22,6 +22,7 @@ import os
 import sys
 from concurrent import futures
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, NoReturn, TypeAlias, Union
 
@@ -37,6 +38,10 @@ from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.tuf import (
+    DEFAULT_OFFLINE_STALENESS_ERROR,
+    DEFAULT_OFFLINE_STALENESS_WARN,
+)
 from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.dsse._predicate import (
@@ -112,6 +117,37 @@ def _invalid_arguments(args: argparse.Namespace, message: str) -> NoReturn:
     """
     args._parser.error(message)
     raise ValueError("unreachable")
+
+
+def _parse_duration(value: str) -> timedelta | None:
+    """Parse a duration like '24h' or '7d' into a timedelta.
+
+    '0', 'off', or 'none' disables the check (returns None).
+    Units: s, m, h, d, w.
+    """
+    v = value.strip().lower()
+    if v in {"0", "off", "none"}:
+        return None
+    units = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+    unit = v[-1:]
+    try:
+        amount = int(v[:-1])
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"invalid duration {value!r} (e.g. '24h', '7d')"
+        ) from None
+    if unit not in units or amount < 0:
+        raise argparse.ArgumentTypeError(
+            f"invalid duration {value!r} (use s/m/h/d/w, e.g. '24h')"
+        )
+    return timedelta(**{units[unit]: amount})
+
+
+def _staleness_env(envvar: str, default: timedelta | None) -> timedelta | None:
+    val = os.getenv(envvar)
+    if val is None:
+        return default
+    return _parse_duration(val)
 
 
 def _boolify_env(envvar: str) -> bool:
@@ -192,6 +228,24 @@ def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
         action="store_true",
         default=_boolify_env("SIGSTORE_OFFLINE"),
         help="Perform offline verification; requires a Sigstore bundle",
+    )
+    group.add_argument(
+        "--offline-staleness-warn",
+        metavar="DURATION",
+        type=_parse_duration,
+        default=_staleness_env(
+            "SIGSTORE_OFFLINE_STALENESS_WARN", DEFAULT_OFFLINE_STALENESS_WARN
+        ),
+        help="With --offline, warn if the cached trust root is older than this (e.g. 24h, 7d; 'off' to disable)",
+    )
+    group.add_argument(
+        "--offline-staleness-error",
+        metavar="DURATION",
+        type=_parse_duration,
+        default=_staleness_env(
+            "SIGSTORE_OFFLINE_STALENESS_ERROR", DEFAULT_OFFLINE_STALENESS_ERROR
+        ),
+        help="With --offline, fail if the cached trust root is older than this (e.g. 7d; 'off' to disable)",
     )
 
 
@@ -1260,15 +1314,34 @@ def _get_trust_config(args: argparse.Namespace) -> ClientTrustConfig:
     """
     # Not all commands provide --offline
     offline = getattr(args, "offline", False)
+    staleness_warn = getattr(
+        args, "offline_staleness_warn", DEFAULT_OFFLINE_STALENESS_WARN
+    )
+    staleness_error = getattr(
+        args, "offline_staleness_error", DEFAULT_OFFLINE_STALENESS_ERROR
+    )
 
     if args.trust_config:
         trust_config = ClientTrustConfig.from_json(args.trust_config.read_text())
     elif args.instance:
-        trust_config = ClientTrustConfig.from_tuf(args.instance, offline=offline)
+        trust_config = ClientTrustConfig.from_tuf(
+            args.instance,
+            offline=offline,
+            staleness_warn=staleness_warn,
+            staleness_error=staleness_error,
+        )
     elif args.staging:
-        trust_config = ClientTrustConfig.staging(offline=offline)
+        trust_config = ClientTrustConfig.staging(
+            offline=offline,
+            staleness_warn=staleness_warn,
+            staleness_error=staleness_error,
+        )
     else:
-        trust_config = ClientTrustConfig.production(offline=offline)
+        trust_config = ClientTrustConfig.production(
+            offline=offline,
+            staleness_warn=staleness_warn,
+            staleness_error=staleness_error,
+        )
 
     # Enforce rekor version if --rekor-version is used
     trust_config.force_tlog_version = getattr(args, "rekor_version", None)

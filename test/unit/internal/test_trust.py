@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -23,6 +24,7 @@ from sigstore_models.trustroot.v1 import (
     ServiceConfiguration,
     ServiceSelector,
 )
+from tuf.api.metadata import Metadata, Timestamp
 
 from sigstore._internal.fulcio.client import FulcioClient
 from sigstore._internal.rekor.client import RekorClient
@@ -32,6 +34,7 @@ from sigstore._internal.trust import (
     CertificateAuthority,
     KeyringPurpose,
 )
+from sigstore._internal.tuf import STAGING_TUF_URL, TrustUpdater
 from sigstore._utils import is_timerange_valid
 from sigstore.errors import Error, TUFError
 from sigstore.models import (
@@ -262,6 +265,55 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     # Still no requests
     assert reqs == {}
     assert fail_reqs == {}
+
+
+def _write_timestamp(metadata_dir, expires):
+    """Write a minimal TUF timestamp.json with the given expiry into metadata_dir."""
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = Timestamp()
+    timestamp.expires = expires
+    Metadata(signed=timestamp).to_file(str(metadata_dir / "timestamp.json"))
+
+
+def test_trust_updater_offline_stale_warns(tuf_dirs, caplog):
+    data_dir, _ = tuf_dirs
+    # expired 2 days ago: past the 24h warn window, within the 7d error window
+    _write_timestamp(data_dir, datetime.now(timezone.utc) - timedelta(days=2))
+    with caplog.at_level(logging.WARNING):
+        TrustUpdater(STAGING_TUF_URL, offline=True)
+    assert "Trust root may be stale" in caplog.text
+
+
+def test_trust_updater_offline_stale_errors(tuf_dirs):
+    data_dir, _ = tuf_dirs
+    # expired 10 days ago: past the 7d error window
+    _write_timestamp(data_dir, datetime.now(timezone.utc) - timedelta(days=10))
+    with pytest.raises(TUFError, match="Trust root is stale"):
+        TrustUpdater(STAGING_TUF_URL, offline=True)
+
+
+def test_trust_updater_offline_fresh_does_not_warn(tuf_dirs, caplog):
+    data_dir, _ = tuf_dirs
+    _write_timestamp(data_dir, datetime.now(timezone.utc) + timedelta(days=5))
+    with caplog.at_level(logging.WARNING):
+        TrustUpdater(STAGING_TUF_URL, offline=True)
+    assert "stale" not in caplog.text
+
+
+def test_trust_updater_offline_missing_timestamp_is_quiet(tuf_dirs, caplog):
+    # no timestamp.json: cannot assess freshness -> no warning, no error
+    with caplog.at_level(logging.WARNING):
+        TrustUpdater(STAGING_TUF_URL, offline=True)
+    assert "stale" not in caplog.text
+
+
+def test_trust_updater_offline_error_disabled_only_warns(tuf_dirs, caplog):
+    data_dir, _ = tuf_dirs
+    _write_timestamp(data_dir, datetime.now(timezone.utc) - timedelta(days=10))
+    with caplog.at_level(logging.WARNING):
+        # staleness_error=None disables the hard error; only the warning fires
+        TrustUpdater(STAGING_TUF_URL, offline=True, staleness_error=None)
+    assert "Trust root may be stale" in caplog.text
 
 
 def test_is_timerange_valid():

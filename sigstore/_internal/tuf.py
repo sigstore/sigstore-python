@@ -19,12 +19,14 @@ TUF functionality for `sigstore-python`.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from urllib import parse
 
 import platformdirs
 from tuf.api import exceptions as TUFExceptions
+from tuf.api.metadata import Metadata
 from tuf.ngclient import Updater, UpdaterConfig  # type: ignore[attr-defined]
 
 from sigstore import __version__
@@ -35,6 +37,8 @@ _logger = logging.getLogger(__name__)
 
 DEFAULT_TUF_URL = "https://tuf-repo-cdn.sigstore.dev"
 STAGING_TUF_URL = "https://tuf-repo-cdn.sigstage.dev"
+DEFAULT_OFFLINE_STALENESS_WARN = timedelta(hours=24)
+DEFAULT_OFFLINE_STALENESS_ERROR = timedelta(days=7)
 
 
 def _get_dirs(url: str) -> tuple[Path, Path]:
@@ -64,10 +68,18 @@ class TrustUpdater:
     TrustUpdater expects to find an initial root.json in either the local
     metadata directory for this URL, or (as special case for the sigstore.dev
     production and staging instances) in the application resources.
+    staleness_warn and staleness_error are used to determine how long the local
+    metadata can be used before warning or erroring, respectively. These are
+    only used in offline mode, and are ignored when online.
     """
 
     def __init__(
-        self, url: str, offline: bool = False, bootstrap_root: Path | None = None
+        self,
+        url: str,
+        offline: bool = False,
+        bootstrap_root: Path | None = None,
+        staleness_warn: timedelta | None = DEFAULT_OFFLINE_STALENESS_WARN,
+        staleness_error: timedelta | None = DEFAULT_OFFLINE_STALENESS_ERROR,
     ) -> None:
         """
         Create a new `TrustUpdater`, pulling from the given `url`.
@@ -103,6 +115,7 @@ class TrustUpdater:
             _logger.warning(
                 "TUF repository is loaded in offline mode; updates will not be performed"
             )
+            self._warn_if_stale(staleness_warn, staleness_error)
         else:
             # Initialize and update the toplevel TUF metadata
             try:
@@ -127,6 +140,41 @@ class TrustUpdater:
                 self._updater.refresh()
             except Exception as e:
                 raise TUFError("Failed to refresh TUF metadata") from e
+
+    def _warn_if_stale(
+        self,
+        staleness_warn: timedelta | None = DEFAULT_OFFLINE_STALENESS_WARN,
+        staleness_error: timedelta | None = DEFAULT_OFFLINE_STALENESS_ERROR,
+    ) -> None:
+        timestamp_path = self._metadata_dir / "timestamp.json"
+        if not timestamp_path.exists():
+            _logger.debug(
+                "no cached TUF timestamp; cannot assess root trust freshness."
+            )
+            return
+        try:
+            expires = Metadata.from_file(str(timestamp_path)).signed.expires
+        except TUFExceptions.RepositoryError as e:
+            _logger.debug("could not read cached TUF timestamp metadata: %s", e)
+            return
+        overdue = datetime.now(timezone.utc) - expires
+        overdue_str = str(overdue).split(".")[0]
+        if staleness_error is not None and overdue > staleness_error:
+            raise TUFError(
+                f"Trust root is stale: the cached TUF timestamp metadata expired "
+                f"{overdue_str} ago (exceeds the offline hard limit of {staleness_error}). "
+                f"Refresh the trust root by running without --offline."
+            )
+        elif staleness_warn is not None and overdue > staleness_warn:
+            _logger.warning(
+                "Trust root may be stale: the cached TUF timestamp metadata expired "
+                "%s ago (exceeds the offline staleness threshold of %s). "
+                "Consider refreshing it by running without --offline.",
+                overdue_str,
+                staleness_warn,
+            )
+        else:
+            return
 
     @lru_cache()
     def get_trusted_root_path(self) -> str:

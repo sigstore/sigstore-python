@@ -32,6 +32,33 @@ $ sigstore verify identity foo.txt \
     --cert-oidc-issuer 'https://github.com/login/oauth'
 ```
 
+## Detecting a stale trust root
+
+Because `--offline` skips the TUF update, the cached trust root can silently
+become stale. To surface this, `sigstore-python` inspects the cached TUF
+timestamp metadata and:
+
+* emits a **warning** once the trust root has been expired for longer than
+  24 hours;
+* fails with an **error** once it has been expired for longer than 7 days.
+
+Both thresholds are configurable, either per-invocation or via the
+`SIGSTORE_OFFLINE_STALENESS_WARN` / `SIGSTORE_OFFLINE_STALENESS_ERROR`
+environment variables:
+
+```bash
+$ sigstore verify identity foo.txt \
+    --offline \
+    --offline-staleness-warn 12h \
+    --offline-staleness-error 30d \
+    --cert-identity 'hamilcar@example.com' \
+    --cert-oidc-issuer 'https://github.com/login/oauth'
+```
+
+Durations are written as `<number><unit>`, where `unit` is one of `s`, `m`,
+`h`, `d`, or `w` (e.g. `24h`, `7d`, `2w`). Pass `off` (or `0`) to disable a
+level entirely.
+
 Alternatively, users may choose to bypass TUF entirely by passing
 an entire trust configuration to `sigstore-python` via `--trust-config`:
 

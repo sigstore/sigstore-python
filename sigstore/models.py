@@ -22,6 +22,7 @@ import base64
 import logging
 from collections import defaultdict
 from collections.abc import Iterable
+from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
@@ -61,7 +62,13 @@ from sigstore._internal.trust import (
     KeyringPurpose,
     RekorKeyring,
 )
-from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
+from sigstore._internal.tuf import (
+    DEFAULT_OFFLINE_STALENESS_ERROR,
+    DEFAULT_OFFLINE_STALENESS_WARN,
+    DEFAULT_TUF_URL,
+    STAGING_TUF_URL,
+    TrustUpdater,
+)
 from sigstore._utils import KeyID, cert_is_leaf, cert_is_root_ca, is_timerange_valid
 from sigstore.errors import Error, MetadataError, TUFError, VerificationError
 
@@ -928,25 +935,39 @@ class ClientTrustConfig:
     def production(
         cls,
         offline: bool = False,
+        staleness_warn: timedelta | None = DEFAULT_OFFLINE_STALENESS_WARN,
+        staleness_error: timedelta | None = DEFAULT_OFFLINE_STALENESS_ERROR,
     ) -> ClientTrustConfig:
         """Create new trust config from Sigstore production TUF repository.
 
         If `offline`, will use data in local TUF cache. Otherwise will
         update the data from remote TUF repository.
         """
-        return cls.from_tuf(DEFAULT_TUF_URL, offline)
+        return cls.from_tuf(
+            DEFAULT_TUF_URL,
+            offline,
+            staleness_warn=staleness_warn,
+            staleness_error=staleness_error,
+        )
 
     @classmethod
     def staging(
         cls,
         offline: bool = False,
+        staleness_warn: timedelta | None = DEFAULT_OFFLINE_STALENESS_WARN,
+        staleness_error: timedelta | None = DEFAULT_OFFLINE_STALENESS_ERROR,
     ) -> ClientTrustConfig:
         """Create new trust config from Sigstore staging TUF repository.
 
         If `offline`, will use data in local TUF cache. Otherwise will
         update the data from remote TUF repository.
         """
-        return cls.from_tuf(STAGING_TUF_URL, offline)
+        return cls.from_tuf(
+            STAGING_TUF_URL,
+            offline,
+            staleness_warn=staleness_warn,
+            staleness_error=staleness_error,
+        )
 
     @classmethod
     def from_tuf(
@@ -954,13 +975,21 @@ class ClientTrustConfig:
         url: str,
         offline: bool = False,
         bootstrap_root: Path | None = None,
+        staleness_warn: timedelta | None = DEFAULT_OFFLINE_STALENESS_WARN,
+        staleness_error: timedelta | None = DEFAULT_OFFLINE_STALENESS_ERROR,
     ) -> ClientTrustConfig:
         """Create a new trust config from a TUF repository.
 
         If `offline`, will use data in local TUF cache. Otherwise will
         update the trust config from remote TUF repository.
         """
-        updater = TrustUpdater(url, offline, bootstrap_root)
+        updater = TrustUpdater(
+            url,
+            offline,
+            bootstrap_root,
+            staleness_warn=staleness_warn,
+            staleness_error=staleness_error,
+        )
 
         tr_path = updater.get_trusted_root_path()
         inner_tr = trustroot_v1.TrustedRoot.from_json(Path(tr_path).read_bytes())

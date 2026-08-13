@@ -8,6 +8,15 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* `sigstore verify` now warns (and can fail) when used with `--offline` and a
+  stale cached trust root. The thresholds are configurable via
+  `--offline-staleness-warn` / `--offline-staleness-error` (or the
+  `SIGSTORE_OFFLINE_STALENESS_WARN` / `SIGSTORE_OFFLINE_STALENESS_ERROR`
+  environment variables); pass `off` to disable either level.
+  ([#1175](https://github.com/sigstore/sigstore-python/issues/1175))
+
 ## [4.5.0]
 
 ### Fixed
