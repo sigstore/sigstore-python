@@ -39,6 +39,13 @@ __all__ = [
 
 EntryRequestBody = typing.NewType("EntryRequestBody", dict[str, typing.Any])
 
+# The (connect, read) timeout used for every Rekor request: a short connect
+# timeout so that an unreachable log fails fast, and a generous read timeout
+# because `create_entry` only responds once the entry has been included in
+# the log.
+# See: https://github.com/sigstore/rekor-tiles/blob/main/CLIENTS.md#handling-longer-requests
+DEFAULT_REKOR_TIMEOUT = (5, 60)
+
 
 class RekorClientError(Exception):
     """

@@ -33,6 +33,7 @@ from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEnt
 from sigstore._internal import USER_AGENT
 from sigstore._internal.key_details import _get_key_details, _get_prehash
 from sigstore._internal.rekor import (
+    DEFAULT_REKOR_TIMEOUT,
     EntryRequestBody,
     RekorClientError,
     RekorLogSubmitter,
@@ -90,6 +91,7 @@ class RekorV2Client(RekorLogSubmitter):
         resp = self._session.post(
             f"{self.url}/log/entries",
             json=payload,
+            timeout=DEFAULT_REKOR_TIMEOUT,
         )
 
         try:

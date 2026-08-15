@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import hashlib
+import unittest.mock
 
 import pytest
 
 from sigstore import dsse
+from sigstore._internal.rekor import DEFAULT_REKOR_TIMEOUT, EntryRequestBody
+from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore.models import TransparencyLogEntry
 
 
@@ -64,3 +67,19 @@ def test_rekor_v2_create_entry_hashed_rekord(staging):
         bundle = signer.sign_artifact(b"")
 
     assert isinstance(bundle.log_entry, TransparencyLogEntry)
+
+
+def test_rekor_v2_create_entry_passes_timeout():
+    """`create_entry` passes the default timeout to the underlying session."""
+    client = RekorV2Client("http://fake")
+    session = unittest.mock.MagicMock()
+    client._thread_local.session = session
+
+    # Hide exceptions: the mocked response is not a valid log entry, and we
+    # only care about how the request itself was made.
+    try:
+        client.create_entry(EntryRequestBody({}))
+    except Exception:
+        pass
+
+    assert session.post.call_args.kwargs["timeout"] == DEFAULT_REKOR_TIMEOUT

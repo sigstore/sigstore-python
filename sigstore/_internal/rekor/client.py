@@ -33,6 +33,7 @@ from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.rekor import (
+    DEFAULT_REKOR_TIMEOUT,
     EntryRequestBody,
     RekorClientError,
     RekorLogSubmitter,
@@ -90,7 +91,9 @@ class RekorLog(_Endpoint):
         """
         Returns information about the Rekor instance's log.
         """
-        resp: requests.Response = self.session.get(self.url)
+        resp: requests.Response = self.session.get(
+            self.url, timeout=DEFAULT_REKOR_TIMEOUT
+        )
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
@@ -125,9 +128,13 @@ class RekorEntries(_Endpoint):
         resp: requests.Response
 
         if uuid is not None:
-            resp = self.session.get(f"{self.url}/{uuid}")
+            resp = self.session.get(f"{self.url}/{uuid}", timeout=DEFAULT_REKOR_TIMEOUT)
         else:
-            resp = self.session.get(self.url, params={"logIndex": log_index})
+            resp = self.session.get(
+                self.url,
+                params={"logIndex": log_index},
+                timeout=DEFAULT_REKOR_TIMEOUT,
+            )
 
         try:
             resp.raise_for_status()
@@ -145,7 +152,9 @@ class RekorEntries(_Endpoint):
 
         _logger.debug(f"proposed: {json.dumps(payload)}")
 
-        resp: requests.Response = self.session.post(self.url, json=payload)
+        resp: requests.Response = self.session.post(
+            self.url, json=payload, timeout=DEFAULT_REKOR_TIMEOUT
+        )
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
@@ -181,7 +190,9 @@ class RekorEntriesRetrieve(_Endpoint):
         """
         data = {"entries": [expected_entry.model_dump(mode="json", by_alias=True)]}
 
-        resp: requests.Response = self.session.post(self.url, json=data)
+        resp: requests.Response = self.session.post(
+            self.url, json=data, timeout=DEFAULT_REKOR_TIMEOUT
+        )
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:

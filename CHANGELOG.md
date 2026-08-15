@@ -8,6 +8,11 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Added a default request timeout to the Rekor v1 and v2 clients to prevent
+  requests from hanging indefinitely.
+
 ## [4.5.0]
 
 ### Fixed
