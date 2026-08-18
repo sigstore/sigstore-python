@@ -19,6 +19,11 @@ import pytest
 from sigstore import oidc
 
 
+@pytest.fixture
+def now() -> int:
+    return int(datetime.datetime.now(tz=datetime.timezone.utc).timestamp())
+
+
 class TestIdentityToken:
     def test_invalid_jwt(self):
         with pytest.raises(
@@ -26,8 +31,7 @@ class TestIdentityToken:
         ):
             oidc.IdentityToken("invalid jwt")
 
-    def test_missing_iss(self, dummy_jwt):
-        now = int(datetime.datetime.now().timestamp())
+    def test_missing_iss(self, dummy_jwt, now: int):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
@@ -43,8 +47,7 @@ class TestIdentityToken:
         ):
             oidc.IdentityToken(jwt)
 
-    def test_missing_aud(self, dummy_jwt):
-        now = int(datetime.datetime.now().timestamp())
+    def test_missing_aud(self, dummy_jwt, now: int):
         jwt = dummy_jwt(
             {
                 "sub": "fakesubject",
@@ -61,8 +64,7 @@ class TestIdentityToken:
             oidc.IdentityToken(jwt)
 
     @pytest.mark.parametrize("aud", (None, "not-sigstore"))
-    def test_invalid_aud(self, dummy_jwt, aud):
-        now = int(datetime.datetime.now().timestamp())
+    def test_invalid_aud(self, dummy_jwt, aud, now: int):
         jwt = dummy_jwt(
             {
                 "aud": aud,
@@ -79,8 +81,7 @@ class TestIdentityToken:
         ):
             oidc.IdentityToken(jwt)
 
-    def test_missing_iat(self, dummy_jwt):
-        now = int(datetime.datetime.now().timestamp())
+    def test_missing_iat(self, dummy_jwt, now: int):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
@@ -97,8 +98,7 @@ class TestIdentityToken:
             oidc.IdentityToken(jwt)
 
     @pytest.mark.parametrize("iat", (None, "not-an-int"))
-    def test_invalid_iat(self, dummy_jwt, iat):
-        now = int(datetime.datetime.now().timestamp())
+    def test_invalid_iat(self, dummy_jwt, iat, now: int):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
@@ -115,8 +115,7 @@ class TestIdentityToken:
         ):
             oidc.IdentityToken(jwt)
 
-    def test_missing_nbf_ok(self, dummy_jwt):
-        now = int(datetime.datetime.now().timestamp())
+    def test_missing_nbf_ok(self, dummy_jwt, now: int):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
@@ -129,8 +128,7 @@ class TestIdentityToken:
 
         assert oidc.IdentityToken(jwt) is not None
 
-    def test_invalid_nbf(self, dummy_jwt):
-        now = int(datetime.datetime.now().timestamp())
+    def test_invalid_nbf(self, dummy_jwt, now: int):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
@@ -148,8 +146,7 @@ class TestIdentityToken:
         ):
             oidc.IdentityToken(jwt)
 
-    def test_missing_exp(self, dummy_jwt):
-        now = int(datetime.datetime.now().timestamp())
+    def test_missing_exp(self, dummy_jwt, now: int):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
@@ -165,8 +162,7 @@ class TestIdentityToken:
         ):
             oidc.IdentityToken(jwt)
 
-    def test_invalid_exp(self, dummy_jwt):
-        now = int(datetime.datetime.now().timestamp())
+    def test_invalid_exp(self, dummy_jwt, now: int):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
@@ -187,8 +183,7 @@ class TestIdentityToken:
     @pytest.mark.parametrize(
         "iss", [k for k, v in oidc._KNOWN_OIDC_ISSUERS.items() if v != "sub"]
     )
-    def test_missing_identity_claim(self, dummy_jwt, iss):
-        now = int(datetime.datetime.now().timestamp())
+    def test_missing_identity_claim(self, dummy_jwt, iss, now: int):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
@@ -207,8 +202,7 @@ class TestIdentityToken:
             oidc.IdentityToken(jwt)
 
     @pytest.mark.parametrize("fed", ("notadict", {"connector_id": 123}))
-    def test_invalid_federated_claims(self, dummy_jwt, fed):
-        now = int(datetime.datetime.now().timestamp())
+    def test_invalid_federated_claims(self, dummy_jwt, fed, now: int):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",
@@ -248,8 +242,9 @@ class TestIdentityToken:
             ("hxxps://unknown.issuer.example.com/auth", "sub", "some-subject", None),
         ],
     )
-    def test_ok(self, dummy_jwt, iss, identity_claim, identity_value, fed_iss):
-        now = int(datetime.datetime.now().timestamp())
+    def test_ok(
+        self, dummy_jwt, iss, identity_claim, identity_value, fed_iss, now: int
+    ):
         jwt = dummy_jwt(
             {
                 "aud": "sigstore",

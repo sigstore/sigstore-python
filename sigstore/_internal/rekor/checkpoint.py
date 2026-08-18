@@ -25,7 +25,7 @@ import struct
 import typing
 from dataclasses import dataclass
 
-from pydantic import BaseModel, Field, StrictStr
+from pydantic import BaseModel, StrictStr
 
 from sigstore._utils import KeyID
 from sigstore.errors import VerificationError
@@ -115,8 +115,8 @@ class SignedNote:
     Represents a "signed note" containing a note and its corresponding list of signatures.
     """
 
-    note: StrictStr = Field(..., alias="note")
-    signatures: list[RekorSignature] = Field(..., alias="signatures")
+    note: str
+    signatures: list[RekorSignature]
 
     @classmethod
     def from_text(cls, text: str) -> SignedNote:
