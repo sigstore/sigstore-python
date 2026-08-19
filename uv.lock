@@ -1230,7 +1230,7 @@ wheels = [
 
 [[package]]
 name = "pip-tools"
-version = "7.6.0"
+version = "7.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "build" },
@@ -1239,11 +1239,12 @@ dependencies = [
     { name = "pyproject-hooks" },
     { name = "setuptools" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
     { name = "wheel" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/d6/d51564c5a3d7a91d20020fbc68a473e6f6e6f970337294cdfc764717d51e/pip_tools-7.6.0.tar.gz", hash = "sha256:c1c59f7844df4866fa9542d3f50d1f44be537ac0027cb50b2563d6a992853981", size = 183149, upload-time = "2026-07-18T12:51:46.963Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/07/a0e89bfdb5ec55b8d6ae28c3edf22a2331909325c9b01c364acc4448f6df/pip_tools-7.6.1.tar.gz", hash = "sha256:695556edeb647eb94ee8345cc7108657fdb7fb16b3876623a399b4f61bbede01", size = 187948, upload-time = "2026-08-12T00:04:08.937Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/60/2f/5f434153d2bf85ae8f85826228707e694276b9e73d6d8040433a03ceeea9/pip_tools-7.6.0-py3-none-any.whl", hash = "sha256:4bd99155b6d8de358a214b0865e1a2855a453570c1a83d40f7b564870b8657be", size = 74337, upload-time = "2026-07-18T12:51:45.523Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/88/3b050c2b3948e8a090cfbd4f04a43359566f9974d66692826d42f4fe5357/pip_tools-7.6.1-py3-none-any.whl", hash = "sha256:6111c8b4b07fd14b7223ca921485b0e96cf66e20bf94da95eeed9845f510cb8f", size = 74661, upload-time = "2026-08-12T00:04:07.367Z" },
 ]
 
 [[package]]
