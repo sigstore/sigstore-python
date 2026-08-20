@@ -855,12 +855,17 @@ class TrustedRoot:
     def rekor_keyring(self, purpose: KeyringPurpose) -> RekorKeyring:
         """Return keyring with keys for Rekor."""
 
-        keys: list[common_v1.PublicKey] = list(
-            self._get_tlog_keys(self._inner.tlogs, purpose)
-        )
-        if len(keys) == 0:
+        allow_expired = purpose is KeyringPurpose.VERIFY
+        tlogs = [
+            tlog
+            for tlog in self._inner.tlogs
+            if is_timerange_valid(
+                tlog.public_key.valid_for, allow_expired=allow_expired
+            )
+        ]
+        if not tlogs:
             raise MetadataError("Did not find any Rekor keys in trusted root")
-        return RekorKeyring(Keyring(keys))
+        return RekorKeyring(tlogs)
 
     def ct_keyring(self, purpose: KeyringPurpose) -> CTKeyring:
         """Return keyring with key for CTFE."""

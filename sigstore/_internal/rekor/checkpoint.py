@@ -171,28 +171,26 @@ class SignedNote:
 
         return cls(note=header, signatures=signatures)
 
-    def verify(self, rekor_keyring: RekorKeyring, key_id: KeyID) -> None:
+    def verify(self, rekor_keyring: RekorKeyring) -> None:
         """
-        Verify the `SignedNote` using the given RekorKeyring and KeyID.
+        Verify the `SignedNote` using the given RekorKeyring.
         """
 
         note = str.encode(self.note)
 
         for sig in self.signatures:
-            if sig.sig_hash == key_id[:4]:
-                try:
-                    rekor_keyring.verify(
-                        key_id=key_id,
-                        signature=base64.b64decode(sig.signature),
-                        data=note,
-                    )
-                    return
-                except VerificationError as sig_err:
-                    raise VerificationError(f"checkpoint: invalid signature: {sig_err}")
+            try:
+                rekor_keyring.verify_checkpoint(
+                    name=sig.name,
+                    key_id=KeyID(sig.sig_hash),
+                    signature=base64.b64decode(sig.signature),
+                    data=note,
+                )
+                return
+            except VerificationError:
+                pass
 
-        raise VerificationError(
-            f"checkpoint: Signature not found for log ID {key_id.hex()}"
-        )
+        raise VerificationError("checkpoint: no valid signature found")
 
 
 @dataclass(frozen=True)
@@ -228,10 +226,7 @@ def verify_checkpoint(rekor_keyring: RekorKeyring, entry: TransparencyLogEntry) 
     # 1) verify the signature on the checkpoint
     # 2) verify the root hash in the checkpoint matches the root hash from the inclusion proof.
     signed_checkpoint = SignedCheckpoint.from_text(inclusion_proof.checkpoint.envelope)
-    signed_checkpoint.signed_note.verify(
-        rekor_keyring,
-        KeyID(entry._inner.log_id.key_id),
-    )
+    signed_checkpoint.signed_note.verify(rekor_keyring)
 
     checkpoint_hash = signed_checkpoint.checkpoint.log_hash
     root_hash = inclusion_proof.root_hash.hex()
