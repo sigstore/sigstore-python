@@ -123,6 +123,13 @@ def test_verifier_bundle_offline(signing_bundle, null_policy, filename):
     verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
+def test_verifier_current_issuer_certificate(signing_bundle, null_policy):
+    (file, bundle) = signing_bundle("new_bundle.txt")
+
+    verifier = Verifier.production(offline=True)
+    verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
 def test_verifier_certificate_chain_rejects_invalid_time(signing_bundle):
     _, bundle = signing_bundle("bundle.txt")
     verifier = Verifier.staging(offline=True)
