@@ -131,8 +131,11 @@ class _OAuthFlow:
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        self._server.shutdown()
-        self._server_thread.join()
+        try:
+            self._server.shutdown()
+            self._server_thread.join()
+        finally:
+            self._server.server_close()
 
 
 class _OAuthRedirectHandler(http.server.BaseHTTPRequestHandler):
