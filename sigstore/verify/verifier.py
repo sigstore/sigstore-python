@@ -92,7 +92,12 @@ class Verifier:
 
         # this is an ugly hack needed for verifying "detached" materials
         # In reality we should be choosing the rekor instance based on the logid
-        url = trusted_root._inner.tlogs[0].base_url
+        tlogs = trusted_root._inner.tlogs
+        if not tlogs:
+            raise VerificationError(
+                "trusted root contains no transparency log instances"
+            )
+        url = tlogs[0].base_url
         self._rekor = RekorClient(url)
 
     @classmethod

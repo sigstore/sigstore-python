@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* `Verifier` now raises `VerificationError` when the trusted root contains no
+  transparency log instances, instead of leaking a raw `IndexError`
+  ([#1880](https://github.com/sigstore/sigstore-python/pull/1880))
+
 ## [4.5.0]
 
 ### Fixed
