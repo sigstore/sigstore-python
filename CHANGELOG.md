@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Parsing a malformed in-toto statement now includes the underlying validation
+  error, instead of discarding it. `StatementBuilder.build()` already did this;
+  `Statement(contents=...)` did not, so a rejected digest algorithm, a missing
+  field and a bad `_type` were indistinguishable.
+
 ## [4.5.0]
 
 ### Fixed

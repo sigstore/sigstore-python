@@ -18,7 +18,7 @@ import json
 import pytest
 
 from sigstore import dsse
-from sigstore.dsse import InvalidEnvelope
+from sigstore.dsse import Error, InvalidEnvelope
 
 
 class TestEnvelope:
@@ -84,3 +84,26 @@ class TestEnvelope:
 
         with pytest.raises(InvalidEnvelope, match="one signature"):
             dsse.Envelope._from_json(raw)
+
+
+class TestStatement:
+    def test_malformed_statement_reports_why(self):
+        # An unsupported digest algorithm is rejected by design, but the caller
+        # is left guessing: the same message covers a missing field, a bad
+        # _type, and a rejected digest. StatementBuilder.build() already
+        # surfaces the underlying validation error; parsing should too.
+        raw = json.dumps(
+            {
+                "_type": "https://in-toto.io/Statement/v1",
+                "subject": [{"name": "foo", "digest": {"gitCommit": "a" * 40}}],
+                "predicateType": "https://example.com/predicate/v1",
+                "predicate": {},
+            }
+        )
+
+        with pytest.raises(Error, match="malformed in-toto statement") as exc:
+            dsse.Statement(raw.encode())
+
+        # the cause is preserved, and names the offending field
+        assert exc.value.__cause__ is not None
+        assert "digest" in str(exc.value)
