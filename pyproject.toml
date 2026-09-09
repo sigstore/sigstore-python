@@ -40,6 +40,7 @@ dependencies = [
   "sigstore-models == 0.0.6",
   "sigstore-rekor-types == 0.0.18",
   "tuf >= 6, < 8",
+  "securesystemslib[crypto]",
   "platformdirs ~= 4.2",
 ]
 requires-python = ">=3.10"
