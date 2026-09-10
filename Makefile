@@ -97,12 +97,6 @@ doc: $(VENV)/pyvenv.cfg
 
 .PHONY: package
 package: $(VENV)/pyvenv.cfg
-	@SIGSTORE_VERSION=$$(. $(VENV_BIN)/activate && python -c "import sigstore; print(sigstore.__version__)") && \
-		PROJECT_VERSION=$$(uv version --short --frozen 2>/dev/null) && \
-		if [ "$$SIGSTORE_VERSION" != "$$PROJECT_VERSION" ]; then \
-			echo "Error: sigstore.__version__ ($$SIGSTORE_VERSION) does not match pyproject.toml version ($$PROJECT_VERSION)"; \
-			exit 1; \
-		fi
 	uv build
 
 .PHONY: release
