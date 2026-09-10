@@ -12,8 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+from pathlib import Path
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # type: ignore[no-redef]
+
 import sigstore
 
 
 def test_version():
     assert isinstance(sigstore.__version__, str)
+
+    pyproject_path = Path(__file__).parents[2] / "pyproject.toml"
+    with open(pyproject_path, "rb") as f:
+        pyproject = tomllib.load(f)
+    assert sigstore.__version__ == pyproject["project"]["version"]
