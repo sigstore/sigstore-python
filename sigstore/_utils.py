@@ -309,7 +309,7 @@ def cert_is_root_ca(cert: Certificate) -> bool:
     try:
         cert.verify_directly_issued_by(cert)
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
 

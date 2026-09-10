@@ -48,7 +48,7 @@ def _decomp_inclusion_proof(index: int, size: int) -> tuple[int, int]:
     """
 
     inner = (index ^ (size - 1)).bit_length()
-    border = bin(index >> inner).count("1")
+    border = (index >> inner).bit_count()
     return inner, border
 
 
