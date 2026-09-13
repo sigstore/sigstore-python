@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* Verification of certificate-backed DSSE bundles recorded as Rekor v1
+  `intoto/0.0.2` entries, including existing npm provenance attestations.
+  Signing and fetching attestations in this legacy format remain unsupported.
+  ([#1384](https://github.com/sigstore/sigstore-python/issues/1384))
+
 ### Fixed
 
 * Parsing a malformed in-toto statement now includes the underlying validation

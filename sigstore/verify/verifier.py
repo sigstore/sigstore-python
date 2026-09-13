@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import re
 from datetime import datetime, timezone
 from typing import cast
 
@@ -32,6 +33,7 @@ from cryptography.x509 import (
     ExtendedKeyUsage,
     KeyUsage,
     UnsupportedGeneralNameType,
+    load_pem_x509_certificates,
 )
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from cryptography.x509.verification import (
@@ -234,9 +236,14 @@ class Verifier:
             timestamp := bundle.log_entry._inner.integrated_time
         ) and bundle.log_entry._inner.inclusion_promise:
             kv = bundle.log_entry._inner.kind_version
-            if not (kv.kind in ["dsse", "hashedrekord"] and kv.version == "0.0.1"):
+            if (kv.kind, kv.version) not in {
+                ("dsse", "0.0.1"),
+                ("hashedrekord", "0.0.1"),
+                ("intoto", "0.0.2"),
+            }:
                 raise VerificationError(
-                    "Integrated time only supported for dsse/hashedrekord 0.0.1 types"
+                    "Integrated time only supported for dsse/hashedrekord 0.0.1 "
+                    "and intoto 0.0.2 types"
                 )
 
             verified_timestamps.append(
@@ -379,7 +386,7 @@ class Verifier:
         self, bundle: Bundle, policy: VerificationPolicy
     ) -> tuple[str, bytes]:
         """
-        Verifies an bundle's DSSE envelope, returning the encapsulated payload
+        Verifies a bundle's DSSE envelope, returning the encapsulated payload
         and its content type.
 
         This method is only for DSSE-enveloped payloads. To verify
@@ -396,6 +403,9 @@ class Verifier:
         performed; users of this API **must** assert that `type` is known
         to them before proceeding to handle `payload` in an application-dependent
         manner.
+
+        Legacy certificate-backed Rekor `intoto/0.0.2` entries are supported
+        for verification, including existing npm provenance bundles.
         """
 
         # (1) through (6) are performed by `_verify_common_signing_cert`.
@@ -418,7 +428,7 @@ class Verifier:
         # Rekor v2 records DSSE envelopes as hashedrekord/0.0.2 entries whose
         # digest covers PAE(payloadType, payload) and whose signature.content
         # equals envelope.signatures[0].sig (rekor-v2-spec §6.1.4). Rekor v1
-        # used a dsse/0.0.1 entry, which is slightly weaker than the
+        # used dsse/0.0.1 and intoto/0.0.2 entries, which are weaker than the
         # hashedrekord consistency check: dsse entries record an envelope
         # hash that we *cannot* verify (the envelope is uncanonicalized JSON),
         # so we manually pick apart the entry body and verify the parts we
@@ -430,6 +440,8 @@ class Verifier:
             _validate_hashedrekord_v002_dsse_entry_body(bundle)
         elif kind == "dsse" and version == "0.0.1":
             _validate_dsse_v001_entry_body(bundle)
+        elif kind == "intoto" and version == "0.0.2":
+            _validate_intoto_v002_entry_body(bundle)
         else:
             raise VerificationError(
                 f"Unsupported DSSE log entry type: {kind}/{version}"
@@ -542,6 +554,104 @@ def _validate_dsse_v001_entry_body(bundle: Bundle) -> None:
     ]
     if signatures != entry_body.spec.root.signatures:
         raise VerificationError("log entry signatures do not match bundle")
+
+
+def _validate_intoto_v002_entry_body(bundle: Bundle) -> None:
+    """
+    Bind a Rekor v1 intoto/0.0.2 entry to its certificate-backed DSSE bundle.
+
+    Like dsse/0.0.1, this format records a hash of the original serialized
+    envelope. That JSON is not recoverable from the parsed bundle, so we
+    validate its shape but bind the payload, type, signatures, and full signing
+    certificate independently. The log's signature authenticates the entry;
+    this function must only be used after the common and DSSE verification.
+    """
+    envelope = bundle._dsse_envelope
+    if envelope is None:
+        raise VerificationError(
+            "cannot perform DSSE verification on a bundle without a DSSE envelope"
+        )
+    try:
+        entry_body = rekor_types.Intoto.model_validate_json(
+            bundle.log_entry._inner.canonicalized_body
+        )
+    except ValidationError as exc:
+        raise VerificationError("invalid intoto log entry") from exc
+
+    # The dependency also models proposal bodies and intoto/0.0.1, so dispatch
+    # metadata alone is insufficient to select the signed body's schema.
+    if (
+        "kind" not in entry_body.model_fields_set
+        or entry_body.api_version != "0.0.2"
+        or not isinstance(entry_body.spec.root, rekor_types.intoto.IntotoV002Schema)
+    ):
+        raise VerificationError("expected intoto/0.0.2 log entry body")
+    content = entry_body.spec.root.content
+    if content.hash is None or not re.fullmatch(r"[0-9a-fA-F]{64}", content.hash.value):
+        raise VerificationError("invalid intoto envelope hash")
+    if content.payload_hash is None:
+        raise VerificationError("missing intoto payload hash")
+    if (
+        content.payload_hash.value
+        != sha256_digest(envelope._inner.payload).digest.hex()
+    ):
+        raise VerificationError("intoto log entry payload hash does not match bundle")
+
+    logged_envelope = content.envelope
+    if logged_envelope.payload_type != envelope._inner.payload_type:
+        raise VerificationError("intoto log entry payload type does not match bundle")
+    # Rekor normally removes payload during canonicalization. If present,
+    # it has the same double-base64 representation as the signature below.
+    # Verify it rather than ignoring contradictory signed content.
+    if logged_envelope.payload is not None:
+        try:
+            encoded_payload = base64.b64decode(logged_envelope.payload, validate=True)
+            logged_payload = base64.b64decode(
+                encoded_payload + b"=" * (-len(encoded_payload) % 4),
+                altchars=b"-_",
+                validate=True,
+            )
+        except ValueError as exc:
+            raise VerificationError("invalid intoto log entry payload") from exc
+        if logged_payload != envelope._inner.payload:
+            raise VerificationError("intoto log entry payload does not match bundle")
+
+    # Preserve multiplicity and signature/certificate associations. In today's
+    # bundle profile there is exactly one signature; membership tests are not
+    # enough because they would also accept duplicated or additional records.
+    if len(logged_envelope.signatures) != len(envelope._inner.signatures):
+        raise VerificationError(
+            "intoto log entry signature count does not match bundle"
+        )
+    for logged, signature in zip(
+        logged_envelope.signatures, envelope._inner.signatures
+    ):
+        try:
+            # intoto/0.0.2 wraps DSSE's base64 signature string in another
+            # standard-base64 layer. DSSE permits standard or URL-safe base64.
+            encoded_sig = base64.b64decode(logged.sig, validate=True)
+            raw_sig = base64.b64decode(
+                encoded_sig + b"=" * (-len(encoded_sig) % 4),
+                altchars=b"-_",
+                validate=True,
+            )
+        except ValueError as exc:
+            raise VerificationError("invalid intoto log entry signature") from exc
+        if raw_sig != signature.sig:
+            raise VerificationError("intoto log entry signature does not match bundle")
+
+        try:
+            certificates = load_pem_x509_certificates(
+                base64.b64decode(logged.public_key, validate=True)
+            )
+        except ValueError as exc:
+            raise VerificationError("invalid intoto log entry certificate") from exc
+        if certificates != [bundle.signing_certificate]:
+            raise VerificationError(
+                "intoto log entry certificate does not match bundle"
+            )
+        # keyid is an unsigned DSSE hint, not an authenticated identity. The
+        # actual signature and full certificate above are the binding inputs.
 
 
 def _validate_hashedrekord_v001_entry_body(
