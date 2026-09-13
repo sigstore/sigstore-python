@@ -85,6 +85,50 @@ To test a specific file:
 make test T=path/to/file.py
 ```
 
+#### Local conformance tests
+
+On Linux or macOS (or under WSL), run the upstream
+[Sigstore conformance suite](https://github.com/sigstore/sigstore-conformance)
+against your current checkout, including uncommitted changes:
+
+```sh
+make conformance
+# Forward pytest selection/reporting options:
+make conformance CONFORMANCE_ARGS='-k happy-path -v'
+make conformance CONFORMANCE_ARGS='--collect-only -q'
+```
+
+This requires Git, uv, and network access. The target installs this checkout
+editable using its locked development environment, fetches the exact
+conformance revision used by CI into a temporary directory, and installs the
+suite's hash-checked requirements into a separate environment. It does not
+replace your development dependencies. The temporary suite/environment are
+removed after the run; uv's normal download cache can be reused.
+
+The runner prints the client checkout and suite revision, checks that the
+client interpreter imports this checkout, and explicitly selects the upstream
+suite's configuration and test directory. This avoids accidentally collecting
+sigstore-python's own tests or exercising a globally installed `sigstore`.
+Pytest failures, collection errors, and empty selections remain failures.
+
+This target runs **verification only**, not the complete CI conformance job.
+Signing tests and CPython release-tracker tests are skipped; the latter need
+the separate release metadata checkout supplied by CI. The three existing CI
+expected-failure patterns are retained as strict xfails, not silently excluded:
+an unexpected pass also fails the run. Network access is still required by
+the suite's public test-token fixture and online verification paths; you do
+not need to supply personal signing credentials. CI retains its existing
+action and broader coverage.
+
+Without Make, use `uv run --locked --dev python test/run_conformance.py`,
+followed by any pytest selection/reporting options. Run this command from the
+repository root. `PYTHONPATH`, `PYTHONHOME`, `PYTEST_ADDOPTS`, and
+`PYTEST_PLUGINS` are not inherited by the test run; pass pytest options
+explicitly. `SIGSTORE_*` settings are also removed so, for example, a local
+`SIGSTORE_STAGING` setting cannot redirect production test fixtures to staging.
+When updating the conformance action pin or xfail list in CI,
+update `test/run_conformance.py` as well; a unit test checks their parity.
+
 `sigstore` has a [`pytest`](https://docs.pytest.org/)-based unit test suite,
 including code coverage with [`coverage.py`](https://coverage.readthedocs.io/).
 

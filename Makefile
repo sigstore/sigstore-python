@@ -82,6 +82,11 @@ test-interactive: TEST_ENV += \
 	SIGSTORE_IDENTITY_TOKEN_staging=$$($(MAKE) -s run ARGS="--staging get-identity-token")
 test-interactive: test
 
+# Pass pytest selectors/reporting options, e.g. CONFORMANCE_ARGS='-k happy-path -v'.
+.PHONY: conformance
+conformance:
+	uv run --locked --dev python test/run_conformance.py $(CONFORMANCE_ARGS)
+
 .PHONY: gen-x509-testcases
 gen-x509-testcases: $(VENV)/pyvenv.cfg
 	. $(VENV_BIN)/activate && \
