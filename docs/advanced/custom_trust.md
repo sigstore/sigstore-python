@@ -49,3 +49,37 @@ command:
 $ sigstore --trust-config custom.trustconfig.json sign foo.txt
 $ sigstore --trust-config custom.trustconfig.json verify identity foo.txt ...
 ```
+
+### Checkpoint identities in trusted-root v0.2
+
+Trusted roots with media type
+`application/vnd.dev.sigstore.trustedroot.v0.2+json` select a Rekor checkpoint
+verification key using both the signature's name and its four-byte key ID.
+The name must exactly match the log's configured `baseUrl`; URLs are not
+normalized, and schemes, paths, ports, and trailing slashes are significant.
+Configure the name actually used on the checkpoint signature, rather than
+assuming that the log's HTTP endpoint is its signing identity.
+
+The ID comes from `checkpointKeyId.keyId`, or from `logId.keyId` only when
+`checkpointKeyId` is absent. The first four decoded bytes are compared with
+the signature header, including when a root stores a longer ID. A present
+but too-short ID is an error, not a fallback to `logId`. The short ID selects
+candidate keys; a valid cryptographic signature is still required. A different
+trusted log's key is not tried when the name or ID fails to match.
+
+Unknown checkpoint signatures, such as unconfigured witnesses, are ignored.
+A known signature that fails verification rejects the checkpoint, even when
+another known signature succeeds. The signed checkpoint origin is not required
+to equal its signature name: the checkpoint specification only recommends that
+relationship, and legacy Rekor origins include a tree identifier.
+
+Legacy v0.1 roots retain their log-ID-based, name-agnostic lookup. Adding
+`checkpointKeyId` to a v0.1 root does not activate the v0.2 behavior. Signed
+Entry Timestamps still use their original log-ID-based verification and
+canonical payload; checkpoint IDs do not replace log IDs in that payload.
+This support does not add witness quorum policy or multi-log thresholds;
+bundles must still contain exactly one transparency-log entry.
+
+See the [trusted-root protobuf](https://github.com/sigstore/protobuf-specs/blob/main/protos/sigstore_trustroot.proto),
+[signed-note identity rules](https://c2sp.org/signed-note@v1.0.0#signatures), and
+[checkpoint format](https://c2sp.org/tlog-checkpoint@v1.0.0).

@@ -801,6 +801,7 @@ class TrustedRoot:
         """
 
         TRUSTED_ROOT_0_1 = "application/vnd.dev.sigstore.trustedroot+json;version=0.1"
+        TRUSTED_ROOT_0_2 = "application/vnd.dev.sigstore.trustedroot.v0.2+json"
 
         def __str__(self) -> str:
             """Returns the variant's string value."""
@@ -855,12 +856,21 @@ class TrustedRoot:
     def rekor_keyring(self, purpose: KeyringPurpose) -> RekorKeyring:
         """Return keyring with keys for Rekor."""
 
-        keys: list[common_v1.PublicKey] = list(
-            self._get_tlog_keys(self._inner.tlogs, purpose)
-        )
-        if len(keys) == 0:
+        logs = [
+            log
+            for log in self._inner.tlogs
+            if is_timerange_valid(
+                log.public_key.valid_for,
+                allow_expired=purpose is KeyringPurpose.VERIFY,
+            )
+        ]
+        if not logs:
             raise MetadataError("Did not find any Rekor keys in trusted root")
-        return RekorKeyring(Keyring(keys))
+        return RekorKeyring(
+            logs,
+            legacy=self._inner.media_type
+            == self.TrustedRootType.TRUSTED_ROOT_0_1.value,
+        )
 
     def ct_keyring(self, purpose: KeyringPurpose) -> CTKeyring:
         """Return keyring with key for CTFE."""

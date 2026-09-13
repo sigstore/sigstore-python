@@ -10,6 +10,10 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+* Support trusted-root v0.2 checkpoint key identities, with exact signer-name
+  matching and log-ID fallback when `checkpoint_key_id` is absent. Legacy
+  v0.1 trusted roots retain their existing key-selection behavior.
+
 * Parsing a malformed in-toto statement now includes the underlying validation
   error, instead of discarding it. `StatementBuilder.build()` already did this;
   `Statement(contents=...)` did not, so a rejected digest algorithm, a missing

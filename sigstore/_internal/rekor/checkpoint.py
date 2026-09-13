@@ -177,22 +177,25 @@ class SignedNote:
         """
 
         note = str.encode(self.note)
-
+        verified = False
         for sig in self.signatures:
-            if sig.sig_hash == key_id[:4]:
-                try:
-                    rekor_keyring.verify(
-                        key_id=key_id,
-                        signature=base64.b64decode(sig.signature),
-                        data=note,
-                    )
+            # Unknown witnesses/rotated keys must not prevent verification.
+            # A known invalid signature rejects the note, including when a
+            # valid signature precedes it (C2SP signed-note).
+            if rekor_keyring.verify_checkpoint_signature(
+                name=sig.name,
+                signature_hash=sig.sig_hash,
+                signature=base64.b64decode(sig.signature),
+                data=note,
+                log_id=key_id,
+            ):
+                # Preserve the v0.1 first-success compatibility path.
+                if rekor_keyring._legacy:
                     return
-                except VerificationError as sig_err:
-                    raise VerificationError(f"checkpoint: invalid signature: {sig_err}")
+                verified = True
 
-        raise VerificationError(
-            f"checkpoint: Signature not found for log ID {key_id.hex()}"
-        )
+        if not verified:
+            raise VerificationError("checkpoint: no signature from a trusted log")
 
 
 @dataclass(frozen=True)

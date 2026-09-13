@@ -190,7 +190,94 @@ class Keyring:
             raise VerificationError("keyring: invalid signature")
 
 
-RekorKeyring = NewType("RekorKeyring", Keyring)
+class RekorKeyring(Keyring):
+    """
+    Rekor keys, including the trusted identities used by checkpoint signatures.
+
+    Legacy roots retain log-ID hint lookup. For v0.2 roots, checkpoint signatures
+    select keys by the exact trusted name and checkpoint ID, not by a bundle's
+    log-ID hint. SET verification continues to use the ordinary keyring.
+    """
+
+    def __init__(
+        self,
+        logs: list[trustroot_v1.TransparencyLogInstance],
+        *,
+        legacy: bool,
+    ) -> None:
+        """Construct a keyring from log instances already filtered for validity."""
+        super().__init__()
+        self._legacy = legacy
+        self._checkpoint_keys: dict[tuple[str, bytes], list[Key]] = {}
+        for log in logs:
+            try:
+                key = Key(log.public_key)
+            except VerificationError as exc:
+                _logger.warning(f"Failed to load a trusted root key: {exc}")
+                continue
+            self._keyring[key.key_id] = key
+            if legacy:
+                continue
+
+            # The protobuf requires log_id as the fallback only when the new
+            # field is absent. A present but malformed value must not downgrade.
+            checkpoint_id = (
+                log.checkpoint_key_id.key_id
+                if log.checkpoint_key_id is not None
+                else log.log_id.key_id
+            )
+            if len(checkpoint_id) < 4:
+                raise VerificationError(
+                    "checkpoint key ID must contain at least 4 bytes"
+                )
+            if not log.base_url or any(
+                char.isspace() or char == "+" for char in log.base_url
+            ):
+                raise VerificationError("invalid checkpoint key name in trusted root")
+
+            # IDs are four-byte hints, not collision-resistant authenticators.
+            # Keep every candidate; never let the last colliding key win.
+            identity = (log.base_url, checkpoint_id[:4])
+            self._checkpoint_keys.setdefault(identity, []).append(key)
+
+    def verify_checkpoint_signature(
+        self,
+        *,
+        name: str,
+        signature_hash: bytes,
+        signature: bytes,
+        data: bytes,
+        log_id: KeyID,
+    ) -> bool:
+        """
+        Verify a known checkpoint signature; return False for an unknown signer.
+
+        A known signer with an invalid signature raises VerificationError.
+        No key from outside the matched trusted identity is tried for v0.2.
+        """
+        if self._legacy:
+            if signature_hash != log_id[:4]:
+                return False
+            try:
+                self.verify(key_id=log_id, signature=signature, data=data)
+            except VerificationError as exc:
+                raise VerificationError(
+                    f"checkpoint: invalid signature: {exc}"
+                ) from exc
+            return True
+
+        candidates = self._checkpoint_keys.get((name, signature_hash), [])
+        if not candidates:
+            return False
+        for key in candidates:
+            try:
+                key.verify(signature, data)
+                return True
+            except InvalidSignature:
+                pass
+        raise VerificationError("checkpoint: invalid signature")
+
+
 CTKeyring = NewType("CTKeyring", Keyring)
 
 
