@@ -10,6 +10,12 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+* Added RSA PKCS#1 v1.5/SHA-256 signing-certificate verification for artifacts
+  and DSSE envelopes with 2048, 3072 and 4096-bit keys. Rekor v2 key details
+  now describe the certificate's subject key independently of the issuer's
+  certificate-signature algorithm. PSS signatures and PSS-restricted subject
+  keys remain unsupported. Signing defaults were not changed.
+
 * Parsing a malformed in-toto statement now includes the underlying validation
   error, instead of discarding it. `StatementBuilder.build()` already did this;
   `Statement(contents=...)` did not, so a rejected digest algorithm, a missing

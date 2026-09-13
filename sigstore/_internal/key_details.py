@@ -22,9 +22,50 @@ import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa
+from cryptography.hazmat.primitives.asymmetric.types import CertificatePublicKeyTypes
 from cryptography.x509 import Certificate
+from cryptography.x509.oid import PublicKeyAlgorithmOID
 from sigstore_models.common.v1 import HashAlgorithm, PublicKeyDetails
+
+from sigstore.errors import VerificationError
+from sigstore.hashes import Hashed
+
+_RSA_KEY_DETAILS = {
+    2048: PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256,
+    3072: PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256,
+    4096: PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256,
+}
+
+
+def _verify_signature(
+    key: CertificatePublicKeyTypes,
+    signature: bytes,
+    data: bytes | Hashed,
+) -> None:
+    """
+    Verify an artifact or envelope signature using the supported SHA-256 profiles.
+
+    Preserve the existing ECDSA/SHA-256 behavior and support RSA PKCS1v15/SHA-256
+    for the registry's 2048, 3072 and 4096-bit keys. No alternative padding or
+    hash is attempted after a failed signature. The certificate issuer's own
+    signature algorithm does not select the artifact's signature algorithm.
+    """
+    if isinstance(data, Hashed):
+        # Retain Hashed's algorithm validation, not only its digest bytes.
+        algorithm = data._as_prehashed()
+        data = data.digest
+    else:
+        algorithm = hashes.SHA256()
+    if isinstance(key, ec.EllipticCurvePublicKey):
+        key.verify(signature, data, ec.ECDSA(algorithm))
+    elif isinstance(key, rsa.RSAPublicKey):
+        if key.key_size not in _RSA_KEY_DETAILS:
+            raise VerificationError(f"Unsupported RSA key size: {key.key_size}")
+        key.verify(signature, data, padding.PKCS1v15(), algorithm)
+    else:
+        raise VerificationError(f"Unsupported signing key type: {type(key)}")
 
 
 @dataclass(frozen=True)
@@ -126,7 +167,6 @@ def _get_key_details(certificate: Certificate) -> PublicKeyDetails:
     - https://github.com/sigstore/protobuf-specs/blob/3aaae418f76fb4b34df4def4cd093c464f20fed3/protos/sigstore_common.proto
     """
     public_key = certificate.public_key()
-    params = certificate.signature_algorithm_parameters
     if isinstance(public_key, ec.EllipticCurvePublicKey):
         if isinstance(public_key.curve, ec.SECP256R1):
             key_details = PublicKeyDetails.PKIX_ECDSA_P256_SHA_256
@@ -137,29 +177,18 @@ def _get_key_details(certificate: Certificate) -> PublicKeyDetails:
         else:
             raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
     elif isinstance(public_key, rsa.RSAPublicKey):
-        if public_key.key_size == 2048:
-            if isinstance(params, padding.PKCS1v15):
-                key_details = PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256
-            else:
-                raise ValueError(
-                    f"Unsupported public key type, size, and padding: {type(public_key)}, {public_key.key_size}, {params}"
-                )
-        elif public_key.key_size == 3072:
-            if isinstance(params, padding.PKCS1v15):
-                key_details = PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256
-            else:
-                raise ValueError(
-                    f"Unsupported public key type, size, and padding: {type(public_key)}, {public_key.key_size}, {params}"
-                )
-        elif public_key.key_size == 4096:
-            if isinstance(params, padding.PKCS1v15):
-                key_details = PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256
-            else:
-                raise ValueError(
-                    f"Unsupported public key type, size, and padding: {type(public_key)}, {public_key.key_size}, {params}"
-                )
-        else:
+        # The certificate signature belongs to the issuer, not this subject
+        # key. Select our supported artifact profile from the subject key.
+        if public_key.key_size not in _RSA_KEY_DETAILS:
             raise ValueError(f"Unsupported RSA key size: {public_key.key_size}")
+        if (
+            certificate.public_key_algorithm_oid
+            != PublicKeyAlgorithmOID.RSAES_PKCS1_v1_5
+        ):
+            raise ValueError(
+                "Unsupported RSA subject key algorithm: expected rsaEncryption"
+            )
+        key_details = _RSA_KEY_DETAILS[public_key.key_size]
     elif isinstance(public_key, ed25519.Ed25519PublicKey):
         key_details = PublicKeyDetails.PKIX_ED25519
     # There is likely no need to explicitly detect PKIX_ED25519_PH, especially since the cryptography

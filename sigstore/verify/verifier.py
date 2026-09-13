@@ -21,12 +21,11 @@ from __future__ import annotations
 import base64
 import logging
 from datetime import datetime, timezone
-from typing import cast
 
 import rekor_types
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509 import (
     Certificate,
     ExtendedKeyUsage,
@@ -50,7 +49,11 @@ from sigstore_models.common import v1
 from sigstore_models.rekor import v2
 
 from sigstore import dsse
-from sigstore._internal.key_details import _get_key_details, _get_prehash
+from sigstore._internal.key_details import (
+    _get_key_details,
+    _get_prehash,
+    _verify_signature,
+)
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.sct import (
@@ -314,6 +317,15 @@ class Verifier:
 
         cert = bundle.signing_certificate
 
+        # A PSS-restricted subject SPKI must not be used as a PKCS1v15 key.
+        # Inspect the certificate before extracting its key loses this restriction.
+        # This is distinct from the CA's certificate-signature algorithm.
+        if isinstance(cert.public_key(), rsa.RSAPublicKey):
+            try:
+                _get_key_details(cert)
+            except ValueError as exc:
+                raise VerificationError(str(exc)) from exc
+
         # (0): Establishing a Time for the Signature
         # First, establish verified times for the signature. This is required to
         # validate the certificate chain, so this step comes first.
@@ -410,7 +422,6 @@ class Verifier:
             )
 
         signing_key = bundle.signing_certificate.public_key()
-        signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
         dsse._verify(signing_key, envelope)
 
         # (8): verify the consistency of the log entry's body against
@@ -475,11 +486,10 @@ class Verifier:
         # (7): verify that the signature was signed by the public key in the signing certificate.
         try:
             signing_key = bundle.signing_certificate.public_key()
-            signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
-            signing_key.verify(
+            _verify_signature(
+                signing_key,
                 bundle_signature.signature,
-                hashed_input.digest,
-                ec.ECDSA(hashed_input._as_prehashed()),
+                hashed_input,
             )
         except InvalidSignature:
             raise VerificationError("Signature is invalid for input")

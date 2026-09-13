@@ -1,0 +1,54 @@
+{
+  "mediaType": "application/vnd.dev.sigstore.trustedroot+json;version=0.1",
+  "tlogs": [
+    {
+      "baseUrl": "https://log.example.com",
+      "hashAlgorithm": "SHA2_256",
+      "publicKey": {
+        "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/XqEiRq11o2ArJlsb020mX7+i0vITHwqOQqx1ePOLELp/rmw6Jg2nhcVVNjyfAJV391ffcKJjhRPUrOcdx76gw==",
+        "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+        "validFor": {
+          "start": "2024-01-01T00:00:00Z"
+        }
+      },
+      "logId": {
+        "keyId": "oiMTGEFAHYeyTggRJYvO+JSWoonyb4wPbgRiWHhgmFQ="
+      }
+    }
+  ],
+  "certificateAuthorities": [
+    {
+      "subject": {
+        "organization": "Test",
+        "commonName": "Synthetic CA"
+      },
+      "uri": "https://ca.example.com",
+      "certChain": {
+        "certificates": [
+          {
+            "rawBytes": "MIIBYjCCAQigAwIBAgIBATAKBggqhkjOPQQDAjAXMRUwEwYDVQQDDAxTeW50aGV0aWMgQ0EwHhcNMjQxMjMxMDAwMDAwWhcNMjUwMTAyMDAwMDAwWjAXMRUwEwYDVQQDDAxTeW50aGV0aWMgQ0EwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ9dnB4+xy7BMUTJyD8lYQMTXDQ8114LDYTuTY0Ea9GgE/Ygony3DRE9SlCZk4DHnJFoMXpJrAGNLVp3JTtt4m6o0UwQzASBgNVHRMBAf8ECDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQUTtMyBX6nQZJYLXkWCuLRkbb9EX0wCgYIKoZIzj0EAwIDSAAwRQIhAJgRX6flADblyFO9vZg/cjvz53d8PxmSpfmT1JxSGgNMAiBT19F1TSDOBbjis+xq6Z/Lo41FLXubTaP7NWwtpmW4/Q=="
+          }
+        ]
+      },
+      "validFor": {
+        "start": "2024-01-01T00:00:00Z"
+      }
+    }
+  ],
+  "ctlogs": [
+    {
+      "baseUrl": "https://ct.example.com",
+      "hashAlgorithm": "SHA2_256",
+      "publicKey": {
+        "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAENvI2a4ZD/UGydGwn8+VKnuRCQU3gi6Tkn+Y0poGiG/rKTsP08dzFuMDtJEdn+fzFvhxT9C96ZT49tMooAnVOnA==",
+        "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+        "validFor": {
+          "start": "2024-01-01T00:00:00Z"
+        }
+      },
+      "logId": {
+        "keyId": "LFoMj35X795Dla9+MyenxTWh0zenvnGu4efZSwvU9zs="
+      }
+    }
+  ]
+}
