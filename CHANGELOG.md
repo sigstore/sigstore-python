@@ -14,6 +14,9 @@ All versions prior to 0.9.0 are untracked.
   error, instead of discarding it. `StatementBuilder.build()` already did this;
   `Statement(contents=...)` did not, so a rejected digest algorithm, a missing
   field and a bad `_type` were indistinguishable.
+* `Verifier` now raises `VerificationError` when the trusted root contains no
+  transparency log instances, instead of leaking a raw `IndexError`
+  ([#1880](https://github.com/sigstore/sigstore-python/pull/1880))
 
 ## [4.5.0]
 
