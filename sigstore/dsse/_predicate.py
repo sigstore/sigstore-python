@@ -59,8 +59,6 @@ class Predicate(BaseModel):
     Base model for in-toto predicates
     """
 
-    pass
-
 
 class _SLSAConfigBase(BaseModel):
     """
