@@ -23,6 +23,7 @@ jobs:
           # NOTE: We intentionally don't use a cache in the release step,
           # to reduce the risk of cache poisoning.
           enable-cache: false
+          version-file: uv.lock
 
       - name: build
         run: make package
