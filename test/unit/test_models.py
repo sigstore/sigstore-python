@@ -138,9 +138,30 @@ class TestBundle:
 
     def test_invalid_no_log_entry(self, signing_bundle):
         with pytest.raises(
-            InvalidBundle, match="expected exactly one log entry in bundle"
+            InvalidBundle, match="expected at least one log entry in bundle"
         ):
             signing_bundle("bundle_no_log_entry.txt")
+
+    def test_multiple_log_entries(self, asset):
+        raw = json.loads(asset("bundle.txt.sigstore").read_bytes())
+        tlog_entries = raw["verificationMaterial"]["tlogEntries"]
+        tlog_entries.append(tlog_entries[0].copy())
+
+        bundle = Bundle.from_json(json.dumps(raw))
+
+        assert len(bundle._log_entries) == 2
+        assert bundle.log_entry == bundle._log_entries[0]
+
+    def test_too_many_log_entries(self, asset):
+        raw = json.loads(asset("bundle.txt.sigstore").read_bytes())
+        entry = raw["verificationMaterial"]["tlogEntries"][0]
+        raw["verificationMaterial"]["tlogEntries"] = [entry.copy() for _ in range(33)]
+
+        with pytest.raises(
+            InvalidBundle,
+            match="too many log entries in bundle: 33 > 32",
+        ):
+            Bundle.from_json(json.dumps(raw))
 
     def test_verification_materials_offline_no_checkpoint(self, signing_bundle):
         with pytest.raises(

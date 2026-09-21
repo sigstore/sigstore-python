@@ -143,6 +143,53 @@ def test_verifier_bundle_offline(signing_bundle, null_policy, filename):
     verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
+def test_verifier_multiple_log_entries(asset, null_policy, monkeypatch):
+    raw = json.loads(asset("bundle.txt.sigstore").read_bytes())
+    tlog_entries = raw["verificationMaterial"]["tlogEntries"]
+
+    second_entry = json.loads(json.dumps(tlog_entries[0]))
+    key_id = second_entry["logId"]["keyId"]
+    second_entry["logId"]["keyId"] = "A" + key_id[1:]
+    tlog_entries.append(second_entry)
+
+    bundle = Bundle.from_json(json.dumps(raw))
+
+    verified_entries = []
+
+    def fake_verify(entry, _keyring):
+        verified_entries.append(entry)
+
+    monkeypatch.setattr(type(bundle.log_entry), "_verify", fake_verify)
+
+    verifier = Verifier.staging(offline=True)
+    verifier.verify_artifact(asset("bundle.txt").read_bytes(), bundle, null_policy)
+
+    assert verified_entries == bundle._log_entries
+
+
+def test_verifier_rejects_invalid_additional_log_entry(asset, null_policy):
+    raw = json.loads(asset("bundle.txt.sigstore").read_bytes())
+
+    invalid_entry = json.loads(
+        json.dumps(raw["verificationMaterial"]["tlogEntries"][0])
+    )
+    invalid_entry["inclusionPromise"]["signedEntryTimestamp"] = "AAAA"
+    invalid_entry["integratedTime"] = "1"
+
+    raw["verificationMaterial"]["tlogEntries"].append(invalid_entry)
+
+    bundle = Bundle.from_json(json.dumps(raw))
+
+    verifier = Verifier.staging(offline=True)
+
+    with pytest.raises(VerificationError, match="invalid log entry"):
+        verifier.verify_artifact(
+            asset("bundle.txt").read_bytes(),
+            bundle,
+            null_policy,
+        )
+
+
 def test_verifier_certificate_chain_rejects_invalid_time(signing_bundle):
     _, bundle = signing_bundle("bundle.txt")
     verifier = Verifier.staging(offline=True)

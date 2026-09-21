@@ -10,6 +10,9 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+* Verification now supports bundles containing multiple transparency log
+  entries, while validating each supplied entry and bounding bundles to at
+  most 32 entries ([#1821](https://github.com/sigstore/sigstore-python/issues/1821)).
 * Parsing a malformed in-toto statement now includes the underlying validation
   error, instead of discarding it. `StatementBuilder.build()` already did this;
   `Statement(contents=...)` did not, so a rejected digest algorithm, a missing

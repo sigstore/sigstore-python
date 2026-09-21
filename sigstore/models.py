@@ -344,6 +344,11 @@ class IncompatibleEntry(InvalidBundle):
         )
 
 
+# Bound attacker-controlled verification work when processing bundles.
+# This matches sigstore-go's maximum number of transparency log entries.
+MAX_ALLOWED_TLOG_ENTRIES = 32
+
+
 class Bundle:
     """
     Represents a Sigstore bundle.
@@ -438,60 +443,68 @@ class Bundle:
 
         self._signing_certificate = leaf_cert
 
-        # Extract the log entry. For the time being, we expect
-        # bundles to only contain a single log entry.
+        # Extract and validate the transparency log entries.
         tlog_entries = self._inner.verification_material.tlog_entries
-        if len(tlog_entries) != 1:
-            raise InvalidBundle("expected exactly one log entry in bundle")
-        tlog_entry = tlog_entries[0]
-
-        if tlog_entry.kind_version.version not in ["0.0.1", "0.0.2"]:
-            raise IncompatibleEntry(
-                f"Expected log entry version 0.0.1 - 0.0.2, got {tlog_entry.kind_version.version}"
+        if not tlog_entries:
+            raise InvalidBundle("expected at least one log entry in bundle")
+        if len(tlog_entries) > MAX_ALLOWED_TLOG_ENTRIES:
+            raise InvalidBundle(
+                f"too many log entries in bundle: "
+                f"{len(tlog_entries)} > {MAX_ALLOWED_TLOG_ENTRIES}"
             )
 
-        # Handling of inclusion promises and proofs varies between bundle
-        # format versions:
-        #
-        # * For 0.1, an inclusion promise is required; the client
-        #   MUST verify the inclusion promise.
-        #   The inclusion proof is NOT required. If provided, it might NOT
-        #   contain a checkpoint; in this case, we ignore it (since it's
-        #   useless without one).
-        #
-        # * For 0.2+, an inclusion proof is required; the client MUST
-        #   verify the inclusion proof. The inclusion prof MUST contain
-        #   a checkpoint.
-        #
-        #   The inclusion promise is NOT required if another source of signed
-        #   time (such as a signed timestamp) is present. If no other source
-        #   of signed time is present, then the inclusion promise MUST be
-        #   present.
-        #
-        # Before all of this, we require that the inclusion proof be present
-        # (when constructing the LogEntry).
-        log_entry = TransparencyLogEntry(tlog_entry)
+        log_entries: list[TransparencyLogEntry] = []
 
-        if media_type == Bundle.BundleType.BUNDLE_0_1:
-            if not log_entry._inner.inclusion_promise:
-                raise InvalidBundle("bundle must contain an inclusion promise")
-            if not log_entry._inner.inclusion_proof.checkpoint:
-                _logger.debug(
-                    "0.1 bundle contains inclusion proof without checkpoint; ignoring"
-                )
-        else:
-            if not log_entry._inner.inclusion_proof.checkpoint:
-                raise InvalidBundle("expected checkpoint in inclusion proof")
-
-            if (
-                not log_entry._inner.inclusion_promise
-                and not self.verification_material.timestamp_verification_data
-            ):
-                raise InvalidBundle(
-                    "bundle must contain an inclusion promise or signed timestamp(s)"
+        for tlog_entry in tlog_entries:
+            if tlog_entry.kind_version.version not in ["0.0.1", "0.0.2"]:
+                raise IncompatibleEntry(
+                    f"Expected log entry version 0.0.1 - 0.0.2, got {tlog_entry.kind_version.version}"
                 )
 
-        self._log_entry = log_entry
+            # Handling of inclusion promises and proofs varies between bundle
+            # format versions:
+            #
+            # * For 0.1, an inclusion promise is required; the client
+            #   MUST verify the inclusion promise.
+            #   The inclusion proof is NOT required. If provided, it might NOT
+            #   contain a checkpoint; in this case, we ignore it (since it's
+            #   useless without one).
+            #
+            # * For 0.2+, an inclusion proof is required; the client MUST
+            #   verify the inclusion proof. The inclusion proof MUST contain
+            #   a checkpoint.
+            #
+            #   The inclusion promise is NOT required if another source of signed
+            #   time (such as a signed timestamp) is present. If no other source
+            #   of signed time is present, then the inclusion promise MUST be
+            #   present.
+            log_entry = TransparencyLogEntry(tlog_entry)
+
+            if media_type == Bundle.BundleType.BUNDLE_0_1:
+                if not log_entry._inner.inclusion_promise:
+                    raise InvalidBundle("bundle must contain an inclusion promise")
+                if not log_entry._inner.inclusion_proof.checkpoint:
+                    _logger.debug(
+                        "0.1 bundle contains inclusion proof without checkpoint; ignoring"
+                    )
+            else:
+                if not log_entry._inner.inclusion_proof.checkpoint:
+                    raise InvalidBundle("expected checkpoint in inclusion proof")
+
+                if (
+                    not log_entry._inner.inclusion_promise
+                    and not self.verification_material.timestamp_verification_data
+                ):
+                    raise InvalidBundle(
+                        "bundle must contain an inclusion promise or signed timestamp(s)"
+                    )
+
+            log_entries.append(log_entry)
+
+        self._log_entries = log_entries
+        # Preserve the existing singular API for callers that expect a
+        # single transparency log entry.
+        self._log_entry = log_entries[0]
 
     @property
     def signing_certificate(self) -> Certificate:
