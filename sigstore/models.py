@@ -74,6 +74,10 @@ OIDC_VERSIONS = [1]
 
 _logger = logging.getLogger(__name__)
 
+# Bound attacker-controlled transparency log entries to limit verification work.
+# This matches sigstore-go's current limit.
+_MAX_ALLOWED_TLOG_ENTRIES = 32
+
 
 class TransparencyLogEntry:
     """
@@ -438,60 +442,55 @@ class Bundle:
 
         self._signing_certificate = leaf_cert
 
-        # Extract the log entry. For the time being, we expect
-        # bundles to only contain a single log entry.
+        # Extract and validate the transparency log entries.
         tlog_entries = self._inner.verification_material.tlog_entries
-        if len(tlog_entries) != 1:
-            raise InvalidBundle("expected exactly one log entry in bundle")
-        tlog_entry = tlog_entries[0]
-
-        if tlog_entry.kind_version.version not in ["0.0.1", "0.0.2"]:
-            raise IncompatibleEntry(
-                f"Expected log entry version 0.0.1 - 0.0.2, got {tlog_entry.kind_version.version}"
+        if not tlog_entries:
+            raise InvalidBundle("expected at least one log entry in bundle")
+        if len(tlog_entries) > _MAX_ALLOWED_TLOG_ENTRIES:
+            raise InvalidBundle(
+                f"expected at most {_MAX_ALLOWED_TLOG_ENTRIES} log entries in bundle"
             )
 
-        # Handling of inclusion promises and proofs varies between bundle
-        # format versions:
-        #
-        # * For 0.1, an inclusion promise is required; the client
-        #   MUST verify the inclusion promise.
-        #   The inclusion proof is NOT required. If provided, it might NOT
-        #   contain a checkpoint; in this case, we ignore it (since it's
-        #   useless without one).
-        #
-        # * For 0.2+, an inclusion proof is required; the client MUST
-        #   verify the inclusion proof. The inclusion prof MUST contain
-        #   a checkpoint.
-        #
-        #   The inclusion promise is NOT required if another source of signed
-        #   time (such as a signed timestamp) is present. If no other source
-        #   of signed time is present, then the inclusion promise MUST be
-        #   present.
-        #
-        # Before all of this, we require that the inclusion proof be present
-        # (when constructing the LogEntry).
-        log_entry = TransparencyLogEntry(tlog_entry)
-
-        if media_type == Bundle.BundleType.BUNDLE_0_1:
-            if not log_entry._inner.inclusion_promise:
-                raise InvalidBundle("bundle must contain an inclusion promise")
-            if not log_entry._inner.inclusion_proof.checkpoint:
-                _logger.debug(
-                    "0.1 bundle contains inclusion proof without checkpoint; ignoring"
-                )
-        else:
-            if not log_entry._inner.inclusion_proof.checkpoint:
-                raise InvalidBundle("expected checkpoint in inclusion proof")
-
-            if (
-                not log_entry._inner.inclusion_promise
-                and not self.verification_material.timestamp_verification_data
-            ):
-                raise InvalidBundle(
-                    "bundle must contain an inclusion promise or signed timestamp(s)"
+        log_entries: list[TransparencyLogEntry] = []
+        for tlog_entry in tlog_entries:
+            if tlog_entry.kind_version.version not in ["0.0.1", "0.0.2"]:
+                raise IncompatibleEntry(
+                    "Expected log entry version 0.0.1 - 0.0.2, "
+                    f"got {tlog_entry.kind_version.version}"
                 )
 
-        self._log_entry = log_entry
+            # Handling of inclusion promises and proofs varies between bundle
+            # format versions:
+            #
+            # * For 0.1, an inclusion promise is required; the client
+            #   MUST verify the inclusion promise.
+            # * For 0.2+, an inclusion proof is required; the client MUST
+            #   verify the inclusion proof. An inclusion promise is optional
+            #   when another signed source of time is present.
+            log_entry = TransparencyLogEntry(tlog_entry)
+
+            if media_type == Bundle.BundleType.BUNDLE_0_1:
+                if not log_entry._inner.inclusion_promise:
+                    raise InvalidBundle("bundle must contain an inclusion promise")
+                if not log_entry._inner.inclusion_proof.checkpoint:
+                    _logger.debug(
+                        "0.1 bundle contains inclusion proof without checkpoint; ignoring"
+                    )
+            else:
+                if not log_entry._inner.inclusion_proof.checkpoint:
+                    raise InvalidBundle("expected checkpoint in inclusion proof")
+
+                if (
+                    not log_entry._inner.inclusion_promise
+                    and not self.verification_material.timestamp_verification_data
+                ):
+                    raise InvalidBundle(
+                        "bundle must contain an inclusion promise or signed timestamp(s)"
+                    )
+
+            log_entries.append(log_entry)
+
+        self._log_entries = log_entries
 
     @property
     def signing_certificate(self) -> Certificate:
@@ -501,10 +500,12 @@ class Bundle:
     @property
     def log_entry(self) -> TransparencyLogEntry:
         """
-        Returns the bundle's log entry, containing an inclusion proof
-        (with checkpoint) and an inclusion promise (if the latter is present).
+        Returns the bundle's first transparency log entry.
+
+        This property is retained for compatibility with callers that expect
+        single-entry bundles.
         """
-        return self._log_entry
+        return self._log_entries[0]
 
     @property
     def _dsse_envelope(self) -> dsse.Envelope | None:
@@ -836,12 +837,11 @@ class TrustedRoot:
         inner = trustroot_v1.TrustedRoot.from_json(Path(path).read_bytes())
         return cls(inner)
 
-    def _get_tlog_keys(
+    def _get_usable_tlogs(
         self, tlogs: list[trustroot_v1.TransparencyLogInstance], purpose: KeyringPurpose
-    ) -> Iterable[common_v1.PublicKey]:
+    ) -> Iterable[trustroot_v1.TransparencyLogInstance]:
         """
-        Yields an iterator of public keys for transparency log instances that
-        are suitable for `purpose`.
+        Yields transparency log instances that are suitable for `purpose`.
         """
         allow_expired = purpose is KeyringPurpose.VERIFY
         for tlog in tlogs:
@@ -850,7 +850,23 @@ class TrustedRoot:
             ):
                 continue
 
+            yield tlog
+
+    def _get_tlog_keys(
+        self, tlogs: list[trustroot_v1.TransparencyLogInstance], purpose: KeyringPurpose
+    ) -> Iterable[common_v1.PublicKey]:
+        """
+        Yields public keys for transparency log instances that are suitable
+        for `purpose`.
+        """
+        for tlog in self._get_usable_tlogs(tlogs, purpose):
             yield tlog.public_key
+
+    def _rekor_tlogs(
+        self, purpose: KeyringPurpose
+    ) -> list[trustroot_v1.TransparencyLogInstance]:
+        """Return usable Rekor transparency log instances."""
+        return list(self._get_usable_tlogs(self._inner.tlogs, purpose))
 
     def rekor_keyring(self, purpose: KeyringPurpose) -> RekorKeyring:
         """Return keyring with keys for Rekor."""

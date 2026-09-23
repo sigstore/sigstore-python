@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* Verification now supports bundles with multiple transparency log entries
+  and configurable transparency log thresholds through
+  `Verifier(tlog_threshold=...)` and `--tlog-threshold`
+  ([#1821](https://github.com/sigstore/sigstore-python/issues/1821)).
+
 ### Fixed
 
 * Parsing a malformed in-toto statement now includes the underlying validation

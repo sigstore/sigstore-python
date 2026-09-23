@@ -57,11 +57,16 @@ from sigstore._internal.sct import (
     verify_sct,
 )
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
-from sigstore._internal.trust import KeyringPurpose
+from sigstore._internal.trust import Keyring, KeyringPurpose, RekorKeyring
 from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import CertValidationError, VerificationError
 from sigstore.hashes import Hashed
-from sigstore.models import Bundle, ClientTrustConfig, TrustedRoot
+from sigstore.models import (
+    Bundle,
+    ClientTrustConfig,
+    TransparencyLogEntry,
+    TrustedRoot,
+)
 from sigstore.verify.policy import VerificationPolicy
 
 _logger = logging.getLogger(__name__)
@@ -80,15 +85,22 @@ class Verifier:
     The primary API for verification operations.
     """
 
-    def __init__(self, *, trusted_root: TrustedRoot):
+    def __init__(self, *, trusted_root: TrustedRoot, tlog_threshold: int = 1):
         """
         Create a new `Verifier`.
 
         `trusted_root` is the `TrustedRoot` object containing the root of trust
         for the verification process.
+
+        `tlog_threshold` is the minimum number of trusted transparency log
+        operators required for verification. It defaults to 1.
         """
+        if tlog_threshold < 1:
+            raise ValueError("transparency log threshold must be at least 1")
+
         self._fulcio_certificate_chain = trusted_root.get_fulcio_certs()
         self._trusted_root = trusted_root
+        self._tlog_threshold = tlog_threshold
 
         # this is an ugly hack needed for verifying "detached" materials
         # In reality we should be choosing the rekor instance based on the logid
@@ -101,31 +113,31 @@ class Verifier:
         self._rekor = RekorClient(url)
 
     @classmethod
-    def production(cls, *, offline: bool = False) -> Verifier:
+    def production(cls, *, offline: bool = False, tlog_threshold: int = 1) -> Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's production-level services.
 
-        `offline` controls the Trusted Root refresh behavior: if `True`,
-        the verifier uses the Trusted Root in the local TUF cache. If `False`,
-        a TUF repository refresh is attempted.
+        `offline` controls Trusted Root refresh behavior.
+        `tlog_threshold` controls the minimum transparency log threshold.
         """
         config = ClientTrustConfig.production(offline=offline)
         return cls(
             trusted_root=config.trusted_root,
+            tlog_threshold=tlog_threshold,
         )
 
     @classmethod
-    def staging(cls, *, offline: bool = False) -> Verifier:
+    def staging(cls, *, offline: bool = False, tlog_threshold: int = 1) -> Verifier:
         """
         Return a `Verifier` instance configured against Sigstore's staging-level services.
 
-        `offline` controls the Trusted Root refresh behavior: if `True`,
-        the verifier uses the Trusted Root in the local TUF cache. If `False`,
-        a TUF repository refresh is attempted.
+        `offline` controls Trusted Root refresh behavior.
+        `tlog_threshold` controls the minimum transparency log threshold.
         """
         config = ClientTrustConfig.staging(offline=offline)
         return cls(
             trusted_root=config.trusted_root,
+            tlog_threshold=tlog_threshold,
         )
 
     def _verify_signed_timestamp(
@@ -207,18 +219,165 @@ class Verifier:
 
         return verified_timestamps
 
-    def _establish_time(self, bundle: Bundle) -> list[TimestampVerificationResult]:
-        """
-        Establish the time for bundle verification.
+    def _verify_tlog_entry_body(
+        self,
+        bundle: Bundle,
+        entry: TransparencyLogEntry,
+        hashed_input: Hashed | None,
+    ) -> None:
+        """Verify that a transparency log entry matches the bundle contents."""
+        if bundle._dsse_envelope is not None:
+            kind = entry._inner.kind_version.kind
+            version = entry._inner.kind_version.version
 
-        This method uses timestamps from two possible sources:
-        1. RFC3161 signed timestamps from a Timestamping Authority (TSA)
-        2. Transparency Log timestamps
-        """
-        verified_timestamps = []
+            if kind == "hashedrekord" and version == "0.0.2":
+                _validate_hashedrekord_v002_dsse_entry_body(bundle, entry)
+            elif kind == "dsse" and version == "0.0.1":
+                _validate_dsse_v001_entry_body(bundle, entry)
+            else:
+                raise VerificationError(
+                    f"Unsupported DSSE log entry type: {kind}/{version}"
+                )
+            return
 
-        # If a timestamp from the timestamping service is available, the Verifier MUST
-        # perform path validation using the timestamp from the Timestamping Service.
+        if hashed_input is None:
+            raise VerificationError(
+                "missing artifact digest for log entry verification"
+            )
+
+        if entry._inner.kind_version.kind != "hashedrekord":
+            raise VerificationError(
+                f"Expected entry type hashedrekord, got {entry._inner.kind_version.kind}"
+            )
+
+        version = entry._inner.kind_version.version
+        if version == "0.0.2":
+            _validate_hashedrekord_v002_entry_body(bundle, hashed_input, entry)
+        elif version == "0.0.1":
+            _validate_hashedrekord_v001_entry_body(bundle, hashed_input, entry)
+        else:
+            raise VerificationError(f"Unsupported hashedrekord version {version}")
+
+    def _verify_tlog_entries(
+        self,
+        bundle: Bundle,
+        hashed_input: Hashed | None = None,
+    ) -> list[TimestampVerificationResult]:
+        """
+        Verify the bundle's transparency log entries and enforce the configured
+        threshold.
+
+        A log entry contributes to the threshold only after its transparency log
+        proof and its consistency with the signed bundle contents have both been
+        verified.
+        """
+        trusted_tlogs = self._trusted_root._rekor_tlogs(KeyringPurpose.VERIFY)
+
+        seen_entries: set[tuple[bytes, int]] = set()
+        verified_entries = 0
+        verified_operators: set[str] = set()
+        verified_timestamps: list[TimestampVerificationResult] = []
+
+        for entry in bundle._log_entries:
+            entry_identity = (
+                bytes(entry._inner.log_id.key_id),
+                entry._inner.log_index,
+            )
+            if entry_identity in seen_entries:
+                raise VerificationError("duplicate transparency log entry")
+            seen_entries.add(entry_identity)
+
+            # Prefer a trusted log whose configured log ID matches the bundle
+            # entry. Rekor v2 log IDs are not necessarily the same as the key ID
+            # computed from the log's public key, so matching must use the
+            # TransparencyLogInstance metadata rather than Keyring's key IDs.
+            #
+            # If no usable trusted log has a matching log ID, preserve the
+            # existing Keyring behavior by treating the bundle log ID as only a
+            # hint and trying all successfully loaded trusted Rekor keys.
+            candidate_keyrings = []
+            exact_candidate_keyrings = []
+
+            for tlog in trusted_tlogs:
+                keyring = RekorKeyring(Keyring([tlog.public_key]))
+                if not keyring._keyring:
+                    continue
+
+                candidate = (tlog, keyring)
+                candidate_keyrings.append(candidate)
+
+                if tlog.log_id.key_id == entry._inner.log_id.key_id:
+                    exact_candidate_keyrings.append(candidate)
+
+            candidates = exact_candidate_keyrings or candidate_keyrings
+
+            verified_tlogs = []
+            for tlog, keyring in candidates:
+                try:
+                    entry._verify(keyring)
+                except VerificationError:
+                    continue
+                verified_tlogs.append(tlog)
+
+            if not verified_tlogs:
+                continue
+
+            # The log proof alone is insufficient: the entry must describe the
+            # artifact or DSSE envelope that is actually being verified.
+            self._verify_tlog_entry_body(bundle, entry, hashed_input)
+
+            if self._tlog_threshold == 1:
+                verified_entries += 1
+            else:
+                if any(not tlog.operator for tlog in verified_tlogs):
+                    raise VerificationError(
+                        "operator metadata is required for transparency log "
+                        "thresholds greater than 1"
+                    )
+
+                operators = {tlog.operator for tlog in verified_tlogs if tlog.operator}
+                if len(operators) != 1:
+                    raise VerificationError(
+                        "transparency log entry matches multiple operators"
+                    )
+
+                verified_operators.update(operators)
+
+            timestamp = entry._inner.integrated_time
+            if timestamp and entry._inner.inclusion_promise:
+                kv = entry._inner.kind_version
+                if not (kv.kind in ["dsse", "hashedrekord"] and kv.version == "0.0.1"):
+                    raise VerificationError(
+                        "Integrated time only supported for "
+                        "dsse/hashedrekord 0.0.1 types"
+                    )
+
+                verified_timestamps.append(
+                    TimestampVerificationResult(
+                        source=TimestampSource.TRANSPARENCY_SERVICE,
+                        time=datetime.fromtimestamp(timestamp, tz=timezone.utc),
+                    )
+                )
+
+        verified_count = (
+            verified_entries if self._tlog_threshold == 1 else len(verified_operators)
+        )
+        if verified_count < self._tlog_threshold:
+            raise VerificationError(
+                "transparency log threshold not met: "
+                f"{verified_count} < {self._tlog_threshold}"
+            )
+
+        return verified_timestamps
+
+    def _establish_time(
+        self,
+        bundle: Bundle,
+        tlog_timestamps: list[TimestampVerificationResult],
+    ) -> list[TimestampVerificationResult]:
+        """Establish verified signing times for bundle verification."""
+        verified_timestamps = list(tlog_timestamps)
+
         if bundle.verification_material.timestamp_verification_data:
             if not self._trusted_root.get_timestamp_authorities():
                 msg = (
@@ -230,26 +389,6 @@ class Verifier:
             timestamp_from_tsa = self._verify_timestamp_authority(bundle)
             verified_timestamps.extend(timestamp_from_tsa)
 
-        # If a timestamp from the Transparency Service is available, the Verifier MUST
-        # perform path validation using the timestamp from the Transparency Service.
-        # NOTE: We only include this timestamp if it's accompanied by an inclusion
-        # promise that cryptographically binds it. We verify the inclusion promise
-        # itself later, as part of log entry verification.
-        if (
-            timestamp := bundle.log_entry._inner.integrated_time
-        ) and bundle.log_entry._inner.inclusion_promise:
-            kv = bundle.log_entry._inner.kind_version
-            if not (kv.kind in ["dsse", "hashedrekord"] and kv.version == "0.0.1"):
-                raise VerificationError(
-                    "Integrated time only supported for dsse/hashedrekord 0.0.1 types"
-                )
-
-            verified_timestamps.append(
-                TimestampVerificationResult(
-                    source=TimestampSource.TRANSPARENCY_SERVICE,
-                    time=datetime.fromtimestamp(timestamp, tz=timezone.utc),
-                )
-            )
         return verified_timestamps
 
     def _verify_chain_at_time(
@@ -286,7 +425,10 @@ class Verifier:
             )
 
     def _verify_common_signing_cert(
-        self, bundle: Bundle, policy: VerificationPolicy
+        self,
+        bundle: Bundle,
+        policy: VerificationPolicy,
+        tlog_timestamps: list[TimestampVerificationResult],
     ) -> None:
         """
         Performs the signing certificate verification steps that are shared between
@@ -295,47 +437,33 @@ class Verifier:
         Raises `VerificationError` on all failures.
         """
 
-        # In order to verify an artifact, we need to achieve the following:
+        # Transparency log evidence and bundle-entry consistency are verified
+        # before this method. This ensures that Rekor integrated time is trusted
+        # only after the supporting log evidence has been authenticated.
         #
-        # 0. Establish a time for the signature.
-        # 1. Verify that the signing certificate chains to the root of trust
-        #    and is valid at the time of signing.
-        # 2. Verify the signing certificate's SCT.
-        # 3. Verify that the signing certificate conforms to the Sigstore
-        #    X.509 profile as well as the passed-in `VerificationPolicy`.
-        # 4. Verify the inclusion proof and signed checkpoint for the log
-        #    entry.
-        # 5. Verify the inclusion promise for the log entry, if present.
-        # 6. Verify the timely insertion of the log entry against the validity
-        #    period for the signing certificate.
-        # 7. Verify the signature and input against the signing certificate's
-        #    public key.
-        # 8. Verify the transparency log entry's consistency against the other
-        #    materials, to prevent variants of CVE-2022-36056.
-        #
-        # This method performs steps (0) through (6) above. Its caller
-        # MUST perform steps (7) and (8) separately, since they vary based on
-        # the kind of verification being performed (i.e. hashedrekord, DSSE, etc.)
+        # This method validates the signing certificate against the established
+        # verified times, checks its SCT and verification policy, and enforces
+        # its validity period.
 
         cert = bundle.signing_certificate
 
-        # (0): Establishing a Time for the Signature
+        # Establish verified signing times.
         # First, establish verified times for the signature. This is required to
         # validate the certificate chain, so this step comes first.
         # These include TSA timestamps and (in the case of rekor v1 entries)
         # rekor log integrated time.
-        verified_timestamps = self._establish_time(bundle)
+        verified_timestamps = self._establish_time(bundle, tlog_timestamps)
         if len(verified_timestamps) < VERIFIED_TIME_THRESHOLD:
             raise VerificationError("not enough sources of verified time")
 
-        # (1): verify that the signing certificate is signed by the root
+        # Verify that the signing certificate is signed by the root
         #      certificate and that the signing certificate was valid at the
         #      time of signing.
         chain: list[Certificate] = []
         for vts in verified_timestamps:
             chain = self._verify_chain_at_time(cert, vts)
 
-        # (2): verify the signing certificate's SCT.
+        # Verify the signing certificate's SCT.
         try:
             verify_sct(
                 cert,
@@ -345,7 +473,7 @@ class Verifier:
         except VerificationError as e:
             raise VerificationError(f"failed to verify SCT on signing certificate: {e}")
 
-        # (3): verify the signing certificate against the Sigstore
+        # Verify the signing certificate against the Sigstore
         #      X.509 profile and verify against the given `VerificationPolicy`.
         usage_ext = cert.extensions.get_extension_for_class(KeyUsage)
         if not usage_ext.value.digital_signature:
@@ -359,16 +487,7 @@ class Verifier:
 
         _logger.debug("Successfully verified signing certificate validity...")
 
-        # (4): verify the inclusion proof and signed checkpoint for the
-        #      log entry.
-        # (5): verify the inclusion promise for the log entry, if present.
-        entry = bundle.log_entry
-        try:
-            entry._verify(self._trusted_root.rekor_keyring(KeyringPurpose.VERIFY))
-        except VerificationError as exc:
-            raise VerificationError(f"invalid log entry: {exc}")
-
-        # (6): verify our established times (timestamps or the log integration time) are
+        # Verify our established times (timestamps or log integration time) are
         # within signing certificate validity period.
         for vts in verified_timestamps:
             if not (
@@ -403,42 +522,21 @@ class Verifier:
         manner.
         """
 
-        # (1) through (6) are performed by `_verify_common_signing_cert`.
-        self._verify_common_signing_cert(bundle, policy)
-
-        # (7): verify the bundle's signature and DSSE envelope against the
-        #      signing certificate's public key.
         envelope = bundle._dsse_envelope
         if envelope is None:
             raise VerificationError(
                 "cannot perform DSSE verification on a bundle without a DSSE envelope"
             )
 
+        tlog_timestamps = self._verify_tlog_entries(bundle)
+        self._verify_common_signing_cert(bundle, policy, tlog_timestamps)
+
+        # Verify the bundle's signature and DSSE envelope against the signing
+        # certificate's public key.
+
         signing_key = bundle.signing_certificate.public_key()
         signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
         dsse._verify(signing_key, envelope)
-
-        # (8): verify the consistency of the log entry's body against
-        #      the other bundle materials.
-        # Rekor v2 records DSSE envelopes as hashedrekord/0.0.2 entries whose
-        # digest covers PAE(payloadType, payload) and whose signature.content
-        # equals envelope.signatures[0].sig (rekor-v2-spec §6.1.4). Rekor v1
-        # used a dsse/0.0.1 entry, which is slightly weaker than the
-        # hashedrekord consistency check: dsse entries record an envelope
-        # hash that we *cannot* verify (the envelope is uncanonicalized JSON),
-        # so we manually pick apart the entry body and verify the parts we
-        # can (payload hash and signature list).
-        entry = bundle.log_entry
-        kind = entry._inner.kind_version.kind
-        version = entry._inner.kind_version.version
-        if kind == "hashedrekord" and version == "0.0.2":
-            _validate_hashedrekord_v002_dsse_entry_body(bundle)
-        elif kind == "dsse" and version == "0.0.1":
-            _validate_dsse_v001_entry_body(bundle)
-        else:
-            raise VerificationError(
-                f"Unsupported DSSE log entry type: {kind}/{version}"
-            )
 
         return (envelope._inner.payload_type, envelope._inner.payload)
 
@@ -461,13 +559,13 @@ class Verifier:
         On failure, this method raises `VerificationError`.
         """
 
-        # (1) through (6) are performed by `_verify_common_signing_cert`.
-        self._verify_common_signing_cert(bundle, policy)
-
         hashed_input = sha256_digest(input_)
         bundle_signature = bundle._inner.message_signature
         if bundle_signature is None:
             raise VerificationError("Missing bundle message signature")
+
+        tlog_timestamps = self._verify_tlog_entries(bundle, hashed_input)
+        self._verify_common_signing_cert(bundle, policy, tlog_timestamps)
 
         # signature is verified over input digest, but if the bundle documents the digest we still
         # want to ensure it matches the input digest:
@@ -491,29 +589,11 @@ class Verifier:
 
         _logger.debug("Successfully verified signature...")
 
-        # (8): verify the consistency of the log entry's body against
-        #      the other bundle materials (and input being verified).
-        entry = bundle.log_entry
-        if entry._inner.kind_version.kind != "hashedrekord":
-            raise VerificationError(
-                f"Expected entry type hashedrekord, got {entry._inner.kind_version.kind}"
-            )
 
-        if entry._inner.kind_version.version == "0.0.2":
-            _validate_hashedrekord_v002_entry_body(bundle, hashed_input)
-        elif entry._inner.kind_version.version == "0.0.1":
-            _validate_hashedrekord_v001_entry_body(bundle, hashed_input)
-        else:
-            raise VerificationError(
-                f"Unsupported hashedrekord version {entry._inner.kind_version.version}"
-            )
-
-
-def _validate_dsse_v001_entry_body(bundle: Bundle) -> None:
+def _validate_dsse_v001_entry_body(bundle: Bundle, entry: TransparencyLogEntry) -> None:
     """
     Validate the Entry body for dsse v001.
     """
-    entry = bundle.log_entry
     envelope = bundle._dsse_envelope
     if envelope is None:
         raise VerificationError(
@@ -550,12 +630,11 @@ def _validate_dsse_v001_entry_body(bundle: Bundle) -> None:
 
 
 def _validate_hashedrekord_v001_entry_body(
-    bundle: Bundle, hashed_input: Hashed
+    bundle: Bundle, hashed_input: Hashed, entry: TransparencyLogEntry
 ) -> None:
     """
     Validate the Entry body for hashedrekord v001.
     """
-    entry = bundle.log_entry
     expected_body = _hashedrekord_from_parts(
         bundle.signing_certificate,
         bundle._inner.message_signature.signature,  # type: ignore[union-attr]
@@ -570,7 +649,9 @@ def _validate_hashedrekord_v001_entry_body(
         )
 
 
-def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
+def _validate_hashedrekord_v002_dsse_entry_body(
+    bundle: Bundle, entry: TransparencyLogEntry
+) -> None:
     """
     Validate Entry body for a Rekor v2 DSSE envelope encoded as a
     hashedrekord/0.0.2 entry (rekor-v2-spec §6.1.4).
@@ -582,7 +663,6 @@ def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
       - signature.content = envelope.signatures[0].sig.
       - signature.verifier = the bundle's signing certificate.
     """
-    entry = bundle.log_entry
     envelope = bundle._dsse_envelope
     if envelope is None:
         raise VerificationError(
@@ -621,12 +701,11 @@ def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
 
 
 def _validate_hashedrekord_v002_entry_body(
-    bundle: Bundle, hashed_input: Hashed
+    bundle: Bundle, hashed_input: Hashed, entry: TransparencyLogEntry
 ) -> None:
     """
     Validate Entry body for hashedrekord v002.
     """
-    entry = bundle.log_entry
     if bundle._inner.message_signature is None:
         raise VerificationError(
             "invalid hashedrekord log entry: missing message signature"

@@ -138,9 +138,42 @@ class TestBundle:
 
     def test_invalid_no_log_entry(self, signing_bundle):
         with pytest.raises(
-            InvalidBundle, match="expected exactly one log entry in bundle"
+            InvalidBundle, match="expected at least one log entry in bundle"
         ):
             signing_bundle("bundle_no_log_entry.txt")
+
+    def test_multiple_log_entries(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
+        raw = json.loads(bundle.to_json())
+        entries = raw["verificationMaterial"]["tlogEntries"]
+        entries.append(entries[0])
+
+        bundle = Bundle.from_json(json.dumps(raw))
+
+        assert len(bundle._log_entries) == 2
+        assert bundle.log_entry == bundle._log_entries[0]
+
+    def test_too_many_log_entries(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
+        raw = json.loads(bundle.to_json())
+        entry = raw["verificationMaterial"]["tlogEntries"][0]
+        raw["verificationMaterial"]["tlogEntries"] = [entry] * 33
+
+        with pytest.raises(InvalidBundle, match="expected at most 32 log entries"):
+            Bundle.from_json(json.dumps(raw))
+
+    def test_invalid_additional_log_entry(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
+        raw = json.loads(bundle.to_json())
+        entries = raw["verificationMaterial"]["tlogEntries"]
+        entries.append(json.loads(json.dumps(entries[0])))
+        entries[1]["kindVersion"]["version"] = "0.0.3"
+
+        with pytest.raises(
+            InvalidBundle,
+            match="Expected log entry version 0.0.1 - 0.0.2",
+        ):
+            Bundle.from_json(json.dumps(raw))
 
     def test_verification_materials_offline_no_checkpoint(self, signing_bundle):
         with pytest.raises(

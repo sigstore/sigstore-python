@@ -187,11 +187,24 @@ def _add_shared_verify_input_options(group: argparse._ArgumentGroup) -> None:
 
 
 def _add_shared_verification_options(group: argparse._ArgumentGroup) -> None:
+    def positive_int(value: str) -> int:
+        threshold = int(value)
+        if threshold < 1:
+            raise argparse.ArgumentTypeError("must be at least 1")
+        return threshold
+
     group.add_argument(
         "--offline",
         action="store_true",
         default=_boolify_env("SIGSTORE_OFFLINE"),
         help="Perform offline verification; requires a Sigstore bundle",
+    )
+    group.add_argument(
+        "--tlog-threshold",
+        type=positive_int,
+        default=1,
+        metavar="N",
+        help="Require verification by at least N transparency log operators",
     )
 
 
@@ -1090,7 +1103,10 @@ def _collect_verification_state(
             )
 
     trust_config = _get_trust_config(args)
-    verifier = Verifier(trusted_root=trust_config.trusted_root)
+    verifier = Verifier(
+        trusted_root=trust_config.trusted_root,
+        tlog_threshold=args.tlog_threshold,
+    )
 
     all_materials = []
     for file_or_hashed, materials in input_map.items():

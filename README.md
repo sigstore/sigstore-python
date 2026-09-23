@@ -225,8 +225,8 @@ Output options:
 ```
 usage: sigstore verify identity [-h] [-v] [--certificate FILE]
                                 [--signature FILE] [--bundle FILE] [--offline]
-                                --cert-identity IDENTITY --cert-oidc-issuer
-                                URL
+                                [--tlog-threshold N] --cert-identity IDENTITY
+                                --cert-oidc-issuer URL
                                 FILE_OR_DIGEST [FILE_OR_DIGEST ...]
 
 options:
@@ -248,6 +248,8 @@ Verification inputs:
 Verification options:
   --offline             Perform offline verification; requires a Sigstore
                         bundle (default: False)
+  --tlog-threshold N    Require verification by at least N transparency log
+                        operators (default: 1)
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
                         Alternative Name (default: None)
@@ -263,9 +265,9 @@ Verification options:
 ```
 usage: sigstore verify github [-h] [-v] [--certificate FILE]
                               [--signature FILE] [--bundle FILE] [--offline]
-                              [--cert-identity IDENTITY] [--trigger EVENT]
-                              [--sha SHA] [--name NAME] [--repository REPO]
-                              [--ref REF]
+                              [--tlog-threshold N] [--cert-identity IDENTITY]
+                              [--trigger EVENT] [--sha SHA] [--name NAME]
+                              [--repository REPO] [--ref REF]
                               FILE_OR_DIGEST [FILE_OR_DIGEST ...]
 
 options:
@@ -287,6 +289,8 @@ Verification inputs:
 Verification options:
   --offline             Perform offline verification; requires a Sigstore
                         bundle (default: False)
+  --tlog-threshold N    Require verification by at least N transparency log
+                        operators (default: 1)
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
                         Alternative Name (default: None)

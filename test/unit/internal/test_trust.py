@@ -223,7 +223,10 @@ class TestTrustedRoot:
         assert len(root._inner.ctlogs) == 2
         assert len(root._inner.timestamp_authorities) == 1
 
-        # only one of the two rekor keys is actually supported
+        # only usable transparency log instances contribute verifying keys
+        rekor_tlogs = root._rekor_tlogs(KeyringPurpose.VERIFY)
+        assert len(rekor_tlogs) == 1
+        assert rekor_tlogs[0] is root._inner.tlogs[0]
         assert len(root.rekor_keyring(KeyringPurpose.VERIFY)._keyring) == 1
         assert len(root.ct_keyring(KeyringPurpose.VERIFY)._keyring) == 2
         assert root.get_fulcio_certs() is not None

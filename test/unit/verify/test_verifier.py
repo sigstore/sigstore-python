@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import base64
+import copy
 import hashlib
 import json
 import logging
@@ -23,10 +25,11 @@ import pytest
 import rfc3161_client
 from sigstore_models.trustroot import v1 as trustroot_v1
 
-from sigstore._internal.trust import CertificateAuthority
+from sigstore._internal.trust import CertificateAuthority, KeyringPurpose
+from sigstore._utils import sha256_digest
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import CertValidationError, VerificationError
-from sigstore.models import Bundle, TrustedRoot
+from sigstore.models import Bundle, TransparencyLogEntry, TrustedRoot
 from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
 
@@ -143,10 +146,155 @@ def test_verifier_bundle_offline(signing_bundle, null_policy, filename):
     verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
-def test_verifier_certificate_chain_rejects_invalid_time(signing_bundle):
-    _, bundle = signing_bundle("bundle.txt")
+def test_verifier_tlog_threshold_one_accepts_one_valid_entry(
+    signing_bundle, null_policy
+):
+    file, bundle = signing_bundle("bundle.txt")
+    raw = json.loads(bundle.to_json())
+
+    extra = copy.deepcopy(raw["verificationMaterial"]["tlogEntries"][0])
+    extra["logId"]["keyId"] = base64.b64encode(b"\x01" * 32).decode()
+    raw["verificationMaterial"]["tlogEntries"].append(extra)
+
+    bundle = Bundle.from_json(json.dumps(raw))
     verifier = Verifier.staging(offline=True)
-    timestamp = verifier._establish_time(bundle)[0]
+
+    verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+def test_verifier_rejects_duplicate_tlog_entries(signing_bundle, null_policy):
+    file, bundle = signing_bundle("bundle.txt")
+    raw = json.loads(bundle.to_json())
+
+    raw["verificationMaterial"]["tlogEntries"].append(
+        copy.deepcopy(raw["verificationMaterial"]["tlogEntries"][0])
+    )
+
+    bundle = Bundle.from_json(json.dumps(raw))
+    verifier = Verifier.staging(offline=True)
+
+    with pytest.raises(
+        VerificationError,
+        match="duplicate transparency log entry",
+    ):
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+def test_verifier_tlog_threshold_requires_operator_metadata(
+    signing_bundle, null_policy
+):
+    file, bundle = signing_bundle("bundle.txt")
+    verifier = Verifier.staging(offline=True, tlog_threshold=2)
+
+    with pytest.raises(
+        VerificationError,
+        match="operator metadata is required",
+    ):
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+def test_verifier_rejects_invalid_tlog_threshold():
+    with pytest.raises(
+        ValueError,
+        match="transparency log threshold must be at least 1",
+    ):
+        Verifier.staging(offline=True, tlog_threshold=0)
+
+
+def _add_synthetic_second_tlog_entry(
+    bundle: Bundle,
+    log_id: bytes,
+) -> TransparencyLogEntry:
+    second_inner = copy.deepcopy(bundle._log_entries[0]._inner)
+    second_inner.log_id.key_id = log_id
+    second_inner.log_index = type(second_inner.log_index)(
+        int(second_inner.log_index) + 1
+    )
+
+    second = TransparencyLogEntry(second_inner)
+    bundle._log_entries.append(second)
+    return second
+
+
+def _configure_two_tlog_operators(
+    verifier: Verifier,
+    bundle: Bundle,
+    *,
+    same_operator: bool,
+) -> None:
+    first_entry_id = bundle._log_entries[0]._inner.log_id.key_id
+    trusted_tlogs = verifier._trusted_root._rekor_tlogs(KeyringPurpose.VERIFY)
+
+    first_tlog = copy.deepcopy(
+        next(tlog for tlog in trusted_tlogs if tlog.log_id.key_id == first_entry_id)
+    )
+    second_tlog = copy.deepcopy(
+        next(tlog for tlog in trusted_tlogs if tlog.log_id.key_id != first_entry_id)
+    )
+
+    first_tlog.operator = "operator-a.example"
+    second_tlog.operator = (
+        "operator-a.example" if same_operator else "operator-b.example"
+    )
+
+    verifier._trusted_root._inner.tlogs = [first_tlog, second_tlog]
+    _add_synthetic_second_tlog_entry(bundle, second_tlog.log_id.key_id)
+
+
+def test_verifier_tlog_threshold_counts_distinct_operators(
+    signing_bundle, null_policy, monkeypatch
+):
+    file, bundle = signing_bundle("bundle.txt")
+    verifier = Verifier.staging(offline=True, tlog_threshold=2)
+    _configure_two_tlog_operators(
+        verifier,
+        bundle,
+        same_operator=False,
+    )
+
+    # Quorum counting is the behavior under test here. The normal cryptographic
+    # verification path is covered by the existing verifier tests and by the
+    # threshold-1 multi-entry test above.
+    monkeypatch.setattr(
+        TransparencyLogEntry,
+        "_verify",
+        lambda self, keyring: None,
+    )
+
+    verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+def test_verifier_tlog_threshold_counts_operator_once(
+    signing_bundle, null_policy, monkeypatch
+):
+    file, bundle = signing_bundle("bundle.txt")
+    verifier = Verifier.staging(offline=True, tlog_threshold=2)
+    _configure_two_tlog_operators(
+        verifier,
+        bundle,
+        same_operator=True,
+    )
+
+    monkeypatch.setattr(
+        TransparencyLogEntry,
+        "_verify",
+        lambda self, keyring: None,
+    )
+
+    with pytest.raises(
+        VerificationError,
+        match=r"transparency log threshold not met: 1 < 2",
+    ):
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+def test_verifier_certificate_chain_rejects_invalid_time(signing_bundle):
+    file, bundle = signing_bundle("bundle.txt")
+    verifier = Verifier.staging(offline=True)
+    tlog_timestamps = verifier._verify_tlog_entries(
+        bundle, sha256_digest(file.read_bytes())
+    )
+    timestamp = verifier._establish_time(bundle, tlog_timestamps)[0]
     timestamp.time = datetime(2000, 1, 1, tzinfo=timezone.utc)
 
     with pytest.raises(
