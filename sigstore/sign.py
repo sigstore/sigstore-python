@@ -51,7 +51,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
-import cryptography.x509 as x509
+from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from sigstore_models.common.v1 import HashOutput, MessageSignature

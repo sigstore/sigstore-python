@@ -25,10 +25,9 @@ from enum import Enum
 from pathlib import Path
 from typing import ClassVar, NewType
 
-import cryptography.hazmat.primitives.asymmetric.padding as padding
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa
 from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
@@ -147,10 +146,12 @@ class Keyring:
     Represents a set of keys, each of which is a potentially valid verifier.
     """
 
-    def __init__(self, public_keys: list[common_v1.PublicKey] = []):
+    def __init__(self, public_keys: list[common_v1.PublicKey] | None = None):
         """
         Create a new `Keyring`, with `keys` as the initial set of verifying keys.
         """
+        if public_keys is None:
+            public_keys = []
         self._keyring: dict[KeyID, Key] = {}
 
         for public_key in public_keys:
