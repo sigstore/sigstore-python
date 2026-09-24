@@ -10,6 +10,8 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+* Fulcio certificate and trust-bundle requests now use finite connection and
+  read inactivity timeouts.
 * Parsing a malformed in-toto statement now includes the underlying validation
   error, instead of discarding it. `StatementBuilder.build()` already did this;
   `Statement(contents=...)` did not, so a rejected digest algorithm, a missing

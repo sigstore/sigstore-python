@@ -42,6 +42,11 @@ _logger = logging.getLogger(__name__)
 SIGNING_CERT_ENDPOINT = "/api/v2/signingCert"
 TRUST_BUNDLE_ENDPOINT = "/api/v2/trustBundle"
 
+# Use a short connect timeout and a finite read timeout for Fulcio requests.
+# Certificate issuance and trust-bundle retrieval should not block the caller
+# indefinitely when the configured endpoint accepts a connection but stalls.
+DEFAULT_FULCIO_TIMEOUT: tuple[int, int] = (5, 30)
+
 
 class ExpiredCertificate(Exception):
     """An error raised when the Certificate is expired."""
@@ -103,7 +108,10 @@ class FulcioSigningCert(_Endpoint):
             "Accept": "application/pem-certificate-chain",
         }
         resp: requests.Response = self.session.post(
-            url=self.url, data=_serialize_cert_request(req), headers=headers
+            url=self.url,
+            data=_serialize_cert_request(req),
+            headers=headers,
+            timeout=DEFAULT_FULCIO_TIMEOUT,
         )
         try:
             resp.raise_for_status()
@@ -141,7 +149,9 @@ class FulcioTrustBundle(_Endpoint):
 
     def get(self) -> FulcioTrustBundleResponse:
         """Get the certificate chains from Fulcio"""
-        resp: requests.Response = self.session.get(self.url)
+        resp: requests.Response = self.session.get(
+            self.url, timeout=DEFAULT_FULCIO_TIMEOUT
+        )
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
