@@ -107,15 +107,12 @@ class FulcioSigningCert(_Endpoint):
             "Content-Type": "application/json",
             "Accept": "application/pem-certificate-chain",
         }
-        try:
-            resp: requests.Response = self.session.post(
-                url=self.url,
-                data=_serialize_cert_request(req),
-                headers=headers,
-                timeout=DEFAULT_FULCIO_TIMEOUT,
-            )
-        except requests.Timeout as timeout_error:
-            raise FulcioClientError("Fulcio request timed out") from timeout_error
+        resp: requests.Response = self.session.post(
+            url=self.url,
+            data=_serialize_cert_request(req),
+            headers=headers,
+            timeout=DEFAULT_FULCIO_TIMEOUT,
+        )
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
@@ -152,12 +149,9 @@ class FulcioTrustBundle(_Endpoint):
 
     def get(self) -> FulcioTrustBundleResponse:
         """Get the certificate chains from Fulcio"""
-        try:
-            resp: requests.Response = self.session.get(
-                self.url, timeout=DEFAULT_FULCIO_TIMEOUT
-            )
-        except requests.Timeout as timeout_error:
-            raise FulcioClientError("Fulcio request timed out") from timeout_error
+        resp: requests.Response = self.session.get(
+            self.url, timeout=DEFAULT_FULCIO_TIMEOUT
+        )
         try:
             resp.raise_for_status()
         except requests.HTTPError as http_error:
