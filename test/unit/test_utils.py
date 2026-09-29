@@ -20,9 +20,11 @@ import pretend
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
+from sigstore_models.common.v1 import HashAlgorithm
 
 from sigstore import _utils as utils
 from sigstore.errors import VerificationError
+from sigstore.hashes import Hashed
 
 
 def test_key_id():
@@ -79,7 +81,7 @@ def test_load_pem_public_key_format():
     with pytest.raises(
         VerificationError, match="could not load PEM-formatted public key"
     ):
-        utils.load_pem_public_key([keybytes])
+        utils.load_pem_public_key(keybytes)
 
 
 def test_load_pem_public_key_serialization(monkeypatch):
@@ -95,7 +97,7 @@ def test_load_pem_public_key_serialization(monkeypatch):
     )
 
     with pytest.raises(VerificationError, match="invalid key format: not one of"):
-        utils.load_pem_public_key([keybytes])
+        utils.load_pem_public_key(keybytes)
 
 
 @pytest.mark.parametrize(
@@ -182,3 +184,42 @@ def test_cert_is_leaf_invalid_version(helper):
 
     with pytest.raises(VerificationError, match="invalid X.509 version"):
         helper(cert)
+
+
+def test_load_der_public_key_format():
+    keybytes = b"\x00\x01\x02\x03"
+    with pytest.raises(
+        VerificationError, match="could not load DER-formatted public key"
+    ):
+        utils.load_der_public_key(keybytes)
+
+
+def test_load_der_public_key_serialization(monkeypatch):
+    from cryptography.hazmat.primitives import serialization
+
+    monkeypatch.setattr(serialization, "load_der_public_key", lambda a: a)
+
+    keybytes = b"\x00\x01\x02\x03"
+
+    with pytest.raises(VerificationError, match="invalid key format: not one of"):
+        utils.load_der_public_key(keybytes)
+
+
+def test_sha256_digest_bytes():
+    buf = b"hello world"
+    result = utils.sha256_digest(buf)
+    assert result.digest == hashlib.sha256(buf).digest()
+    assert result.algorithm == HashAlgorithm.SHA2_256
+
+
+def test_sha256_digest_hashed():
+    existing = Hashed(digest=b"1234", algorithm=HashAlgorithm.SHA2_256)
+    result = utils.sha256_digest(existing)
+    assert result is existing
+
+
+def test_sha256_digest_streaming():
+    buf = b"hello world"
+    result = utils.sha256_digest(io.BytesIO(buf))
+    assert result.digest == hashlib.sha256(buf).digest()
+    assert result.algorithm == HashAlgorithm.SHA2_256
