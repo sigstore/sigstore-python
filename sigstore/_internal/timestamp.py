@@ -58,8 +58,6 @@ class TimestampError(Exception):
     A generic error in the TimestampAuthority client.
     """
 
-    pass
-
 
 class TimestampAuthorityClient:
     """Internal client to deal with a Timestamp Authority"""
