@@ -14,9 +14,9 @@
 import hashlib
 import secrets
 
-import cryptography.x509 as x509
 import pretend
 import pytest
+from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from sigstore_models.common.v1 import HashAlgorithm
@@ -146,9 +146,11 @@ def test_sct_verify_keyring_lookup_error(sign_ctx_and_ident_for_env, monkeypatch
     assert identity is not None
 
     payload = secrets.token_bytes(32)
-    with pytest.raises(VerificationError, match=r"SCT verify failed:"):
-        with ctx.signer(identity) as signer:
-            signer.sign_artifact(payload)
+    with (
+        pytest.raises(VerificationError, match=r"SCT verify failed:"),
+        ctx.signer(identity) as signer,
+    ):
+        signer.sign_artifact(payload)
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])
@@ -166,9 +168,8 @@ def test_sct_verify_keyring_error(sign_ctx_and_ident_for_env, monkeypatch):
 
     payload = secrets.token_bytes(32)
 
-    with pytest.raises(VerificationError):
-        with ctx.signer(identity) as signer:
-            signer.sign_artifact(payload)
+    with pytest.raises(VerificationError), ctx.signer(identity) as signer:
+        signer.sign_artifact(payload)
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])
