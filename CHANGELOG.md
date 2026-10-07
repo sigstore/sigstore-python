@@ -17,6 +17,9 @@ All versions prior to 0.9.0 are untracked.
 * `Verifier` now raises `VerificationError` when the trusted root contains no
   transparency log instances, instead of leaking a raw `IndexError`
   ([#1880](https://github.com/sigstore/sigstore-python/pull/1880))
+* Checkpoint verification now recognizes Ed25519 checkpoint signatures by
+  their C2SP key IDs, instead of only matching the log ID prefix
+  ([#954](https://github.com/sigstore/sigstore-python/issues/954))
 
 ## [4.5.0]
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import base64
 import hashlib
 import io
 
@@ -20,6 +21,7 @@ import pretend
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
 
 from sigstore import _utils as utils
 from sigstore.errors import VerificationError
@@ -182,3 +184,43 @@ def test_cert_is_leaf_invalid_version(helper):
 
     with pytest.raises(VerificationError, match="invalid X.509 version"):
         helper(cert)
+
+
+def test_checkpoint_key_id():
+    # ECDSA and RSA keys use the truncated SHA-256 of the DER-encoded
+    # SubjectPublicKeyInfo, coinciding with the RFC 6962 key ID prefix
+    # (C2SP signature type 0x02 for ECDSA; RSA uses the same calculation
+    # per the discussion in sigstore/sigstore-python#954).
+    ec_key = ec.generate_private_key(ec.SECP256R1()).public_key()
+    assert (
+        utils.checkpoint_key_id(ec_key, "example.com/log") == utils.key_id(ec_key)[:4]
+    )
+
+    rsa_key = rsa.generate_private_key(
+        public_exponent=65537, key_size=2048
+    ).public_key()
+    assert (
+        utils.checkpoint_key_id(rsa_key, "example.com/log") == utils.key_id(rsa_key)[:4]
+    )
+
+    # Ed25519 keys use the C2SP key ID: the first 4 bytes of the SHA-256 hash
+    # over `key_name || 0x0A || 0x01 || public_key`, where the public key is
+    # the 32-byte RFC 8032 encoding. Test vector from the C2SP signed-note
+    # specification: verifier key
+    # `example.com/foo+530d903a+AekyeRrm56hApGFkyQR4ZCbV54Id2LKaANYcrnKv3U2k`.
+    raw_pubkey = base64.b64decode("AekyeRrm56hApGFkyQR4ZCbV54Id2LKaANYcrnKv3U2k")[1:]
+    ed_key = ed25519.Ed25519PublicKey.from_public_bytes(raw_pubkey)
+    assert utils.checkpoint_key_id(ed_key, "example.com/foo") == bytes.fromhex(
+        "530d903a"
+    )
+
+    # The whole point of the type-dependent derivation: the Ed25519
+    # checkpoint key ID must differ from the plain DER hash prefix.
+    assert (
+        utils.checkpoint_key_id(ed_key, "example.com/foo") != utils.key_id(ed_key)[:4]
+    )
+
+    # ... and it must depend on the key name.
+    assert utils.checkpoint_key_id(
+        ed_key, "example.com/foo"
+    ) != utils.checkpoint_key_id(ed_key, "example.com/bar")

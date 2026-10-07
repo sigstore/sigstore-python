@@ -145,6 +145,10 @@ def key_id(key: PublicKey) -> KeyID:
     Returns an RFC 6962-style "key ID" for the given public key.
 
     See: <https://www.rfc-editor.org/rfc/rfc6962#section-3.2>
+
+    This is the key ID form used for CT log IDs, SCT verification, and
+    Rekor log IDs. It is *not* the form used in Rekor checkpoint (signed
+    note) signatures for all key types; see `checkpoint_key_id`.
     """
     public_bytes = key.public_bytes(
         encoding=serialization.Encoding.DER,
@@ -152,6 +156,44 @@ def key_id(key: PublicKey) -> KeyID:
     )
 
     return KeyID(hashlib.sha256(public_bytes).digest())
+
+
+def checkpoint_key_id(key: PublicKey, key_name: str) -> bytes:
+    """
+    Returns the 4-byte key ID for the given public key, as it appears in
+    Rekor checkpoint (signed note) signatures.
+
+    Checkpoint key IDs are key-type-dependent, unlike the RFC 6962 key ID
+    returned by `key_id`.
+
+    See: <https://github.com/sigstore/rekor/issues/2062>
+    See: <https://github.com/C2SP/C2SP/blob/main/signed-note.md>
+    See: <https://github.com/sigstore/sigstore-python/issues/954>
+
+    - ECDSA keys: the first 4 bytes of the SHA-256 hash over the
+      DER-encoded SubjectPublicKeyInfo (C2SP signature type 0x02; this is
+      also what Rekor has historically generated for all key types).
+    - RSA keys: same as ECDSA. RSA has no C2SP-assigned signature type,
+      and the `0xff`-typed computation was deemed not worthwhile
+      (see the discussion in sigstore/sigstore-python#954).
+    - Ed25519 keys: the first 4 bytes of the SHA-256 hash over
+      `key_name || 0x0A || 0x01 || public_key`, where the public key is
+      the 32-byte RFC 8032 encoding (C2SP signature type 0x01).
+    """
+    if isinstance(key, ed25519.Ed25519PublicKey):
+        public_key = key.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        return hashlib.sha256(
+            key_name.encode("utf-8") + b"\x0a" + b"\x01" + public_key
+        ).digest()[:4]
+
+    public_bytes = key.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    return hashlib.sha256(public_bytes).digest()[:4]
 
 
 def sha256_digest(

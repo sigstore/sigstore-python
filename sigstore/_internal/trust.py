@@ -39,6 +39,7 @@ from sigstore_models.trustroot import v1 as trustroot_v1
 from sigstore._utils import (
     KeyID,
     PublicKey,
+    checkpoint_key_id,
     is_timerange_valid,
     key_id,
     load_der_public_key,
@@ -188,6 +189,23 @@ class Keyring:
 
         if not valid:
             raise VerificationError("keyring: invalid signature")
+
+    def has_key_for_checkpoint(self, sig_hash: bytes, key_name: str) -> bool:
+        """
+        Returns whether any key in the keyring could have produced a
+        checkpoint (signed note) signature carrying the given 4-byte key
+        hash under `key_name`.
+
+        Checkpoint key IDs are key-type-dependent
+        (see `sigstore._utils.checkpoint_key_id`): this selects signatures
+        made by keys whose note key IDs don't coincide with the log ID
+        prefix, e.g. Ed25519 keys. See
+        <https://github.com/sigstore/rekor/issues/2062>.
+        """
+        return any(
+            checkpoint_key_id(key.key, key_name) == sig_hash
+            for key in self._keyring.values()
+        )
 
 
 RekorKeyring = NewType("RekorKeyring", Keyring)

@@ -179,16 +179,27 @@ class SignedNote:
         note = str.encode(self.note)
 
         for sig in self.signatures:
-            if sig.sig_hash == key_id[:4]:
-                try:
-                    rekor_keyring.verify(
-                        key_id=key_id,
-                        signature=base64.b64decode(sig.signature),
-                        data=note,
-                    )
-                    return
-                except VerificationError as sig_err:
-                    raise VerificationError(f"checkpoint: invalid signature: {sig_err}")
+            # Each signature carries a 4-byte key hash identifying its signer.
+            # We accept a signature if its key hash matches either the log ID
+            # prefix (correct for the ECDSA and RSA note key hashes, which
+            # are truncated SHA-256 over the DER SPKI) or the type-dependent
+            # checkpoint key ID of a key in the keyring (correct for Ed25519
+            # per the C2SP signed-note specification; see
+            # sigstore/rekor#2062 and sigstore/sigstore-python#954).
+            if sig.sig_hash != key_id[:4] and not rekor_keyring.has_key_for_checkpoint(
+                sig.sig_hash, sig.name
+            ):
+                continue
+
+            try:
+                rekor_keyring.verify(
+                    key_id=key_id,
+                    signature=base64.b64decode(sig.signature),
+                    data=note,
+                )
+                return
+            except VerificationError as sig_err:
+                raise VerificationError(f"checkpoint: invalid signature: {sig_err}")
 
         raise VerificationError(
             f"checkpoint: Signature not found for log ID {key_id.hex()}"
