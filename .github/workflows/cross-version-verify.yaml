@@ -57,7 +57,7 @@ jobs:
       fail-fast: false # Don't cancel other jobs if one fails
       matrix:
         # hand crafted list of old versions we care about
-        version: [ 3.5.6, 3.6.7, 4.0.0, 4.1.0, 4.2.0 ]
+        version: [ 3.5.6, 3.6.7, 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0, 4.5.0 ]
         env: [ staging, prod ]
         exclude:
           # exclude staging for versions with https://github.com/sigstore/sigstore-python/issues/1656
