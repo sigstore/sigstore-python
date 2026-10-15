@@ -19,7 +19,6 @@ TUF functionality for `sigstore-python`.
 from __future__ import annotations
 
 import logging
-from functools import lru_cache
 from pathlib import Path
 from urllib import parse
 
@@ -78,6 +77,9 @@ class TrustUpdater:
         If not `offline`, TrustUpdater will update the TUF metadata from
         the remote repository.
         """
+        self._trusted_root_path: str | None = None
+        self._signing_config_path: str | None = None
+
         # not canonicalization, just handling trailing slash as common mistake:
         url = url.rstrip("/")
 
@@ -128,48 +130,56 @@ class TrustUpdater:
             except Exception as e:
                 raise TUFError("Failed to refresh TUF metadata") from e
 
-    @lru_cache()
     def get_trusted_root_path(self) -> str:
         """Return local path to currently valid trusted root file"""
+        if self._trusted_root_path is not None:
+            return self._trusted_root_path
+
         if not self._updater:
             _logger.debug("Using unverified trusted root from cache")
-            return str(self._targets_dir / "trusted_root.json")
+            path = str(self._targets_dir / "trusted_root.json")
+        else:
+            root_info = self._updater.get_targetinfo("trusted_root.json")
+            if root_info is None:
+                raise TUFError("Unsupported TUF configuration: no trusted root")
+            path = self._updater.find_cached_target(root_info)
+            if path is None:
+                try:
+                    path = self._updater.download_target(root_info)
+                except (
+                    TUFExceptions.DownloadError,
+                    TUFExceptions.RepositoryError,
+                ) as e:
+                    raise TUFError("Failed to download trusted key bundle") from e
 
-        root_info = self._updater.get_targetinfo("trusted_root.json")
-        if root_info is None:
-            raise TUFError("Unsupported TUF configuration: no trusted root")
-        path = self._updater.find_cached_target(root_info)
-        if path is None:
-            try:
-                path = self._updater.download_target(root_info)
-            except (
-                TUFExceptions.DownloadError,
-                TUFExceptions.RepositoryError,
-            ) as e:
-                raise TUFError("Failed to download trusted key bundle") from e
+            _logger.debug("Found and verified trusted root")
 
-        _logger.debug("Found and verified trusted root")
+        self._trusted_root_path = path
         return path
 
-    @lru_cache()
     def get_signing_config_path(self) -> str:
         """Return local path to currently valid signing config file"""
+        if self._signing_config_path is not None:
+            return self._signing_config_path
+
         if not self._updater:
             _logger.debug("Using unverified signing config from cache")
-            return str(self._targets_dir / "signing_config.v0.2.json")
+            path = str(self._targets_dir / "signing_config.v0.2.json")
+        else:
+            root_info = self._updater.get_targetinfo("signing_config.v0.2.json")
+            if root_info is None:
+                raise TUFError("Unsupported TUF configuration: no signing config")
+            path = self._updater.find_cached_target(root_info)
+            if path is None:
+                try:
+                    path = self._updater.download_target(root_info)
+                except (
+                    TUFExceptions.DownloadError,
+                    TUFExceptions.RepositoryError,
+                ) as e:
+                    raise TUFError("Failed to download signing config") from e
 
-        root_info = self._updater.get_targetinfo("signing_config.v0.2.json")
-        if root_info is None:
-            raise TUFError("Unsupported TUF configuration: no signing config")
-        path = self._updater.find_cached_target(root_info)
-        if path is None:
-            try:
-                path = self._updater.download_target(root_info)
-            except (
-                TUFExceptions.DownloadError,
-                TUFExceptions.RepositoryError,
-            ) as e:
-                raise TUFError("Failed to download signing config") from e
+            _logger.debug("Found and verified signing config")
 
-        _logger.debug("Found and verified signing config")
+        self._signing_config_path = path
         return path

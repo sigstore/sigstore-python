@@ -29,8 +29,8 @@ def test_rekor_v1_session_reuse_public_api():
         mock_session_cls.return_value = mock_session_inst
 
         # Access log endpoint multiple times
-        client.log
-        client.log
+        _ = client.log
+        _ = client.log
 
         # Expect 1 session
         assert mock_session_cls.call_count == 1
