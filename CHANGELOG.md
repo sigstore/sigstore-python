@@ -10,6 +10,9 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
+* Rekor v2 submissions now use finite connection and read inactivity timeouts,
+  allowing 60 seconds for each while waiting for checkpoint inclusion
+  ([#1448](https://github.com/sigstore/sigstore-python/issues/1448)).
 * Parsing a malformed in-toto statement now includes the underlying validation
   error, instead of discarding it. `StatementBuilder.build()` already did this;
   `Statement(contents=...)` did not, so a rejected digest algorithm, a missing
