@@ -34,6 +34,8 @@ from pydantic import BaseModel, StrictStr
 from sigstore._internal import USER_AGENT
 from sigstore.errors import Error, NetworkError
 
+_logger = logging.getLogger(__name__)
+
 # See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
 _KNOWN_OIDC_ISSUERS = {
     "https://accounts.google.com": "email",
@@ -228,8 +230,6 @@ class IssuerError(Exception):
     Raised on any communication or format error with an OIDC issuer.
     """
 
-    pass
-
 
 class Issuer:
     """
@@ -340,7 +340,7 @@ class Issuer:
             client_id,
             client_secret,
         )
-        logging.debug(f"PAYLOAD: data={data}")
+        _logger.debug(f"PAYLOAD: data={data}")
         try:
             resp = self.session.post(
                 self.oidc_config.token_endpoint,
