@@ -136,4 +136,21 @@ class TimestampAuthorityClient:
             msg = f"invalid response: PKIStatus is {status.name}"
             raise TimestampError(msg)
 
+        try:
+            tst_info = timestamp_response.tst_info
+        except ValueError as e:
+            msg = f"invalid response: {e}"
+            raise TimestampError(msg)
+
+        if tst_info.nonce != timestamp_request.nonce:
+            raise TimestampError("invalid response: nonce mismatch")
+
+        if (
+            tst_info.message_imprint.hash_algorithm
+            != timestamp_request.message_imprint.hash_algorithm
+            or tst_info.message_imprint.message
+            != timestamp_request.message_imprint.message
+        ):
+            raise TimestampError("invalid response: message imprint mismatch")
+
         return timestamp_response

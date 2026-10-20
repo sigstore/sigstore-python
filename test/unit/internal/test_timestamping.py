@@ -14,6 +14,7 @@
 import pretend
 import pytest
 import requests
+import rfc3161_client
 
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._utils import sha256_digest
@@ -65,5 +66,44 @@ class TestTimestampAuthorityClient:
 
         with pytest.raises(
             TimestampError, match="invalid response: PKIStatus is REJECTION"
+        ):
+            tsa.request_timestamp(b"hello")
+
+    def test_nonce_mismatch(self, asset, monkeypatch):
+        ts_bytes = asset("tsa/issue1482-timestamp-with-no-cert").read_bytes()
+        response = pretend.stub(
+            raise_for_status=lambda: None,
+            content=ts_bytes,
+        )
+        tsa = TimestampAuthorityClient("http://fake-url")
+        monkeypatch.setattr(tsa._session, "post", lambda *a, **kw: response)
+
+        with pytest.raises(TimestampError, match="invalid response: nonce mismatch"):
+            tsa.request_timestamp(b"hello")
+
+    def test_message_imprint_mismatch(self, asset, monkeypatch):
+        ts_bytes = asset("tsa/issue1482-timestamp-with-no-cert").read_bytes()
+        ts = rfc3161_client.decode_timestamp_response(ts_bytes)
+        response = pretend.stub(
+            raise_for_status=lambda: None,
+            content=ts_bytes,
+        )
+        req = pretend.stub(
+            as_bytes=lambda: b"req",
+            nonce=ts.tst_info.nonce,
+            message_imprint=pretend.stub(
+                hash_algorithm=ts.tst_info.message_imprint.hash_algorithm,
+                message=b"wrong-digest",
+            ),
+        )
+        monkeypatch.setattr(
+            rfc3161_client.TimestampRequestBuilder, "build", lambda self: req
+        )
+
+        tsa = TimestampAuthorityClient("http://fake-url")
+        monkeypatch.setattr(tsa._session, "post", lambda *a, **kw: response)
+
+        with pytest.raises(
+            TimestampError, match="invalid response: message imprint mismatch"
         ):
             tsa.request_timestamp(b"hello")
