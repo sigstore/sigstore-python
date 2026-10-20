@@ -25,6 +25,7 @@ from abc import ABC, abstractmethod
 import rekor_types
 import requests
 from cryptography.x509 import Certificate
+from pydantic import ValidationError
 
 from sigstore._utils import base64_encode_pem_cert
 from sigstore.dsse import Envelope
@@ -53,7 +54,7 @@ class RekorClientError(Exception):
             try:
                 error = rekor_types.Error.model_validate_json(http_error.response.text)
                 super().__init__(f"{error.code}: {error.message}")
-            except Exception:
+            except ValidationError:
                 super().__init__(
                     f"Rekor returned an unknown error with HTTP {http_error.response.status_code}"
                 )
@@ -76,7 +77,6 @@ class RekorLogSubmitter(ABC):
         """
         Submit the request to Rekor.
         """
-        pass
 
     @classmethod
     @abstractmethod
@@ -86,7 +86,6 @@ class RekorLogSubmitter(ABC):
         """
         Construct a hashed rekord request to submit to Rekor.
         """
-        pass
 
     @classmethod
     @abstractmethod
@@ -96,7 +95,6 @@ class RekorLogSubmitter(ABC):
         """
         Construct a dsse request to submit to Rekor.
         """
-        pass
 
 
 # TODO: This should probably live somewhere better.

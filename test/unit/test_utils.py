@@ -19,6 +19,7 @@ import io
 import pretend
 import pytest
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 
 from sigstore import _utils as utils
@@ -140,6 +141,17 @@ def test_cert_is_root_ca(x509_testcase, testcase, valid):
     cert = x509_testcase(testcase)
 
     assert utils.cert_is_root_ca(cert) is valid
+
+
+@pytest.mark.parametrize("error", [ValueError, TypeError, InvalidSignature])
+def test_cert_is_root_ca_verification_error(monkeypatch, error):
+    cert = pretend.stub(
+        version=x509.Version.v3,
+        verify_directly_issued_by=pretend.raiser(error),
+    )
+    monkeypatch.setattr(utils, "cert_is_ca", lambda cert: True)
+
+    assert not utils.cert_is_root_ca(cert)
 
 
 @pytest.mark.parametrize(

@@ -67,8 +67,6 @@ class FulcioClientError(Exception):
     Raised on any error in the Fulcio client.
     """
 
-    pass
-
 
 class _Endpoint(ABC):
     def __init__(self, url: str, session: requests.Session) -> None:

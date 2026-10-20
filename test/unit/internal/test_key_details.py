@@ -85,16 +85,17 @@ def test_get_key_details(mock_certificate):
     assert isinstance(key_details, PublicKeyDetails)
 
 
-def delayed_crypto_mock(mock_func, error_msg):
+def delayed_crypto_mock(mock_func, error_msg, error_type=ValueError):
     # execute mock_func, mark test as skipped if cryptography does not support this algo.
     # This is done so missing support does not break the negative test collection
     try:
         data = mock_func()
-        return pytest.param(data, error_msg)
+        return pytest.param(data, error_msg, error_type)
     except UnsupportedAlgorithm as e:
         return pytest.param(
             None,
             error_msg,
+            error_type,
             marks=pytest.mark.skip(reason=f"missing cryptography support: {e}"),
         )
 
@@ -112,16 +113,19 @@ class DummyCurve(ec.EllipticCurve):
 
 
 @pytest.mark.parametrize(
-    "mock_certificate, error_msg",
+    "mock_certificate, error_msg, error_type",
     [
         # Unsupported EC curve
         delayed_crypto_mock(
             lambda: Mock(
                 public_key=Mock(
-                    return_value=ec.generate_private_key(DummyCurve()).public_key()
+                    return_value=Mock(
+                        spec=ec.EllipticCurvePublicKey, curve=DummyCurve()
+                    )
                 )
             ),
             "Unsupported EC curve: dummycurve",
+            TypeError,
         ),
         # Unsupported RSA padding
         delayed_crypto_mock(
@@ -186,12 +190,13 @@ class DummyCurve(ec.EllipticCurve):
                 )
             ),
             "Unsupported public key type",
+            TypeError,
         ),
     ],
 )
-def test_get_key_details_unsupported(mock_certificate, error_msg):
+def test_get_key_details_unsupported(mock_certificate, error_msg, error_type):
     """
-    Ensures that we raise a ValueError for unsupported key types and schemes.
+    Ensures that we reject unsupported key types and schemes.
     """
-    with pytest.raises(ValueError, match=error_msg):
+    with pytest.raises(error_type, match=error_msg):
         _get_key_details(mock_certificate)
