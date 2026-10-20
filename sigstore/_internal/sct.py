@@ -229,7 +229,10 @@ def verify_sct(
         # to expose this trivial single member, so we use the `log_id`
         # attribute directly.
         ct_keyring.verify(
-            key_id=KeyID(sct.log_id), signature=sct.signature, data=digitally_signed
+            key_id=KeyID(sct.log_id),
+            signature=sct.signature,
+            data=digitally_signed,
+            time=sct.timestamp.replace(tzinfo=timezone.utc),
         )
     except VerificationError as exc:
         raise VerificationError(f"SCT verify failed: {exc}")

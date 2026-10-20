@@ -13,11 +13,14 @@
 # limitations under the License.
 
 
+import base64
 import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sigstore_models.common.v1 import TimeRange
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from sigstore_models.common.v1 import PublicKey, PublicKeyDetails, TimeRange
 from sigstore_models.trustroot.v1 import (
     Service,
     ServiceConfiguration,
@@ -30,10 +33,11 @@ from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
+    Keyring,
     KeyringPurpose,
 )
-from sigstore._utils import is_timerange_valid
-from sigstore.errors import Error, TUFError
+from sigstore._utils import is_timerange_valid, key_id
+from sigstore.errors import Error, TUFError, VerificationError
 from sigstore.models import (
     ClientTrustConfig,
     SigningConfig,
@@ -67,6 +71,40 @@ class TestCertificateAuthority:
         path = asset("trusted_root/certificate_authority.empty.json")
         with pytest.raises(Error, match="missing a certificate"):
             CertificateAuthority.from_json(path)
+
+
+class TestKeyring:
+    def test_verify_honors_key_validity_period(self):
+        private_key = ec.generate_private_key(ec.SECP256R1())
+        public_key = private_key.public_key()
+        start = datetime(2023, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        keyring = Keyring(
+            [
+                PublicKey(
+                    raw_bytes=base64.b64encode(
+                        public_key.public_bytes(
+                            serialization.Encoding.DER,
+                            serialization.PublicFormat.SubjectPublicKeyInfo,
+                        )
+                    ),
+                    key_details=PublicKeyDetails.PKIX_ECDSA_P256_SHA_256,
+                    valid_for=TimeRange(start=start, end=end),
+                )
+            ]
+        )
+        data = b"hello"
+        signature = private_key.sign(data, ec.ECDSA(hashes.SHA256()))
+        kid = key_id(public_key)
+
+        keyring.verify(key_id=kid, signature=signature, data=data)
+        keyring.verify(
+            key_id=kid, signature=signature, data=data, time=start + timedelta(days=1)
+        )
+
+        for time in (start - timedelta(seconds=1), end + timedelta(seconds=1)):
+            with pytest.raises(VerificationError, match="no key valid at"):
+                keyring.verify(key_id=kid, signature=signature, data=data, time=time)
 
 
 class TestSigningConfig:

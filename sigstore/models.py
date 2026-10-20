@@ -22,6 +22,7 @@ import base64
 import logging
 from collections import defaultdict
 from collections.abc import Iterable
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
@@ -209,6 +210,10 @@ class TransparencyLogEntry:
                 key_id=KeyID(self._inner.log_id.key_id),
                 signature=signed_entry_ts,
                 data=self._encode_canonical(),
+                time=datetime.fromtimestamp(
+                    self._inner.integrated_time,  # type: ignore[arg-type]
+                    tz=timezone.utc,
+                ),
             )
         except VerificationError as exc:
             raise VerificationError(f"SET: invalid inclusion promise: {exc}")

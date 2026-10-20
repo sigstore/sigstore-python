@@ -16,11 +16,12 @@
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pretend
 import pytest
 import rfc3161_client
+from sigstore_models.common.v1 import TimeRange
 from sigstore_models.trustroot import v1 as trustroot_v1
 
 from sigstore._internal.trust import CertificateAuthority
@@ -141,6 +142,34 @@ def test_verifier_bundle_offline(signing_bundle, null_policy, filename):
 
     verifier = Verifier.staging(offline=True)
     verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
+
+
+@pytest.mark.parametrize(
+    ("logs", "match"),
+    [
+        ("tlogs", "SET: invalid inclusion promise"),
+        ("ctlogs", "failed to verify SCT"),
+    ],
+)
+def test_verifier_rejects_log_key_outside_validity_period(
+    signing_bundle, null_policy, logs, match
+):
+    (file, bundle) = signing_bundle("bundle.txt")
+    trusted_root = Verifier.staging(offline=True)._trusted_root
+
+    # Retire every key before the bundle's log entry was integrated.
+    integrated_time = datetime.fromtimestamp(
+        bundle.log_entry._inner.integrated_time, tz=timezone.utc
+    )
+    for log in getattr(trusted_root._inner, logs):
+        log.public_key.valid_for = TimeRange(
+            start=integrated_time - timedelta(days=365),
+            end=integrated_time - timedelta(days=1),
+        )
+
+    verifier = Verifier(trusted_root=trusted_root)
+    with pytest.raises(VerificationError, match=match):
+        verifier.verify_artifact(file.read_bytes(), bundle, null_policy)
 
 
 def test_verifier_certificate_chain_rejects_invalid_time(signing_bundle):

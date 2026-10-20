@@ -8,6 +8,13 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Fixed
+
+* Verification now only accepts a Rekor key's signed entry timestamp, or a CT
+  log key's SCT, when the signed time falls within that key's `validFor` period
+  in the trusted root. Previously, keys past their validity period were still
+  accepted for entries signed after it ended.
+
 ## [4.5.1]
 
 ### Changed

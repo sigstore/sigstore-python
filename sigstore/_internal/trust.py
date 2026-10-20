@@ -63,6 +63,7 @@ class Key:
     hash_algorithm: hashes.HashAlgorithm | None
     key: PublicKey
     key_id: KeyID
+    valid_for: common_v1.TimeRange | None
 
     _RSA_SHA_256_DETAILS: ClassVar = {
         common_v1.PublicKeyDetails.PKCS1_RSA_PKCS1V5,
@@ -107,6 +108,18 @@ class Key:
         self.hash_algorithm = hash_algorithm
         self.key = key
         self.key_id = key_id(key)
+        self.valid_for = public_key.valid_for
+
+    def valid_at(self, time: datetime) -> bool:
+        """
+        Returns whether `time` falls within this key's validity period.
+        """
+        if self.valid_for is None:
+            return True
+
+        return self.valid_for.start <= time and (
+            self.valid_for.end is None or time <= self.valid_for.end
+        )
 
     def verify(self, signature: bytes, data: bytes) -> None:
         """
@@ -160,7 +173,14 @@ class Keyring:
             except VerificationError as e:
                 _logger.warning(f"Failed to load a trusted root key: {e}")
 
-    def verify(self, *, key_id: KeyID, signature: bytes, data: bytes) -> None:
+    def verify(
+        self,
+        *,
+        key_id: KeyID,
+        signature: bytes,
+        data: bytes,
+        time: datetime | None = None,
+    ) -> None:
         """
         Verify that `signature` is a valid signature for `data`, using the
         key identified by `key_id`.
@@ -168,12 +188,19 @@ class Keyring:
         `key_id` is an unauthenticated hint; if no key matches the given key ID,
         all keys in the keyring are tried.
 
+        If `time` is given, only keys whose validity period contains `time`
+        are considered.
+
         Raises if the signature is invalid, i.e. is not valid for any of the
         keys in the keyring.
         """
 
         key = self._keyring.get(key_id)
         candidates = [key] if key is not None else list(self._keyring.values())
+        if time is not None:
+            candidates = [c for c in candidates if c.valid_at(time)]
+            if not candidates:
+                raise VerificationError(f"keyring: no key valid at {time}")
 
         # Try to verify each candidate key. In the happy case, this will
         # be exactly one candidate.
