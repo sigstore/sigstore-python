@@ -84,21 +84,22 @@ jobs:
 
           echo "sigstore==${SIGSTORE_RELEASE_VERSION}" > requirements.in
 
+          # Resolve conditional dependencies for Python 3.10 and later.
           # PyPI index propagation can take a couple of minutes after a new release.
-          # Retry pip-compile up to 10 times with a 30-second delay between attempts.
+          # Retry uv pip compile up to 10 times with a 30-second delay between attempts.
           n=0
           until [ "$n" -ge 10 ]; do
-            uv run --only-dev pip-compile \
-                --allow-unsafe --generate-hashes --upgrade \
+            uv pip compile --no-config --universal --python-version 3.10 \
+                --generate-hashes --upgrade \
                 --output-file=requirements.txt \
                 requirements.in && break
             n=$((n+1))
-            echo "pip-compile failed; sigstore==${SIGSTORE_RELEASE_VERSION} may not be indexed on PyPI yet. Retrying in 30s ($n/10)..."
+            echo "uv pip compile failed; sigstore==${SIGSTORE_RELEASE_VERSION} may not be indexed on PyPI yet. Retrying in 30s ($n/10)..."
             sleep 30
           done
 
           if [ "$n" -ge 10 ]; then
-            echo "pip-compile failed after 10 attempts."
+            echo "uv pip compile failed after 10 attempts."
             exit 1
           fi
 

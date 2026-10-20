@@ -46,3 +46,4 @@ jobs:
         run: |
           uv venv
           uv pip install --no-config --require-hashes --no-deps -r install/requirements.txt
+          uv pip check --no-config
