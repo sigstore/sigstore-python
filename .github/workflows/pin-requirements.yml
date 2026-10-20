@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write # Pull Request branch modification.
+      contents: read
       pull-requests: write # Pull Request creation.
 
     env:
@@ -138,13 +138,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.SIGSTORE_PIN_REQUIREMENTS_BRANCH }}
-          # NOTE: Needed to push back to the repo.
-          persist-credentials: true
-
-      - name: Reset remote PR branch
-        run: |
-          git fetch origin main
-          git push -f origin "origin/main:${SIGSTORE_PIN_REQUIREMENTS_BRANCH}"
+          persist-credentials: false
 
       - name: Open pull request
         env:
