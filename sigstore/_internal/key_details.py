@@ -135,7 +135,7 @@ def _get_key_details(certificate: Certificate) -> PublicKeyDetails:
         elif isinstance(public_key.curve, ec.SECP521R1):
             key_details = PublicKeyDetails.PKIX_ECDSA_P521_SHA_512
         else:
-            raise ValueError(f"Unsupported EC curve: {public_key.curve.name}")
+            raise TypeError(f"Unsupported EC curve: {public_key.curve.name}")
     elif isinstance(public_key, rsa.RSAPublicKey):
         if public_key.key_size == 2048:
             if isinstance(params, padding.PKCS1v15):
@@ -165,5 +165,5 @@ def _get_key_details(certificate: Certificate) -> PublicKeyDetails:
     # There is likely no need to explicitly detect PKIX_ED25519_PH, especially since the cryptography
     # library does not yet support Ed25519ph.
     else:
-        raise ValueError(f"Unsupported public key type: {type(public_key)}")
+        raise TypeError(f"Unsupported public key type: {type(public_key)}")
     return key_details

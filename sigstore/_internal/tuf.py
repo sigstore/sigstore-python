@@ -19,7 +19,6 @@ TUF functionality for `sigstore-python`.
 from __future__ import annotations
 
 import logging
-from functools import lru_cache
 from pathlib import Path
 from urllib import parse
 
@@ -82,6 +81,8 @@ class TrustUpdater:
         url = url.rstrip("/")
 
         self._metadata_dir, self._targets_dir = _get_dirs(url)
+        self._trusted_root_path: str | None = None
+        self._signing_config_path: str | None = None
 
         # Populate targets cache so we don't have to download these versions
         self._targets_dir.mkdir(parents=True, exist_ok=True)
@@ -128,12 +129,15 @@ class TrustUpdater:
             except Exception as e:
                 raise TUFError("Failed to refresh TUF metadata") from e
 
-    @lru_cache()
     def get_trusted_root_path(self) -> str:
         """Return local path to currently valid trusted root file"""
+        if self._trusted_root_path is not None:
+            return self._trusted_root_path
+
         if not self._updater:
             _logger.debug("Using unverified trusted root from cache")
-            return str(self._targets_dir / "trusted_root.json")
+            self._trusted_root_path = str(self._targets_dir / "trusted_root.json")
+            return self._trusted_root_path
 
         root_info = self._updater.get_targetinfo("trusted_root.json")
         if root_info is None:
@@ -149,14 +153,20 @@ class TrustUpdater:
                 raise TUFError("Failed to download trusted key bundle") from e
 
         _logger.debug("Found and verified trusted root")
+        self._trusted_root_path = path
         return path
 
-    @lru_cache()
     def get_signing_config_path(self) -> str:
         """Return local path to currently valid signing config file"""
+        if self._signing_config_path is not None:
+            return self._signing_config_path
+
         if not self._updater:
             _logger.debug("Using unverified signing config from cache")
-            return str(self._targets_dir / "signing_config.v0.2.json")
+            self._signing_config_path = str(
+                self._targets_dir / "signing_config.v0.2.json"
+            )
+            return self._signing_config_path
 
         root_info = self._updater.get_targetinfo("signing_config.v0.2.json")
         if root_info is None:
@@ -172,4 +182,5 @@ class TrustUpdater:
                 raise TUFError("Failed to download signing config") from e
 
         _logger.debug("Found and verified signing config")
+        self._signing_config_path = path
         return path

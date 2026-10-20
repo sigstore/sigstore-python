@@ -13,8 +13,11 @@
 # limitations under the License.
 
 
+import gc
 import os
+import weakref
 from datetime import datetime, timedelta, timezone
+from unittest.mock import Mock
 
 import pytest
 from sigstore_models.common.v1 import TimeRange
@@ -32,6 +35,7 @@ from sigstore._internal.trust import (
     CertificateAuthority,
     KeyringPurpose,
 )
+from sigstore._internal.tuf import STAGING_TUF_URL, TrustUpdater
 from sigstore._utils import is_timerange_valid
 from sigstore.errors import Error, TUFError
 from sigstore.models import (
@@ -244,7 +248,7 @@ class TestTrustedRoot:
 
 def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     # start with empty target cache, empty local metadata dir
-    data_dir, cache_dir = tuf_dirs
+    data_dir, _cache_dir = tuf_dirs
 
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf
@@ -262,6 +266,35 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     # Still no requests
     assert reqs == {}
     assert fail_reqs == {}
+
+
+@pytest.mark.parametrize(
+    "method, target",
+    [
+        ("get_trusted_root_path", "trusted_root.json"),
+        ("get_signing_config_path", "signing_config.v0.2.json"),
+    ],
+)
+def test_trust_updater_caches_paths_without_retaining_instance(
+    monkeypatch, tuf_dirs, method, target
+):
+    _, cache_dir = tuf_dirs
+    path = str(cache_dir / target)
+    remote = Mock()
+    remote.find_cached_target.return_value = None
+    remote.download_target.return_value = path
+    monkeypatch.setattr("sigstore._internal.tuf.Updater", lambda **kwargs: remote)
+
+    updater = TrustUpdater(STAGING_TUF_URL)
+    assert getattr(updater, method)() == path
+    assert getattr(updater, method)() == path
+    remote.get_targetinfo.assert_called_once_with(target)
+    remote.download_target.assert_called_once_with(remote.get_targetinfo.return_value)
+
+    reference = weakref.ref(updater)
+    del updater
+    gc.collect()
+    assert reference() is None
 
 
 def test_is_timerange_valid():

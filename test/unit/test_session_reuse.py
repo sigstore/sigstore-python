@@ -14,10 +14,13 @@
 
 import unittest.mock
 
-from sigstore._internal.rekor import EntryRequestBody
+import pytest
+import requests
+
+from sigstore._internal.rekor import EntryRequestBody, RekorClientError
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._internal.rekor.client_v2 import RekorV2Client
-from sigstore._internal.timestamp import TimestampAuthorityClient
+from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 
 
 def test_rekor_v1_session_reuse_public_api():
@@ -29,8 +32,8 @@ def test_rekor_v1_session_reuse_public_api():
         mock_session_cls.return_value = mock_session_inst
 
         # Access log endpoint multiple times
-        client.log
-        client.log
+        _ = client.log
+        _ = client.log
 
         # Expect 1 session
         assert mock_session_cls.call_count == 1
@@ -43,20 +46,17 @@ def test_rekor_v2_session_reuse_public_api():
     with unittest.mock.patch("requests.Session") as mock_session_cls:
         mock_session_inst = unittest.mock.MagicMock()
         mock_session_cls.return_value = mock_session_inst
+        mock_session_inst.post.return_value.raise_for_status.side_effect = (
+            requests.HTTPError("request failed")
+        )
 
-        # Call create_entry multiple times (hide exception: the client does not need to work)
-        try:
-            client.create_entry(EntryRequestBody({}))
-        except Exception:
-            pass
-
-        try:
-            client.create_entry(EntryRequestBody({}))
-        except Exception:
-            pass
+        for _ in range(2):
+            with pytest.raises(RekorClientError, match="request failed"):
+                client.create_entry(EntryRequestBody({}))
 
         # Expect 1 session
         assert mock_session_cls.call_count == 1
+        assert mock_session_inst.post.call_count == 2
 
 
 def test_timestamp_client_session_reuse_public_api():
@@ -66,17 +66,14 @@ def test_timestamp_client_session_reuse_public_api():
     with unittest.mock.patch("requests.Session") as mock_session_cls:
         mock_session_inst = unittest.mock.MagicMock()
         mock_session_cls.return_value = mock_session_inst
+        mock_session_inst.post.return_value.raise_for_status.side_effect = (
+            requests.HTTPError("request failed")
+        )
 
-        # Call request_timestamp multiple times (hide exception: the client does not need to work)
-        try:
-            client.request_timestamp(b"sig")
-        except Exception:
-            pass
-
-        try:
-            client.request_timestamp(b"sig")
-        except Exception:
-            pass
+        for _ in range(2):
+            with pytest.raises(TimestampError, match="request failed"):
+                client.request_timestamp(b"sig")
 
         # Expect 1 session
         assert mock_session_cls.call_count == 1
+        assert mock_session_inst.post.call_count == 2

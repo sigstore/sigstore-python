@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from typing import IO, NewType, Union
 from urllib import parse
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
 from cryptography.x509 import (
@@ -309,7 +310,7 @@ def cert_is_root_ca(cert: Certificate) -> bool:
     try:
         cert.verify_directly_issued_by(cert)
         return True
-    except Exception:
+    except (ValueError, TypeError, InvalidSignature):
         return False
 
 
