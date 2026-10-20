@@ -8,12 +8,26 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [4.5.1]
+
+### Changed
+
+* Removed the `pyasn1` dependency and raised the minimum `cryptography` version
+  from 42 to 47.
+  ([#1866](https://github.com/sigstore/sigstore-python/pull/1866))
+* Certificate chain verification now uses `cryptography`, removing the
+  `pyOpenSSL` dependency.
+  ([#1867](https://github.com/sigstore/sigstore-python/pull/1867))
+* Switched the build backend from `flit_core` to `uv_build`.
+  ([#1892](https://github.com/sigstore/sigstore-python/pull/1892))
+
 ### Fixed
 
 * Parsing a malformed in-toto statement now includes the underlying validation
   error, instead of discarding it. `StatementBuilder.build()` already did this;
   `Statement(contents=...)` did not, so a rejected digest algorithm, a missing
   field and a bad `_type` were indistinguishable.
+  ([#1846](https://github.com/sigstore/sigstore-python/pull/1846))
 * `Verifier` now raises `VerificationError` when the trusted root contains no
   transparency log instances, instead of leaking a raw `IndexError`
   ([#1880](https://github.com/sigstore/sigstore-python/pull/1880))
@@ -205,7 +219,7 @@ is Rekor v2 support but many other changes are also included, see list below.
 
 * Fixed verified time handling so that additional timestamps cannot break
   otherwise valid signature bundles ([#1492](https://github.com/sigstore/sigstore-python/pull/1492))
- 
+
 ### Changed
 
 * Added cryptography 45 to list of compatible cryptography releases
@@ -827,7 +841,8 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.5.0...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.5.1...HEAD
+[4.5.1]: https://github.com/sigstore/sigstore-python/compare/v4.5.0...v4.5.1
 [4.5.0]: https://github.com/sigstore/sigstore-python/compare/v4.4.0...v4.5.0
 [4.4.0]: https://github.com/sigstore/sigstore-python/compare/v4.3.0...v4.4.0
 [4.3.0]: https://github.com/sigstore/sigstore-python/compare/v4.2.0...v4.3.0

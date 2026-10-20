@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "sigstore"
-version = "4.5.0"
+version = "4.5.1"
 description = "A tool for signing Python package distributions"
 readme = "README.md"
 license = "Apache-2.0"
@@ -139,6 +139,7 @@ ignore = [
 [tool.uv]
 exclude-newer = "P7D"
 exclude-newer-package = { certifi = false }
+constraint-dependencies = ["certifi >= 2026.10.19"]
 
 [tool.uv.build-backend]
 module-root = ""
