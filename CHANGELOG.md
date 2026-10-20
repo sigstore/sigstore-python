@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [4.5.1]
+
 ### Fixed
 
 * Parsing a malformed in-toto statement now includes the underlying validation
@@ -205,7 +207,7 @@ is Rekor v2 support but many other changes are also included, see list below.
 
 * Fixed verified time handling so that additional timestamps cannot break
   otherwise valid signature bundles ([#1492](https://github.com/sigstore/sigstore-python/pull/1492))
- 
+
 ### Changed
 
 * Added cryptography 45 to list of compatible cryptography releases
@@ -828,6 +830,7 @@ This is a corrective release for [2.1.1].
 
 <!--Release URLs -->
 [Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.5.0...HEAD
+[4.5.0]: https://github.com/sigstore/sigstore-python/compare/v4.5.0...v4.5.1
 [4.5.0]: https://github.com/sigstore/sigstore-python/compare/v4.4.0...v4.5.0
 [4.4.0]: https://github.com/sigstore/sigstore-python/compare/v4.3.0...v4.4.0
 [4.3.0]: https://github.com/sigstore/sigstore-python/compare/v4.2.0...v4.3.0
