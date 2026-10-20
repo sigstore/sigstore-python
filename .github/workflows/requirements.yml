@@ -45,4 +45,4 @@ jobs:
       - name: Run test install
         run: |
           uv venv
-          uv pip install --require-hashes --no-deps -r install/requirements.txt
+          uv pip install --no-config --require-hashes --no-deps -r install/requirements.txt
