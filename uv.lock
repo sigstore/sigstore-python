@@ -13,6 +13,9 @@ exclude-newer-span = "P7D"
 [options.exclude-newer-package]
 certifi = false
 
+[manifest]
+constraints = [{ name = "certifi", specifier = ">=2026.10.19" }]
+
 [[package]]
 name = "annotated-types"
 version = "0.7.0"

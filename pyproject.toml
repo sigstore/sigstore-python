@@ -139,6 +139,7 @@ ignore = [
 [tool.uv]
 exclude-newer = "P7D"
 exclude-newer-package = { certifi = false }
+constraint-dependencies = ["certifi >= 2026.10.19"]
 
 [tool.uv.build-backend]
 module-root = ""
