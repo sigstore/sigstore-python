@@ -138,6 +138,7 @@ ignore = [
 
 [tool.uv]
 exclude-newer = "P7D"
+exclude-newer-package = { certifi = false }
 
 [tool.uv.build-backend]
 module-root = ""
