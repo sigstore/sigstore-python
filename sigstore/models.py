@@ -22,7 +22,7 @@ import base64
 import logging
 from collections import defaultdict
 from collections.abc import Iterable
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from textwrap import dedent
 from typing import Any
@@ -349,7 +349,7 @@ class Bundle:
     Represents a Sigstore bundle.
     """
 
-    class BundleType(str, Enum):
+    class BundleType(StrEnum):
         """
         Known Sigstore bundle media types.
         """
@@ -637,7 +637,7 @@ class SigningConfig:
     Signing configuration for a Sigstore instance.
     """
 
-    class SigningConfigType(str, Enum):
+    class SigningConfigType(StrEnum):
         """
         Known Sigstore signing config media types.
         """
@@ -795,7 +795,7 @@ class TrustedRoot:
     The cryptographic root(s) of trust for a Sigstore instance.
     """
 
-    class TrustedRootType(str, Enum):
+    class TrustedRootType(StrEnum):
         """
         Known Sigstore trusted root media types.
         """
@@ -905,7 +905,7 @@ class ClientTrustConfig:
     Represents a Sigstore client's trust configuration, including a root of trust.
     """
 
-    class ClientTrustConfigType(str, Enum):
+    class ClientTrustConfigType(StrEnum):
         """
         Known Sigstore client trust config media types.
         """

@@ -39,10 +39,7 @@ from sigstore_models.common.v1 import HashAlgorithm, TimeRange
 from sigstore import hashes as sigstore_hashes
 from sigstore.errors import VerificationError
 
-if sys.version_info < (3, 11):
-    import importlib_resources as resources
-else:
-    from importlib import resources
+from importlib import resources
 
 
 PublicKey = rsa.RSAPublicKey | ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey

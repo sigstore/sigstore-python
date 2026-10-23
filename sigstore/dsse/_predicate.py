@@ -33,7 +33,7 @@ from typing import Self
 from sigstore.dsse import Digest
 
 
-class PredicateType(str, enum.Enum):
+class PredicateType(enum.StrEnum):
     """
     Currently supported predicate types
     """
