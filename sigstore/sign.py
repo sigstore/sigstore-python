@@ -49,7 +49,7 @@ import base64
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes

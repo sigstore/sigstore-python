@@ -23,7 +23,7 @@ import sys
 import time
 import urllib.parse
 import webbrowser
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from typing import NoReturn
 
 import id

@@ -16,7 +16,7 @@
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
 import pretend
 import pytest

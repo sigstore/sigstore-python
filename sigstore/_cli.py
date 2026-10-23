@@ -23,7 +23,7 @@ import sys
 from concurrent import futures
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn, TypeAlias, Union
+from typing import Any, NoReturn, TypeAlias
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate

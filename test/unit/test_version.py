@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+import tomllib
 from pathlib import Path
-
-import tomllib  # type: ignore[no-redef]
 
 import sigstore
 

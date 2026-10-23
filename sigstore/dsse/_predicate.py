@@ -17,7 +17,7 @@ Models for the predicates used in in-toto statements
 """
 
 import enum
-from typing import Any, Literal, Union
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -28,7 +28,6 @@ from pydantic import (
     model_validator,
 )
 from pydantic.alias_generators import to_camel
-from typing import Self
 
 from sigstore.dsse import Digest
 

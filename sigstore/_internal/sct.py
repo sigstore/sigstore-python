@@ -18,7 +18,7 @@ Utilities for verifying signed certificate timestamps.
 
 import logging
 import struct
-from datetime import timezone, UTC
+from datetime import UTC
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa

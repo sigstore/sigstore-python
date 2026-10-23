@@ -20,9 +20,9 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import sys
-from datetime import datetime, timezone, UTC
-from typing import IO, NewType, Union
+from datetime import UTC, datetime
+from importlib import resources
+from typing import IO, NewType
 from urllib import parse
 
 from cryptography.hazmat.primitives import serialization
@@ -38,9 +38,6 @@ from sigstore_models.common.v1 import HashAlgorithm, TimeRange
 
 from sigstore import hashes as sigstore_hashes
 from sigstore.errors import VerificationError
-
-from importlib import resources
-
 
 PublicKey = rsa.RSAPublicKey | ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey
 

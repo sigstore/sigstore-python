@@ -22,7 +22,7 @@ import base64
 import logging
 from collections import defaultdict
 from collections.abc import Iterable
-from enum import Enum, StrEnum
+from enum import StrEnum
 from pathlib import Path
 from textwrap import dedent
 from typing import Any

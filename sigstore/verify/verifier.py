@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import base64
 import logging
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from typing import cast
 
 import rekor_types
