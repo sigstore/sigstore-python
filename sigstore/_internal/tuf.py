@@ -128,7 +128,7 @@ class TrustUpdater:
             except Exception as e:
                 raise TUFError("Failed to refresh TUF metadata") from e
 
-    @lru_cache()
+    @lru_cache
     def get_trusted_root_path(self) -> str:
         """Return local path to currently valid trusted root file"""
         if not self._updater:
@@ -151,7 +151,7 @@ class TrustUpdater:
         _logger.debug("Found and verified trusted root")
         return path
 
-    @lru_cache()
+    @lru_cache
     def get_signing_config_path(self) -> str:
         """Return local path to currently valid signing config file"""
         if not self._updater:

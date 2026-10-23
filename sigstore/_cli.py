@@ -89,9 +89,9 @@ class VerificationBundledMaterials:
     bundle: Path
 
 
-VerificationMaterials: TypeAlias = Union[
-    VerificationUnbundledMaterials, VerificationBundledMaterials
-]
+VerificationMaterials: TypeAlias = (
+    VerificationUnbundledMaterials | VerificationBundledMaterials
+)
 
 # Map of inputs -> outputs for signing operations
 OutputMap: TypeAlias = dict[Path, SigningOutputs]
@@ -815,7 +815,7 @@ def _attest(args: argparse.Namespace) -> None:
         _invalid_arguments(args, f"Predicate must be a file: {predicate_path}")
 
     try:
-        with open(predicate_path, "r", encoding="utf-8") as f:
+        with open(predicate_path, encoding="utf-8") as f:
             predicate = json.load(f)
             # We do a basic sanity check using our Pydantic models to see if the
             # contents of the predicate file match the specified predicate type.

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import base64
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import cast
 
 import rekor_types
@@ -247,7 +247,7 @@ class Verifier:
             verified_timestamps.append(
                 TimestampVerificationResult(
                     source=TimestampSource.TRANSPARENCY_SERVICE,
-                    time=datetime.fromtimestamp(timestamp, tz=timezone.utc),
+                    time=datetime.fromtimestamp(timestamp, tz=UTC),
                 )
             )
         return verified_timestamps

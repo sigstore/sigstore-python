@@ -18,7 +18,7 @@ Utilities for verifying signed certificate timestamps.
 
 import logging
 import struct
-from datetime import timezone
+from datetime import timezone, UTC
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -110,7 +110,7 @@ def _pack_digitally_signed(
     # signed data
     # fmt: off
     pattern = f"!BBQH{len(signed_entry)}sH{len(sct.extension_bytes)}s"
-    timestamp = sct.timestamp.replace(tzinfo=timezone.utc)
+    timestamp = sct.timestamp.replace(tzinfo=UTC)
     data = struct.pack(
         pattern,
         sct.version.value,                  # sct_version

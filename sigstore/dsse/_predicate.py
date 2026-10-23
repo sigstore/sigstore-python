@@ -28,7 +28,7 @@ from pydantic import (
     model_validator,
 )
 from pydantic.alias_generators import to_camel
-from typing_extensions import Self
+from typing import Self
 
 from sigstore.dsse import Digest
 
@@ -44,7 +44,7 @@ class PredicateType(str, enum.Enum):
 
 # Common models
 SourceDigest = Literal["sha1", "gitCommit"]
-DigestSetSource = RootModel[dict[Union[Digest, SourceDigest], str]]
+DigestSetSource = RootModel[dict[Digest | SourceDigest, str]]
 """
 Same as `dsse.DigestSet` but with `sha1` added.
 

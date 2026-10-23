@@ -21,7 +21,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import IO, NewType, Union
 from urllib import parse
 
@@ -45,13 +45,13 @@ else:
     from importlib import resources
 
 
-PublicKey = Union[rsa.RSAPublicKey, ec.EllipticCurvePublicKey, ed25519.Ed25519PublicKey]
+PublicKey = rsa.RSAPublicKey | ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey
 
-PublicKeyTypes = Union[
-    type[rsa.RSAPublicKey],
-    type[ec.EllipticCurvePublicKey],
-    type[ed25519.Ed25519PublicKey],
-]
+PublicKeyTypes = (
+    type[rsa.RSAPublicKey]
+    | type[ec.EllipticCurvePublicKey]
+    | type[ed25519.Ed25519PublicKey]
+)
 
 HexStr = NewType("HexStr", str)
 """
@@ -363,7 +363,7 @@ def is_timerange_valid(period: TimeRange | None, *, allow_expired: bool) -> bool
     `allow_expired` is `False`, also checks that the current time is not after
     `end`.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # If there was no validity period specified, the key is always valid.
     if not period:
