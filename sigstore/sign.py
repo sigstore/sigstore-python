@@ -49,7 +49,7 @@ import base64
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import cryptography.x509 as x509
 from cryptography.hazmat.primitives import hashes
@@ -154,7 +154,7 @@ class Signer:
         # If a cached certificate exists, use it until it expires.
         if self.__cached_signing_certificate:
             not_valid_after = self.__cached_signing_certificate.not_valid_after_utc
-            if datetime.now(timezone.utc) > not_valid_after:
+            if datetime.now(UTC) > not_valid_after:
                 raise ExpiredCertificate
             return self.__cached_signing_certificate
 

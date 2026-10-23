@@ -14,7 +14,7 @@
 
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sigstore_models.common.v1 import TimeRange
@@ -50,7 +50,7 @@ _service_v1_op4 = Service(
     url="url6",
     major_api_version=1,
     operator="op4",
-    valid_for=TimeRange(start=datetime(3000, 1, 1, tzinfo=timezone.utc)),
+    valid_for=TimeRange(start=datetime(3000, 1, 1, tzinfo=UTC)),
 )
 
 
@@ -266,7 +266,7 @@ def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
 
 def test_is_timerange_valid():
     def range_from(offset_lower=0, offset_upper=0):
-        base = datetime.now(timezone.utc)
+        base = datetime.now(UTC)
         return TimeRange(
             start=base + timedelta(minutes=offset_lower),
             end=base + timedelta(minutes=offset_upper),

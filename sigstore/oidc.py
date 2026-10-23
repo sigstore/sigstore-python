@@ -23,7 +23,7 @@ import sys
 import time
 import urllib.parse
 import webbrowser
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import NoReturn
 
 import id
@@ -166,7 +166,7 @@ class IdentityToken:
         are within their validity period.
         """
 
-        now = datetime.now(timezone.utc).timestamp()
+        now = datetime.now(UTC).timestamp()
 
         if self._nbf is not None:
             return self._nbf <= now < self._exp

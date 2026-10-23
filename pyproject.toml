@@ -16,11 +16,11 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "Topic :: Security",
@@ -29,7 +29,6 @@ classifiers = [
 dependencies = [
   "cryptography >= 47",
   "id >= 1.1.0",
-  "importlib_resources ~= 5.7; python_version < '3.11'",
   "pydantic >= 2,< 3",
   "pyjwt >= 2.1",
   "requests",
@@ -43,7 +42,7 @@ dependencies = [
   "tuf >= 6, < 8",
   "platformdirs ~= 4.2",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [project.scripts]
 sigstore = "sigstore._cli:main"

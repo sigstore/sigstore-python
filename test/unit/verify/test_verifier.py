@@ -16,7 +16,7 @@
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pretend
 import pytest
@@ -147,7 +147,7 @@ def test_verifier_certificate_chain_rejects_invalid_time(signing_bundle):
     _, bundle = signing_bundle("bundle.txt")
     verifier = Verifier.staging(offline=True)
     timestamp = verifier._establish_time(bundle)[0]
-    timestamp.time = datetime(2000, 1, 1, tzinfo=timezone.utc)
+    timestamp.time = datetime(2000, 1, 1, tzinfo=UTC)
 
     with pytest.raises(
         CertValidationError, match="failed to build timestamp certificate chain"
@@ -357,7 +357,7 @@ class TestVerifierWithTimestamp:
         # Set a date before the timestamp range
         verifier._trusted_root.get_timestamp_authorities()[
             0
-        ]._inner.valid_for.end = datetime(2024, 10, 31, tzinfo=timezone.utc)
+        ]._inner.valid_for.end = datetime(2024, 10, 31, tzinfo=UTC)
 
         with caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"):
             with pytest.raises(

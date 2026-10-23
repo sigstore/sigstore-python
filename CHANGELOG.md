@@ -8,6 +8,9 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+* Added support for Python 3.15 and dropped EOL Python 3.10.
+  ([#1957](https://github.com/sigstore/sigstore-python/pull/1957))
+
 ## [4.5.1]
 
 ### Changed
