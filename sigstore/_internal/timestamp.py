@@ -23,6 +23,7 @@ from datetime import datetime
 
 import requests
 from rfc3161_client import (
+    PKIStatus,
     TimestampRequestBuilder,
     TimeStampResponse,
     decode_timestamp_response,
@@ -126,8 +127,30 @@ class TimestampAuthorityClient:
         # Check that we can parse the response but do not *verify* it
         try:
             timestamp_response = decode_timestamp_response(response.content)
+            status = PKIStatus(timestamp_response.status)
         except ValueError as e:
             msg = f"invalid response: {e}"
             raise TimestampError(msg)
+
+        if status != PKIStatus.GRANTED:
+            msg = f"invalid response: PKIStatus is {status.name}"
+            raise TimestampError(msg)
+
+        try:
+            tst_info = timestamp_response.tst_info
+        except ValueError as e:
+            msg = f"invalid response: {e}"
+            raise TimestampError(msg)
+
+        if tst_info.nonce != timestamp_request.nonce:
+            raise TimestampError("invalid response: nonce mismatch")
+
+        if (
+            tst_info.message_imprint.hash_algorithm
+            != timestamp_request.message_imprint.hash_algorithm
+            or tst_info.message_imprint.message
+            != timestamp_request.message_imprint.message
+        ):
+            raise TimestampError("invalid response: message imprint mismatch")
 
         return timestamp_response
