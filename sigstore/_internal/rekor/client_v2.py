@@ -43,6 +43,9 @@ from sigstore.models import TransparencyLogEntry
 
 _logger = logging.getLogger(__name__)
 
+# Rekor v2 recommends waiting at least 20 seconds for checkpoint inclusion.
+_REQUEST_TIMEOUT = 60
+
 
 class RekorV2Client(RekorLogSubmitter):
     """
@@ -83,6 +86,9 @@ class RekorV2Client(RekorLogSubmitter):
         only responds after the entry has been included in the log.
         https://github.com/sigstore/rekor-tiles/blob/main/CLIENTS.md#handling-longer-requests
 
+        Connection and read inactivity are limited to 60 seconds each;
+        this is not a deadline for the entire request.
+
         create_entry() can be called from multiple threads.
         """
         _logger.debug(f"proposed: {json.dumps(payload)}")
@@ -90,6 +96,7 @@ class RekorV2Client(RekorLogSubmitter):
         resp = self._session.post(
             f"{self.url}/log/entries",
             json=payload,
+            timeout=_REQUEST_TIMEOUT,
         )
 
         try:
