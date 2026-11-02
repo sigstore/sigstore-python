@@ -16,18 +16,38 @@
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pretend
 import pytest
 import rfc3161_client
+from sigstore_models.trustroot import v1 as trustroot_v1
 
 from sigstore._internal.trust import CertificateAuthority
 from sigstore.dsse import StatementBuilder, Subject
 from sigstore.errors import CertValidationError, VerificationError
-from sigstore.models import Bundle
+from sigstore.models import Bundle, TrustedRoot
 from sigstore.verify import policy
 from sigstore.verify.verifier import Verifier
+
+
+def test_verifier_rejects_trusted_root_without_tlogs(asset):
+    """
+    A trusted root carrying no transparency log instances should surface a
+    VerificationError, not an IndexError from indexing an empty list.
+    """
+    raw = json.loads(asset("trusted_root/trustedroot.v1.json").read_bytes())
+    raw["tlogs"] = []
+    trusted_root = TrustedRoot(
+        trustroot_v1.TrustedRoot.from_json(json.dumps(raw).encode())
+    )
+
+    # the certificate authorities are left intact, so this reaches the tlog
+    # lookup rather than failing earlier in get_fulcio_certs()
+    assert trusted_root.get_fulcio_certs()
+
+    with pytest.raises(VerificationError, match="no transparency log"):
+        Verifier(trusted_root=trusted_root)
 
 
 @pytest.mark.production
@@ -127,7 +147,7 @@ def test_verifier_certificate_chain_rejects_invalid_time(signing_bundle):
     _, bundle = signing_bundle("bundle.txt")
     verifier = Verifier.staging(offline=True)
     timestamp = verifier._establish_time(bundle)[0]
-    timestamp.time = datetime(2000, 1, 1, tzinfo=timezone.utc)
+    timestamp.time = datetime(2000, 1, 1, tzinfo=UTC)
 
     with pytest.raises(
         CertValidationError, match="failed to build timestamp certificate chain"
@@ -337,7 +357,7 @@ class TestVerifierWithTimestamp:
         # Set a date before the timestamp range
         verifier._trusted_root.get_timestamp_authorities()[
             0
-        ]._inner.valid_for.end = datetime(2024, 10, 31, tzinfo=timezone.utc)
+        ]._inner.valid_for.end = datetime(2024, 10, 31, tzinfo=UTC)
 
         with (
             caplog.at_level(logging.DEBUG, logger="sigstore.verify.verifier"),

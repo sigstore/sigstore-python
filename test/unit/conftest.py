@@ -166,7 +166,7 @@ def mock_staging_tuf(monkeypatch, tuf_dirs):
     class mydatetime(datetime.datetime):
         @classmethod
         def now(cls, tz=None):
-            return datetime.datetime(2025, 5, 6, 0, 0, 0, 0, datetime.timezone.utc)
+            return datetime.datetime(2025, 5, 6, 0, 0, 0, 0, datetime.UTC)
 
     monkeypatch.setattr(datetime, "datetime", mydatetime)
 

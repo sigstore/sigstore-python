@@ -95,8 +95,8 @@ class Statement:
             self._contents = contents
             try:
                 self._inner = _Statement.model_validate_json(contents)
-            except ValidationError:
-                raise Error("malformed in-toto statement")
+            except ValidationError as e:
+                raise Error(f"malformed in-toto statement: {e}") from e
         else:
             self._contents = contents.model_dump_json(by_alias=True).encode()
             self._inner = contents

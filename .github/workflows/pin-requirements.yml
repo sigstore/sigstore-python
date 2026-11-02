@@ -70,7 +70,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
 
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
           working-directory: install
 
@@ -84,21 +84,22 @@ jobs:
 
           echo "sigstore==${SIGSTORE_RELEASE_VERSION}" > requirements.in
 
+          # Resolve conditional dependencies for Python 3.11 and later.
           # PyPI index propagation can take a couple of minutes after a new release.
-          # Retry pip-compile up to 10 times with a 30-second delay between attempts.
+          # Retry uv pip compile up to 10 times with a 30-second delay between attempts.
           n=0
           until [ "$n" -ge 10 ]; do
-            uv run --only-dev pip-compile \
-                --allow-unsafe --generate-hashes --upgrade \
+            uv pip compile --no-config --universal --python-version 3.11 \
+                --generate-hashes --upgrade \
                 --output-file=requirements.txt \
                 requirements.in && break
             n=$((n+1))
-            echo "pip-compile failed; sigstore==${SIGSTORE_RELEASE_VERSION} may not be indexed on PyPI yet. Retrying in 30s ($n/10)..."
+            echo "uv pip compile failed; sigstore==${SIGSTORE_RELEASE_VERSION} may not be indexed on PyPI yet. Retrying in 30s ($n/10)..."
             sleep 30
           done
 
           if [ "$n" -ge 10 ]; then
-            echo "pip-compile failed after 10 attempts."
+            echo "uv pip compile failed after 10 attempts."
             exit 1
           fi
 
@@ -124,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write # Pull Request branch modification.
+      contents: read
       pull-requests: write # Pull Request creation.
 
     env:
@@ -137,13 +138,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.SIGSTORE_PIN_REQUIREMENTS_BRANCH }}
-          # NOTE: Needed to push back to the repo.
-          persist-credentials: true
-
-      - name: Reset remote PR branch
-        run: |
-          git fetch origin main
-          git push -f origin "origin/main:${SIGSTORE_PIN_REQUIREMENTS_BRANCH}"
+          persist-credentials: false
 
       - name: Open pull request
         env:

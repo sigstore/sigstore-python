@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tomllib
+from pathlib import Path
+
 import sigstore
 
 
 def test_version():
     assert isinstance(sigstore.__version__, str)
+
+    pyproject_path = Path(__file__).parents[2] / "pyproject.toml"
+    with open(pyproject_path, "rb") as f:
+        pyproject = tomllib.load(f)
+    assert sigstore.__version__ == pyproject["project"]["version"]

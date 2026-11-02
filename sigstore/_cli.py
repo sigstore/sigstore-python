@@ -23,7 +23,7 @@ import sys
 from concurrent import futures
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn, TypeAlias, Union
+from typing import Any, NoReturn, TypeAlias
 
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import load_pem_x509_certificate
@@ -89,9 +89,9 @@ class VerificationBundledMaterials:
     bundle: Path
 
 
-VerificationMaterials: TypeAlias = Union[
-    VerificationUnbundledMaterials, VerificationBundledMaterials
-]
+VerificationMaterials: TypeAlias = (
+    VerificationUnbundledMaterials | VerificationBundledMaterials
+)
 
 # Map of inputs -> outputs for signing operations
 OutputMap: TypeAlias = dict[Path, SigningOutputs]
@@ -815,7 +815,7 @@ def _attest(args: argparse.Namespace) -> None:
         _invalid_arguments(args, f"Predicate must be a file: {predicate_path}")
 
     try:
-        with open(predicate_path, "r", encoding="utf-8") as f:
+        with open(predicate_path, encoding="utf-8") as f:
             predicate = json.load(f)
             # We do a basic sanity check using our Pydantic models to see if the
             # contents of the predicate file match the specified predicate type.

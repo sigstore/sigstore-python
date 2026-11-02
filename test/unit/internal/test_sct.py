@@ -36,9 +36,7 @@ def test_pack_digitally_signed_precertificate(precert_bytes_len):
 
     mock_sct = pretend.stub(
         version=pretend.stub(value=0),
-        timestamp=datetime.datetime.fromtimestamp(
-            1234 / 1000.0, tz=datetime.timezone.utc
-        ),
+        timestamp=datetime.datetime.fromtimestamp(1234 / 1000.0, tz=datetime.UTC),
         entry_type=LogEntryType.PRE_CERTIFICATE,
         extension_bytes=b"",
     )

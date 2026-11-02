@@ -23,23 +23,23 @@ jobs:
     strategy:
       matrix:
         conf:
-          - { py: "3.10", os: "ubuntu-latest" }
           - { py: "3.11", os: "ubuntu-latest" }
           - { py: "3.12", os: "ubuntu-latest" }
           - { py: "3.13", os: "ubuntu-latest" }
           - { py: "3.14", os: "ubuntu-latest" }
+          - { py: "3.15", os: "ubuntu-latest" }
           # NOTE: We only test Windows and macOS on the latest Python;
           # these primarily exist to ensure that we don't accidentally
           # introduce Linux-isms into the development tooling.
-          - { py: "3.14", os: "windows-latest" }
-          - { py: "3.14", os: "macos-latest" }
+          - { py: "3.15", os: "windows-latest" }
+          - { py: "3.15", os: "macos-latest" }
     runs-on: ${{ matrix.conf.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
         with:
           python-version: ${{ matrix.conf.py }}
 
@@ -109,7 +109,7 @@ jobs:
 
     steps:
       - name: check test jobs
-        uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
           jobs: ${{ toJSON(needs) }}
 
@@ -124,12 +124,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
 
       - run: uv tool install coverage[toml]
 
       - name: download coverage data
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: all-artifacts/
 
