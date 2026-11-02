@@ -244,7 +244,7 @@ class TestTrustedRoot:
 
 def test_trust_root_tuf_offline(mock_staging_tuf, tuf_dirs):
     # start with empty target cache, empty local metadata dir
-    data_dir, cache_dir = tuf_dirs
+    data_dir, _cache_dir = tuf_dirs
 
     # keep track of requests the TrustUpdater invoked by TrustedRoot makes
     reqs, fail_reqs = mock_staging_tuf

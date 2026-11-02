@@ -718,13 +718,13 @@ def _sign_file_threaded(
                 predicate=predicate,
             )
             result = signer.sign_dsse(statement_builder.build())
-    except ExpiredIdentity as exp_identity:
+    except ExpiredIdentity:
         _logger.error("Signature failed: identity token has expired")
-        raise exp_identity
+        raise
 
-    except ExpiredCertificate as exp_certificate:
+    except ExpiredCertificate:
         _logger.error("Signature failed: Fulcio signing certificate has expired")
-        raise exp_certificate
+        raise
 
     _logger.info(
         f"Transparency log entry created at index: {result.log_entry._inner.log_index}"
@@ -800,7 +800,7 @@ def _sign_common(
             for job in futures.as_completed(jobs):
                 job.result()
 
-        for file, outputs in output_map.items():
+        for outputs in output_map.values():
             if outputs.signature is not None:
                 print(f"Signature written to {outputs.signature}")
             if outputs.certificate is not None:
@@ -973,12 +973,15 @@ def _collect_verification_state(
         )
 
     # Fail if digest input is not used with `--bundle` or both `--certificate` and `--signature`.
-    if any(isinstance(x, Hashed) for x in args.files_or_digest):
-        if not args.bundle and not (args.certificate and args.signature):
-            _invalid_arguments(
-                args,
-                "verifying a digest input (sha256:*) needs either --bundle or both --certificate and --signature",
-            )
+    if (
+        any(isinstance(x, Hashed) for x in args.files_or_digest)
+        and not args.bundle
+        and not (args.certificate and args.signature)
+    ):
+        _invalid_arguments(
+            args,
+            "verifying a digest input (sha256:*) needs either --bundle or both --certificate and --signature",
+        )
 
     # Fail if `--certificate` or `--signature` is used with `--offline`.
     if args.offline and (args.certificate or args.signature):
