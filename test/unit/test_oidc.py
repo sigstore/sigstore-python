@@ -21,7 +21,7 @@ from sigstore import oidc
 
 @pytest.fixture
 def now() -> int:
-    return int(datetime.datetime.now(tz=datetime.timezone.utc).timestamp())
+    return int(datetime.datetime.now(tz=datetime.UTC).timestamp())
 
 
 class TestIdentityToken:
