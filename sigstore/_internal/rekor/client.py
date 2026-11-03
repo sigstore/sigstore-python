@@ -309,11 +309,7 @@ class RekorClient(RekorLogSubmitter):
         """
         dsse = rekor_types.Dsse(
             spec=rekor_types.dsse.DsseSchema(
-                # NOTE: mypy can't see that this kwarg is correct due to two interacting
-                # behaviors/bugs (one pydantic, one datamodel-codegen):
-                # See: <https://github.com/pydantic/pydantic/discussions/7418#discussioncomment-9024927>
-                # See: <https://github.com/koxudaxi/datamodel-code-generator/issues/1903>
-                proposed_content=rekor_types.dsse.ProposedContent(  # type: ignore[call-arg]
+                proposed_content=rekor_types.dsse.ProposedContent(
                     envelope=envelope.to_json(),
                     verifiers=[
                         base64.b64encode(
