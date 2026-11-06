@@ -21,28 +21,28 @@ from sigstore._internal.timestamp import TimestampAuthorityClient
 
 
 def test_rekor_v1_session_reuse_public_api():
-    """Verify that RekorClient v1 reuses its session per thread using public API."""
-    client = RekorClient("http://fake")
+    """Verify that RekorClient v1 reuses its PoolManager using public API."""
+    with unittest.mock.patch("urllib3.PoolManager") as mock_pool_cls:
+        mock_pool_inst = unittest.mock.MagicMock()
+        mock_pool_cls.return_value = mock_pool_inst
 
-    with unittest.mock.patch("requests.Session") as mock_session_cls:
-        mock_session_inst = unittest.mock.MagicMock()
-        mock_session_cls.return_value = mock_session_inst
+        client = RekorClient("http://fake")
 
         # Access log endpoint multiple times
         _ = client.log
         _ = client.log
 
-        # Expect 1 session
-        assert mock_session_cls.call_count == 1
+        # Expect 1 PoolManager
+        assert mock_pool_cls.call_count == 1
 
 
 def test_rekor_v2_session_reuse_public_api():
-    """Verify that RekorV2Client reuses its session per thread using public API."""
-    client = RekorV2Client("http://fake")
+    """Verify that RekorV2Client reuses its PoolManager using public API."""
+    with unittest.mock.patch("urllib3.PoolManager") as mock_pool_cls:
+        mock_pool_inst = unittest.mock.MagicMock()
+        mock_pool_cls.return_value = mock_pool_inst
 
-    with unittest.mock.patch("requests.Session") as mock_session_cls:
-        mock_session_inst = unittest.mock.MagicMock()
-        mock_session_cls.return_value = mock_session_inst
+        client = RekorV2Client("http://fake")
 
         # Call create_entry multiple times (hide exception: the client does not need to work)
         try:
@@ -55,8 +55,8 @@ def test_rekor_v2_session_reuse_public_api():
         except Exception:
             pass
 
-        # Expect 1 session
-        assert mock_session_cls.call_count == 1
+        # Expect 1 PoolManager
+        assert mock_pool_cls.call_count == 1
 
 
 def test_timestamp_client_session_reuse_public_api():
