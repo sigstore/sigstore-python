@@ -627,7 +627,14 @@ def main(args: list[str] | None = None) -> None:
     if not args:
         args = sys.argv[1:]
 
-    parser = _parser()
+    try:
+        parser = _parser()
+    except ValueError as e:
+        # An invalid boolean-style environment variable (e.g.
+        # `SIGSTORE_OFFLINE=maybe`) is a usage error, not a crash:
+        # report it cleanly instead of propagating a traceback.
+        print(f"sigstore: error: {e}", file=sys.stderr)
+        sys.exit(2)
     args = parser.parse_args(args)
 
     # Configure logging upfront, so that we don't miss anything.
