@@ -44,7 +44,7 @@ def test_identity_token_passes_redirect_port():
     """
     with (
         patch("sigstore._internal.oidc.oauth._OAuthFlow") as MockOAuthFlow,
-        patch("sigstore.oidc.requests.Session") as MockSession,
+        patch("sigstore.oidc.urllib3.PoolManager") as MockPoolManager,
         patch("sigstore.oidc.webbrowser.open"),
         patch("sigstore.oidc.IdentityToken"),
     ):
@@ -56,18 +56,17 @@ def test_identity_token_passes_redirect_port():
         mock_server.oauth_session.state = "s"
         mock_server.auth_response = {"code": ["c"], "state": ["s"]}
 
-        mock_config_response = MagicMock()
+        mock_config_response = MagicMock(status=200)
         mock_config_response.json.return_value = {
             "authorization_endpoint": "https://auth.example.com",
             "token_endpoint": "https://token.example.com",
         }
-        mock_config_response.raise_for_status.return_value = None
-        MockSession.return_value.get.side_effect = [mock_config_response]
-
-        mock_token_response = MagicMock()
+        mock_token_response = MagicMock(status=200)
         mock_token_response.json.return_value = {"access_token": "t"}
-        mock_token_response.raise_for_status.return_value = None
-        MockSession.return_value.post.return_value = mock_token_response
+        MockPoolManager.return_value.request.side_effect = [
+            mock_config_response,
+            mock_token_response,
+        ]
 
         issuer = Issuer("https://issuer.example.com")
         issuer.identity_token(redirect_port=8080)
@@ -83,7 +82,7 @@ def test_identity_token_csrf_protection():
     with (
         patch("sigstore.oidc.webbrowser.open"),
         patch("sigstore._internal.oidc.oauth._OAuthFlow") as MockOAuthFlow,
-        patch("sigstore.oidc.requests.Session") as MockSession,
+        patch("sigstore.oidc.urllib3.PoolManager") as MockPoolManager,
         patch("sigstore.oidc.IdentityToken"),
     ):
         # Setup the mock server returned by _OAuthFlow context manager
@@ -110,18 +109,13 @@ def test_identity_token_csrf_protection():
             "state": [malicious_state],
         }
 
-        # Mock responses for Issuer initialization and token exchange
-        mock_session_instance = MockSession.return_value
-
         # Mock .well-known/openid-configuration response
-        mock_config_response = MagicMock()
+        mock_config_response = MagicMock(status=200)
         mock_config_response.json.return_value = {
             "authorization_endpoint": "https://auth.example.com",
             "token_endpoint": "https://token.example.com",
         }
-        mock_config_response.raise_for_status.return_value = None
-
-        mock_session_instance.get.side_effect = [mock_config_response]
+        MockPoolManager.return_value.request.side_effect = [mock_config_response]
 
         # Initialize Issuer
         issuer = Issuer("https://issuer.example.com")

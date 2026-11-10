@@ -34,7 +34,6 @@ if typing.TYPE_CHECKING:
     from sigstore.models import TransparencyLogEntry
 
 __all__ = [
-    "DEFAULT_REKOR_RETRIES",
     "DEFAULT_REKOR_TIMEOUT",
     "_hashedrekord_from_parts",
 ]
@@ -42,20 +41,7 @@ __all__ = [
 EntryRequestBody = typing.NewType("EntryRequestBody", dict[str, typing.Any])
 
 # Overloaded Rekor typically errors after 30 secs so timeout is only a fallback.
-# connection and http errors are re-tried twice, client timeout is retried once.
-# POST is also retried (rekorv1 responds with 409 if the entry exists already)
 DEFAULT_REKOR_TIMEOUT = urllib3.Timeout(connect=5, read=60)
-DEFAULT_REKOR_RETRIES = urllib3.Retry(
-    connect=2,
-    read=1,
-    status=2,
-    allowed_methods=frozenset(["GET", "POST"]),
-    status_forcelist=frozenset([408, 429, 500, 502, 503, 504]),
-    backoff_factor=1.0,
-    backoff_jitter=0.5,
-    respect_retry_after_header=True,
-    raise_on_status=False,
-)
 
 
 class RekorClientError(Exception):

@@ -60,12 +60,12 @@ def test_rekor_v2_session_reuse_public_api():
 
 
 def test_timestamp_client_session_reuse_public_api():
-    """Verify that TimestampAuthorityClient reuses its session per thread using public API."""
-    client = TimestampAuthorityClient("http://fake")
+    """Verify that TimestampAuthorityClient reuses its PoolManager using public API."""
+    with unittest.mock.patch("urllib3.PoolManager") as mock_pool_cls:
+        mock_pool_inst = unittest.mock.MagicMock()
+        mock_pool_cls.return_value = mock_pool_inst
 
-    with unittest.mock.patch("requests.Session") as mock_session_cls:
-        mock_session_inst = unittest.mock.MagicMock()
-        mock_session_cls.return_value = mock_session_inst
+        client = TimestampAuthorityClient("http://fake")
 
         # Call request_timestamp multiple times (hide exception: the client does not need to work)
         try:
@@ -78,5 +78,5 @@ def test_timestamp_client_session_reuse_public_api():
         except Exception:
             pass
 
-        # Expect 1 session
-        assert mock_session_cls.call_count == 1
+        # Expect 1 PoolManager
+        assert mock_pool_cls.call_count == 1

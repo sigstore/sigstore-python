@@ -28,13 +28,15 @@ from typing import NoReturn
 
 import id
 import jwt
-import requests
+import urllib3
 from pydantic import BaseModel, StrictStr
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import DEFAULT_RETRIES, USER_AGENT
 from sigstore.errors import Error, NetworkError
 
 _logger = logging.getLogger(__name__)
+
+DEFAULT_OIDC_TIMEOUT = urllib3.Timeout(30)
 
 # See: https://github.com/sigstore/fulcio/blob/b2186c0/pkg/config/config.go#L182-L201
 _KNOWN_OIDC_ISSUERS = {
@@ -244,22 +246,25 @@ class Issuer:
         which is then used to bootstrap the issuer's state (such
         as authorization and token endpoints).
         """
-        self.session = requests.Session()
-        self.session.headers.update({"User-Agent": USER_AGENT})
+        self._http = urllib3.PoolManager(
+            headers={"User-Agent": USER_AGENT},
+            retries=DEFAULT_RETRIES,
+            timeout=DEFAULT_OIDC_TIMEOUT,
+        )
 
         oidc_config_url = urllib.parse.urljoin(
             f"{base_url}/", ".well-known/openid-configuration"
         )
 
         try:
-            resp: requests.Response = self.session.get(oidc_config_url, timeout=30)
-        except (requests.ConnectionError, requests.Timeout) as exc:
+            resp = self._http.request("GET", oidc_config_url)
+        except urllib3.exceptions.HTTPError as exc:
             raise NetworkError from exc
 
-        try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            raise IssuerError from http_error
+        if resp.status >= 400:
+            raise IssuerError(
+                f"OIDC configuration request failed with HTTP {resp.status}"
+            )
 
         try:
             # We don't generally expect this to fail (since the provider should
@@ -336,27 +341,24 @@ class Issuer:
             "code": code,
             "code_verifier": server.oauth_session.code_verifier,
         }
-        auth = (
-            client_id,
-            client_secret,
+        headers = urllib3.util.make_headers(
+            basic_auth=f"{client_id}:{client_secret}",
+            user_agent=USER_AGENT,
         )
         _logger.debug(f"PAYLOAD: data={data}")
         try:
-            resp = self.session.post(
+            resp = self._http.request(
+                "POST",
                 self.oidc_config.token_endpoint,
-                data=data,
-                auth=auth,
-                timeout=30,
+                fields=data,
+                headers=headers,
+                encode_multipart=False,
             )
-        except (requests.ConnectionError, requests.Timeout) as exc:
+        except urllib3.exceptions.HTTPError as exc:
             raise NetworkError from exc
 
-        try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            raise IdentityError(
-                f"Token request failed with {resp.status_code}"
-            ) from http_error
+        if resp.status >= 400:
+            raise IdentityError(f"Token request failed with {resp.status}")
 
         token_json = resp.json()
         token_error = token_json.get("error")

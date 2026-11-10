@@ -19,6 +19,25 @@ Everything in these APIs is considered internal and unstable, and is not
 subject to any stability guarantees.
 """
 
+import urllib3
+
 from sigstore import __version__ as sigstore_version
 
 USER_AGENT = f"sigstore-python/{sigstore_version}"
+
+# Connection and HTTP status errors are retried twice; read timeouts are retried once.
+# POST is also retried since all service endpoints (Fulcio, TSA, OIDC, and Rekor with
+# 409 handling) are safe to retry on transient 5xx/429/408 errors.
+# backoff + Jitter are defined mostly for Rekor and TSA that may be called in parallel
+# from multiple threads.
+DEFAULT_RETRIES = urllib3.Retry(
+    connect=2,
+    read=1,
+    status=2,
+    allowed_methods=frozenset(["GET", "POST"]),
+    status_forcelist=frozenset([408, 429, 500, 502, 503, 504]),
+    backoff_factor=1.0,
+    backoff_jitter=0.5,
+    respect_retry_after_header=True,
+    raise_on_status=False,
+)

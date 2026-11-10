@@ -29,10 +29,9 @@ from sigstore_models.common import v1 as common_v1
 from sigstore_models.rekor import v2 as rekor_v2
 from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEntry
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import DEFAULT_RETRIES, USER_AGENT
 from sigstore._internal.key_details import _get_key_details, _get_prehash
 from sigstore._internal.rekor import (
-    DEFAULT_REKOR_RETRIES,
     DEFAULT_REKOR_TIMEOUT,
     EntryRequestBody,
     RekorClientError,
@@ -63,7 +62,7 @@ class RekorV2Client(RekorLogSubmitter):
                 "Accept": "application/json",
                 "User-Agent": USER_AGENT,
             },
-            retries=DEFAULT_REKOR_RETRIES,
+            retries=DEFAULT_RETRIES,
             timeout=DEFAULT_REKOR_TIMEOUT,
             maxsize=32,
         )
