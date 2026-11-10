@@ -21,18 +21,20 @@ from __future__ import annotations
 import base64
 import json
 import logging
-import threading
+import string
 from abc import ABC
 from dataclasses import dataclass
 from typing import Any
 
 import rekor_types
-import requests
+import urllib3
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 
 from sigstore._internal import USER_AGENT
 from sigstore._internal.rekor import (
+    DEFAULT_REKOR_RETRIES,
+    DEFAULT_REKOR_TIMEOUT,
     EntryRequestBody,
     RekorClientError,
     RekorLogSubmitter,
@@ -74,11 +76,9 @@ class RekorLogInfo:
 
 
 class _Endpoint(ABC):
-    def __init__(self, url: str, session: requests.Session) -> None:
-        # Note that _Endpoint may not be thread safe if the same Session is provided
-        # to an _Endpoint in multiple threads
+    def __init__(self, url: str, http: urllib3.PoolManager) -> None:
         self.url = url
-        self.session = session
+        self._http = http
 
 
 class RekorLog(_Endpoint):
@@ -90,11 +90,13 @@ class RekorLog(_Endpoint):
         """
         Returns information about the Rekor instance's log.
         """
-        resp: requests.Response = self.session.get(self.url)
         try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            raise RekorClientError(http_error)
+            resp = self._http.request("GET", self.url)
+        except urllib3.exceptions.HTTPError as http_error:
+            raise RekorClientError.from_http_error(http_error) from http_error
+
+        if resp.status >= 400:
+            raise RekorClientError.from_response(resp)
         return RekorLogInfo.from_response(resp.json())
 
     @property
@@ -103,7 +105,7 @@ class RekorLog(_Endpoint):
         Returns a `RekorEntries` capable of accessing detailed information
         about individual log entries.
         """
-        return RekorEntries(f"{self.url}/entries", session=self.session)
+        return RekorEntries(f"{self.url}/entries", http=self._http)
 
 
 class RekorEntries(_Endpoint):
@@ -122,17 +124,20 @@ class RekorEntries(_Endpoint):
         if not (bool(uuid) ^ bool(log_index)):
             raise ValueError("uuid or log_index required, but not both")
 
-        resp: requests.Response
-
-        if uuid is not None:
-            resp = self.session.get(f"{self.url}/{uuid}")
-        else:
-            resp = self.session.get(self.url, params={"logIndex": log_index})
+        resp: urllib3.BaseHTTPResponse
 
         try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            raise RekorClientError(http_error)
+            if uuid is not None:
+                resp = self._http.request("GET", f"{self.url}/{uuid}")
+            else:
+                resp = self._http.request(
+                    "GET", self.url, fields={"logIndex": str(log_index)}
+                )
+        except urllib3.exceptions.HTTPError as http_error:
+            raise RekorClientError.from_http_error(http_error) from http_error
+
+        if resp.status >= 400:
+            raise RekorClientError.from_response(resp)
         return TransparencyLogEntry._from_v1_response(resp.json())
 
     def post(
@@ -145,11 +150,21 @@ class RekorEntries(_Endpoint):
 
         _logger.debug(f"proposed: {json.dumps(payload)}")
 
-        resp: requests.Response = self.session.post(self.url, json=payload)
         try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            raise RekorClientError(http_error)
+            resp = self._http.request("POST", self.url, json=payload)
+        except urllib3.exceptions.HTTPError as http_error:
+            raise RekorClientError.from_http_error(http_error) from http_error
+
+        if resp.status == 409 and (location := resp.headers.get("Location")):
+            uuid = location.rstrip("/").split("/")[-1]
+            if uuid and all(c in string.hexdigits for c in uuid):
+                _logger.debug(
+                    f"Entry already exists (409 Conflict); fetching existing entry {uuid}"
+                )
+                return self.get(uuid=uuid)
+
+        if resp.status >= 400:
+            raise RekorClientError.from_response(resp)
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
@@ -160,7 +175,7 @@ class RekorEntries(_Endpoint):
         """
         Returns a `RekorEntriesRetrieve` capable of retrieving entries.
         """
-        return RekorEntriesRetrieve(f"{self.url}/retrieve/", session=self.session)
+        return RekorEntriesRetrieve(f"{self.url}/retrieve/", http=self._http)
 
 
 class RekorEntriesRetrieve(_Endpoint):
@@ -181,13 +196,15 @@ class RekorEntriesRetrieve(_Endpoint):
         """
         data = {"entries": [expected_entry.model_dump(mode="json", by_alias=True)]}
 
-        resp: requests.Response = self.session.post(self.url, json=data)
         try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            if http_error.response and http_error.response.status_code == 404:
-                return None
-            raise RekorClientError(http_error)
+            resp = self._http.request("POST", self.url, json=data)
+        except urllib3.exceptions.HTTPError as http_error:
+            raise RekorClientError.from_http_error(http_error) from http_error
+
+        if resp.status == 404:
+            return None
+        if resp.status >= 400:
+            raise RekorClientError.from_response(resp)
 
         results = resp.json()
 
@@ -222,7 +239,16 @@ class RekorClient(RekorLogSubmitter):
         Create a new `RekorClient` from the given URL.
         """
         self.url = f"{url}/api/v1"
-        self._thread_local = threading.local()
+        self._http = urllib3.PoolManager(
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            },
+            retries=DEFAULT_REKOR_RETRIES,
+            timeout=DEFAULT_REKOR_TIMEOUT,
+            maxsize=32,
+        )
 
     @classmethod
     def production(cls) -> RekorClient:
@@ -241,29 +267,12 @@ class RekorClient(RekorLogSubmitter):
         return cls(STAGING_REKOR_URL)
 
     @property
-    def _session(self) -> requests.Session:
-        """
-        Lazy-initialized thread-local session object
-        """
-        if not hasattr(self._thread_local, "session"):
-            session = requests.Session()
-            session.headers.update(
-                {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "User-Agent": USER_AGENT,
-                }
-            )
-            self._thread_local.session = session
-        return self._thread_local.session  # type: ignore[no-any-return]
-
-    @property
     def log(self) -> RekorLog:
         """
         Returns a `RekorLog` adapter for making requests to a Rekor log.
         """
 
-        return RekorLog(f"{self.url}/log", session=self._session)
+        return RekorLog(f"{self.url}/log", http=self._http)
 
     def create_entry(self, request: EntryRequestBody) -> TransparencyLogEntry:
         """

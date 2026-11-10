@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -1690,6 +1690,7 @@ dependencies = [
     { name = "sigstore-models" },
     { name = "sigstore-rekor-types" },
     { name = "tuf" },
+    { name = "urllib3" },
 ]
 
 [package.dev-dependencies]
@@ -1725,6 +1726,7 @@ requires-dist = [
     { name = "sigstore-models", specifier = "==0.0.6" },
     { name = "sigstore-rekor-types", specifier = "==0.0.18" },
     { name = "tuf", specifier = ">=6,<8" },
+    { name = "urllib3", specifier = ">=2,<3" },
 ]
 
 [package.metadata.requires-dev]

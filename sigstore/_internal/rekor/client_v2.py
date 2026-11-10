@@ -21,9 +21,8 @@ from __future__ import annotations
 import base64
 import json
 import logging
-import threading
 
-import requests
+import urllib3
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 from sigstore_models.common import v1 as common_v1
@@ -33,6 +32,8 @@ from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEnt
 from sigstore._internal import USER_AGENT
 from sigstore._internal.key_details import _get_key_details, _get_prehash
 from sigstore._internal.rekor import (
+    DEFAULT_REKOR_RETRIES,
+    DEFAULT_REKOR_TIMEOUT,
     EntryRequestBody,
     RekorClientError,
     RekorLogSubmitter,
@@ -56,24 +57,16 @@ class RekorV2Client(RekorLogSubmitter):
         Create a new `RekorV2Client` from the given URL.
         """
         self.url = f"{base_url}/api/v2"
-        self._thread_local = threading.local()
-
-    @property
-    def _session(self) -> requests.Session:
-        """
-        Lazy-initialized thread-local session object
-        """
-        if not hasattr(self._thread_local, "session"):
-            session = requests.Session()
-            session.headers.update(
-                {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "User-Agent": USER_AGENT,
-                }
-            )
-            self._thread_local.session = session
-        return self._thread_local.session  # type: ignore[no-any-return]
+        self._http = urllib3.PoolManager(
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            },
+            retries=DEFAULT_REKOR_RETRIES,
+            timeout=DEFAULT_REKOR_TIMEOUT,
+            maxsize=32,
+        )
 
     def create_entry(self, payload: EntryRequestBody) -> TransparencyLogEntry:
         """
@@ -87,15 +80,17 @@ class RekorV2Client(RekorLogSubmitter):
         """
         _logger.debug(f"proposed: {json.dumps(payload)}")
 
-        resp = self._session.post(
-            f"{self.url}/log/entries",
-            json=payload,
-        )
-
         try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            raise RekorClientError(http_error)
+            resp = self._http.request(
+                "POST",
+                f"{self.url}/log/entries",
+                json=payload,
+            )
+        except urllib3.exceptions.HTTPError as http_error:
+            raise RekorClientError.from_http_error(http_error) from http_error
+
+        if resp.status >= 400:
+            raise RekorClientError.from_response(resp)
 
         integrated_entry = resp.json()
         _logger.debug(f"integrated: {integrated_entry}")
