@@ -8,8 +8,20 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* HTTP clients (most importantly Rekor) now retry requests when that makes
+  sense ([#1970](https://github.com/sigstore/sigstore-python/pull/1970))
+
+### Changed
+
 * Added support for Python 3.15 and dropped EOL Python 3.10.
   ([#1957](https://github.com/sigstore/sigstore-python/pull/1957))
+* All HTTP clients now use urllib3 instead of requests: This means
+  TLS certificates now come from OS certificate store and not certifi
+  ([#1970](https://github.com/sigstore/sigstore-python/pull/1970))
+  ([#1973](https://github.com/sigstore/sigstore-python/pull/1973))
+
 
 ## [4.5.1]
 
