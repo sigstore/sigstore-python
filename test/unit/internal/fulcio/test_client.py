@@ -15,7 +15,7 @@
 import unittest.mock
 
 import pytest
-import requests
+import urllib3
 
 from sigstore._internal.fulcio.client import (
     DEFAULT_FULCIO_TIMEOUT,
@@ -24,31 +24,31 @@ from sigstore._internal.fulcio.client import (
 )
 
 
-def _client_with_mock_session():
+def _client_with_mock_http():
     client = FulcioClient("http://fake")
-    session = unittest.mock.MagicMock()
-    client.session = session
-    return client, session
+    assert client._http.connection_pool_kw["timeout"] is DEFAULT_FULCIO_TIMEOUT
+    http = unittest.mock.MagicMock(spec=urllib3.PoolManager)
+    client._http = http
+    return client, http
 
 
-def test_signing_cert_post_passes_timeout():
-    client, session = _client_with_mock_session()
+def test_signing_cert_post_handles_error():
+    client, http = _client_with_mock_http()
 
     request = unittest.mock.MagicMock()
     request.public_bytes.return_value = b"csr"
-    response = session.post.return_value
-    response.raise_for_status.side_effect = requests.HTTPError
+    http.request.return_value = urllib3.HTTPResponse(
+        body=b'{"message": "bad csr"}', status=400
+    )
 
-    with pytest.raises(FulcioClientError):
+    with pytest.raises(FulcioClientError, match="bad csr"):
         client.signing_cert.post(request, "token")
 
-    assert session.post.call_args.kwargs["timeout"] == DEFAULT_FULCIO_TIMEOUT
 
+def test_trust_bundle_get():
+    client, http = _client_with_mock_http()
+    http.request.return_value = urllib3.HTTPResponse(body=b'{"chains": []}', status=200)
 
-def test_trust_bundle_get_passes_timeout():
-    client, session = _client_with_mock_session()
-    session.get.return_value.json.return_value = {"chains": []}
+    resp = client.trust_bundle.get()
 
-    client.trust_bundle.get()
-
-    assert session.get.call_args.kwargs["timeout"] == DEFAULT_FULCIO_TIMEOUT
+    assert resp.trust_bundle == []

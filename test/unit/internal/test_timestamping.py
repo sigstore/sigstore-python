@@ -13,8 +13,8 @@
 # limitations under the License.
 import pretend
 import pytest
-import requests
 import rfc3161_client
+import urllib3
 
 from sigstore._internal.timestamp import TimestampAuthorityClient, TimestampError
 from sigstore._utils import sha256_digest
@@ -48,7 +48,7 @@ class TestTimestampAuthorityClient:
 
     @pytest.mark.timestamp_authority
     def test_invalid_response(self, tsa_url, monkeypatch):
-        monkeypatch.setattr(requests.Response, "content", b"invalid-response")
+        monkeypatch.setattr(urllib3.HTTPResponse, "data", b"invalid-response")
 
         tsa = TimestampAuthorityClient(tsa_url)
         with pytest.raises(TimestampError, match="invalid response"):
@@ -57,12 +57,9 @@ class TestTimestampAuthorityClient:
     def test_non_granted_response(self, monkeypatch):
         # DER-encoded TimeStampResp with PKIStatus = 2 (REJECTION) and no TimeStampToken:
         rejection_der = bytes.fromhex("30053003020102")
-        response = pretend.stub(
-            raise_for_status=lambda: None,
-            content=rejection_der,
-        )
+        response = urllib3.HTTPResponse(body=rejection_der, status=200)
         tsa = TimestampAuthorityClient("http://fake-url")
-        monkeypatch.setattr(tsa._session, "post", lambda *a, **kw: response)
+        monkeypatch.setattr(tsa._http, "request", lambda *a, **kw: response)
 
         with pytest.raises(
             TimestampError, match="invalid response: PKIStatus is REJECTION"
@@ -71,12 +68,9 @@ class TestTimestampAuthorityClient:
 
     def test_nonce_mismatch(self, asset, monkeypatch):
         ts_bytes = asset("tsa/issue1482-timestamp-with-no-cert").read_bytes()
-        response = pretend.stub(
-            raise_for_status=lambda: None,
-            content=ts_bytes,
-        )
+        response = urllib3.HTTPResponse(body=ts_bytes, status=200)
         tsa = TimestampAuthorityClient("http://fake-url")
-        monkeypatch.setattr(tsa._session, "post", lambda *a, **kw: response)
+        monkeypatch.setattr(tsa._http, "request", lambda *a, **kw: response)
 
         with pytest.raises(TimestampError, match="invalid response: nonce mismatch"):
             tsa.request_timestamp(b"hello")
@@ -84,10 +78,7 @@ class TestTimestampAuthorityClient:
     def test_message_imprint_mismatch(self, asset, monkeypatch):
         ts_bytes = asset("tsa/issue1482-timestamp-with-no-cert").read_bytes()
         ts = rfc3161_client.decode_timestamp_response(ts_bytes)
-        response = pretend.stub(
-            raise_for_status=lambda: None,
-            content=ts_bytes,
-        )
+        response = urllib3.HTTPResponse(body=ts_bytes, status=200)
         req = pretend.stub(
             as_bytes=lambda: b"req",
             nonce=ts.tst_info.nonce,
@@ -101,7 +92,7 @@ class TestTimestampAuthorityClient:
         )
 
         tsa = TimestampAuthorityClient("http://fake-url")
-        monkeypatch.setattr(tsa._session, "post", lambda *a, **kw: response)
+        monkeypatch.setattr(tsa._http, "request", lambda *a, **kw: response)
 
         with pytest.raises(
             TimestampError, match="invalid response: message imprint mismatch"

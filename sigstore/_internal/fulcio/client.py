@@ -19,13 +19,12 @@ Client implementation for interacting with Fulcio.
 from __future__ import annotations
 
 import base64
-import json
 import logging
 from abc import ABC
 from dataclasses import dataclass
 from urllib.parse import urljoin
 
-import requests
+import urllib3
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import (
     Certificate,
@@ -33,7 +32,7 @@ from cryptography.x509 import (
     load_pem_x509_certificate,
 )
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import DEFAULT_RETRIES, USER_AGENT
 from sigstore._utils import B64Str
 from sigstore.oidc import IdentityToken
 
@@ -45,7 +44,7 @@ TRUST_BUNDLE_ENDPOINT = "/api/v2/trustBundle"
 # Use a short connect timeout and a finite read timeout for Fulcio requests.
 # Certificate issuance and trust-bundle retrieval should not block the caller
 # indefinitely when the configured endpoint accepts a connection but stalls.
-DEFAULT_FULCIO_TIMEOUT: tuple[int, int] = (5, 30)
+DEFAULT_FULCIO_TIMEOUT = urllib3.Timeout(connect=5, read=30)
 
 
 class ExpiredCertificate(Exception):
@@ -74,18 +73,17 @@ class FulcioClientError(Exception):
 
 
 class _Endpoint(ABC):
-    def __init__(self, url: str, session: requests.Session) -> None:
+    def __init__(self, url: str, http: urllib3.PoolManager) -> None:
         self.url = url
-        self.session = session
+        self._http = http
 
 
-def _serialize_cert_request(req: CertificateSigningRequest) -> str:
-    data = {
+def _build_cert_request(req: CertificateSigningRequest) -> dict[str, B64Str]:
+    return {
         "certificateSigningRequest": B64Str(
             base64.b64encode(req.public_bytes(serialization.Encoding.PEM)).decode()
         )
     }
-    return json.dumps(data)
 
 
 class FulcioSigningCert(_Endpoint):
@@ -104,29 +102,35 @@ class FulcioSigningCert(_Endpoint):
             "Authorization": f"Bearer {identity}",
             "Content-Type": "application/json",
             "Accept": "application/pem-certificate-chain",
+            "User-Agent": USER_AGENT,
         }
-        resp: requests.Response = self.session.post(
-            url=self.url,
-            data=_serialize_cert_request(req),
-            headers=headers,
-            timeout=DEFAULT_FULCIO_TIMEOUT,
-        )
         try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
-            # See if we can optionally add a message
-            if http_error.response:
-                text = json.loads(http_error.response.text)
-                if "message" in http_error.response.text:
-                    raise FulcioClientError(text["message"]) from http_error
+            resp = self._http.request(
+                "POST",
+                self.url,
+                json=_build_cert_request(req),
+                headers=headers,
+            )
+        except urllib3.exceptions.HTTPError as http_error:
             raise FulcioClientError from http_error
+
+        if resp.status >= 400:
+            try:
+                error_body = resp.json()
+                if isinstance(error_body, dict) and "message" in error_body:
+                    raise FulcioClientError(error_body["message"])
+            except ValueError:
+                pass
+            raise FulcioClientError(f"Fulcio returned an error with HTTP {resp.status}")
 
         try:
             certificates = resp.json()["signedCertificateEmbeddedSct"]["chain"][
                 "certificates"
             ]
-        except KeyError:
-            raise FulcioClientError("Fulcio response missing certificate chain")
+        except (ValueError, KeyError, TypeError) as exc:
+            raise FulcioClientError(
+                "Fulcio response missing certificate chain"
+            ) from exc
 
         # Cryptography doesn't have chain verification/building built in
         # https://github.com/pyca/cryptography/issues/2381
@@ -147,13 +151,13 @@ class FulcioTrustBundle(_Endpoint):
 
     def get(self) -> FulcioTrustBundleResponse:
         """Get the certificate chains from Fulcio"""
-        resp: requests.Response = self.session.get(
-            self.url, timeout=DEFAULT_FULCIO_TIMEOUT
-        )
         try:
-            resp.raise_for_status()
-        except requests.HTTPError as http_error:
+            resp = self._http.request("GET", self.url)
+        except urllib3.exceptions.HTTPError as http_error:
             raise FulcioClientError from http_error
+
+        if resp.status >= 400:
+            raise FulcioClientError(f"Fulcio returned an error with HTTP {resp.status}")
 
         trust_bundle_json = resp.json()
         chains: list[list[Certificate]] = []
@@ -173,18 +177,11 @@ class FulcioClient:
         """Initialize the client"""
         _logger.debug(f"Fulcio client using URL: {url}")
         self.url = url
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": USER_AGENT,
-            }
+        self._http = urllib3.PoolManager(
+            headers={"User-Agent": USER_AGENT},
+            retries=DEFAULT_RETRIES,
+            timeout=DEFAULT_FULCIO_TIMEOUT,
         )
-
-    def __del__(self) -> None:
-        """
-        Destroys the underlying network session.
-        """
-        self.session.close()
 
     @property
     def signing_cert(self) -> FulcioSigningCert:
@@ -192,7 +189,7 @@ class FulcioClient:
         Returns a model capable of interacting with Fulcio's signing certificate endpoints.
         """
         return FulcioSigningCert(
-            urljoin(self.url, SIGNING_CERT_ENDPOINT), session=self.session
+            urljoin(self.url, SIGNING_CERT_ENDPOINT), http=self._http
         )
 
     @property
@@ -201,5 +198,5 @@ class FulcioClient:
         Returns a model capable of interacting with Fulcio's trust bundle endpoints.
         """
         return FulcioTrustBundle(
-            urljoin(self.url, TRUST_BUNDLE_ENDPOINT), session=self.session
+            urljoin(self.url, TRUST_BUNDLE_ENDPOINT), http=self._http
         )

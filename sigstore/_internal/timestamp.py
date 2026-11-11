@@ -17,11 +17,10 @@ Utilities to deal with sources of signed time.
 """
 
 import enum
-import threading
 from dataclasses import dataclass
 from datetime import datetime
 
-import requests
+import urllib3
 from rfc3161_client import (
     PKIStatus,
     TimestampRequestBuilder,
@@ -30,9 +29,9 @@ from rfc3161_client import (
 )
 from rfc3161_client.base import HashAlgorithm
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import DEFAULT_RETRIES, USER_AGENT
 
-CLIENT_TIMEOUT: int = 5
+CLIENT_TIMEOUT = urllib3.Timeout(5)
 
 
 class TimestampSource(enum.Enum):
@@ -68,23 +67,15 @@ class TimestampAuthorityClient:
         Create a new `TimestampAuthorityClient` from the given URL.
         """
         self.url = url
-        self._thread_local = threading.local()
-
-    @property
-    def _session(self) -> requests.Session:
-        """
-        Lazy-initialized thread-local session object
-        """
-        if not hasattr(self._thread_local, "session"):
-            session = requests.Session()
-            session.headers.update(
-                {
-                    "Content-Type": "application/timestamp-query",
-                    "User-Agent": USER_AGENT,
-                }
-            )
-            self._thread_local.session = session
-        return self._thread_local.session  # type: ignore[no-any-return]
+        self._http = urllib3.PoolManager(
+            headers={
+                "Content-Type": "application/timestamp-query",
+                "User-Agent": USER_AGENT,
+            },
+            retries=DEFAULT_RETRIES,
+            timeout=CLIENT_TIMEOUT,
+            maxsize=32,
+        )
 
     def request_timestamp(self, signature: bytes) -> TimeStampResponse:
         """
@@ -112,19 +103,22 @@ class TimestampAuthorityClient:
 
         # Send it to the TSA for signing
         try:
-            response = self._session.post(
+            response = self._http.request(
+                "POST",
                 self.url,
-                data=timestamp_request.as_bytes(),
-                timeout=CLIENT_TIMEOUT,
+                body=timestamp_request.as_bytes(),
             )
-            response.raise_for_status()
-        except requests.RequestException as error:
+        except urllib3.exceptions.HTTPError as error:
             msg = f"error while sending the request to the TSA: {error}"
+            raise TimestampError(msg) from error
+
+        if response.status >= 400:
+            msg = f"error while sending the request to the TSA: HTTP {response.status}"
             raise TimestampError(msg)
 
         # Check that we can parse the response but do not *verify* it
         try:
-            timestamp_response = decode_timestamp_response(response.content)
+            timestamp_response = decode_timestamp_response(response.data)
             status = PKIStatus(timestamp_response.status)
         except ValueError as e:
             msg = f"invalid response: {e}"

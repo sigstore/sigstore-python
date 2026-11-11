@@ -31,7 +31,6 @@ dependencies = [
   "id >= 1.1.0",
   "pydantic >= 2,< 3",
   "pyjwt >= 2.1",
-  "requests",
   "rich >= 13,< 16",
   "rfc8785 ~= 0.1.2",
   "rfc3161-client >= 1.0.3,< 1.1.0",

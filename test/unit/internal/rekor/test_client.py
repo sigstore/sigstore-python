@@ -20,8 +20,8 @@ from typing import Any
 import pytest
 import urllib3
 
+from sigstore._internal import DEFAULT_RETRIES
 from sigstore._internal.rekor import (
-    DEFAULT_REKOR_RETRIES,
     DEFAULT_REKOR_TIMEOUT,
     EntryRequestBody,
     RekorClientError,
@@ -65,7 +65,7 @@ def test_default_rekor_retries_configuration():
     """Verify the shared urllib3.Retry and Timeout configuration for Rekor clients."""
     for client in (RekorClient("http://fake"), RekorV2Client("http://fake")):
         retries = client._http.connection_pool_kw["retries"]
-        assert retries is DEFAULT_REKOR_RETRIES
+        assert retries is DEFAULT_RETRIES
         assert retries.connect == 2
         assert retries.read == 1
         assert retries.status == 2

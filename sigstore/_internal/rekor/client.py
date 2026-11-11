@@ -31,9 +31,8 @@ import urllib3
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import Certificate
 
-from sigstore._internal import USER_AGENT
+from sigstore._internal import DEFAULT_RETRIES, USER_AGENT
 from sigstore._internal.rekor import (
-    DEFAULT_REKOR_RETRIES,
     DEFAULT_REKOR_TIMEOUT,
     EntryRequestBody,
     RekorClientError,
@@ -245,7 +244,7 @@ class RekorClient(RekorLogSubmitter):
                 "Accept": "application/json",
                 "User-Agent": USER_AGENT,
             },
-            retries=DEFAULT_REKOR_RETRIES,
+            retries=DEFAULT_RETRIES,
             timeout=DEFAULT_REKOR_TIMEOUT,
             maxsize=32,
         )
