@@ -17,9 +17,10 @@ Exceptions.
 """
 
 import sys
-from collections.abc import Mapping
 from logging import Logger
-from typing import Any, NoReturn
+from typing import NoReturn
+
+from tuf.api import exceptions
 
 
 class Error(Exception):
@@ -54,24 +55,15 @@ class NetworkError(Error):
 
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""
+        return self._diagnostics(str(self.__cause__))
 
-        cause_ctx = (
-            f"""
-        Additional context:
-
-        {self.__cause__}
-        """
-            if self.__cause__
-            else ""
-        )
+    @staticmethod
+    def _diagnostics(cause: str | None) -> str:
+        cause_ctx = f"\n\nAdditional context:\n\n{cause}" if cause else ""
 
         return (
-            """\
-        A network issue occurred.
-
-        Check your internet connection and try again.
-        """
-            + cause_ctx
+            "A network issue occurred.\n\n"
+            "Check your internet connection and try again." + cause_ctx
         )
 
 
@@ -80,27 +72,25 @@ class TUFError(Error):
 
     def __init__(self, message: str):
         """Constructs a `TUFError`."""
+        super().__init__(message)
         self.message = message
-
-    from tuf.api import exceptions
-
-    _details: Mapping[Any, str] = {
-        exceptions.DownloadError: NetworkError().diagnostics()
-    }
 
     def diagnostics(self) -> str:
         """Returns diagnostics specialized to the wrapped TUF error."""
-        details = TUFError._details.get(
-            type(self.__context__),
-            "Please check any Sigstore instance related arguments and consider "
-            "reporting the issue at <https://github.com/sigstore/sigstore-python/issues/new>.",
+        # Download errors are likely to be ephemeral: just use NetworkError output
+        if isinstance(self.__cause__, exceptions.DownloadError):
+            return NetworkError._diagnostics(f"{self.message}: {self.__cause__}")
+
+        # Other TUF errors are likely to be cryptic and unrecoverable
+        cause_ctx = (
+            f"\n\nAdditional context:\n\n{self.__cause__}" if self.__cause__ else ""
         )
-
-        return f"""\
-        {self.message}.
-
-        {details}
-        """
+        return (
+            f"{self.message}.\n\n"
+            "Please check any Sigstore instance related arguments and consider "
+            "reporting the issue at <https://github.com/sigstore/sigstore-python/issues/new>."
+            + cause_ctx
+        )
 
 
 class MetadataError(Error):
@@ -116,10 +106,11 @@ class RootError(Error):
 
     def diagnostics(self) -> str:
         """Returns diagnostics for the error."""
-        return """\
-        Unable to establish root of trust.
-
-        This error may occur when the resources embedded in this distribution of sigstore-python are out of date."""
+        return (
+            "Unable to establish root of trust.\n\n"
+            "This error may occur when the resources embedded in this "
+            "distribution of sigstore-python are out of date."
+        )
 
 
 class VerificationError(Error):

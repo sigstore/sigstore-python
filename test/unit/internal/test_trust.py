@@ -17,6 +17,7 @@ import os
 from datetime import UTC, datetime, timedelta
 
 import pytest
+import urllib3
 from sigstore_models.common.v1 import TimeRange
 from sigstore_models.trustroot.v1 import (
     Service,
@@ -293,10 +294,37 @@ def test_is_timerange_valid():
     )  # Valid: 1 ago, 1 ago
 
 
-def test_trust_root_tuf_instance_error():
+def test_trust_root_tuf_instance_error(tuf_dirs):
     # embedded root.json is not found and no local metadata is found
-    with pytest.raises(TUFError):
+    with pytest.raises(TUFError) as excinfo:
         ClientTrustConfig.from_tuf("foo.bar")
+
+    diagnostics = excinfo.value.diagnostics()
+    assert diagnostics.startswith(
+        "Failed to refresh TUF metadata.\n\n"
+        "Please check any Sigstore instance related arguments and consider "
+        "reporting the issue at <https://github.com/sigstore/sigstore-python/issues/new>.\n\n"
+        "Additional context:\n\n"
+        "[Errno 2] No such file or directory:"
+    )
+
+
+def test_trust_root_tuf_http_error(monkeypatch, tuf_dirs):
+    monkeypatch.setattr(
+        urllib3.PoolManager,
+        "request",
+        lambda self, method, url, **kw: urllib3.HTTPResponse(status=503),
+    )
+
+    with pytest.raises(TUFError) as excinfo:
+        ClientTrustConfig.staging()
+
+    assert excinfo.value.diagnostics() == (
+        "A network issue occurred.\n\n"
+        "Check your internet connection and try again.\n\n"
+        "Additional context:\n\n"
+        "Failed to refresh TUF metadata: HTTP error occurred with status 503"
+    )
 
 
 def test_trust_root_tuf_ctfe_keys_error(monkeypatch):
