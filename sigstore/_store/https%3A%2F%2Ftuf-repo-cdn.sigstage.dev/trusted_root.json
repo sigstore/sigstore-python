@@ -58,6 +58,20 @@
       "logId": {
         "keyId": "09OnDKEw7/hpZiYVPoTRzRbglHk0sylsUovegnRUlJY="
       }
+    },
+    {
+      "baseUrl": "https://log2026-1.us-east4.rekor.sigstage.dev",
+      "hashAlgorithm": "SHA2_256",
+      "publicKey": {
+        "rawBytes": "MCowBQYDK2VwAyEAuAPzR9GRUMkt6Lcg7dcpy7C4Ys++gxQ2FFTPVBUhGfM=",
+        "keyDetails": "PKIX_ED25519",
+        "validFor": {
+          "start": "2026-06-12T00:00:00Z"
+        }
+      },
+      "logId": {
+        "keyId": "OnJxR1KbhM5Z+X3E97YQ4EV8/8t4W3TvgehmZLwxAkY="
+      }
     }
   ],
   "certificateAuthorities": [
@@ -79,6 +93,26 @@
       },
       "validFor": {
         "start": "2022-04-14T21:38:40Z"
+      }
+    },
+    {
+      "subject": {
+        "organization": "sigstore.dev",
+        "commonName": "sigstore"
+      },
+      "uri": "https://fulcio.sigstage.dev",
+      "certChain": {
+        "certificates": [
+          {
+            "rawBytes": "MIICGjCCAaGgAwIBAgIUAJxUwId8GBqrRo1fYxV7X3GxXWEwCgYIKoZIzj0EAwMwKjEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MREwDwYDVQQDEwhzaWdzdG9yZTAeFw0yNjA2MDgxNjIxMjJaFw0zNjA2MDIyMzAwMTJaMDcxFTATBgNVBAoTDHNpZ3N0b3JlLmRldjEeMBwGA1UEAxMVc2lnc3RvcmUtaW50ZXJtZWRpYXRlMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE17eNOb3OjmDd+AOWdLQ8GZAQsvrrgFUkG9fz3JNgfPq2NHCExwbvSWvVIUOiRWv5Gwe70sFpTUkwGUF5KkqdINpvyEQULJJcg/7wTYcJ3vq2ap32Cy1LoJ76yFQkEkvXo3sweTAOBgNVHQ8BAf8EBAMCAQYwEwYDVR0lBAwwCgYIKwYBBQUHAwMwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUSGEgQZugsJS0mdkcD89aLneT/FIwHwYDVR0jBBgwFoAUl0I/kqYsi0cMo1OMh1dK81MUUgwwCgYIKoZIzj0EAwMDZwAwZAIwDhfCK6mUzvCQ+WuLhA8X8iJLUPmau9Umeq+XL8QAdv3gk51XZCX2BGAf8CWSygirAjANhWtDdg0OVVgh6B+pSkMmQhpJOJXJgkuS0o6AsKj7jjktb5EzMD0L8HlXiMs4Ltc="
+          },
+          {
+            "rawBytes": "MIIB9DCCAXugAwIBAgITbIr/zWYbKyBevxdtAtTHwrupazAKBggqhkjOPQQDAzAqMRUwEwYDVQQKEwxzaWdzdG9yZS5kZXYxETAPBgNVBAMTCHNpZ3N0b3JlMB4XDTI2MDYwNTIzMDAxM1oXDTM2MDYwMjIzMDAxMlowKjEVMBMGA1UEChMMc2lnc3RvcmUuZGV2MREwDwYDVQQDEwhzaWdzdG9yZTB2MBAGByqGSM49AgEGBSuBBAAiA2IABC4MTU8uc1T9v3PMC/H/mKBRZhj/oId9psZB9MJMzpWq8/teYBjLujkZfyyrZAqbYAzC6EkGfXCEV3/BPzUJA//Y0QVSxAWR5kcyqMsJ4cgPQLwV99CLa+oMwtXhvfeXJ6NjMGEwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFJdCP5KmLItHDKNTjIdXSvNTFFIMMB8GA1UdIwQYMBaAFJdCP5KmLItHDKNTjIdXSvNTFFIMMAoGCCqGSM49BAMDA2cAMGQCMEpK1ZJGE/v7C1dle2l6dUaS7fMGCRPyrvGoxGV1jgYCmt7WVQf/9G0xHDaKERokkwIwRo1cPfW9uEt9z4ZFSoEnjOCTp8SOw5APRvJSMx0GMeWfk57q0Dp7ovU0g8Gsp0iF"
+          }
+        ]
+      },
+      "validFor": {
+        "start": "2026-06-12T00:00:00Z"
       }
     }
   ],
@@ -140,6 +174,20 @@
       "logId": {
         "keyId": "PmBxU3RuGJLgkLI2sUl2Jy9ntE1vks5vdxFKtyKgprY="
       }
+    },
+    {
+      "baseUrl": "https://log2026-1.us-east4.ctfe.sigstage.dev",
+      "hashAlgorithm": "SHA2_256",
+      "publicKey": {
+        "rawBytes": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEa5Gw4tcbYtTUdKWLy6ovCgWUb0ggekCaMyVpw5RCxBKKbJpahWdRX4ArH3N/wtakd2qDmtjsFVV1jMw5cHbmGw==",
+        "keyDetails": "PKIX_ECDSA_P256_SHA_256",
+        "validFor": {
+          "start": "2026-06-12T00:00:00Z"
+        }
+      },
+      "logId": {
+        "keyId": "Fjj7Zk5I004nmb83WUyHasaCMoUO4fuTnFybtSxevIc="
+      }
     }
   ],
   "timestampAuthorities": [
@@ -161,6 +209,26 @@
       },
       "validFor": {
         "start": "2025-04-09T00:00:00Z"
+      }
+    },
+    {
+      "subject": {
+        "organization": "sigstore.dev",
+        "commonName": "sigstore-tsa-selfsigned"
+      },
+      "uri": "https://timestamp.sigstage.dev/api/v1/timestamp",
+      "certChain": {
+        "certificates": [
+          {
+            "rawBytes": "MIIB9jCCAX2gAwIBAgITTP0hkp+x1+/mmEBLWOiqeGypHzAKBggqhkjOPQQDAzAtMQkwBwYDVQQKEwAxIDAeBgNVBAMTF3NpZ3N0b3JlLXRzYS1zZWxmc2lnbmVkMB4XDTI2MDYwOTIzMjAzOFoXDTI3MDYwOTIzMjAzOFowIjEJMAcGA1UEChMAMRUwEwYDVQQDEwxzaWdzdG9yZS10c2EwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAATpQMZ7nRZEFEdgNpbnTkzJLZYTEK/mfcaK2Z599gAKxUA491TclvFOFbdAd2J9Fje9ltnaC3vUteFKRD+Distjv3wRQkML6Egd1QW5yliklOOyfsPOPH3hhzn3MTrsrWijajBoMA4GA1UdDwEB/wQEAwIHgDAdBgNVHQ4EFgQULgCD26lmo5+zJfBBhU0sASIjtiIwHwYDVR0jBBgwFoAUI6cr8xtGSBYaQD42ecwOGAiM4EIwFgYDVR0lAQH/BAwwCgYIKwYBBQUHAwgwCgYIKoZIzj0EAwMDZwAwZAIwYubMlZ3LLoXXRjBEv+D7GNbMVk7VBaQm30h9kdSXImuI5pRSttP35WLCYhTH5izIAjBX8qB8fdjKyGOewkeBap6aObAh//sAuUxbcoeG06U1f4Q4noS7wr1xktAp8rA64A4="
+          },
+          {
+            "rawBytes": "MIIB3TCCAWSgAwIBAgIUeuz1txaqKQugtvTpF2igNs/fkw8wCgYIKoZIzj0EAwMwLTEJMAcGA1UEChMAMSAwHgYDVQQDExdzaWdzdG9yZS10c2Etc2VsZnNpZ25lZDAeFw0yNjA2MDkyMzIwMzhaFw0yNzA2MDkyMzIwMzhaMC0xCTAHBgNVBAoTADEgMB4GA1UEAxMXc2lnc3RvcmUtdHNhLXNlbGZzaWduZWQwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAASSwC2l89yeW+qpxMXmDu9gvtyutJrIsoUxRDm17leybov+t352Lxu6htNotY2rYFDUwNWQUtargkNQpLK+z3LQHCghERPmdhuUDiYt2B5yEJB9lZ+m2ws+ZWeoFS68QS+jRTBDMA4GA1UdDwEB/wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1UdDgQWBBQjpyvzG0ZIFhpAPjZ5zA4YCIzgQjAKBggqhkjOPQQDAwNnADBkAjBPd9pAsZ/TBvuhunrL9g9kBTuDqkwh0SGem6S1GYHnIA9xFkCvMG5Z2SeplW866FoCMBXLO3NmXYhfsZLD2E2sAG/tDwee8OadoW2QpJMD8Q5qAXjEnCjPVUIlQuiq2FNFtg=="
+          }
+        ]
+      },
+      "validFor": {
+        "start": "2026-06-12T00:00:00Z"
       }
     }
   ]
