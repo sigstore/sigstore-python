@@ -34,6 +34,7 @@ _logger = logging.getLogger(__name__)
 
 DEFAULT_TUF_URL = "https://tuf-repo-cdn.sigstore.dev"
 STAGING_TUF_URL = "https://tuf-repo-cdn.sigstage.dev"
+STAGING_V2_TUF_URL = "https://tuf.v2.sigstage.dev"
 
 
 def _get_dirs(url: str) -> tuple[Path, Path]:

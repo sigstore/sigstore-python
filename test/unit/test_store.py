@@ -24,6 +24,7 @@ from sigstore._utils import read_embedded
     [
         "https://tuf-repo-cdn.sigstore.dev",
         "https://tuf-repo-cdn.sigstage.dev",
+        "https://tuf.v2.sigstage.dev",
     ],
 )
 def test_store_reads_root_json(env):
@@ -36,8 +37,11 @@ def test_store_reads_root_json(env):
     [
         "https://tuf-repo-cdn.sigstore.dev",
         "https://tuf-repo-cdn.sigstage.dev",
+        "https://tuf.v2.sigstage.dev",
     ],
 )
 def test_store_reads_targets_json(env):
     trusted_root_json = read_embedded("trusted_root.json", env)
     assert json.loads(trusted_root_json)
+    signing_config_json = read_embedded("signing_config.v0.2.json", env)
+    assert json.loads(signing_config_json)

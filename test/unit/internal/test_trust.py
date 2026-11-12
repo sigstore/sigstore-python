@@ -365,6 +365,24 @@ class TestClientTrustConfig:
         ):
             ClientTrustConfig.from_json(path.read_text())
 
+    def test_staging_v2_offline(self):
+        config = ClientTrustConfig.staging_v2(offline=True)
+        assert isinstance(config.signing_config, SigningConfig)
+        assert isinstance(config.trusted_root, TrustedRoot)
+
+        verifiers = config.trusted_root.get_tlog_note_verifiers(
+            purpose=KeyringPurpose.VERIFY
+        )
+        assert [v.origin for v in verifiers] == ["pqc27-a1.us-east4.rekor.sigstage.dev"]
+        tlogs = config.signing_config.get_identity_tlogs()
+        assert len(tlogs) == 1
+        assert tlogs[0].url == "https://global-pqc.rekor.sigstage.dev/api/v2"
+        assert (
+            config.signing_config.get_oidc_url() == "https://oauth2.sigstage.dev/auth"
+        )
+        with pytest.raises(Error, match="No valid Fulcio CA found in signing config"):
+            config.signing_config.get_fulcio()
+
 
 class TestKeyringMLDSA:
     @pytest.mark.parametrize(

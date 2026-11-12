@@ -1,0 +1,19 @@
+{
+  "mediaType": "application/vnd.dev.sigstore.trustedroot+json;version=0.1",
+  "tlogs": [
+    {
+      "baseUrl": "https://pqc27-a1.us-east4.rekor.sigstage.dev",
+      "hashAlgorithm": "SHA2_256",
+      "publicKey": {
+        "rawBytes": "MIIFMjALBglghkgBZQMEAxEDggUhAIV6yId5G0DGEajPkfNkL25be3pgRFX6Aog6KXL+XTIaD7LUmvKEdiFLvqsxK0ZNhw/bSttAViccB3osGWmUcrNuJ4Dn8JQ76+AaMWG88igmXIk0qaXhOl4qn0bOXK13Mbs+d2N0oinX1821uBmNSopQtWkGrQS0OaTFUZjJ3i6Ge9SFK4oIFK/DlcnYFuoMiyyUx5YYeS6IdJG/En65fXYfUtk9CSgusgXsEhZGXII05u2XEwEa7RGi9vtaBqZqiFFbL73NGpdKaf4+veIoh265WTQynstqJHGREUaE1YZJQXHmBJGPcpn5pGQayQyiv6HsODcrBxHClXidIzZYDz0FRKr8+qaYnGz+GFgWLst0zRrYFpgHI/94Xm4tle7PRsmwDDmdV79pTwGhwO0A88Y7fpbd3eTgk75yMPQcoPSNXU2RJhsGsdiP6jjhy40PgayTWwzTHE5jCJUMYTUHJ/oUnxO3mj09ZxwIv01m6kOINX4zb2bGgidcfIWXtvdW1Oq9KB3YIxIGghqjyMQGHkSNK3W4iUQd/kSz9VkCfsVW65fzDSLS0XhBsFZf0JasyZ9EsmGp81wD9bMu3M+2UK015fpiN1yCi+B4O4ltUfQeZnl5tO44DsuF9O4nZBAY/7F4e8duFLrnClLfKN/arm6/+4VaUSZMuAl5HokSH3tdqDVDiKZRNJJAPhRSzX+Y6N4g52gWo2Q9/tXYc2MBICuC3ufwP7qzoAX/1iIwu/06EXrpFu9udX1Dw8YdQfEhSVWIJXvY64xH+NkJmt8dxK3PrnZF8jE7iVf3HWBb4FaTMBeCVgLYdbjqvYC+ZPCnhLDyNqm+I4LhjDd9y29IION9jw/Yz3IhgDGo8exXVllKZHlhMmMrbWDr23oeGpGze8ATBB7pWxO2Gc30qMi5njwGI8h8BbSGvzz21+u/tVxyY8pNoqF1BIbhz5K//iEKMLZaQexojfFhz0uatBGlBcX+9KnT7M7bTRKjjZ8iYD58V0dx+Vx+zmGkd6RHrjGUzAXLArxEfnhKWozTBOUq4IrpXuT+ROlsCvMGs+07CnVDb8LqCNqz9gmEu0scq6WiY3woV4PC8ZuC88mkUXrqF4yENTuOs+ppA7hkHVRnalT6UqCzfO+h/NhTUVS7Bo1Clz7lMNZyEks7rv46L9E7gMVivq43AYm722WgMNAEtP1y6kL5adEJiYUw81wdWn2C9GAHacXWpFGyh4PZeUjrseMQo9WRbgmq/qCvFkpgTSIDjewBJvwOt8Gb3WrBjUxJut1MN0QKw+IMLahrPj8fbdbEWdO+rc29ihxYbaiU8kr8wm8NV7kPRF8/fl1vkRfDun/GXhW9zZ7C3wVODObH8N226sV5qjSWR8+THCr4COucB914F3OAaEe1W8EcSisezdfff7yOAW4rq/pb8i1a6pyzKzR5RKwZPbwQugZYEUxPpq//xDWreMLYxvkeFtRoaVb0F9e/ulHuO1r08MyoSr0RGCJQVqElvaxErrljJwcRmsH2nQoMOeQMiNA8Jx8Ct96hrTpHHw70A0vDDfSl3Ve0HJIMzORJFTnwLXD9nQka1QwFdKkSaGMOfKj8refzGnS7IAQJiu3R0B9/KRkk+7jZI9c6nqjID3Op0Mw14j9KVHhHGQm/JA2twoYF+FMeSHA6k9F4t+Tq3xvK8Y3cTBXSHjEuszUBvKFAdM0H6X5dCwJcfzI5ywVxOOMDfEbJ+xv5YFuPVFSDBePa05v8lcw=",
+        "keyDetails": "ML_DSA_44",
+        "validFor": {
+          "start": "2026-10-30T00:00:00Z"
+        }
+      },
+      "logId": {
+        "keyId": "yamUXBf/d5QJ2jHB8HmHqxX+zHV201aClKtJnFuN5/0="
+      }
+    }
+  ]
+}
