@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -12,6 +12,7 @@ exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
 certifi = false
+sigstore-models = false
 
 [manifest]
 constraints = [{ name = "certifi", specifier = ">=2026.10.19" }]
@@ -1651,11 +1652,11 @@ wheels = [
 
 [[package]]
 name = "securesystemslib"
-version = "1.3.1"
+version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c2/dd/d1828dce0db18aa8d34f82aee4dbcf49b0f0303cad123a1c716bb1f3bf83/securesystemslib-1.3.1.tar.gz", hash = "sha256:ca915f4b88209bb5450ac05426b859d74b7cd1421cafcf73b8dd3418a0b17486", size = 934782, upload-time = "2025-09-26T13:36:56.79Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6c/b7/68ce74b4c3ab753c2de907d035a4102b4510729393184af3c7bdfee04d18/securesystemslib-1.6.0.tar.gz", hash = "sha256:b16e07c32bb41174c2ee2fb18f478ebe0d52e0e7c1fb085ce89c990452a35977", size = 950902, upload-time = "2026-10-20T08:40:19.495Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/29/1c560f46b3a95d8c508e1bd8c6d0bbf53c42d412ee7d19ec2a89ceced5b9/securesystemslib-1.3.1-py3-none-any.whl", hash = "sha256:2e5414bbdde33155a91805b295cbedc4ae3f12b48dccc63e1089093537f43c81", size = 871380, upload-time = "2025-09-26T13:36:54.851Z" },
+    { url = "https://files.pythonhosted.org/packages/50/1e/56bf4531475c32a8503c040ab7f05c34430a0c6b5744bf6c373246dd3c97/securesystemslib-1.6.0-py3-none-any.whl", hash = "sha256:1c1aa00f058f4851f038d409c8ca4a727db854a91f07ec3a0fa047bb93e43e0e", size = 874777, upload-time = "2026-10-20T08:40:17.665Z" },
 ]
 
 [package.optional-dependencies]
@@ -1712,7 +1713,7 @@ uv = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cryptography", specifier = ">=47" },
+    { name = "cryptography", specifier = ">=48" },
     { name = "id", specifier = ">=1.1.0" },
     { name = "platformdirs", specifier = "~=4.2" },
     { name = "pydantic", specifier = ">=2,<3" },
@@ -1720,8 +1721,8 @@ requires-dist = [
     { name = "rfc3161-client", specifier = ">=1.0.3,<1.1.0" },
     { name = "rfc8785", specifier = "~=0.1.2" },
     { name = "rich", specifier = ">=13,<16" },
-    { name = "securesystemslib", extras = ["crypto"] },
-    { name = "sigstore-models", specifier = "==0.0.6" },
+    { name = "securesystemslib", extras = ["crypto"], specifier = ">=1.6.0,<2" },
+    { name = "sigstore-models", specifier = "==0.0.8" },
     { name = "sigstore-rekor-types", specifier = "==0.0.18" },
     { name = "tuf", specifier = ">=6,<8" },
     { name = "urllib3", specifier = ">=2,<3" },
@@ -1745,15 +1746,15 @@ uv = [{ name = "uv" }]
 
 [[package]]
 name = "sigstore-models"
-version = "0.0.6"
+version = "0.0.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/ed/5c0ff809f90b19f4e971e17c1ed11f4df60082c6010b32a82054087e91e0/sigstore_models-0.0.6.tar.gz", hash = "sha256:c766c09470c2a7e8a4a333c893f07e2001c56a3ff1757b1a246119f53169a849", size = 7037, upload-time = "2025-11-26T19:18:12.61Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/15/286ced4f093f955b083518dd7de93d5a9b4dfc2d54fe8d58bc33058fdd01/sigstore_models-0.0.8.tar.gz", hash = "sha256:ad465236b3620797dd41afb0f50b883392a5b684d8c667b4d32745fa170e6387", size = 10519, upload-time = "2026-11-18T17:12:11.884Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/12/dc/7a19864a7bc9f43121ab459e12768ab0080590e3e1b60a29b2f2eb01fb85/sigstore_models-0.0.6-py3-none-any.whl", hash = "sha256:5201a68f4d7d0f8bec1e2f4378eb646b084c52609a4e31db8c385095fff68b2e", size = 13213, upload-time = "2025-11-26T19:18:11.365Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/55/87e385a804487e827814802309718529241ed389d6ce69a3bd4f10f56f7e/sigstore_models-0.0.8-py3-none-any.whl", hash = "sha256:1635bd52e70a1e2b365222313d536e9c317b46cf809faf0bf9ff1a6d3fa82e53", size = 13957, upload-time = "2026-11-18T17:12:10.56Z" },
 ]
 
 [[package]]

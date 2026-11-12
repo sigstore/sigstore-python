@@ -27,7 +27,7 @@ classifiers = [
   "Topic :: Security :: Cryptography",
 ]
 dependencies = [
-  "cryptography >= 47",
+  "cryptography >= 48",
   "id >= 1.1.0",
   "pydantic >= 2,< 3",
   "pyjwt >= 2.1",
@@ -36,11 +36,11 @@ dependencies = [
   "rfc3161-client >= 1.0.3,< 1.1.0",
   # Both sigstore-models and sigstore-rekor types are unstable
   # so we pin them conservatively.
-  "sigstore-models == 0.0.6",
+  "sigstore-models == 0.0.8",
   "sigstore-rekor-types == 0.0.18",
   "tuf >= 6, < 8",
   "urllib3 >= 2, < 3",
-  "securesystemslib[crypto]",
+  "securesystemslib[crypto] >= 1.6.0, < 2",
   "platformdirs ~= 4.2",
 ]
 requires-python = ">=3.11"
@@ -143,7 +143,7 @@ ignore = [
 
 [tool.uv]
 exclude-newer = "P7D"
-exclude-newer-package = { certifi = false }
+exclude-newer-package = { certifi = false, sigstore-models = false }
 constraint-dependencies = ["certifi >= 2026.10.19"]
 
 [tool.uv.build-backend]

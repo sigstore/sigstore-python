@@ -27,7 +27,7 @@ from typing import ClassVar, NewType
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, mldsa, padding, rsa
 from cryptography.x509 import (
     Certificate,
     load_der_x509_certificate,
@@ -38,6 +38,7 @@ from sigstore_models.trustroot import v1 as trustroot_v1
 from sigstore._utils import (
     KeyID,
     PublicKey,
+    PublicKeyTypes,
     is_timerange_valid,
     key_id,
     load_der_public_key,
@@ -76,6 +77,14 @@ class Key:
         common_v1.PublicKeyDetails.PKIX_ECDSA_P521_SHA_512: hashes.SHA512(),
     }
 
+    _ML_DSA_DETAILS_TO_KEY_TYPE: ClassVar[
+        dict[common_v1.PublicKeyDetails, PublicKeyTypes]
+    ] = {
+        common_v1.PublicKeyDetails.ML_DSA_44: mldsa.MLDSA44PublicKey,
+        common_v1.PublicKeyDetails.ML_DSA_65: mldsa.MLDSA65PublicKey,
+        common_v1.PublicKeyDetails.ML_DSA_87: mldsa.MLDSA87PublicKey,
+    }
+
     def __init__(self, public_key: common_v1.PublicKey) -> None:
         """
         Construct a key from the given Sigstore PublicKey message.
@@ -99,6 +108,12 @@ class Key:
             hash_algorithm = None
             key = load_der_public_key(
                 public_key.raw_bytes, types=(ed25519.Ed25519PublicKey,)
+            )
+        elif public_key.key_details in self._ML_DSA_DETAILS_TO_KEY_TYPE:
+            hash_algorithm = None
+            key = load_der_public_key(
+                public_key.raw_bytes,
+                types=(self._ML_DSA_DETAILS_TO_KEY_TYPE[public_key.key_details],),
             )
         else:
             raise VerificationError(f"unsupported key type: {public_key.key_details}")
@@ -129,7 +144,13 @@ class Key:
                 signature_algorithm=ec.ECDSA(self.hash_algorithm),
             )
         elif (
-            isinstance(self.key, ed25519.Ed25519PublicKey)
+            isinstance(
+                self.key,
+                ed25519.Ed25519PublicKey
+                | mldsa.MLDSA44PublicKey
+                | mldsa.MLDSA65PublicKey
+                | mldsa.MLDSA87PublicKey,
+            )
             and self.hash_algorithm is None
         ):
             self.key.verify(

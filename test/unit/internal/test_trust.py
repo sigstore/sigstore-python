@@ -13,12 +13,15 @@
 # limitations under the License.
 
 
+import base64
 import os
 from datetime import UTC, datetime, timedelta
 
 import pytest
 import urllib3
-from sigstore_models.common.v1 import TimeRange
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import mldsa
+from sigstore_models.common.v1 import PublicKey, PublicKeyDetails, TimeRange
 from sigstore_models.trustroot.v1 import (
     Service,
     ServiceConfiguration,
@@ -31,10 +34,12 @@ from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
+    Key,
+    Keyring,
     KeyringPurpose,
 )
 from sigstore._utils import is_timerange_valid
-from sigstore.errors import Error, TUFError
+from sigstore.errors import Error, TUFError, VerificationError
 from sigstore.models import (
     ClientTrustConfig,
     SigningConfig,
@@ -359,3 +364,70 @@ class TestClientTrustConfig:
             match=r"Input should be 'application/vnd\.dev\.sigstore\.clienttrustconfig.v0.1\+json'",
         ):
             ClientTrustConfig.from_json(path.read_text())
+
+
+class TestKeyringMLDSA:
+    @pytest.mark.parametrize(
+        ("key_details", "priv_cls", "pub_cls", "wrong_priv_cls"),
+        [
+            (
+                PublicKeyDetails.ML_DSA_44,
+                mldsa.MLDSA44PrivateKey,
+                mldsa.MLDSA44PublicKey,
+                mldsa.MLDSA65PrivateKey,
+            ),
+            (
+                PublicKeyDetails.ML_DSA_65,
+                mldsa.MLDSA65PrivateKey,
+                mldsa.MLDSA65PublicKey,
+                mldsa.MLDSA87PrivateKey,
+            ),
+            (
+                PublicKeyDetails.ML_DSA_87,
+                mldsa.MLDSA87PrivateKey,
+                mldsa.MLDSA87PublicKey,
+                mldsa.MLDSA44PrivateKey,
+            ),
+        ],
+    )
+    def test_mldsa_key_and_keyring(
+        self, key_details, priv_cls, pub_cls, wrong_priv_cls
+    ):
+        priv = priv_cls.generate()
+        pub_der = priv.public_key().public_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        pub_model = PublicKey(
+            raw_bytes=base64.b64encode(pub_der),
+            key_details=key_details,
+        )
+
+        key = Key(pub_model)
+        assert key.hash_algorithm is None
+        assert isinstance(key.key, pub_cls)
+
+        data = b"sigstore v2 mldsa test payload"
+        sig = priv.sign(data)
+        key.verify(sig, data)
+
+        keyring = Keyring([pub_model])
+        keyring.verify(key_id=key.key_id, signature=sig, data=data)
+
+        with pytest.raises(VerificationError, match="keyring: invalid signature"):
+            keyring.verify(key_id=key.key_id, signature=sig, data=b"tampered")
+
+        wrong_der = (
+            wrong_priv_cls.generate()
+            .public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+        )
+        mismatched_model = PublicKey(
+            raw_bytes=base64.b64encode(wrong_der),
+            key_details=key_details,
+        )
+        with pytest.raises(VerificationError, match="invalid key format"):
+            Key(mismatched_model)

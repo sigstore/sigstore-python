@@ -26,7 +26,7 @@ from typing import IO, NewType
 from urllib import parse
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, mldsa, rsa
 from cryptography.x509 import (
     Certificate,
     ExtensionNotFound,
@@ -39,12 +39,22 @@ from sigstore_models.common.v1 import HashAlgorithm, TimeRange
 from sigstore import hashes as sigstore_hashes
 from sigstore.errors import VerificationError
 
-PublicKey = rsa.RSAPublicKey | ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey
+PublicKey = (
+    rsa.RSAPublicKey
+    | ec.EllipticCurvePublicKey
+    | ed25519.Ed25519PublicKey
+    | mldsa.MLDSA44PublicKey
+    | mldsa.MLDSA65PublicKey
+    | mldsa.MLDSA87PublicKey
+)
 
 PublicKeyTypes = (
     type[rsa.RSAPublicKey]
     | type[ec.EllipticCurvePublicKey]
     | type[ed25519.Ed25519PublicKey]
+    | type[mldsa.MLDSA44PublicKey]
+    | type[mldsa.MLDSA65PublicKey]
+    | type[mldsa.MLDSA87PublicKey]
 )
 
 HexStr = NewType("HexStr", str)
@@ -68,6 +78,9 @@ def load_pem_public_key(
         rsa.RSAPublicKey,
         ec.EllipticCurvePublicKey,
         ed25519.Ed25519PublicKey,
+        mldsa.MLDSA44PublicKey,
+        mldsa.MLDSA65PublicKey,
+        mldsa.MLDSA87PublicKey,
     ),
 ) -> PublicKey:
     """
@@ -94,6 +107,9 @@ def load_der_public_key(
         rsa.RSAPublicKey,
         ec.EllipticCurvePublicKey,
         ed25519.Ed25519PublicKey,
+        mldsa.MLDSA44PublicKey,
+        mldsa.MLDSA65PublicKey,
+        mldsa.MLDSA87PublicKey,
     ),
 ) -> PublicKey:
     """
