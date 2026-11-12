@@ -54,6 +54,10 @@ class RekorClientError(Exception):
         """
         Create a new `RekorClientError` from the given `urllib3.BaseHTTPResponse`.
         """
+        if response.status == 409 and (
+            log_index := response.headers.get("x-log-index")
+        ):
+            return cls(f"Duplicate entry already exists at log index {log_index}")
         try:
             error = rekor_types.Error.model_validate_json(response.data)
             return cls(f"{error.code}: {error.message}")

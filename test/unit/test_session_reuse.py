@@ -16,8 +16,10 @@ import unittest.mock
 
 from sigstore._internal.rekor import EntryRequestBody
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor.client_identity import IdentityRekorClient
 from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
+from sigstore.oidc import IdentityToken
 
 
 def test_rekor_v1_session_reuse_public_api():
@@ -75,6 +77,32 @@ def test_timestamp_client_session_reuse_public_api():
 
         try:
             client.request_timestamp(b"sig")
+        except Exception:
+            pass
+
+        # Expect 1 PoolManager
+        assert mock_pool_cls.call_count == 1
+
+
+def test_identity_rekor_session_reuse_public_api():
+    """Verify that IdentityRekorClient reuses its PoolManager using public API."""
+    token = unittest.mock.MagicMock(spec=IdentityToken)
+    token.__str__.return_value = "tok"
+
+    with unittest.mock.patch("urllib3.PoolManager") as mock_pool_cls:
+        mock_pool_inst = unittest.mock.MagicMock()
+        mock_pool_cls.return_value = mock_pool_inst
+
+        client = IdentityRekorClient("http://fake")
+
+        # Call create_oidc_entry multiple times (hide exception: the client does not need to work)
+        try:
+            client.create_oidc_entry(b"\x00" * 32, token)
+        except Exception:
+            pass
+
+        try:
+            client.create_oidc_entry(b"\x00" * 32, token)
         except Exception:
             pass
 
