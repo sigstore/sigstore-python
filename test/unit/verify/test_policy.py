@@ -151,6 +151,44 @@ class TestIdentity:
         ):
             policy_.verify(bundle.signing_certificate)
 
+    def test_succeeds_email_domain_case_insensitive(self, signing_bundle):
+        # The certificate's email SAN is "a@tny.town"; an identity whose domain
+        # differs only in case must still verify, because the domain part of an
+        # email address is case-insensitive (see #459 in
+        # sigstore/model-transparency).
+        _, bundle = signing_bundle("bundle.txt")
+        policy_ = policy.Identity(
+            identity="a@TnY.ToWn",
+            issuer="https://github.com/login/oauth",
+        )
+
+        policy_.verify(bundle.signing_certificate)
+
+    def test_succeeds_email_exact_match(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
+        policy_ = policy.Identity(
+            identity="a@tny.town",
+            issuer="https://github.com/login/oauth",
+        )
+
+        policy_.verify(bundle.signing_certificate)
+
+    def test_fails_email_local_part_case_differs(self, signing_bundle):
+        # The certificate's email SAN is "a@tny.town". Per RFC 5321 the local
+        # part can be case-significant, so "A@tny.town" (local part differs only
+        # in case) must NOT match, even though the domain is identical.
+        _, bundle = signing_bundle("bundle.txt")
+        policy_ = policy.Identity(
+            identity="A@tny.town",
+            issuer="https://github.com/login/oauth",
+        )
+
+        with pytest.raises(
+            VerificationError,
+            match="Certificate's SANs do not match",
+        ):
+            policy_.verify(bundle.signing_certificate)
+
 
 class TestSingleExtPolicy:
     def test_succeeds(self, signing_bundle):
