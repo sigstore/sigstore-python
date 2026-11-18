@@ -50,7 +50,7 @@ from sigstore_models.trustroot import v1 as trustroot_v1
 
 from sigstore import dsse
 from sigstore._internal.fulcio.client import FulcioClient
-from sigstore._internal.merkle import verify_merkle_inclusion
+from sigstore._internal.merkle import hash_leaf, verify_merkle_inclusion
 from sigstore._internal.rekor import RekorLogSubmitter
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
 from sigstore._internal.timestamp import TimestampAuthorityClient
@@ -213,6 +213,19 @@ class TransparencyLogEntry:
         except VerificationError as exc:
             raise VerificationError(f"SET: invalid inclusion promise: {exc}")
 
+    def _verify_merkle_inclusion(self) -> None:
+        """
+        Verify the Merkle inclusion proof for this transparency log entry.
+        """
+        inclusion_proof = self._inner.inclusion_proof
+        verify_merkle_inclusion(
+            log_index=inclusion_proof.log_index,
+            tree_size=inclusion_proof.tree_size,
+            leaf_hash=hash_leaf(self._inner.canonicalized_body),
+            hashes=inclusion_proof.hashes,
+            root_hash=inclusion_proof.root_hash,
+        )
+
     def _verify(self, keyring: RekorKeyring) -> None:
         """
         Verifies this log entry.
@@ -225,7 +238,7 @@ class TransparencyLogEntry:
         * Verifies the inclusion promise, if present.
         """
 
-        verify_merkle_inclusion(self)
+        self._verify_merkle_inclusion()
         verify_checkpoint(keyring, self)
 
         _logger.debug(

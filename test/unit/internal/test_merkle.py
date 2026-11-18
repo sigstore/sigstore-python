@@ -21,8 +21,8 @@ from sigstore._internal.merkle import (
     _chain_border_right,
     _chain_inner,
     _decomp_inclusion_proof,
-    _hash_children,
-    _hash_leaf,
+    hash_children,
+    hash_leaf,
     verify_merkle_inclusion,
 )
 from sigstore.errors import VerificationError
@@ -31,11 +31,11 @@ from sigstore.models import Bundle
 
 def test_hash_leaf_and_children() -> None:
     leaf_data = b"some leaf data"
-    l0 = _hash_leaf(leaf_data)
+    l0 = hash_leaf(leaf_data)
     assert l0 == hashlib.sha256(b"\x00" + leaf_data).digest()
 
-    l1 = _hash_leaf(b"other leaf data")
-    node = _hash_children(l0, l1)
+    l1 = hash_leaf(b"other leaf data")
+    node = hash_children(l0, l1)
     assert node == hashlib.sha256(b"\x01" + l0 + l1).digest()
 
 
@@ -67,11 +67,11 @@ def test_chain_inner_and_border_right() -> None:
     #    n01     l2
     #   /   \
     #  l0   l1
-    l0 = _hash_leaf(b"leaf-0")
-    l1 = _hash_leaf(b"leaf-1")
-    l2 = _hash_leaf(b"leaf-2")
-    n01 = _hash_children(l0, l1)
-    root = _hash_children(n01, l2)
+    l0 = hash_leaf(b"leaf-0")
+    l1 = hash_leaf(b"leaf-1")
+    l2 = hash_leaf(b"leaf-2")
+    n01 = hash_children(l0, l1)
+    root = hash_children(n01, l2)
 
     # Leaf 1 (index=1, size=3): inner=2, border=0
     inner, border = _decomp_inclusion_proof(1, 3)
@@ -84,24 +84,67 @@ def test_chain_inner_and_border_right() -> None:
     assert _chain_border_right(_chain_inner(l2, [], 2), [n01]) == root
 
 
-def test_verify_merkle_inclusion_valid(asset: Any) -> None:
+def test_verify_merkle_inclusion() -> None:
+    l0 = hash_leaf(b"leaf-0")
+    l1 = hash_leaf(b"leaf-1")
+    root = hash_children(l0, l1)
+
+    verify_merkle_inclusion(
+        log_index=0,
+        tree_size=2,
+        leaf_hash=l0,
+        hashes=[l1],
+        root_hash=root,
+    )
+
+    with pytest.raises(VerificationError, match="leaf_hash must be 32 bytes"):
+        verify_merkle_inclusion(
+            log_index=0,
+            tree_size=2,
+            leaf_hash=b"short",
+            hashes=[l1],
+            root_hash=root,
+        )
+
+    with pytest.raises(VerificationError, match="root_hash must be 32 bytes"):
+        verify_merkle_inclusion(
+            log_index=0,
+            tree_size=2,
+            leaf_hash=l0,
+            hashes=[l1],
+            root_hash=b"short",
+        )
+
+    with pytest.raises(VerificationError, match="out of bounds"):
+        verify_merkle_inclusion(
+            log_index=2,
+            tree_size=2,
+            leaf_hash=l0,
+            hashes=[l1],
+            root_hash=root,
+        )
+
+
+def test_transparency_log_entry_verify_merkle_inclusion_valid(asset: Any) -> None:
     bundle = Bundle.from_json(asset("bundle.txt.sigstore").read_bytes())
-    verify_merkle_inclusion(bundle.log_entry)
+    bundle.log_entry._verify_merkle_inclusion()
 
 
-def test_verify_merkle_inclusion_wrong_size(asset: Any) -> None:
+def test_transparency_log_entry_verify_merkle_inclusion_wrong_size(asset: Any) -> None:
     bundle = Bundle.from_json(asset("bundle.txt.sigstore").read_bytes())
     bundle.log_entry._inner.inclusion_proof.hashes.pop()
 
     with pytest.raises(VerificationError, match="inclusion proof has wrong size"):
-        verify_merkle_inclusion(bundle.log_entry)
+        bundle.log_entry._verify_merkle_inclusion()
 
 
-def test_verify_merkle_inclusion_invalid_root_hash(asset: Any) -> None:
+def test_transparency_log_entry_verify_merkle_inclusion_invalid_root_hash(
+    asset: Any,
+) -> None:
     bundle = Bundle.from_json(asset("bundle.txt.sigstore").read_bytes())
     bundle.log_entry._inner.inclusion_proof.root_hash = b"\x00" * 32
 
     with pytest.raises(
         VerificationError, match="inclusion proof contains invalid root hash"
     ):
-        verify_merkle_inclusion(bundle.log_entry)
+        bundle.log_entry._verify_merkle_inclusion()
