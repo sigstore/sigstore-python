@@ -15,6 +15,7 @@
 import json
 
 import pytest
+from tuf.api.metadata import Metadata
 
 from sigstore._utils import read_embedded
 
@@ -30,6 +31,8 @@ from sigstore._utils import read_embedded
 def test_store_reads_root_json(env):
     root_json = read_embedded("root.json", env)
     assert json.loads(root_json)
+    md = Metadata.from_bytes(root_json)
+    md.verify_delegate("root", md)
 
 
 @pytest.mark.parametrize(

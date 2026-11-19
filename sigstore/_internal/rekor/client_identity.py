@@ -30,6 +30,7 @@ from sigstore_models.rekor.v2.identity import (
 )
 
 from sigstore._internal import DEFAULT_RETRIES, USER_AGENT
+from sigstore._internal.c2sp.checkpoint import SignedCheckpoint
 from sigstore._internal.c2sp.proof import TLogProof
 from sigstore._internal.rekor import (
     DEFAULT_REKOR_TIMEOUT,
@@ -75,15 +76,18 @@ class IdentityRekorClient:
                 "POST",
                 f"{self.url}/log/entries",
                 json=request.to_dict(),
+                redirect=False,
             )
         except urllib3.exceptions.HTTPError as http_error:
             raise RekorClientError.from_http_error(http_error) from http_error
 
-        if resp.status >= 400:
+        if not (200 <= resp.status < 300):
             raise RekorClientError.from_response(resp)
 
         try:
             proof = TLogProof.from_bytes(resp.data)
+            SignedCheckpoint.from_bytes(proof.checkpoint)
+            proof.decode_extra_claims()
         except VerificationError as exc:
             raise RekorClientError(
                 f"Invalid tlog-proof response from Rekor: {exc}"
@@ -106,10 +110,13 @@ class IdentityRekorClient:
             raise ValueError(
                 f"IdentityRequestV001 digest must be 32 bytes, got {len(digest)}"
             )
+        token_str = str(token)
+        if not token_str:
+            raise ValueError("OidcCredential token must not be empty")
 
         request = IdentityRequestV001(
             message=base64.b64encode(digest),
-            oidc=OidcCredential(token=str(token)),
+            oidc=OidcCredential(token=token_str),
         )
         return self._create_entry(request)
 
@@ -131,6 +138,10 @@ class IdentityRekorClient:
             raise ValueError(
                 f"IdentityRequestV001 digest must be 32 bytes, got {len(digest)}"
             )
+        if not public_key_spki:
+            raise ValueError("PublicKeyCredential public_key_spki must not be empty")
+        if not signature:
+            raise ValueError("PublicKeyCredential signature must not be empty")
         if context is not None and len(context) != 32:
             raise ValueError(
                 f"PublicKeyCredential context must be 32 bytes, got {len(context)}"

@@ -84,6 +84,7 @@ def test_create_oidc_entry_success():
             "message": base64.b64encode(digest).decode(),
             "oidc": {"token": "header.payload.sig"},
         },
+        redirect=False,
     )
 
 
@@ -113,6 +114,7 @@ def test_create_public_key_entry_with_and_without_context():
                     "context": base64.b64encode(ctx).decode(),
                 },
             },
+            redirect=False,
         )
 
         mock_req.reset_mock()
@@ -128,17 +130,34 @@ def test_create_public_key_entry_with_and_without_context():
                     "signature": base64.b64encode(sig).decode(),
                 },
             },
+            redirect=False,
         )
 
 
-def test_create_entry_invalid_digest_or_context_length():
+def test_create_entry_invalid_arguments():
     client = IdentityRekorClient("https://global-pqc.rekor.sigstage.dev")
     token = unittest.mock.MagicMock(spec=IdentityToken)
+    token.__str__.return_value = "header.payload.sig"
     with pytest.raises(ValueError, match="IdentityRequestV001 digest must be 32 bytes"):
         client.create_oidc_entry(b"short", token)
 
+    empty_token = unittest.mock.MagicMock(spec=IdentityToken)
+    empty_token.__str__.return_value = ""
+    with pytest.raises(ValueError, match="OidcCredential token must not be empty"):
+        client.create_oidc_entry(b"\x11" * 32, empty_token)
+
     with pytest.raises(ValueError, match="IdentityRequestV001 digest must be 32 bytes"):
         client.create_public_key_entry(b"short", b"spki", b"sig")
+
+    with pytest.raises(
+        ValueError, match="PublicKeyCredential public_key_spki must not be empty"
+    ):
+        client.create_public_key_entry(b"\x22" * 32, b"", b"sig")
+
+    with pytest.raises(
+        ValueError, match="PublicKeyCredential signature must not be empty"
+    ):
+        client.create_public_key_entry(b"\x22" * 32, b"spki", b"")
 
     with pytest.raises(
         ValueError, match="PublicKeyCredential context must be 32 bytes"
@@ -146,9 +165,33 @@ def test_create_entry_invalid_digest_or_context_length():
         client.create_public_key_entry(b"\x22" * 32, b"spki", b"sig", context=b"short")
 
 
-def test_create_entry_invalid_tlog_proof_response():
+@pytest.mark.parametrize(
+    "bad_body",
+    [
+        pytest.param(b"not a valid c2sp tlog proof", id="invalid-outer-format"),
+        pytest.param(
+            TLogProof(
+                index=0,
+                hashes=[],
+                checkpoint=b"not a valid checkpoint\n",
+                extra_data=encode_extra_claims({"identity": "a", "issuer": "b"}),
+            ).to_bytes(),
+            id="malformed-checkpoint",
+        ),
+        pytest.param(
+            TLogProof(
+                index=0,
+                hashes=[],
+                checkpoint=SAMPLE_CHECKPOINT,
+                extra_data=b"not-key-value-format\n",
+            ).to_bytes(),
+            id="malformed-extra-claims",
+        ),
+    ],
+)
+def test_create_entry_invalid_tlog_proof_response(bad_body):
     client = IdentityRekorClient("https://global-pqc.rekor.sigstage.dev")
-    mock_resp = urllib3.HTTPResponse(body=b"not a valid c2sp tlog proof", status=201)
+    mock_resp = urllib3.HTTPResponse(body=bad_body, status=201)
 
     req = IdentityRequestV001(
         message=base64.b64encode(b"\x11" * 32),
@@ -162,11 +205,19 @@ def test_create_entry_invalid_tlog_proof_response():
         client._create_entry(req)
 
 
-def test_create_entry_http_409_duplicate_entry():
+@pytest.mark.parametrize(
+    ("headers", "expected_match"),
+    [
+        ({"x-log-index": "42"}, "Duplicate entry already exists at log index 42"),
+        ({"X-Log-Index": "0"}, "Duplicate entry already exists at log index 0"),
+        ({}, "6: already exists"),
+    ],
+)
+def test_create_entry_http_409_duplicate_entry(headers, expected_match):
     client = IdentityRekorClient("https://global-pqc.rekor.sigstage.dev")
     mock_resp = urllib3.HTTPResponse(
         body=b'{"code":6,"message":"already exists"}',
-        headers={"x-log-index": "42"},
+        headers=headers,
         status=409,
     )
 
@@ -177,10 +228,39 @@ def test_create_entry_http_409_duplicate_entry():
 
     with (
         unittest.mock.patch.object(client._http, "request", return_value=mock_resp),
-        pytest.raises(
-            RekorClientError,
-            match="Duplicate entry already exists at log index 42",
+        pytest.raises(RekorClientError, match=expected_match),
+    ):
+        client._create_entry(req)
+
+
+@pytest.mark.parametrize(
+    ("status", "body", "expected_match"),
+    [
+        (307, b"", "Rekor returned an error with HTTP 307"),
+        (
+            400,
+            b'{"code":3,"message":"invalid oidc token","details":[]}',
+            "3: invalid oidc token",
         ),
+        (
+            500,
+            b'{"code":13,"message":"internal error","details":[]}',
+            "13: internal error",
+        ),
+    ],
+)
+def test_create_entry_non_2xx_and_grpc_gateway_errors(status, body, expected_match):
+    client = IdentityRekorClient("https://global-pqc.rekor.sigstage.dev")
+    mock_resp = urllib3.HTTPResponse(body=body, status=status)
+
+    req = IdentityRequestV001(
+        message=base64.b64encode(b"\x11" * 32),
+        oidc=OidcCredential(token="tok"),
+    )
+
+    with (
+        unittest.mock.patch.object(client._http, "request", return_value=mock_resp),
+        pytest.raises(RekorClientError, match=expected_match),
     ):
         client._create_entry(req)
 

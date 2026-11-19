@@ -27,6 +27,51 @@ class TestVerificationPolicy:
         with pytest.raises(TypeError, match="Can't instantiate abstract class"):
             policy.VerificationPolicy(pretend.stub())
 
+    def test_v1_only_custom_policy_compat(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
+
+        class CertOnlyPolicy:
+            def verify(self, cert) -> None:
+                return
+
+        cert_only: policy.VerificationPolicy = CertOnlyPolicy()
+
+        # Continues to work in v1 AllOf / AnyOf
+        policy.AllOf([cert_only]).verify(bundle.signing_certificate)
+        policy.AnyOf([cert_only]).verify(bundle.signing_certificate)
+
+        # Fails closed with VerificationError (not AttributeError) for v2 claims
+        with pytest.raises(
+            VerificationError,
+            match="CertOnlyPolicy does not support claims verification",
+        ):
+            policy.AllOf([cert_only]).verify_claims({})
+
+        with pytest.raises(VerificationError, match="0 of 1 policies succeeded"):
+            policy.AnyOf([cert_only]).verify_claims({})
+
+        # AnyOf skips unsupported children and succeeds if another child matches
+        policy.AnyOf(
+            [cert_only, policy.OIDCIssuer("https://example.com")]
+        ).verify_claims({"issuer": "https://example.com"})
+
+    def test_custom_policy_with_verify_claims(self, signing_bundle):
+        _, bundle = signing_bundle("bundle.txt")
+
+        class DualPolicy:
+            def verify(self, cert) -> None:
+                return
+
+            def verify_claims(self, claims) -> None:
+                if claims.get("custom") != "ok":
+                    raise VerificationError("custom mismatch")
+
+        dual: policy.VerificationPolicy = DualPolicy()
+        policy.AllOf([dual]).verify(bundle.signing_certificate)
+        policy.AllOf([dual]).verify_claims({"custom": "ok"})
+        with pytest.raises(VerificationError, match="custom mismatch"):
+            policy.AllOf([dual]).verify_claims({})
+
 
 class TestUnsafeNoOp:
     def test_succeeds(self, monkeypatch):
@@ -128,6 +173,16 @@ class TestAnyOf:
                 "issuer": "https://github.com/login/oauth",
             }
         )
+
+    def test_verify_claims_skips_deprecated_v1_child(self):
+        policy_ = policy.AnyOf(
+            [
+                policy.GitHubWorkflowTrigger("push"),
+                policy.OIDCBuildTrigger("push"),
+            ]
+        )
+
+        policy_.verify_claims({"build-trigger": "push"})
 
 
 class TestAllOf:
@@ -251,17 +306,56 @@ class TestIdentity:
         ):
             policy_.verify(bundle.signing_certificate)
 
-    def test_verify_claims_missing_issuer_in_policy(self):
-        policy_ = policy.Identity(identity="a@tny.town")
+    @pytest.mark.parametrize("issuer", [None, ""])
+    def test_verify_claims_without_issuer_in_policy(self, issuer):
+        policy_ = policy.Identity(identity="a@tny.town", issuer=issuer)
+        policy_.verify_claims(
+            {
+                "identity": "a@tny.town",
+                "issuer": "https://github.com/login/oauth",
+            }
+        )
+
+        # Matches v1 AllOf([OIDCIssuer(...), Identity(identity=..., issuer=None)]) composition
+        composed = policy.AllOf(
+            [
+                policy.OIDCIssuerV2("https://github.com/login/oauth"),
+                policy_,
+            ]
+        )
+        composed.verify_claims(
+            {
+                "identity": "a@tny.town",
+                "issuer": "https://github.com/login/oauth",
+            }
+        )
+
+    def test_verify_claims_missing_issuer_claim(self):
+        policy_ = policy.Identity(
+            identity="a@tny.town",
+            issuer="https://github.com/login/oauth",
+        )
 
         with pytest.raises(
             VerificationError,
-            match="Identity policy must specify an issuer when verifying claims",
+            match="Claims do not contain OIDCIssuer \\('issuer'\\) claim",
+        ):
+            policy_.verify_claims({"identity": "a@tny.town"})
+
+    def test_verify_claims_issuer_mismatch(self):
+        policy_ = policy.Identity(
+            identity="a@tny.town",
+            issuer="https://github.com/login/oauth",
+        )
+
+        with pytest.raises(
+            VerificationError,
+            match="Claim OIDCIssuer \\('issuer'\\) does not match",
         ):
             policy_.verify_claims(
                 {
                     "identity": "a@tny.town",
-                    "issuer": "https://github.com/login/oauth",
+                    "issuer": "https://accounts.google.com",
                 }
             )
 

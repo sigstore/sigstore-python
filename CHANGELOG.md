@@ -13,10 +13,11 @@ All versions prior to 0.9.0 are untracked.
 * HTTP clients (most importantly Rekor) now retry requests when that makes
   sense ([#1970](https://github.com/sigstore/sigstore-python/pull/1970))
 * Support ML-DSA-44, ML-DSA-65, and ML-DSA-87 public keys in trusted roots
-* Added `verify_claims()` to `VerificationPolicy` and built-in policy classes
-  for verifying `c2sp.org/tlog-proof@v1` identity claims
-* Added `ClientTrustConfig.staging_v2()` (with embedded TUF metadata for
-  `https://tuf.v2.sigstage.dev`), `SigningConfig.get_identity_tlogs()`, and
+* Added `verify_claims()` on built-in `VerificationPolicy` classes for
+  verifying `c2sp.org/tlog-proof@v1` identity claims
+* Added experimental `ClientTrustConfig.staging_v2()` (with embedded TUF
+  metadata for `https://tuf.v2.sigstage.dev`),
+  `SigningConfig.get_identity_tlogs()`, and
   `TrustedRoot.get_tlog_note_verifiers()`
 
 ### Changed

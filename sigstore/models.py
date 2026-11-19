@@ -25,7 +25,7 @@ from collections.abc import Iterable
 from enum import StrEnum
 from pathlib import Path
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import rfc8785
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -54,6 +54,7 @@ from sigstore._internal.fulcio.client import FulcioClient
 from sigstore._internal.merkle import hash_leaf, verify_merkle_inclusion
 from sigstore._internal.rekor import RekorLogSubmitter
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
+from sigstore._internal.rekor.client_identity import IdentityRekorClient
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
@@ -71,9 +72,6 @@ from sigstore._internal.tuf import (
 )
 from sigstore._utils import KeyID, cert_is_leaf, cert_is_root_ca, is_timerange_valid
 from sigstore.errors import Error, MetadataError, VerificationError
-
-if TYPE_CHECKING:
-    from sigstore._internal.rekor.client_identity import IdentityRekorClient
 
 # Versions supported by this client
 REKOR_VERSIONS = [1, 2]
@@ -696,6 +694,7 @@ class SigningConfig:
             tlog_versions = REKOR_VERSIONS
         else:
             tlog_versions = [tlog_version]
+        self._tlog_versions = tlog_versions
 
         self._tlogs = self._get_valid_services(
             self._inner.rekor_tlog_urls, tlog_versions, self._inner.rekor_tlog_config
@@ -792,14 +791,23 @@ class SigningConfig:
     def get_identity_tlogs(self) -> list[IdentityRekorClient]:
         """
         Returns the Rekor v2 identity transparency log clients to sign with.
-        """
-        from sigstore._internal.rekor.client_identity import IdentityRekorClient
 
-        return [
-            IdentityRekorClient(tlog.url)
-            for tlog in self._tlogs
-            if tlog.major_api_version == 2
-        ]
+        NOTE: `SigningConfig` v0.2 uses `majorApiVersion == 2` for both Rekor v2
+        `serve` (`hashedrekord`) and `serve-identity` logs without a separate
+        service field; callers must only use this with signing configurations
+        whose v2 transparency logs expose the `serve-identity` API (such as
+        `ClientTrustConfig.staging_v2()`).
+        """
+        tlogs = self._get_valid_services(
+            self._inner.rekor_tlog_urls,
+            [v for v in self._tlog_versions if v == 2],
+            self._inner.rekor_tlog_config,
+        )
+        if not tlogs:
+            raise Error(
+                "No valid Rekor v2 identity transparency log found in signing config"
+            )
+        return [IdentityRekorClient(tlog.url) for tlog in tlogs]
 
     def get_fulcio(self) -> FulcioClient:
         """
@@ -905,9 +913,17 @@ class TrustedRoot:
             ):
                 continue
 
+            if tlog.hash_algorithm != common_v1.HashAlgorithm.SHA2_256:
+                _logger.warning(
+                    f"Skipping trusted root tlog {tlog.base_url!r} with "
+                    f"unsupported hash algorithm {tlog.hash_algorithm}"
+                )
+                continue
+
             origin = tlog.base_url
+            origin_lower = origin.lower()
             for prefix in ("https://", "http://"):
-                if origin.startswith(prefix):
+                if origin_lower.startswith(prefix):
                     origin = origin[len(prefix) :]
                     break
             origin = origin.rstrip("/")
@@ -1023,7 +1039,11 @@ class ClientTrustConfig:
         cls,
         offline: bool = False,
     ) -> ClientTrustConfig:
-        """Create new trust config from Sigstore v2 staging TUF repository.
+        """Create new trust config from the experimental Sigstore v2 staging TUF repository.
+
+        NOTE: The v2 staging environment (`https://tuf.v2.sigstage.dev`) is
+        experimental, unstable, and subject to resets; do not use it in
+        production.
 
         If `offline`, will use data in local TUF cache. Otherwise will
         update the data from remote TUF repository.
