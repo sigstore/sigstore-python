@@ -30,7 +30,7 @@ from sigstore._internal.c2sp.checkpoint import (
     format_subtree_v1_message,
     is_valid_note_name,
 )
-from sigstore._utils import PublicKey, load_der_public_key
+from sigstore._utils import KeyID, PublicKey, load_der_public_key
 from sigstore.errors import VerificationError
 
 # Test keys from rekor-tiles/pkg/note/note_test.go
@@ -159,8 +159,69 @@ def test_compute_note_key_id_staging_pqc_trusted_root() -> None:
     assert key_id == base64.b64decode(_STAGING_PQC_KEY_ID_B64)
 
 
+def test_verify_live_staging_mldsa44_checkpoint() -> None:
+    # Real ML-DSA-44 checkpoint fetched from https://pqc27-a1.us-east4.rekor.sigstage.dev/api/v2/checkpoint
+    # (independent rekor-tiles Go implementation interop vector).
+    live_checkpoint = (
+        "pqc27-a1.us-east4.rekor.sigstage.dev\n"
+        "162993\n"
+        "H0KbFE/8KsDRWTe6VulmGDPrbwfF4a0XJMYqxMIVd7M=\n"
+        "\n"
+        "— pqc27-a1.us-east4.rekor.sigstage.dev "
+        "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\n"
+    )
+    pub = load_der_public_key(base64.b64decode(_STAGING_PQC_SPKI_B64))
+    verifier = NoteVerifier.from_public_key(_STAGING_PQC_ORIGIN, pub)
+    scp = SignedCheckpoint.from_text(live_checkpoint)
+    assert scp.checkpoint.origin == _STAGING_PQC_ORIGIN
+    assert scp.checkpoint.tree_size == 162993
+    scp.verify([verifier])
+
+
 def test_c2sp_signed_note_spec_example() -> None:
-    # Example from https://c2sp.org/signed-note#example
+    # Full example (vkey + signed note) from https://c2sp.org/signed-note#example
     # vkey: example.com/foo+530d903a+AekyeRrm56hApGFkyQR4ZCbV54Id2LKaANYcrnKv3U2k
     vkey_payload = base64.b64decode("AekyeRrm56hApGFkyQR4ZCbV54Id2LKaANYcrnKv3U2k")
     assert vkey_payload[0] == 0x01
@@ -169,20 +230,68 @@ def test_c2sp_signed_note_spec_example() -> None:
     verifier = NoteVerifier.from_public_key("example.com/foo", pub)
     assert verifier.key_hint.hex() == "530d903a"
 
+    sig_bytes = base64.b64decode(
+        "Uw2QOkn8srV1yJGh2VYRlL1Tnagv1YEq6TfXppzi2ONncAlTgK7Ztg1ERYNZXsYjOBH3mFXmRKuwHjG1Yu72IneyaQM="
+    )
+    assert sig_bytes[:4] == verifier.key_hint
+    dummy_cp = Checkpoint(origin="example.com/foo", tree_size=0, root_hash=b"\x00" * 32)
+    verifier.verify_checkpoint_signature(
+        dummy_cp, "This is an example message.\n", sig_bytes[4:]
+    )
+
 
 def test_c2sp_tlog_cosignature_ed25519_spec_example() -> None:
-    # Verify Ed25519 cosignature (0x04) key ID calculation and message formatting
+    # Verify Ed25519 cosignature (0x04) key ID calculation and spec example bytes
+    # from https://c2sp.org/tlog-cosignature#ed25519
     priv = ed25519.Ed25519PrivateKey.generate()
     pub = priv.public_key()
     origin = "witness.example.com/w1"
     verifier = NoteVerifier.from_public_key(origin, pub, cosignature=True)
 
     expected_id = hashlib.sha256(
-        origin.encode()
+        origin.encode("utf-8")
         + b"\n\x04"
         + pub.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
     ).digest()
     assert verifier.key_id == expected_id
+
+    note_text = (
+        "example.com/behind-the-sofa\n"
+        "20852163\n"
+        "CsUYapGGPo4dkMgIAUqom/Xajj7h2fB2MPA3j2jxq2I=\n"
+    )
+    assert format_cosignature_v1_message(1679315147, note_text) == (
+        b"cosignature/v1\n"
+        b"time 1679315147\n"
+        b"example.com/behind-the-sofa\n"
+        b"20852163\n"
+        b"CsUYapGGPo4dkMgIAUqom/Xajj7h2fB2MPA3j2jxq2I=\n"
+    )
+
+
+def test_format_subtree_v1_byte_layout() -> None:
+    # Independent byte-level test vector for CosignedSubtree in
+    # https://c2sp.org/tlog-cosignature#ml-dsa-44
+    root_hash = bytes(range(32))
+    msg = format_subtree_v1_message(
+        cosigner_name="witness.example",
+        timestamp=0x0102030405060708,
+        log_origin="log.example/v1",
+        tree_size=0x1020304050607080,
+        root_hash=root_hash,
+    )
+    expected = (
+        b"subtree/v1\n\x00"
+        + bytes([len(b"witness.example")])
+        + b"witness.example"
+        + b"\x01\x02\x03\x04\x05\x06\x07\x08"
+        + bytes([len(b"log.example/v1")])
+        + b"log.example/v1"
+        + b"\x00\x00\x00\x00\x00\x00\x00\x00"
+        + b"\x10\x20\x30\x40\x50\x60\x70\x80"
+        + root_hash
+    )
+    assert msg == expected
 
 
 @pytest.mark.parametrize(
@@ -208,6 +317,43 @@ def test_compute_note_key_id_errors() -> None:
     with pytest.raises(VerificationError, match="invalid key name"):
         NoteVerifier.from_public_key("bad+name", pub)
 
+    with pytest.raises(VerificationError, match="invalid key name length"):
+        compute_note_key_id("a" * 256, pub)
+
+    with pytest.raises(VerificationError, match="key_id must be at least 4 bytes"):
+        NoteVerifier.from_public_key("example.com/log", pub, key_id=KeyID(b"\x01\x02"))
+
+    # ML-DSA-65 and ML-DSA-87 are not defined for signature type 0x06
+    for unsupported_mldsa in [
+        mldsa.MLDSA65PrivateKey.generate().public_key(),
+        mldsa.MLDSA87PrivateKey.generate().public_key(),
+    ]:
+        with pytest.raises(VerificationError, match="unsupported public key type"):
+            compute_note_key_id("example.com/log", unsupported_mldsa)
+        with pytest.raises(VerificationError, match="unsupported public key type"):
+            NoteVerifier.from_public_key("example.com/log", unsupported_mldsa)
+
+    # ECDSA and RSA do not support tlog-cosignature
+    ec_pub = ec.generate_private_key(ec.SECP256R1()).public_key()
+    with pytest.raises(VerificationError, match="ECDSA keys do not support"):
+        compute_note_key_id("example.com/w", ec_pub, cosignature=True)
+    with pytest.raises(VerificationError, match="ECDSA keys do not support"):
+        NoteVerifier.from_public_key("example.com/w", ec_pub, cosignature=True)
+
+    rsa_priv = cast(
+        rsa.RSAPrivateKey,
+        serialization.load_pem_private_key(_RSA_PRIV_PEM, password=None),
+    )
+    with pytest.raises(VerificationError, match="RSA keys do not support"):
+        compute_note_key_id("example.com/w", rsa_priv.public_key(), cosignature=True)
+
+    # Unsupported ECDSA curve fails fast at construction time
+    secp256k1_pub = ec.generate_private_key(ec.SECP256K1()).public_key()
+    with pytest.raises(VerificationError, match="unsupported ECDSA curve"):
+        compute_note_key_id("example.com/log", secp256k1_pub)
+    with pytest.raises(VerificationError, match="unsupported ECDSA curve"):
+        NoteVerifier.from_public_key("example.com/log", secp256k1_pub)
+
 
 def test_checkpoint_roundtrip_and_errors() -> None:
     root_hash = hashlib.sha256(b"root").digest()
@@ -222,18 +368,28 @@ def test_checkpoint_roundtrip_and_errors() -> None:
     assert parsed == cp
 
     b64_root = base64.b64encode(root_hash).decode("ascii")
+    non_canonical_root = "A" * 42 + "B="
     for bad_text, match in [
         (f"example.com/log\n123\n{b64_root}", "must end with a newline"),
         ("example.com/log\n123\n", "too few lines"),
-        (f"\n123\n{b64_root}\n", "empty origin"),
+        (f"\n123\n{b64_root}\n", "invalid origin"),
+        (f"bad origin\n123\n{b64_root}\n", "invalid origin"),
+        (f"bad+origin\n123\n{b64_root}\n", "invalid origin"),
+        (f"{'a' * 256}\n123\n{b64_root}\n", "invalid origin length"),
         (f"example.com/log\n01\n{b64_root}\n", "invalid tree size"),
+        (f"example.com/log\n{'1' * 5000}\n{b64_root}\n", "invalid tree size"),
         ("example.com/log\n123\n\n", "empty root hash"),
-        ("example.com/log\n123\n!!!\n", "invalid base64 root hash"),
+        ("example.com/log\n123\n!!!\n", "invalid base64 in root hash"),
+        (
+            f"example.com/log\n123\n{non_canonical_root}\n",
+            "non-canonical base64 in root hash",
+        ),
         (
             f"example.com/log\n123\n{base64.b64encode(b'short').decode()}\n",
             "root hash must be 32 bytes",
         ),
         (f"example.com/log\n123\n{b64_root}\n\n", "empty extension line"),
+        (f"example.com/log\n123\n{b64_root}\next\x07line\n", "control characters"),
     ]:
         with pytest.raises(VerificationError, match=match):
             Checkpoint.from_text(bad_text)
@@ -242,9 +398,18 @@ def test_checkpoint_roundtrip_and_errors() -> None:
 def test_format_subtree_v1_and_cosignature_v1_errors() -> None:
     root_hash = hashlib.sha256(b"root").digest()
 
-    with pytest.raises(VerificationError, match="invalid cosigner name length"):
+    with pytest.raises(VerificationError, match="invalid cosigner name"):
         format_subtree_v1_message(
             cosigner_name="",
+            timestamp=1,
+            log_origin="example.com",
+            tree_size=1,
+            root_hash=root_hash,
+        )
+
+    with pytest.raises(VerificationError, match="invalid cosigner name"):
+        format_subtree_v1_message(
+            cosigner_name="bad cosigner",
             timestamp=1,
             log_origin="example.com",
             tree_size=1,
@@ -288,6 +453,15 @@ def test_format_subtree_v1_and_cosignature_v1_errors() -> None:
             start=6,
         )
 
+    with pytest.raises(VerificationError, match="invalid subtree range"):
+        format_subtree_v1_message(
+            cosigner_name="example.com",
+            timestamp=1,
+            log_origin="example.com",
+            tree_size=1 << 64,
+            root_hash=root_hash,
+        )
+
     with pytest.raises(
         VerificationError, match="non-zero start must have zero timestamp"
     ):
@@ -326,9 +500,9 @@ def test_signed_checkpoint_mldsa_log_and_witnesses() -> None:
     )
     log_raw_sig = struct.pack(">Q", ts_log) + log_priv.sign(log_msg)
 
-    # 2. Sign with ML-DSA-65 witness 1 (subtree/v1)
+    # 2. Sign with ML-DSA-44 witness 1 (subtree/v1)
     w1_origin = "witness1.example.com"
-    w1_priv = mldsa.MLDSA65PrivateKey.generate()
+    w1_priv = mldsa.MLDSA44PrivateKey.generate()
     w1_verifier = NoteVerifier.from_public_key(
         w1_origin, w1_priv.public_key(), cosignature=True
     )
@@ -352,9 +526,18 @@ def test_signed_checkpoint_mldsa_log_and_witnesses() -> None:
     w2_msg = format_cosignature_v1_message(ts_w2, note_text)
     w2_raw_sig = struct.pack(">Q", ts_w2) + w2_priv.sign(w2_msg)
 
-    # 4. Include an unknown signature line (should be ignored per c2sp.org/signed-note)
+    # 4. Include unknown signatures: completely unknown, same name / different
+    # key_id, and different name / same key_id (all MUST be ignored per signed-note)
     unknown_sig_line = _format_sig_line(
         "unknown.example.com", b"\xaa\xbb\xcc\xdd", b"xyz"
+    )
+    same_name_diff_id = _format_sig_line(
+        log_origin,
+        bytes([log_verifier.key_hint[0] ^ 0xFF]) + log_verifier.key_hint[1:],
+        b"ignored",
+    )
+    diff_name_same_id = _format_sig_line(
+        "other-name.example.com", log_verifier.key_hint, b"ignored"
     )
 
     full_note = (
@@ -362,13 +545,15 @@ def test_signed_checkpoint_mldsa_log_and_witnesses() -> None:
         + "\n"
         + _format_sig_line(log_origin, log_verifier.key_hint, log_raw_sig)
         + unknown_sig_line
+        + same_name_diff_id
+        + diff_name_same_id
         + _format_sig_line(w1_origin, w1_verifier.key_hint, w1_raw_sig)
         + _format_sig_line(w2_origin, w2_verifier.key_hint, w2_raw_sig)
     )
 
     signed_cp = SignedCheckpoint.from_bytes(full_note.encode("utf-8"))
     assert signed_cp.checkpoint == cp
-    assert len(signed_cp.signatures) == 4
+    assert len(signed_cp.signatures) == 6
 
     # Verify with log + 2 witnesses (including an unrelated log verifier that should be skipped)
     other_log_verifier = NoteVerifier.from_public_key(
@@ -392,7 +577,7 @@ def test_signed_checkpoint_mldsa_log_and_witnesses() -> None:
     # rotation) count as a single witness toward witness_threshold.
     w1_priv_rotated = mldsa.MLDSA44PrivateKey.generate()
     w1_verifier_rotated = NoteVerifier.from_public_key(
-        w1_origin, w1_priv_rotated.public_key()
+        w1_origin, w1_priv_rotated.public_key(), cosignature=True
     )
     w1_raw_sig_rotated = struct.pack(">Q", ts_w1) + w1_priv_rotated.sign(w1_msg)
     same_witness_note = (
@@ -410,6 +595,67 @@ def test_signed_checkpoint_mldsa_log_and_witnesses() -> None:
             witness_verifiers=[w1_verifier, w1_verifier_rotated],
             witness_threshold=2,
         )
+
+
+def test_extension_lines_mldsa44_ignored_ed25519_covered() -> None:
+    # Per c2sp.org/tlog-checkpoint: ML-DSA-44 ignores extension lines while
+    # Ed25519 cosignature/v1 covers them.
+    log_origin = "pqc.rekor.example.com"
+    root_hash = hashlib.sha256(b"root").digest()
+    cp = Checkpoint(
+        origin=log_origin,
+        tree_size=42,
+        root_hash=root_hash,
+        extension_lines=["ext=original"],
+    )
+    note_text = cp.to_text()
+
+    log_priv = mldsa.MLDSA44PrivateKey.generate()
+    log_verifier = NoteVerifier.from_public_key(log_origin, log_priv.public_key())
+    ts = 1762260000
+    log_msg = format_subtree_v1_message(
+        cosigner_name=log_origin,
+        timestamp=ts,
+        log_origin=log_origin,
+        tree_size=cp.tree_size,
+        root_hash=cp.root_hash,
+    )
+    log_sig_line = _format_sig_line(
+        log_origin,
+        log_verifier.key_hint,
+        struct.pack(">Q", ts) + log_priv.sign(log_msg),
+    )
+
+    w_origin = "witness.example.com"
+    w_priv = ed25519.Ed25519PrivateKey.generate()
+    w_verifier = NoteVerifier.from_public_key(
+        w_origin, w_priv.public_key(), cosignature=True
+    )
+    w_sig_line = _format_sig_line(
+        w_origin,
+        w_verifier.key_hint,
+        struct.pack(">Q", ts)
+        + w_priv.sign(format_cosignature_v1_message(ts, note_text)),
+    )
+
+    SignedCheckpoint.from_text(note_text + "\n" + log_sig_line + w_sig_line).verify(
+        [log_verifier], witness_verifiers=[w_verifier], witness_threshold=1
+    )
+
+    # Tampering the extension line leaves ML-DSA-44 valid but breaks Ed25519 cosignature
+    tampered_text = Checkpoint(
+        origin=log_origin,
+        tree_size=42,
+        root_hash=root_hash,
+        extension_lines=["ext=tampered"],
+    ).to_text()
+    SignedCheckpoint.from_text(tampered_text + "\n" + log_sig_line).verify(
+        [log_verifier]
+    )
+    with pytest.raises(VerificationError, match="invalid witness cosignature"):
+        SignedCheckpoint.from_text(
+            tampered_text + "\n" + log_sig_line + w_sig_line
+        ).verify([log_verifier], witness_verifiers=[w_verifier], witness_threshold=1)
 
 
 @pytest.mark.parametrize("curve", [ec.SECP256R1(), ec.SECP384R1(), ec.SECP521R1()])
@@ -494,15 +740,30 @@ def test_note_verifier_signature_errors() -> None:
     )
     note_text = cp.to_text()
 
-    # ML-DSA wrong length & invalid signature
-    mldsa_priv = mldsa.MLDSA87PrivateKey.generate()
+    # ML-DSA-44 wrong length, zero timestamp (subtree vs checkpoint), and invalid signature
+    mldsa_priv = mldsa.MLDSA44PrivateKey.generate()
     mldsa_verifier = NoteVerifier.from_public_key(origin, mldsa_priv.public_key())
-    with pytest.raises(VerificationError, match="invalid ML-DSA signature length"):
+    with pytest.raises(VerificationError, match="invalid ML-DSA-44 signature length"):
         mldsa_verifier.verify_checkpoint_signature(cp, note_text, b"short")
 
-    with pytest.raises(VerificationError, match="invalid ML-DSA signature for"):
+    # Subtree cosignature (timestamp == 0) must be rejected as a checkpoint cosignature
+    subtree_msg = format_subtree_v1_message(
+        cosigner_name=origin,
+        timestamp=0,
+        log_origin=origin,
+        tree_size=cp.tree_size,
+        root_hash=cp.root_hash,
+    )
+    subtree_sig = struct.pack(">Q", 0) + mldsa_priv.sign(subtree_msg)
+    with pytest.raises(
+        VerificationError,
+        match="ML-DSA-44 checkpoint cosignature timestamp must not be zero",
+    ):
+        mldsa_verifier.verify_checkpoint_signature(cp, note_text, subtree_sig)
+
+    with pytest.raises(VerificationError, match="invalid ML-DSA-44 signature for"):
         mldsa_verifier.verify_checkpoint_signature(
-            cp, note_text, struct.pack(">Q", 100) + b"\x00" * 4627
+            cp, note_text, struct.pack(">Q", 100) + b"\x00" * 2420
         )
 
     # Ed25519 cosignature wrong length, zero timestamp, and invalid signature
@@ -530,17 +791,17 @@ def test_note_verifier_signature_errors() -> None:
     with pytest.raises(VerificationError, match="invalid Ed25519 signature length"):
         ed_log_verifier.verify_checkpoint_signature(cp, note_text, b"short")
 
-    # Unsupported ECDSA curve (e.g. SECP192R1 / SECP256K1)
-    secp256k1_pub = ec.generate_private_key(ec.SECP256K1()).public_key()
-    k1_verifier = NoteVerifier.from_public_key(origin, secp256k1_pub)
-    with pytest.raises(VerificationError, match="unsupported ECDSA curve"):
-        k1_verifier.verify_checkpoint_signature(cp, note_text, b"sig")
-
 
 def test_signed_checkpoint_parsing_and_verification_errors() -> None:
     root_hash_b64 = base64.b64encode(hashlib.sha256(b"root").digest()).decode("ascii")
     valid_header = f"example.com/log\n10\n{root_hash_b64}\n"
     valid_sig_b64 = base64.b64encode(b"\x01\x02\x03\x04\x05").decode("ascii")
+    # Non-canonical base64 for 5 bytes (40 bits -> 7 chars = 42 bits + '='; bit 0 set in 7th char)
+    non_canonical_sig_b64 = "AQIDBAU="[0:6] + "V="
+    many_sigs = "".join(
+        _format_sig_line(f"s{i}.example.com", struct.pack(">I", i), b"\x00")
+        for i in range(65)
+    )
 
     with pytest.raises(VerificationError, match="not valid UTF-8"):
         SignedCheckpoint.from_bytes(b"\xff\xfe")
@@ -556,6 +817,7 @@ def test_signed_checkpoint_parsing_and_verification_errors() -> None:
             f"{valid_header}\n— example.com/log {valid_sig_b64}",
             "must end with a newline",
         ),
+        (f"{valid_header}\n{many_sigs}", "too many signature lines"),
         (
             f"{valid_header}\n-- example.com/log {valid_sig_b64}\n",
             "missing em dash prefix",
@@ -573,8 +835,16 @@ def test_signed_checkpoint_parsing_and_verification_errors() -> None:
             "invalid base64 in signature line",
         ),
         (
+            f"{valid_header}\n— example.com/log {non_canonical_sig_b64}\n",
+            "non-canonical base64 in signature line",
+        ),
+        (
             f"{valid_header}\n— example.com/log {base64.b64encode(b'1234').decode()}\n",
             "too few bytes",
+        ),
+        (
+            f"{valid_header}\n— example.com/log {valid_sig_b64}\n— example.com/log {valid_sig_b64}\n",
+            "duplicate signature line",
         ),
     ]:
         with pytest.raises(VerificationError, match=match):
@@ -589,12 +859,62 @@ def test_signed_checkpoint_parsing_and_verification_errors() -> None:
     with pytest.raises(VerificationError, match="no valid log signature found"):
         signed_cp.verify([])
 
-    # Known witness with invalid signature fails closed
+    # Non-cosignature witness verifiers (Ed25519 0x01, ECDSA, RSA) are rejected
+    ed_witness_pub = ed25519.Ed25519PrivateKey.generate().public_key()
+    bad_ed_witness = NoteVerifier.from_public_key("witness.example", ed_witness_pub)
+    ec_witness_pub = ec.generate_private_key(ec.SECP256R1()).public_key()
+    bad_ec_witness = NoteVerifier.from_public_key("witness.example", ec_witness_pub)
+    rsa_witness_priv = cast(
+        rsa.RSAPrivateKey,
+        serialization.load_pem_private_key(_RSA_PRIV_PEM, password=None),
+    )
+    bad_rsa_witness = NoteVerifier.from_public_key(
+        "witness.example", rsa_witness_priv.public_key()
+    )
+    for bad_witness in [bad_ed_witness, bad_ec_witness, bad_rsa_witness]:
+        with pytest.raises(
+            VerificationError,
+            match="must be ML-DSA-44 or Ed25519 with cosignature=True",
+        ):
+            signed_cp.verify([], witness_verifiers=[bad_witness])
+
+    # A log key also listed in witness_verifiers must NOT count as its own witness
+    self_log_priv = mldsa.MLDSA44PrivateKey.generate()
+    self_log_verifier = NoteVerifier.from_public_key(
+        "example.com/log", self_log_priv.public_key()
+    )
+    ts = 1762260000
+    self_msg = format_subtree_v1_message(
+        cosigner_name="example.com/log",
+        timestamp=ts,
+        log_origin="example.com/log",
+        tree_size=10,
+        root_hash=hashlib.sha256(b"root").digest(),
+    )
+    self_signed_note = (
+        valid_header
+        + "\n"
+        + _format_sig_line(
+            "example.com/log",
+            self_log_verifier.key_hint,
+            struct.pack(">Q", ts) + self_log_priv.sign(self_msg),
+        )
+    )
+    with pytest.raises(
+        VerificationError, match="witness quorum not met: expected 1, got 0"
+    ):
+        SignedCheckpoint.from_text(self_signed_note).verify(
+            [self_log_verifier],
+            witness_verifiers=[self_log_verifier],
+            witness_threshold=1,
+        )
+
+    # Known witness with invalid signature fails closed and chains root cause
     w_pub = ed25519.Ed25519PrivateKey.generate().public_key()
     w_verifier = NoteVerifier(
-        origin="example.com/log",
+        origin="witness.example.com",
         public_key=w_pub,
-        key_id=b"\x01\x02\x03\x04" + b"\x00" * 28,  # type: ignore[arg-type]
+        key_id=KeyID(b"\x01\x02\x03\x04" + b"\x00" * 28),
         cosignature=True,
     )
     log_priv = ed25519.Ed25519PrivateKey.generate()
@@ -606,9 +926,12 @@ def test_signed_checkpoint_parsing_and_verification_errors() -> None:
         valid_header
         + "\n"
         + _format_sig_line("example.com/log", log_verifier.key_hint, log_sig)
-        + f"— example.com/log {valid_sig_b64}\n"
+        + f"— witness.example.com {valid_sig_b64}\n"
     )
-    with pytest.raises(VerificationError, match="invalid witness cosignature"):
+    with pytest.raises(
+        VerificationError, match="invalid witness cosignature"
+    ) as exc_info:
         SignedCheckpoint.from_text(note_with_bad_witness).verify(
             [log_verifier], witness_verifiers=[w_verifier]
         )
+    assert isinstance(exc_info.value.__cause__, VerificationError)

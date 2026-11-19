@@ -16,6 +16,11 @@
 Parser, serializer, and Merkle inclusion verifier for ``c2sp.org/tlog-proof@v1``.
 
 See: <https://c2sp.org/tlog-proof>
+
+Note: ``c2sp.org/tlog-proof@v1`` treats the ``extra`` field as opaque
+application-specific bytes. The ``encode_extra_claims`` and
+``decode_extra_claims`` helpers in this module implement Sigstore v2's
+newline-separated ``key:value`` UTF-8 convention on top of that field.
 """
 
 from __future__ import annotations
@@ -34,6 +39,8 @@ _EXTRA_PREFIX = b"extra "
 _INDEX_PREFIX = b"index "
 _SHA256_DIGEST_SIZE = hashlib.sha256().digest_size
 _MAX_UINT64 = (1 << 64) - 1
+_MAX_UINT64_DIGITS = len(str(_MAX_UINT64))
+_MAX_PROOF_HASHES = 64
 
 
 def _is_canonical_ascii_uint64(raw: bytes) -> bool:
@@ -41,34 +48,47 @@ def _is_canonical_ascii_uint64(raw: bytes) -> bool:
     Return True if ``raw`` is an ASCII decimal integer in ``[0, 2^64 - 1]``
     with no leading zeroes (unless the value is ``0``).
     """
-    if not raw:
+    if not raw or len(raw) > _MAX_UINT64_DIGITS:
         return False
     if raw == b"0":
         return True
     if raw.startswith(b"0"):
         return False
-    return raw.isascii() and raw.isdigit() and int(raw) <= _MAX_UINT64
+    return raw.isdigit() and int(raw) <= _MAX_UINT64
 
 
-def _b64decode_strict(data: bytes, description: str) -> bytes:
+def _b64decode_strict(
+    data: bytes,
+    description: str,
+    *,
+    error_prefix: str = "malformed tlog-proof",
+) -> bytes:
     """
-    Strictly decode standard RFC 4648 Base64 bytes, raising ``VerificationError``
-    on any non-alphabet characters or invalid padding.
+    Strictly decode canonical standard RFC 4648 Base64 bytes (Section 4 with
+    ``=`` padding and Section 3.5 canonical zeroed pad bits), raising
+    ``VerificationError`` on any non-alphabet characters, invalid padding, or
+    non-canonical encoding.
     """
     if not data:
-        raise VerificationError(f"malformed tlog-proof: empty {description}")
+        raise VerificationError(f"{error_prefix}: empty {description}")
     try:
-        return base64.b64decode(data, validate=True)
+        decoded = base64.b64decode(data, validate=True)
     except binascii.Error as exc:
         raise VerificationError(
-            f"malformed tlog-proof: invalid base64 in {description}: {exc}"
+            f"{error_prefix}: invalid base64 in {description}: {exc}"
         ) from exc
+    if base64.b64encode(decoded) != data:
+        raise VerificationError(
+            f"{error_prefix}: non-canonical base64 in {description}"
+        )
+    return decoded
 
 
 def encode_extra_claims(claims: Mapping[str, str]) -> bytes:
     """
-    Encode a mapping of ``extra`` key-value claims into the newline-separated
-    ``key:value`` UTF-8 format used by Sigstore v2 ``tlog-proof`` entries.
+    Encode a mapping of ``extra`` key-value claims into Sigstore v2's
+    newline-separated ``key:value`` UTF-8 format (an application-level
+    convention layered over ``c2sp.org/tlog-proof@v1``'s opaque ``extra`` bytes).
     """
     lines: list[bytes] = []
     for key, value in claims.items():
@@ -86,8 +106,8 @@ def encode_extra_claims(claims: Mapping[str, str]) -> bytes:
 
 def decode_extra_claims(extra_data: bytes) -> dict[str, str]:
     """
-    Decode the newline-separated ``key:value`` UTF-8 lines from a Sigstore v2
-    ``tlog-proof`` ``extra`` section into a dictionary of ``{key: value}``.
+    Decode Sigstore v2's newline-separated ``key:value`` UTF-8 lines from a
+    ``c2sp.org/tlog-proof@v1`` opaque ``extra`` section into ``{key: value}``.
     """
     claims: dict[str, str] = {}
     if not extra_data:
@@ -152,6 +172,11 @@ class TLogProof:
             raise VerificationError(
                 f"malformed tlog-proof: index out of uint64 range: {self.index}"
             )
+        if len(self.hashes) > _MAX_PROOF_HASHES:
+            raise VerificationError(
+                f"malformed tlog-proof: too many inclusion proof hashes "
+                f"({len(self.hashes)}, max {_MAX_PROOF_HASHES})"
+            )
         for h in self.hashes:
             if len(h) != _SHA256_DIGEST_SIZE:
                 raise VerificationError(
@@ -202,8 +227,15 @@ class TLogProof:
         index = int(raw_index)
         line_idx += 1
 
+        hash_lines = lines[line_idx:]
+        if len(hash_lines) > _MAX_PROOF_HASHES:
+            raise VerificationError(
+                f"malformed tlog-proof: too many inclusion proof hashes "
+                f"({len(hash_lines)}, max {_MAX_PROOF_HASHES})"
+            )
+
         hashes: list[bytes] = []
-        for raw_hash in lines[line_idx:]:
+        for raw_hash in hash_lines:
             decoded_hash = _b64decode_strict(raw_hash, "inclusion proof hash")
             if len(decoded_hash) != _SHA256_DIGEST_SIZE:
                 raise VerificationError(
@@ -233,8 +265,8 @@ class TLogProof:
 
     def decode_extra_claims(self) -> dict[str, str]:
         """
-        Decode ``self.extra_data`` as newline-separated ``key:value`` UTF-8
-        claims into a ``dict[str, str]``.
+        Decode ``self.extra_data`` using Sigstore v2's newline-separated
+        ``key:value`` UTF-8 convention into a ``dict[str, str]``.
         """
         return decode_extra_claims(self.extra_data)
 

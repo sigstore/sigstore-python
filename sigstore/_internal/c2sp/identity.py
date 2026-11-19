@@ -15,6 +15,11 @@
 """
 Signature payload and binary leaf hash computation for
 ``c2sp.org/identity-transparency/v1``.
+
+Note: ``c2sp.org/identity-transparency/v1`` (C2SP/C2SP#244) is currently a
+draft specification; details such as the single pre-hashed ``"context"`` key
+for public-key credentials, the all-zero OIDC receipt, and rejecting empty
+claim keys/values follow ``sigstore/rekor-tiles``.
 """
 
 from __future__ import annotations
@@ -91,14 +96,20 @@ def compute_signature_payload(
 ) -> bytes:
     """
     Compute the domain-separated payload to be signed/verified for a logged
-    Sigstore v2 public-key signature (``tlog_proof`` verification material):
+    Sigstore v2 public-key signature (``transparencyLogProof`` verification
+    material):
 
         ``"c2sp.org/identity-transparency/v1\\x00" || SHA256(message_digest)``
         ``[|| SHA256(SHA256("context")) || SHA256(context)]``
+
+    Both ``message_digest`` and optional ``context`` MUST be pre-hashed 32-byte
+    SHA-256 digests; each is hashed once more here to produce the double-SHA-256
+    digests committed in the leaf.
     """
-    # NOTE: Supporting unlogged v2 bundles (`public_key` or `cert` verification
-    # material without a transparency log entry) would require using the
-    # `b"sigstore.dev/v1\x00"` domain separator with `context` disallowed.
+    # NOTE: Supporting unlogged v2 bundles (`public_key` or `certificate`
+    # verification material without a transparency log entry) would require
+    # using the `b"sigstore.dev/v1\x00"` domain separator with `context`
+    # disallowed.
     _validate_digest(message_digest, "message_digest")
     buf = bytearray(IDENTITY_TRANSPARENCY_DOMAIN_SEPARATOR)
     buf.extend(_sha256(message_digest))
@@ -149,6 +160,9 @@ def _compute_public_key_leaf(
     """
     Construct the unhashed ``c2sp.org/identity-transparency/v1`` binary leaf for
     a public-key credential.
+
+    Both ``message_digest`` and optional ``context`` MUST be pre-hashed 32-byte
+    SHA-256 digests.
     """
     if not signature:
         raise VerificationError("identity-transparency: signature is empty")
@@ -177,6 +191,9 @@ def compute_public_key_leaf_hash(
     """
     Compute the RFC 6962 Merkle leaf hash ``SHA256(0x00 || leaf)`` for a
     public-key identity log entry.
+
+    Both ``message_digest`` and optional ``context`` MUST be pre-hashed 32-byte
+    SHA-256 digests.
     """
     leaf = _compute_public_key_leaf(
         public_key=public_key,
@@ -189,25 +206,32 @@ def compute_public_key_leaf_hash(
 
 def _compute_oidc_leaf(
     *,
-    issuer: str | bytes,
+    issuer: str,
     message_digest: bytes,
-    claims: Mapping[str, str | bytes],
+    claims: Mapping[str, str],
 ) -> bytes:
     """
     Construct the unhashed ``c2sp.org/identity-transparency/v1`` binary leaf for
     an OIDC credential.
     """
-    issuer_bytes = issuer.encode("utf-8") if isinstance(issuer, str) else issuer
+    issuer_bytes = issuer.encode("utf-8")
     if not issuer_bytes:
         raise VerificationError("identity-transparency: issuer is empty")
 
-    hashed_claim_pairs = (
-        (
-            _double_sha256(k.encode("utf-8")),
-            _double_sha256(v.encode("utf-8") if isinstance(v, str) else v),
+    hashed_claim_pairs: list[tuple[bytes, bytes]] = []
+    for k, v in claims.items():
+        if not k:
+            raise VerificationError("identity-transparency: claim key is empty")
+        if not v:
+            raise VerificationError(
+                f"identity-transparency: claim value is empty for key {k!r}"
+            )
+        hashed_claim_pairs.append(
+            (
+                _double_sha256(k.encode("utf-8")),
+                _double_sha256(v.encode("utf-8")),
+            )
         )
-        for k, v in claims.items()
-    )
 
     return _build_leaf(
         root_of_trust_hash=_sha256(issuer_bytes),
@@ -219,9 +243,9 @@ def _compute_oidc_leaf(
 
 def compute_oidc_leaf_hash(
     *,
-    issuer: str | bytes,
+    issuer: str,
     message_digest: bytes,
-    claims: Mapping[str, str | bytes],
+    claims: Mapping[str, str],
 ) -> bytes:
     """
     Compute the RFC 6962 Merkle leaf hash ``SHA256(0x00 || leaf)`` for an OIDC

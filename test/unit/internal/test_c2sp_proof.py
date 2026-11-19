@@ -137,6 +137,16 @@ def test_decode_extra_claims_invalid(raw_extra: bytes, err_match: str) -> None:
             "invalid base64 in extra data",
         ),
         (
+            # Non-canonical base64 (RFC 4648 Section 3.5: non-zero pad bits in 'AB==')
+            b"c2sp.org/tlog-proof@v1\nextra AB==\nindex 0\n\ncheckpoint\n",
+            "non-canonical base64 in extra data",
+        ),
+        (
+            # Duplicate extra lines
+            b"c2sp.org/tlog-proof@v1\nextra dGVzdA==\nextra dGVzdA==\nindex 0\n\ncheckpoint\n",
+            "missing index line",
+        ),
+        (
             b"c2sp.org/tlog-proof@v1\nextra dGVzdA==\n\ncheckpoint\n",
             "missing index line",
         ),
@@ -161,10 +171,29 @@ def test_decode_extra_claims_invalid(raw_extra: bytes, err_match: str) -> None:
             "invalid index",
         ),
         (
+            # >4300 digits must raise VerificationError, not Python ValueError
+            b"c2sp.org/tlog-proof@v1\nindex " + b"1" * 5000 + b"\n\ncheckpoint\n",
+            "invalid index",
+        ),
+        (
+            # Non-canonical base64 in 32-byte inclusion proof hash (non-zero trailing bits)
+            b"c2sp.org/tlog-proof@v1\nindex 0\n"
+            + (b"A" * 42 + b"B=")
+            + b"\n\ncheckpoint\n",
+            "non-canonical base64 in inclusion proof hash",
+        ),
+        (
             b"c2sp.org/tlog-proof@v1\nindex 0\n"
             + base64.b64encode(b"short-hash")
             + b"\n\ncheckpoint\n",
             "inclusion proof hash must be 32 bytes",
+        ),
+        (
+            # >64 inclusion proof hashes exceeds maximum depth of a uint64 tree
+            b"c2sp.org/tlog-proof@v1\nindex 0\n"
+            + b"\n".join([base64.b64encode(b"\x00" * 32)] * 65)
+            + b"\n\ncheckpoint\n",
+            "too many inclusion proof hashes",
         ),
     ],
 )
@@ -176,6 +205,9 @@ def test_tlog_proof_from_bytes_invalid(raw_proof: bytes, err_match: str) -> None
 def test_tlog_proof_init_validation() -> None:
     with pytest.raises(VerificationError, match="index out of uint64 range"):
         TLogProof(index=-1, hashes=[], checkpoint=_SAMPLE_CHECKPOINT)
+
+    with pytest.raises(VerificationError, match="too many inclusion proof hashes"):
+        TLogProof(index=0, hashes=[b"\x00" * 32] * 65, checkpoint=_SAMPLE_CHECKPOINT)
 
     with pytest.raises(VerificationError, match="expected 32-byte proof hash"):
         TLogProof(index=0, hashes=[b"short"], checkpoint=_SAMPLE_CHECKPOINT)
