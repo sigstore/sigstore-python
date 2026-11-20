@@ -20,6 +20,7 @@ import pretend
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import mldsa
 
 from sigstore import _utils as utils
 from sigstore.errors import VerificationError
@@ -96,6 +97,52 @@ def test_load_pem_public_key_serialization(monkeypatch):
 
     with pytest.raises(VerificationError, match="invalid key format: not one of"):
         utils.load_pem_public_key([keybytes])
+
+
+@pytest.mark.parametrize(
+    ("priv_cls", "pub_cls", "wrong_pub_cls"),
+    [
+        (
+            mldsa.MLDSA44PrivateKey,
+            mldsa.MLDSA44PublicKey,
+            mldsa.MLDSA65PublicKey,
+        ),
+        (
+            mldsa.MLDSA65PrivateKey,
+            mldsa.MLDSA65PublicKey,
+            mldsa.MLDSA87PublicKey,
+        ),
+        (
+            mldsa.MLDSA87PrivateKey,
+            mldsa.MLDSA87PublicKey,
+            mldsa.MLDSA44PublicKey,
+        ),
+    ],
+)
+def test_mldsa_public_keys(priv_cls, pub_cls, wrong_pub_cls):
+    priv = priv_cls.generate()
+    pub = priv.public_key()
+
+    pem = pub.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    der = pub.public_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    loaded_pem = utils.load_pem_public_key(pem)
+    loaded_der = utils.load_der_public_key(der)
+    assert isinstance(loaded_pem, pub_cls)
+    assert isinstance(loaded_der, pub_cls)
+    assert utils.key_id(loaded_der) == hashlib.sha256(der).digest()
+
+    assert isinstance(utils.load_der_public_key(der, types=(pub_cls,)), pub_cls)
+    with pytest.raises(VerificationError, match="invalid key format: not one of"):
+        utils.load_der_public_key(der, types=(wrong_pub_cls,))
+    with pytest.raises(VerificationError, match="invalid key format: not one of"):
+        utils.load_pem_public_key(pem, types=(wrong_pub_cls,))
 
 
 @pytest.mark.parametrize(

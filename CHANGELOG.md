@@ -12,6 +12,7 @@ All versions prior to 0.9.0 are untracked.
 
 * HTTP clients (most importantly Rekor) now retry requests when that makes
   sense ([#1970](https://github.com/sigstore/sigstore-python/pull/1970))
+* Support ML-DSA-44, ML-DSA-65, and ML-DSA-87 public keys in trusted roots
 
 ### Changed
 
@@ -21,6 +22,8 @@ All versions prior to 0.9.0 are untracked.
   TLS certificates now come from OS certificate store and not certifi
   ([#1970](https://github.com/sigstore/sigstore-python/pull/1970))
   ([#1973](https://github.com/sigstore/sigstore-python/pull/1973))
+* Raised the minimum `cryptography` version from 47 to 48 and required
+  `securesystemslib[crypto] >= 1.6.0, < 2`
 
 
 ## [4.5.1]

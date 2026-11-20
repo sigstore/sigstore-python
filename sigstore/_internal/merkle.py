@@ -24,17 +24,12 @@ The data format for the Merkle tree nodes is described in IETF's RFC 6962.
 from __future__ import annotations
 
 import hashlib
-import struct
-import typing
 
 from sigstore.errors import VerificationError
 
-if typing.TYPE_CHECKING:
-    from sigstore.models import TransparencyLogEntry
-
-
-_LEAF_HASH_PREFIX = 0
-_NODE_HASH_PREFIX = 1
+_LEAF_HASH_PREFIX = b"\x00"
+_NODE_HASH_PREFIX = b"\x01"
+_SHA256_DIGEST_SIZE = hashlib.sha256().digest_size
 
 
 def _decomp_inclusion_proof(index: int, size: int) -> tuple[int, int]:
@@ -59,12 +54,11 @@ def _chain_inner(seed: bytes, hashes: list[bytes], log_index: int) -> bytes:
     located at the specified |index| on its level.
     """
 
-    for i in range(len(hashes)):
-        h = hashes[i]
+    for i, h in enumerate(hashes):
         if (log_index >> i) & 1 == 0:
-            seed = _hash_children(seed, h)
+            seed = hash_children(seed, h)
         else:
-            seed = _hash_children(h, seed)
+            seed = hash_children(h, seed)
     return seed
 
 
@@ -75,52 +69,61 @@ def _chain_border_right(seed: bytes, hashes: list[bytes]) -> bytes:
     """
 
     for h in hashes:
-        seed = _hash_children(h, seed)
+        seed = hash_children(h, seed)
     return seed
 
 
-def _hash_children(lhs: bytes, rhs: bytes) -> bytes:
-    pattern = f"B{len(lhs)}s{len(rhs)}s"
-    data = struct.pack(pattern, _NODE_HASH_PREFIX, lhs, rhs)
-    return hashlib.sha256(data).digest()
+def hash_children(lhs: bytes, rhs: bytes) -> bytes:
+    """
+    Compute the RFC 6962 interior node hash ``SHA256(0x01 || lhs || rhs)``.
+    """
+    return hashlib.sha256(_NODE_HASH_PREFIX + lhs + rhs).digest()
 
 
-def _hash_leaf(leaf: bytes) -> bytes:
-    pattern = f"B{len(leaf)}s"
-    data = struct.pack(pattern, _LEAF_HASH_PREFIX, leaf)
-    return hashlib.sha256(data).digest()
+def hash_leaf(leaf: bytes) -> bytes:
+    """
+    Compute the RFC 6962 leaf node hash ``SHA256(0x00 || leaf)``.
+    """
+    return hashlib.sha256(_LEAF_HASH_PREFIX + leaf).digest()
 
 
-def verify_merkle_inclusion(entry: TransparencyLogEntry) -> None:
-    """Verify the Merkle Inclusion Proof for a given Rekor entry."""
-    inclusion_proof = entry._inner.inclusion_proof
-
-    # Figure out which subset of hashes corresponds to the inner and border nodes.
-    inner, border = _decomp_inclusion_proof(
-        inclusion_proof.log_index, inclusion_proof.tree_size
-    )
-
-    # Check against the number of hashes.
-    if len(inclusion_proof.hashes) != (inner + border):
+def verify_merkle_inclusion(
+    *,
+    log_index: int,
+    tree_size: int,
+    leaf_hash: bytes,
+    hashes: list[bytes],
+    root_hash: bytes,
+) -> None:
+    """
+    Verify an RFC 6962 Merkle inclusion proof for ``leaf_hash`` at ``log_index``
+    against ``tree_size`` and ``root_hash``.
+    """
+    if len(leaf_hash) != _SHA256_DIGEST_SIZE:
         raise VerificationError(
-            f"inclusion proof has wrong size: expected {inner + border}, got "
-            f"{len(inclusion_proof.hashes)}"
+            f"inclusion proof: leaf_hash must be 32 bytes, got {len(leaf_hash)}"
+        )
+    if len(root_hash) != _SHA256_DIGEST_SIZE:
+        raise VerificationError(
+            f"inclusion proof: root_hash must be 32 bytes, got {len(root_hash)}"
+        )
+    if tree_size <= 0 or log_index < 0 or log_index >= tree_size:
+        raise VerificationError(
+            f"inclusion proof: index {log_index} out of bounds for tree size {tree_size}"
         )
 
-    # The new entry's hash isn't included in the inclusion proof so we should calculate this
-    # ourselves.
-    leaf_hash: bytes = _hash_leaf(entry._inner.canonicalized_body)
-
-    # Now chain the hashes belonging to the inner and border portions. We should expect the
-    # calculated hash to match the root hash.
-    intermediate_result: bytes = _chain_inner(
-        leaf_hash, inclusion_proof.hashes[:inner], inclusion_proof.log_index
-    )
-
-    calc_hash = _chain_border_right(intermediate_result, inclusion_proof.hashes[inner:])
-
-    if calc_hash != inclusion_proof.root_hash:
+    inner, border = _decomp_inclusion_proof(log_index, tree_size)
+    if len(hashes) != (inner + border):
         raise VerificationError(
-            f"inclusion proof contains invalid root hash: expected {inclusion_proof}, calculated "
-            f"{calc_hash.hex()}"
+            f"inclusion proof has wrong size: expected {inner + border}, got "
+            f"{len(hashes)}"
+        )
+
+    intermediate_result = _chain_inner(leaf_hash, hashes[:inner], log_index)
+    calc_hash = _chain_border_right(intermediate_result, hashes[inner:])
+
+    if calc_hash != root_hash:
+        raise VerificationError(
+            "inclusion proof contains invalid root hash: "
+            f"expected {root_hash.hex()}, calculated {calc_hash.hex()}"
         )
