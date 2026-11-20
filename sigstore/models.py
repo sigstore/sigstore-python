@@ -49,19 +49,27 @@ from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEnt
 from sigstore_models.trustroot import v1 as trustroot_v1
 
 from sigstore import dsse
+from sigstore._internal.c2sp.checkpoint import NoteVerifier
 from sigstore._internal.fulcio.client import FulcioClient
 from sigstore._internal.merkle import hash_leaf, verify_merkle_inclusion
 from sigstore._internal.rekor import RekorLogSubmitter
 from sigstore._internal.rekor.checkpoint import verify_checkpoint
+from sigstore._internal.rekor.client_identity import IdentityRekorClient
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
     CertificateAuthority,
     CTKeyring,
+    Key,
     Keyring,
     KeyringPurpose,
     RekorKeyring,
 )
-from sigstore._internal.tuf import DEFAULT_TUF_URL, STAGING_TUF_URL, TrustUpdater
+from sigstore._internal.tuf import (
+    DEFAULT_TUF_URL,
+    STAGING_TUF_URL,
+    STAGING_V2_TUF_URL,
+    TrustUpdater,
+)
 from sigstore._utils import KeyID, cert_is_leaf, cert_is_root_ca, is_timerange_valid
 from sigstore.errors import Error, MetadataError, VerificationError
 
@@ -686,6 +694,7 @@ class SigningConfig:
             tlog_versions = REKOR_VERSIONS
         else:
             tlog_versions = [tlog_version]
+        self._tlog_versions = tlog_versions
 
         self._tlogs = self._get_valid_services(
             self._inner.rekor_tlog_urls, tlog_versions, self._inner.rekor_tlog_config
@@ -700,8 +709,6 @@ class SigningConfig:
         self._fulcios = self._get_valid_services(
             self._inner.ca_urls, FULCIO_VERSIONS, None
         )
-        if not self._fulcios:
-            raise Error("No valid Fulcio CA found in signing config")
 
         self._oidcs = self._get_valid_services(
             self._inner.oidc_urls, OIDC_VERSIONS, None
@@ -781,10 +788,33 @@ class SigningConfig:
                 raise AssertionError(f"Unexpected Rekor v{tlog.major_api_version}")
         return result
 
+    def get_identity_tlogs(self) -> list[IdentityRekorClient]:
+        """
+        Returns the Rekor v2 identity transparency log clients to sign with.
+
+        NOTE: `SigningConfig` v0.2 uses `majorApiVersion == 2` for both Rekor v2
+        `serve` (`hashedrekord`) and `serve-identity` logs without a separate
+        service field; callers must only use this with signing configurations
+        whose v2 transparency logs expose the `serve-identity` API (such as
+        `ClientTrustConfig.staging_v2()`).
+        """
+        tlogs = self._get_valid_services(
+            self._inner.rekor_tlog_urls,
+            [v for v in self._tlog_versions if v == 2],
+            self._inner.rekor_tlog_config,
+        )
+        if not tlogs:
+            raise Error(
+                "No valid Rekor v2 identity transparency log found in signing config"
+            )
+        return [IdentityRekorClient(tlog.url) for tlog in tlogs]
+
     def get_fulcio(self) -> FulcioClient:
         """
         Returns a Fulcio client to get a signing certificate from
         """
+        if not self._fulcios:
+            raise Error("No valid Fulcio CA found in signing config")
         return FulcioClient(self._fulcios[0].url)
 
     def get_oidc_url(self) -> str:
@@ -864,6 +894,49 @@ class TrustedRoot:
                 continue
 
             yield tlog.public_key
+
+    def get_tlog_note_verifiers(self, purpose: KeyringPurpose) -> list[NoteVerifier]:
+        """
+        Return `NoteVerifier` instances for transparency logs in this trusted root
+        that are valid for `purpose`.
+
+        NOTE: Witness keys and witness policy are not yet represented in
+        `TrustedRoot` (`sigstore/protobuf-specs`); once added, a companion
+        helper on `TrustedRoot` will provide witness `NoteVerifier` instances
+        and threshold configuration for `SignedCheckpoint.verify()`.
+        """
+        allow_expired = purpose is KeyringPurpose.VERIFY
+        verifiers: list[NoteVerifier] = []
+        for tlog in self._inner.tlogs:
+            if not is_timerange_valid(
+                tlog.public_key.valid_for, allow_expired=allow_expired
+            ):
+                continue
+
+            if tlog.hash_algorithm != common_v1.HashAlgorithm.SHA2_256:
+                _logger.warning(
+                    f"Skipping trusted root tlog {tlog.base_url!r} with "
+                    f"unsupported hash algorithm {tlog.hash_algorithm}"
+                )
+                continue
+
+            origin = tlog.base_url
+            origin_lower = origin.lower()
+            for prefix in ("https://", "http://"):
+                if origin_lower.startswith(prefix):
+                    origin = origin[len(prefix) :]
+                    break
+            origin = origin.rstrip("/")
+
+            try:
+                loaded_key = Key(tlog.public_key)
+                verifiers.append(NoteVerifier.from_public_key(origin, loaded_key.key))
+            except VerificationError as e:
+                _logger.warning(f"Failed to load a trusted root tlog key: {e}")
+
+        if not verifiers:
+            raise MetadataError("Did not find any Rekor keys in trusted root")
+        return verifiers
 
     def rekor_keyring(self, purpose: KeyringPurpose) -> RekorKeyring:
         """Return keyring with keys for Rekor."""
@@ -960,6 +1033,22 @@ class ClientTrustConfig:
         update the data from remote TUF repository.
         """
         return cls.from_tuf(STAGING_TUF_URL, offline)
+
+    @classmethod
+    def staging_v2(
+        cls,
+        offline: bool = False,
+    ) -> ClientTrustConfig:
+        """Create new trust config from the experimental Sigstore v2 staging TUF repository.
+
+        NOTE: The v2 staging environment (`https://tuf.v2.sigstage.dev`) is
+        experimental, unstable, and subject to resets; do not use it in
+        production.
+
+        If `offline`, will use data in local TUF cache. Otherwise will
+        update the data from remote TUF repository.
+        """
+        return cls.from_tuf(STAGING_V2_TUF_URL, offline)
 
     @classmethod
     def from_tuf(

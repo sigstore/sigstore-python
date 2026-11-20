@@ -1,0 +1,26 @@
+{
+  "mediaType": "application/vnd.dev.sigstore.signingconfig.v0.2+json",
+  "oidcUrls": [
+    {
+      "url": "https://oauth2.sigstage.dev/auth",
+      "majorApiVersion": 1,
+      "validFor": {
+        "start": "2025-04-16T00:00:00Z"
+      },
+      "operator": "sigstore.dev"
+    }
+  ],
+  "rekorTlogUrls": [
+    {
+      "url": "https://global-pqc.rekor.sigstage.dev",
+      "majorApiVersion": 2,
+      "validFor": {
+        "start": "2026-10-30T00:00:00Z"
+      },
+      "operator": "sigstore.dev"
+    }
+  ],
+  "rekorTlogConfig": {
+    "selector": "ANY"
+  }
+}

@@ -21,7 +21,8 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Protocol
+from collections.abc import Mapping, Sequence
+from typing import Protocol, runtime_checkable
 
 from cryptography.hazmat import asn1
 from cryptography.x509 import (
@@ -39,41 +40,96 @@ from sigstore.errors import VerificationError
 _logger = logging.getLogger(__name__)
 
 # From: https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md
-_OIDC_ISSUER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.1")
-_OIDC_GITHUB_WORKFLOW_TRIGGER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.2")
-_OIDC_GITHUB_WORKFLOW_SHA_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.3")
-_OIDC_GITHUB_WORKFLOW_NAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.4")
-_OIDC_GITHUB_WORKFLOW_REPOSITORY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.5")
-_OIDC_GITHUB_WORKFLOW_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.6")
-_OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
-_OIDC_ISSUER_V2_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.8")
-_OIDC_BUILD_SIGNER_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.9")
-_OIDC_BUILD_SIGNER_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.10")
-_OIDC_RUNNER_ENVIRONMENT_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.11")
-_OIDC_SOURCE_REPOSITORY_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.12")
-_OIDC_SOURCE_REPOSITORY_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.13")
-_OIDC_SOURCE_REPOSITORY_REF_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.14")
-_OIDC_SOURCE_REPOSITORY_IDENTIFIER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.15")
-_OIDC_SOURCE_REPOSITORY_OWNER_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.16")
-_OIDC_SOURCE_REPOSITORY_OWNER_IDENTIFIER_OID = ObjectIdentifier(
-    "1.3.6.1.4.1.57264.1.17"
+# and https://github.com/sigstore/fulcio/blob/main/pkg/certificate/extensions.go
+# Each tuple maps an OIDC attribute to (X.509 ObjectIdentifier, C2SP tlog-proof claim name).
+_OIDC_ISSUER = (ObjectIdentifier("1.3.6.1.4.1.57264.1.1"), "issuer")
+_OIDC_GITHUB_WORKFLOW_TRIGGER = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.2"),
+    None,
 )
-_OIDC_BUILD_CONFIG_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.18")
-_OIDC_BUILD_CONFIG_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.19")
-_OIDC_BUILD_TRIGGER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.20")
-_OIDC_RUN_INVOCATION_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.21")
-_OIDC_SOURCE_REPOSITORY_VISIBILITY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.22")
+_OIDC_GITHUB_WORKFLOW_SHA = (ObjectIdentifier("1.3.6.1.4.1.57264.1.3"), None)
+_OIDC_GITHUB_WORKFLOW_NAME = (ObjectIdentifier("1.3.6.1.4.1.57264.1.4"), None)
+_OIDC_GITHUB_WORKFLOW_REPOSITORY = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.5"),
+    None,
+)
+_OIDC_GITHUB_WORKFLOW_REF = (ObjectIdentifier("1.3.6.1.4.1.57264.1.6"), None)
+_OTHERNAME_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.7")
+_OIDC_ISSUER_V2 = (ObjectIdentifier("1.3.6.1.4.1.57264.1.8"), "issuer")
+_OIDC_BUILD_SIGNER_URI = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.9"),
+    "build-signer-uri",
+)
+_OIDC_BUILD_SIGNER_DIGEST = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.10"),
+    "build-signer-digest",
+)
+_OIDC_RUNNER_ENVIRONMENT = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.11"),
+    "runner-environment",
+)
+_OIDC_SOURCE_REPOSITORY_URI = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.12"),
+    "source-repository-uri",
+)
+_OIDC_SOURCE_REPOSITORY_DIGEST = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.13"),
+    "source-repository-digest",
+)
+_OIDC_SOURCE_REPOSITORY_REF = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.14"),
+    "source-repository-ref",
+)
+_OIDC_SOURCE_REPOSITORY_IDENTIFIER = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.15"),
+    "source-repository-identifier",
+)
+_OIDC_SOURCE_REPOSITORY_OWNER_URI = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.16"),
+    "source-repository-owner-uri",
+)
+_OIDC_SOURCE_REPOSITORY_OWNER_IDENTIFIER = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.17"),
+    "source-repository-owner-identifier",
+)
+_OIDC_BUILD_CONFIG_URI = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.18"),
+    "build-config-uri",
+)
+_OIDC_BUILD_CONFIG_DIGEST = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.19"),
+    "build-config-digest",
+)
+_OIDC_BUILD_TRIGGER = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.20"),
+    "build-trigger",
+)
+_OIDC_RUN_INVOCATION_URI = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.21"),
+    "run-invocation-uri",
+)
+_OIDC_SOURCE_REPOSITORY_VISIBILITY = (
+    ObjectIdentifier("1.3.6.1.4.1.57264.1.22"),
+    "source-repository-visibility-at-signing",
+)
 
 
-class _SingleX509ExtPolicy(ABC):
+class _SingleClaimPolicy(ABC):
     """
-    An ABC for verification policies that boil down to checking a single
-    X.509 extension's value.
+    An ABC for verification policies that check a single OIDC identity claim,
+    represented either as an X.509 extension in a Fulcio certificate or as a
+    claim in a `c2sp.org/tlog-proof@v1` `extra` map.
     """
 
     oid: ObjectIdentifier
     """
-    The OID of the extension being checked.
+    The OID of the X.509 extension being checked.
+    """
+
+    claim_name: str | None = None
+    """
+    The claim key in a `c2sp.org/tlog-proof@v1` `extra` map corresponding to
+    this attribute, or `None` if this attribute is not present in v2 claims.
     """
 
     def __init__(self, value: str) -> None:
@@ -106,12 +162,42 @@ class _SingleX509ExtPolicy(ABC):
                 f"(got '{ext_value}', expected '{self._value}')"
             )
 
+    def verify_claims(self, claims: Mapping[str, str]) -> None:
+        """
+        Verify this policy against a `c2sp.org/tlog-proof@v1` claims mapping.
 
-class _SingleX509ExtPolicyV2(_SingleX509ExtPolicy):
+        Callers must only pass `claims` that have already been cryptographically
+        bound to a verified transparency log leaf, and must ensure that the
+        evaluated policy constrains the `"issuer"` claim (the leaf's
+        `root_of_trust`).
+
+        Raises `VerificationError` on failure.
+        """
+        if self.claim_name is None:
+            raise VerificationError(
+                f"{self.__class__.__name__} ({self.oid.dotted_string}) is a "
+                "deprecated Fulcio v1 extension and is not supported in v2 claims"
+            )
+
+        if self.claim_name not in claims:
+            raise VerificationError(
+                f"Claims do not contain {self.__class__.__name__} "
+                f"('{self.claim_name}') claim"
+            )
+
+        claim_value = claims[self.claim_name]
+        if claim_value != self._value:
+            raise VerificationError(
+                f"Claim {self.__class__.__name__} ('{self.claim_name}') does not match "
+                f"(got '{claim_value}', expected '{self._value}')"
+            )
+
+
+class _SingleClaimPolicyV2(_SingleClaimPolicy):
     """
-    An base class for verification policies that boil down to checking a single
-    X.509 extension's value, where the value is formatted as a DER-encoded string,
-    the ASN.1 tag is UTF8String (0x0C) and the tag class is universal.
+    A base class for verification policies that check a single OIDC identity
+    claim, where the X.509 extension value is formatted as a DER-encoded string
+    with ASN.1 tag UTF8String (0x0C) and universal tag class.
     """
 
     def verify(self, cert: Certificate) -> None:
@@ -138,203 +224,219 @@ class _SingleX509ExtPolicyV2(_SingleX509ExtPolicy):
             )
 
 
-class OIDCIssuer(_SingleX509ExtPolicy):
+class OIDCIssuer(_SingleClaimPolicy):
     """
-    Verifies the certificate's OIDC issuer, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.1`.
+    Verifies the OIDC issuer, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.1` or `c2sp.org/tlog-proof@v1` claim `"issuer"`.
     """
 
-    oid = _OIDC_ISSUER_OID
+    oid, claim_name = _OIDC_ISSUER
 
 
-class GitHubWorkflowTrigger(_SingleX509ExtPolicy):
+class GitHubWorkflowTrigger(_SingleClaimPolicy):
     """
     Verifies the certificate's GitHub Actions workflow trigger,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.2`.
     """
 
-    oid = _OIDC_GITHUB_WORKFLOW_TRIGGER_OID
+    oid, claim_name = _OIDC_GITHUB_WORKFLOW_TRIGGER
 
 
-class GitHubWorkflowSHA(_SingleX509ExtPolicy):
+class GitHubWorkflowSHA(_SingleClaimPolicy):
     """
     Verifies the certificate's GitHub Actions workflow commit SHA,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.3`.
     """
 
-    oid = _OIDC_GITHUB_WORKFLOW_SHA_OID
+    oid, claim_name = _OIDC_GITHUB_WORKFLOW_SHA
 
 
-class GitHubWorkflowName(_SingleX509ExtPolicy):
+class GitHubWorkflowName(_SingleClaimPolicy):
     """
     Verifies the certificate's GitHub Actions workflow name,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.4`.
     """
 
-    oid = _OIDC_GITHUB_WORKFLOW_NAME_OID
+    oid, claim_name = _OIDC_GITHUB_WORKFLOW_NAME
 
 
-class GitHubWorkflowRepository(_SingleX509ExtPolicy):
+class GitHubWorkflowRepository(_SingleClaimPolicy):
     """
     Verifies the certificate's GitHub Actions workflow repository,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.5`.
     """
 
-    oid = _OIDC_GITHUB_WORKFLOW_REPOSITORY_OID
+    oid, claim_name = _OIDC_GITHUB_WORKFLOW_REPOSITORY
 
 
-class GitHubWorkflowRef(_SingleX509ExtPolicy):
+class GitHubWorkflowRef(_SingleClaimPolicy):
     """
     Verifies the certificate's GitHub Actions workflow ref,
     identified by an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.6`.
     """
 
-    oid = _OIDC_GITHUB_WORKFLOW_REF_OID
+    oid, claim_name = _OIDC_GITHUB_WORKFLOW_REF
 
 
-class OIDCIssuerV2(_SingleX509ExtPolicyV2):
+class OIDCIssuerV2(_SingleClaimPolicyV2):
     """
-    Verifies the certificate's OIDC issuer, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.8`.
-    The difference with `OIDCIssuer` is that the value for
-    this extension is formatted to the RFC 5280 specification
-    as a DER-encoded string.
+    Verifies the OIDC issuer, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.8` (RFC 5280 DER-encoded string) or
+    `c2sp.org/tlog-proof@v1` claim `"issuer"`.
     """
 
-    oid = _OIDC_ISSUER_V2_OID
+    oid, claim_name = _OIDC_ISSUER_V2
 
 
-class OIDCBuildSignerURI(_SingleX509ExtPolicyV2):
+class OIDCBuildSignerURI(_SingleClaimPolicyV2):
     """
-    Verifies the certificate's OIDC Build Signer URI, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.9`.
-    """
-
-    oid = _OIDC_BUILD_SIGNER_URI_OID
-
-
-class OIDCBuildSignerDigest(_SingleX509ExtPolicyV2):
-    """
-    Verifies the certificate's OIDC Build Signer Digest, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.10`.
+    Verifies the OIDC Build Signer URI, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.9` or `c2sp.org/tlog-proof@v1` claim
+    `"build-signer-uri"`.
     """
 
-    oid = _OIDC_BUILD_SIGNER_DIGEST_OID
+    oid, claim_name = _OIDC_BUILD_SIGNER_URI
 
 
-class OIDCRunnerEnvironment(_SingleX509ExtPolicyV2):
+class OIDCBuildSignerDigest(_SingleClaimPolicyV2):
     """
-    Verifies the certificate's OIDC Runner Environment, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.11`.
-    """
-
-    oid = _OIDC_RUNNER_ENVIRONMENT_OID
-
-
-class OIDCSourceRepositoryURI(_SingleX509ExtPolicyV2):
-    """
-    Verifies the certificate's OIDC Source Repository URI, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.12`.
+    Verifies the OIDC Build Signer Digest, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.10` or `c2sp.org/tlog-proof@v1` claim
+    `"build-signer-digest"`.
     """
 
-    oid = _OIDC_SOURCE_REPOSITORY_URI_OID
+    oid, claim_name = _OIDC_BUILD_SIGNER_DIGEST
 
 
-class OIDCSourceRepositoryDigest(_SingleX509ExtPolicyV2):
+class OIDCRunnerEnvironment(_SingleClaimPolicyV2):
     """
-    Verifies the certificate's OIDC Source Repository Digest, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.13`.
-    """
-
-    oid = _OIDC_SOURCE_REPOSITORY_DIGEST_OID
-
-
-class OIDCSourceRepositoryRef(_SingleX509ExtPolicyV2):
-    """
-    Verifies the certificate's OIDC Source Repository Ref, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.14`.
+    Verifies the OIDC Runner Environment, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.11` or `c2sp.org/tlog-proof@v1` claim
+    `"runner-environment"`.
     """
 
-    oid = _OIDC_SOURCE_REPOSITORY_REF_OID
+    oid, claim_name = _OIDC_RUNNER_ENVIRONMENT
 
 
-class OIDCSourceRepositoryIdentifier(_SingleX509ExtPolicyV2):
+class OIDCSourceRepositoryURI(_SingleClaimPolicyV2):
     """
-    Verifies the certificate's OIDC Source Repository Identifier, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.15`.
-    """
-
-    oid = _OIDC_SOURCE_REPOSITORY_IDENTIFIER_OID
-
-
-class OIDCSourceRepositoryOwnerURI(_SingleX509ExtPolicyV2):
-    """
-    Verifies the certificate's OIDC Source Repository Owner URI, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.16`.
+    Verifies the OIDC Source Repository URI, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.12` or `c2sp.org/tlog-proof@v1` claim
+    `"source-repository-uri"`.
     """
 
-    oid = _OIDC_SOURCE_REPOSITORY_OWNER_URI_OID
+    oid, claim_name = _OIDC_SOURCE_REPOSITORY_URI
 
 
-class OIDCSourceRepositoryOwnerIdentifier(_SingleX509ExtPolicyV2):
+class OIDCSourceRepositoryDigest(_SingleClaimPolicyV2):
     """
-    Verifies the certificate's OIDC Source Repository Owner Identifier, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.17`.
-    """
-
-    oid = _OIDC_SOURCE_REPOSITORY_OWNER_IDENTIFIER_OID
-
-
-class OIDCBuildConfigURI(_SingleX509ExtPolicyV2):
-    """
-    Verifies the certificate's OIDC Build Config URI, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.18`.
+    Verifies the OIDC Source Repository Digest, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.13` or `c2sp.org/tlog-proof@v1` claim
+    `"source-repository-digest"`.
     """
 
-    oid = _OIDC_BUILD_CONFIG_URI_OID
+    oid, claim_name = _OIDC_SOURCE_REPOSITORY_DIGEST
 
 
-class OIDCBuildConfigDigest(_SingleX509ExtPolicyV2):
+class OIDCSourceRepositoryRef(_SingleClaimPolicyV2):
     """
-    Verifies the certificate's OIDC Build Config Digest, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.19`.
-    """
-
-    oid = _OIDC_BUILD_CONFIG_DIGEST_OID
-
-
-class OIDCBuildTrigger(_SingleX509ExtPolicyV2):
-    """
-    Verifies the certificate's OIDC Build Trigger, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.20`.
+    Verifies the OIDC Source Repository Ref, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.14` or `c2sp.org/tlog-proof@v1` claim
+    `"source-repository-ref"`.
     """
 
-    oid = _OIDC_BUILD_TRIGGER_OID
+    oid, claim_name = _OIDC_SOURCE_REPOSITORY_REF
 
 
-class OIDCRunInvocationURI(_SingleX509ExtPolicyV2):
+class OIDCSourceRepositoryIdentifier(_SingleClaimPolicyV2):
     """
-    Verifies the certificate's OIDC Run Invocation URI, identified by
-    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.21`.
-    """
-
-    oid = _OIDC_RUN_INVOCATION_URI_OID
-
-
-class OIDCSourceRepositoryVisibility(_SingleX509ExtPolicyV2):
-    """
-    Verifies the certificate's OIDC Source Repository Visibility
-    At Signing, identified by an X.509v3 extension tagged with
-    `1.3.6.1.4.1.57264.1.22`.
+    Verifies the OIDC Source Repository Identifier, identified by X.509v3
+    extension `1.3.6.1.4.1.57264.1.15` or `c2sp.org/tlog-proof@v1` claim
+    `"source-repository-identifier"`.
     """
 
-    oid = _OIDC_SOURCE_REPOSITORY_VISIBILITY_OID
+    oid, claim_name = _OIDC_SOURCE_REPOSITORY_IDENTIFIER
+
+
+class OIDCSourceRepositoryOwnerURI(_SingleClaimPolicyV2):
+    """
+    Verifies the OIDC Source Repository Owner URI, identified by X.509v3
+    extension `1.3.6.1.4.1.57264.1.16` or `c2sp.org/tlog-proof@v1` claim
+    `"source-repository-owner-uri"`.
+    """
+
+    oid, claim_name = _OIDC_SOURCE_REPOSITORY_OWNER_URI
+
+
+class OIDCSourceRepositoryOwnerIdentifier(_SingleClaimPolicyV2):
+    """
+    Verifies the OIDC Source Repository Owner Identifier, identified by X.509v3
+    extension `1.3.6.1.4.1.57264.1.17` or `c2sp.org/tlog-proof@v1` claim
+    `"source-repository-owner-identifier"`.
+    """
+
+    oid, claim_name = _OIDC_SOURCE_REPOSITORY_OWNER_IDENTIFIER
+
+
+class OIDCBuildConfigURI(_SingleClaimPolicyV2):
+    """
+    Verifies the OIDC Build Config URI, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.18` or `c2sp.org/tlog-proof@v1` claim
+    `"build-config-uri"`.
+    """
+
+    oid, claim_name = _OIDC_BUILD_CONFIG_URI
+
+
+class OIDCBuildConfigDigest(_SingleClaimPolicyV2):
+    """
+    Verifies the OIDC Build Config Digest, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.19` or `c2sp.org/tlog-proof@v1` claim
+    `"build-config-digest"`.
+    """
+
+    oid, claim_name = _OIDC_BUILD_CONFIG_DIGEST
+
+
+class OIDCBuildTrigger(_SingleClaimPolicyV2):
+    """
+    Verifies the OIDC Build Trigger, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.20` or `c2sp.org/tlog-proof@v1` claim
+    `"build-trigger"`.
+    """
+
+    oid, claim_name = _OIDC_BUILD_TRIGGER
+
+
+class OIDCRunInvocationURI(_SingleClaimPolicyV2):
+    """
+    Verifies the OIDC Run Invocation URI, identified by X.509v3 extension
+    `1.3.6.1.4.1.57264.1.21` or `c2sp.org/tlog-proof@v1` claim
+    `"run-invocation-uri"`.
+    """
+
+    oid, claim_name = _OIDC_RUN_INVOCATION_URI
+
+
+class OIDCSourceRepositoryVisibility(_SingleClaimPolicyV2):
+    """
+    Verifies the OIDC Source Repository Visibility At Signing, identified by
+    X.509v3 extension `1.3.6.1.4.1.57264.1.22` or `c2sp.org/tlog-proof@v1`
+    claim `"source-repository-visibility-at-signing"`.
+    """
+
+    oid, claim_name = _OIDC_SOURCE_REPOSITORY_VISIBILITY
 
 
 class VerificationPolicy(Protocol):
     """
     A protocol type describing the interface that all verification policies
     conform to.
+
+    Built-in policy classes also implement `verify_claims()` for Sigstore v2
+    `c2sp.org/tlog-proof@v1` identity claims; custom policies may optionally
+    implement `verify_claims(self, claims: Mapping[str, str]) -> None` to
+    support v2 verification as well.
     """
 
     @abstractmethod
@@ -346,6 +448,22 @@ class VerificationPolicy(Protocol):
         raise NotImplementedError  # pragma: no cover
 
 
+@runtime_checkable
+class _ClaimsVerificationPolicy(Protocol):
+    """
+    Internal runtime-checkable protocol for policies that support
+    `c2sp.org/tlog-proof@v1` claim verification via `verify_claims()`.
+    """
+
+    @abstractmethod
+    def verify_claims(self, claims: Mapping[str, str]) -> None:
+        """
+        Verify the given `c2sp.org/tlog-proof@v1` `claims` against this policy,
+        raising `VerificationError` on failure.
+        """
+        raise NotImplementedError  # pragma: no cover
+
+
 class AnyOf:
     """
     The "any of" policy, corresponding to a logical OR between child policies.
@@ -353,11 +471,11 @@ class AnyOf:
     An empty list of child policies is considered trivially invalid.
     """
 
-    def __init__(self, children: list[VerificationPolicy]):
+    def __init__(self, children: Sequence[VerificationPolicy]):
         """
         Create a new `AnyOf`, with the given child policies.
         """
-        self._children = children
+        self._children = list(children)
 
     def verify(self, cert: Certificate) -> None:
         """
@@ -376,6 +494,25 @@ class AnyOf:
 
         raise VerificationError(f"0 of {len(self._children)} policies succeeded")
 
+    def verify_claims(self, claims: Mapping[str, str]) -> None:
+        """
+        Verify `claims` against the policy.
+
+        Raises `VerificationError` on failure.
+        """
+
+        for child in self._children:
+            if not isinstance(child, _ClaimsVerificationPolicy):
+                continue
+            try:
+                child.verify_claims(claims)
+            except VerificationError:
+                pass
+            else:
+                return
+
+        raise VerificationError(f"0 of {len(self._children)} policies succeeded")
+
 
 class AllOf:
     """
@@ -385,12 +522,12 @@ class AllOf:
     An empty list of child policies is considered trivially invalid.
     """
 
-    def __init__(self, children: list[VerificationPolicy]):
+    def __init__(self, children: Sequence[VerificationPolicy]):
         """
         Create a new `AllOf`, with the given child policies.
         """
 
-        self._children = children
+        self._children = list(children)
 
     def verify(self, cert: Certificate) -> None:
         """
@@ -406,13 +543,28 @@ class AllOf:
         for child in self._children:
             child.verify(cert)
 
+    def verify_claims(self, claims: Mapping[str, str]) -> None:
+        """
+        Verify `claims` against the policy.
+        """
+
+        if len(self._children) < 1:
+            raise VerificationError("no child policies to verify")
+
+        for child in self._children:
+            if not isinstance(child, _ClaimsVerificationPolicy):
+                raise VerificationError(
+                    f"{type(child).__name__} does not support claims verification"
+                )
+            child.verify_claims(claims)
+
 
 class UnsafeNoOp:
     """
     The "no-op" policy, corresponding to a no-op "verification".
 
     **This policy is fundamentally insecure. You cannot use it safely.
-    It must not be used to verify any sort of certificate identity, because
+    It must not be used to verify any sort of identity, because
     it cannot do so. Using this policy is equivalent to reducing the
     verification proof down to an integrity check against a completely
     untrusted and potentially attacker-created signature. It must only
@@ -428,10 +580,21 @@ class UnsafeNoOp:
             "unsafe (no-op) verification policy used! no verification performed!"
         )
 
+    def verify_claims(self, claims: Mapping[str, str]) -> None:
+        """
+        Verify `claims` against the policy.
+        """
+
+        _logger.warning(
+            "unsafe (no-op) verification policy used! no verification performed!"
+        )
+
 
 class Identity:
     """
-    Verifies the certificate's "identity", corresponding to the X.509v3 SAN.
+    Verifies the signer's "identity", corresponding to the X.509v3 SAN in a
+    Fulcio certificate or the `"identity"` claim in a `c2sp.org/tlog-proof@v1`
+    claims mapping.
 
     Identities can be verified modulo an OIDC issuer, to prevent an unexpected
     issuer from offering a particular identity.
@@ -476,4 +639,29 @@ class Identity:
         if not verified:
             raise VerificationError(
                 f"Certificate's SANs do not match {self._identity}; actual SANs: {all_sans}"
+            )
+
+    def verify_claims(self, claims: Mapping[str, str]) -> None:
+        """
+        Verify `claims` against the policy.
+
+        If `issuer` was provided, verifies both `"issuer"` and `"identity"`;
+        otherwise verifies only `"identity"` (matching `verify()`), allowing
+        compositions such as `AllOf([OIDCIssuer(...), Identity(identity=...)])`.
+
+        Callers must ensure that the evaluated policy constrains `"issuer"` and
+        that `claims` are cryptographically bound to a verified transparency
+        log leaf.
+        """
+
+        if self._issuer is not None:
+            self._issuer.verify_claims(claims)
+
+        if "identity" not in claims:
+            raise VerificationError("Claims do not contain 'identity' claim")
+
+        actual_identity = claims["identity"]
+        if actual_identity != self._identity:
+            raise VerificationError(
+                f"Claim 'identity' does not match (got '{actual_identity}', expected '{self._identity}')"
             )

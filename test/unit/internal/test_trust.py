@@ -21,15 +21,29 @@ import pytest
 import urllib3
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import mldsa
-from sigstore_models.common.v1 import PublicKey, PublicKeyDetails, TimeRange
+from sigstore_models.common.v1 import (
+    HashAlgorithm,
+    LogId,
+    PublicKey,
+    PublicKeyDetails,
+    TimeRange,
+)
 from sigstore_models.trustroot.v1 import (
     Service,
     ServiceConfiguration,
     ServiceSelector,
+    TransparencyLogInstance,
+)
+from sigstore_models.trustroot.v1 import (
+    SigningConfig as _SigningConfig,
+)
+from sigstore_models.trustroot.v1 import (
+    TrustedRoot as _TrustedRoot,
 )
 
 from sigstore._internal.fulcio.client import FulcioClient
 from sigstore._internal.rekor.client import RekorClient
+from sigstore._internal.rekor.client_identity import IdentityRekorClient
 from sigstore._internal.rekor.client_v2 import RekorV2Client
 from sigstore._internal.timestamp import TimestampAuthorityClient
 from sigstore._internal.trust import (
@@ -39,7 +53,7 @@ from sigstore._internal.trust import (
     KeyringPurpose,
 )
 from sigstore._utils import is_timerange_valid
-from sigstore.errors import Error, TUFError, VerificationError
+from sigstore.errors import Error, MetadataError, TUFError, VerificationError
 from sigstore.models import (
     ClientTrustConfig,
     SigningConfig,
@@ -205,6 +219,66 @@ class TestSigningConfig:
         with pytest.raises(ValueError):
             SigningConfig._get_valid_services(services, versions, config)
 
+    def test_get_identity_tlogs_v1_only_and_forced_v1_fail(self, asset):
+        v1_only = SigningConfig.from_file(
+            asset("signing_config/signingconfig-only-v1-rekor.v2.json")
+        )
+        with pytest.raises(
+            Error,
+            match="No valid Rekor v2 identity transparency log found in signing config",
+        ):
+            v1_only.get_identity_tlogs()
+
+        mixed = SigningConfig(
+            SigningConfig.from_file(
+                asset("signing_config/signingconfig.v2.json")
+            )._inner,
+            tlog_version=1,
+        )
+        with pytest.raises(
+            Error,
+            match="No valid Rekor v2 identity transparency log found in signing config",
+        ):
+            mixed.get_identity_tlogs()
+
+    def test_get_identity_tlogs_multi_operator_selectors(self):
+        v1_op1 = Service(
+            url="https://rekor-v1.op1.example.com",
+            major_api_version=1,
+            operator="op1",
+        )
+        v2_op2 = Service(
+            url="https://rekor-v2.op2.example.com",
+            major_api_version=2,
+            operator="op2",
+        )
+
+        # ANY: even when op1 (v1-only) comes first, get_identity_tlogs selects op2 (v2)
+        sc_any = SigningConfig(
+            _SigningConfig(
+                media_type=SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value,
+                rekor_tlog_urls=[v1_op1, v2_op2],
+                rekor_tlog_config=ServiceConfiguration(selector=ServiceSelector.ANY),
+            )
+        )
+        tlogs = sc_any.get_identity_tlogs()
+        assert len(tlogs) == 1
+        assert isinstance(tlogs[0], IdentityRekorClient)
+        assert tlogs[0].url == "https://rekor-v2.op2.example.com/api/v2"
+
+        # EXACT(count=2): fails closed when only 1 v2 operator exists
+        sc_exact = SigningConfig(
+            _SigningConfig(
+                media_type=SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value,
+                rekor_tlog_urls=[v1_op1, v2_op2],
+                rekor_tlog_config=ServiceConfiguration(
+                    selector=ServiceSelector.EXACT, count=2
+                ),
+            )
+        )
+        with pytest.raises(ValueError, match="Expected 2 services"):
+            sc_exact.get_identity_tlogs()
+
 
 class TestTrustedRoot:
     @pytest.mark.parametrize(
@@ -243,6 +317,98 @@ class TestTrustedRoot:
             match=r"Input should be 'application/vnd\.dev\.sigstore\.trustedroot\+json;version=0\.1' or 'application/vnd\.dev\.sigstore\.trustedroot\.v0\.2\+json'",
         ):
             TrustedRoot.from_file(path)
+
+    def test_get_tlog_note_verifiers_filtering_and_origin_normalization(self):
+        now = datetime.now(UTC)
+
+        def _make_tlog(
+            base_url: str,
+            *,
+            key_details: PublicKeyDetails = PublicKeyDetails.ML_DSA_44,
+            hash_algorithm: HashAlgorithm = HashAlgorithm.SHA2_256,
+            valid_for: TimeRange | None = None,
+        ) -> TransparencyLogInstance:
+            if key_details == PublicKeyDetails.ML_DSA_44:
+                pub = mldsa.MLDSA44PrivateKey.generate().public_key()
+            else:
+                pub = mldsa.MLDSA65PrivateKey.generate().public_key()
+            spki = pub.public_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+            return TransparencyLogInstance(
+                base_url=base_url,
+                hash_algorithm=hash_algorithm,
+                public_key=PublicKey(
+                    raw_bytes=base64.b64encode(spki),
+                    key_details=key_details,
+                    valid_for=valid_for,
+                ),
+                log_id=LogId(key_id=base64.b64encode(b"\x00" * 32)),
+            )
+
+        active_http = _make_tlog("http://http-log.example.com/")
+        active_upper = _make_tlog("HTTPS://MixedCase.Example.com/shard/")
+        active_bare = _make_tlog("bare.example.com")
+        expired = _make_tlog(
+            "https://expired.example.com",
+            valid_for=TimeRange(
+                start=now - timedelta(days=2),
+                end=now - timedelta(days=1),
+            ),
+        )
+        future = _make_tlog(
+            "https://future.example.com",
+            valid_for=TimeRange(start=now + timedelta(days=1)),
+        )
+        unsupported_hash = _make_tlog(
+            "https://sha384.example.com",
+            hash_algorithm=HashAlgorithm.SHA2_384,
+        )
+        unsupported_key = _make_tlog(
+            "https://mldsa65.example.com",
+            key_details=PublicKeyDetails.ML_DSA_65,
+        )
+
+        root = TrustedRoot(
+            _TrustedRoot(
+                media_type=TrustedRoot.TrustedRootType.TRUSTED_ROOT_0_1.value,
+                tlogs=[
+                    active_http,
+                    active_upper,
+                    active_bare,
+                    expired,
+                    future,
+                    unsupported_hash,
+                    unsupported_key,
+                ],
+            )
+        )
+
+        sign_verifiers = root.get_tlog_note_verifiers(KeyringPurpose.SIGN)
+        assert [v.origin for v in sign_verifiers] == [
+            "http-log.example.com",
+            "MixedCase.Example.com/shard",
+            "bare.example.com",
+        ]
+
+        verify_verifiers = root.get_tlog_note_verifiers(KeyringPurpose.VERIFY)
+        assert [v.origin for v in verify_verifiers] == [
+            "http-log.example.com",
+            "MixedCase.Example.com/shard",
+            "bare.example.com",
+            "expired.example.com",
+        ]
+
+        # When no valid tlog verifiers remain, raises MetadataError
+        empty_root = TrustedRoot(
+            _TrustedRoot(
+                media_type=TrustedRoot.TrustedRootType.TRUSTED_ROOT_0_1.value,
+                tlogs=[future, unsupported_hash, unsupported_key],
+            )
+        )
+        with pytest.raises(MetadataError, match="Did not find any Rekor keys"):
+            empty_root.get_tlog_note_verifiers(KeyringPurpose.VERIFY)
 
 
 # TODO(ww): Move these into appropriate class-scoped tests.
@@ -364,6 +530,26 @@ class TestClientTrustConfig:
             match=r"Input should be 'application/vnd\.dev\.sigstore\.clienttrustconfig.v0.1\+json'",
         ):
             ClientTrustConfig.from_json(path.read_text())
+
+    def test_staging_v2_offline(self, tuf_dirs):
+        config = ClientTrustConfig.staging_v2(offline=True)
+        assert isinstance(config.signing_config, SigningConfig)
+        assert isinstance(config.trusted_root, TrustedRoot)
+
+        verifiers = config.trusted_root.get_tlog_note_verifiers(
+            purpose=KeyringPurpose.VERIFY
+        )
+        assert [v.origin for v in verifiers] == ["pqc27-a1.us-east4.rekor.sigstage.dev"]
+        assert isinstance(verifiers[0].public_key, mldsa.MLDSA44PublicKey)
+        assert verifiers[0].key_id == config.trusted_root._inner.tlogs[0].log_id.key_id
+        tlogs = config.signing_config.get_identity_tlogs()
+        assert len(tlogs) == 1
+        assert tlogs[0].url == "https://global-pqc.rekor.sigstage.dev/api/v2"
+        assert (
+            config.signing_config.get_oidc_url() == "https://oauth2.sigstage.dev/auth"
+        )
+        with pytest.raises(Error, match="No valid Fulcio CA found in signing config"):
+            config.signing_config.get_fulcio()
 
 
 class TestKeyringMLDSA:
