@@ -241,3 +241,11 @@ def verify_checkpoint(rekor_keyring: RekorKeyring, entry: TransparencyLogEntry) 
             "Inclusion proof contains invalid root hash signature: ",
             f"expected {checkpoint_hash} got {root_hash}",
         )
+
+    # The inclusion proof is only meaningful for the tree the log signed.
+    checkpoint_size = signed_checkpoint.checkpoint.log_size
+    if checkpoint_size != inclusion_proof.tree_size:
+        raise VerificationError(
+            "inclusion proof tree size does not match checkpoint: "
+            f"expected {checkpoint_size} got {inclusion_proof.tree_size}"
+        )

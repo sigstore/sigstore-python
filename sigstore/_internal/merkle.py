@@ -95,6 +95,13 @@ def verify_merkle_inclusion(entry: TransparencyLogEntry) -> None:
     """Verify the Merkle Inclusion Proof for a given Rekor entry."""
     inclusion_proof = entry._inner.inclusion_proof
 
+    # RFC 9162 2.1.3.2: a leaf index outside of the tree is never valid.
+    if inclusion_proof.log_index >= inclusion_proof.tree_size:
+        raise VerificationError(
+            f"inclusion proof has invalid log index: {inclusion_proof.log_index} "
+            f"is not less than tree size {inclusion_proof.tree_size}"
+        )
+
     # Figure out which subset of hashes corresponds to the inner and border nodes.
     inner, border = _decomp_inclusion_proof(
         inclusion_proof.log_index, inclusion_proof.tree_size

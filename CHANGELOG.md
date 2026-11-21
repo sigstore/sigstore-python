@@ -19,6 +19,11 @@ All versions prior to 0.9.0 are untracked.
   Ed25519 or RSA), or EC curves (anything other than `secp256r1`, `secp384r1`,
   and `secp521r1`) now fail verification with a descriptive `VerificationError`.
 
+### Fixed
+
+* Verification now rejects inclusion proofs whose log index is not inside
+  the tree, or whose tree size differs from the signed checkpoint's size.
+
 ## [4.6.0]
 
 ### Added

@@ -16,8 +16,27 @@ import base64
 
 import pytest
 
-from sigstore._internal.rekor.checkpoint import LogCheckpoint
+from sigstore._internal.rekor.checkpoint import LogCheckpoint, verify_checkpoint
+from sigstore._internal.trust import KeyringPurpose
 from sigstore.errors import VerificationError
+from sigstore.verify.verifier import Verifier
+
+
+def test_verify_checkpoint_rejects_tree_size_mismatch(signing_bundle):
+    _, bundle = signing_bundle("bundle.txt")
+    keyring = Verifier.staging(offline=True)._trusted_root.rekor_keyring(
+        KeyringPurpose.VERIFY
+    )
+    entry = bundle.log_entry
+
+    # The unmodified entry verifies.
+    verify_checkpoint(keyring, entry)
+
+    # The checkpoint signature and root hash are untouched, but the inclusion
+    # proof now claims a tree size the log never signed.
+    entry._inner.inclusion_proof.tree_size += 1
+    with pytest.raises(VerificationError, match="tree size does not match checkpoint"):
+        verify_checkpoint(keyring, entry)
 
 
 class TestLogCheckpoint:
