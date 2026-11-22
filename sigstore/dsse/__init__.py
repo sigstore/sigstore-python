@@ -24,7 +24,7 @@ from typing import Any, Literal, Optional
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictStr, ValidationError
 from sigstore_models.common.v1 import HashAlgorithm
 from sigstore_models.intoto import Envelope as _Envelope
@@ -284,7 +284,9 @@ def _sign(key: ec.EllipticCurvePrivateKey, stmt: Statement) -> Envelope:
     )
 
 
-def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:
+def _verify(
+    key: ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey, evp: Envelope
+) -> bytes:
     """
     Verify the given in-toto `Envelope`, returning the verified inner payload.
 
@@ -301,7 +303,13 @@ def _verify(key: ec.EllipticCurvePublicKey, evp: Envelope) -> bytes:
     signature = evp._inner.signatures[0].sig
 
     try:
-        key.verify(signature, pae, ec.ECDSA(hashes.SHA256()))
+        if isinstance(key, ed25519.Ed25519PublicKey):
+            # Ed25519 signs the PAE directly, with no separate hash.
+            key.verify(signature, pae)
+        elif isinstance(key, ec.EllipticCurvePublicKey):
+            key.verify(signature, pae, ec.ECDSA(hashes.SHA256()))
+        else:
+            raise VerificationError(f"DSSE: unsupported key type: {type(key).__name__}")
     except InvalidSignature:
         raise VerificationError("DSSE: invalid signature")
 

@@ -19,14 +19,15 @@ Verification API machinery.
 from __future__ import annotations
 
 import base64
+import hashlib
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import cast
 
 import rekor_types
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 from cryptography.x509 import (
     Certificate,
     ExtendedKeyUsage,
@@ -58,7 +59,7 @@ from sigstore._internal.sct import (
 )
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
 from sigstore._internal.trust import KeyringPurpose
-from sigstore._utils import base64_encode_pem_cert, sha256_digest
+from sigstore._utils import _check_public_key, base64_encode_pem_cert, sha256_digest
 from sigstore.errors import CertValidationError, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle, ClientTrustConfig, TrustedRoot
@@ -414,8 +415,7 @@ class Verifier:
                 "cannot perform DSSE verification on a bundle without a DSSE envelope"
             )
 
-        signing_key = bundle.signing_certificate.public_key()
-        signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
+        signing_key = _get_signing_key(bundle)
         dsse._verify(signing_key, envelope)
 
         # (8): verify the consistency of the log entry's body against
@@ -478,14 +478,23 @@ class Verifier:
             raise VerificationError("Bundle message digest mismatch")
 
         # (7): verify that the signature was signed by the public key in the signing certificate.
+        signing_key = _get_signing_key(bundle)
         try:
-            signing_key = bundle.signing_certificate.public_key()
-            signing_key = cast(ec.EllipticCurvePublicKey, signing_key)
-            signing_key.verify(
-                bundle_signature.signature,
-                hashed_input.digest,
-                ec.ECDSA(hashed_input._as_prehashed()),
-            )
+            if isinstance(signing_key, ed25519.Ed25519PublicKey):
+                # Ed25519 signs the message itself rather than a digest of it,
+                # so it can only be verified against the full input.
+                if not isinstance(input_, bytes):
+                    raise VerificationError(
+                        "Ed25519 signatures can only be verified against the "
+                        "full input, not a prehashed digest"
+                    )
+                signing_key.verify(bundle_signature.signature, input_)
+            else:
+                signing_key.verify(
+                    bundle_signature.signature,
+                    hashed_input.digest,
+                    ec.ECDSA(hashed_input._as_prehashed()),
+                )
         except InvalidSignature:
             raise VerificationError("Signature is invalid for input")
 
@@ -507,6 +516,24 @@ class Verifier:
             raise VerificationError(
                 f"Unsupported hashedrekord version {entry._inner.kind_version.version}"
             )
+
+
+def _get_signing_key(
+    bundle: Bundle,
+) -> ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey:
+    """
+    Return the bundle's signing certificate's public key, if it is of a type
+    that can verify the bundle's signature.
+    """
+    signing_key = bundle.signing_certificate.public_key()
+    if not isinstance(
+        signing_key, (ec.EllipticCurvePublicKey, ed25519.Ed25519PublicKey)
+    ):
+        raise VerificationError(
+            f"unsupported signing certificate key type: {type(signing_key).__name__}"
+        )
+    _check_public_key(signing_key)
+    return signing_key
 
 
 def _validate_dsse_v001_entry_body(bundle: Bundle) -> None:
@@ -594,7 +621,7 @@ def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
         )
 
     expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
-    algorithm, hash_func = _get_prehash(expected_verifier.key_details)
+    algorithm, hash_func = _v2_prehash(expected_verifier)
     pae_digest = hash_func(envelope.pae()).digest()
 
     expected_body = v2.entry.Entry(
@@ -631,6 +658,9 @@ def _validate_hashedrekord_v002_entry_body(
         raise VerificationError(
             "invalid hashedrekord log entry: missing message signature"
         )
+    expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
+    # Rejects signing algorithms that can't be recorded as hashedrekord entries.
+    _v2_prehash(expected_verifier)
     v2_expected_body = v2.entry.Entry(
         kind=entry._inner.kind_version.kind,
         api_version=entry._inner.kind_version.version,
@@ -642,7 +672,7 @@ def _validate_hashedrekord_v002_entry_body(
                 ),
                 signature=v2.verifier.Signature(
                     content=base64.b64encode(bundle._inner.message_signature.signature),
-                    verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
+                    verifier=expected_verifier,
                 ),
             )
         ),
@@ -652,6 +682,19 @@ def _validate_hashedrekord_v002_entry_body(
         raise VerificationError(
             "transparency log entry is inconsistent with other materials"
         )
+
+
+def _v2_prehash(
+    verifier: v2.verifier.Verifier,
+) -> tuple[v1.HashAlgorithm, Callable[[bytes], hashlib._Hash]]:
+    """
+    Return the externalized hash function for a Rekor v2 verifier's signing
+    algorithm, or raise `VerificationError` if it has none (pure Ed25519).
+    """
+    try:
+        return _get_prehash(verifier.key_details)
+    except ValueError as exc:
+        raise VerificationError(str(exc)) from exc
 
 
 def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verifier:

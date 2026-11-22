@@ -16,9 +16,11 @@ import base64
 import json
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from sigstore import dsse
 from sigstore.dsse import Error, InvalidEnvelope
+from sigstore.errors import VerificationError
 
 
 class TestEnvelope:
@@ -107,3 +109,19 @@ class TestStatement:
         # the cause is preserved, and names the offending field
         assert exc.value.__cause__ is not None
         assert "digest" in str(exc.value)
+
+
+def test_verify_unsupported_key_type():
+    evp = dsse.Envelope._from_json(
+        json.dumps(
+            {
+                "payload": base64.b64encode(b"foo").decode(),
+                "payloadType": dsse.Envelope._TYPE,
+                "signatures": [{"sig": base64.b64encode(b"lol").decode()}],
+            }
+        )
+    )
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048).public_key()
+
+    with pytest.raises(VerificationError, match="DSSE: unsupported key type"):
+        dsse._verify(key, evp)  # type: ignore[arg-type]
