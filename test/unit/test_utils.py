@@ -13,15 +13,20 @@
 # limitations under the License.
 
 
+import base64
 import hashlib
 import io
+from datetime import UTC, datetime
 
 import pretend
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519
+from sigstore_models.common import v1 as common_v1
 
 from sigstore import _utils as utils
+from sigstore._internal.trust import Key
 from sigstore.errors import VerificationError
 
 
@@ -96,6 +101,64 @@ def test_load_pem_public_key_serialization(monkeypatch):
 
     with pytest.raises(VerificationError, match="invalid key format: not one of"):
         utils.load_pem_public_key([keybytes])
+
+
+def _ed25519_der(raw: bytes) -> bytes:
+    return ed25519.Ed25519PublicKey.from_public_bytes(raw).public_bytes(
+        serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+
+
+def _ed25519_pem(raw: bytes) -> bytes:
+    return ed25519.Ed25519PublicKey.from_public_bytes(raw).public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+
+
+def test_is_weak_ed25519_key_rejects(weak_ed25519_key):
+    key = ed25519.Ed25519PublicKey.from_public_bytes(weak_ed25519_key)
+    assert utils._is_weak_ed25519_key(key)
+
+    with pytest.raises(VerificationError, match="non-canonical or small-order"):
+        utils._check_public_key(key)
+
+
+def test_load_public_key_rejects_weak_ed25519(weak_ed25519_key):
+    with pytest.raises(VerificationError, match="non-canonical or small-order"):
+        utils.load_der_public_key(_ed25519_der(weak_ed25519_key))
+
+    with pytest.raises(VerificationError, match="non-canonical or small-order"):
+        utils.load_pem_public_key(_ed25519_pem(weak_ed25519_key))
+
+
+def test_trust_key_rejects_weak_ed25519(weak_ed25519_key):
+    public_key = common_v1.PublicKey(
+        raw_bytes=base64.b64encode(_ed25519_der(weak_ed25519_key)),
+        key_details=common_v1.PublicKeyDetails.PKIX_ED25519,
+        valid_for=common_v1.TimeRange(start=datetime.now(UTC)),
+    )
+
+    with pytest.raises(VerificationError, match="non-canonical or small-order"):
+        Key(public_key)
+
+
+def test_is_weak_ed25519_key_accepts_generated_keys():
+    for _ in range(10_000):
+        key = ed25519.Ed25519PrivateKey.generate().public_key()
+        assert not utils._is_weak_ed25519_key(key)
+
+
+def test_load_public_key_accepts_ed25519():
+    key = ed25519.Ed25519PrivateKey.generate().public_key()
+    raw = key.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+
+    der = utils.load_der_public_key(_ed25519_der(raw))
+    pem = utils.load_pem_public_key(_ed25519_pem(raw))
+    assert der == pem == key
+
+
+def test_check_public_key_ignores_other_key_types():
+    utils._check_public_key(ec.generate_private_key(ec.SECP256R1()).public_key())
 
 
 @pytest.mark.parametrize(

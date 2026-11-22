@@ -61,6 +61,56 @@ A newtype for `bytes` objects that contain a key id.
 """
 
 
+# Field prime for Curve25519 / edwards25519.
+_ED25519_P = 2**255 - 19
+
+# The y-coordinates of the eight edwards25519 points of small order (1, 2, 4
+# and 8). Each y below covers both signs of x.
+_ED25519_SMALL_ORDER_Y = frozenset(
+    {
+        0,
+        1,
+        _ED25519_P - 1,
+        int.from_bytes(
+            bytes.fromhex(
+                "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"
+            ),
+            "little",
+        ),
+        int.from_bytes(
+            bytes.fromhex(
+                "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"
+            ),
+            "little",
+        ),
+    }
+)
+
+
+def _is_weak_ed25519_key(key: ed25519.Ed25519PublicKey) -> bool:
+    """
+    Returns `True` if `key` is a non-canonical or small-order Ed25519 point
+    encoding, which no legitimate Ed25519 keypair produces.
+    """
+    raw = key.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    # The top bit of the encoding is the sign of x; the rest is y.
+    y = int.from_bytes(raw, "little") & ((1 << 255) - 1)
+    # y >= p is a non-canonical alias of y - p. Every point with x = 0 has
+    # y in {1, p - 1}, so a set sign bit on those is caught by the y check too.
+    return y >= _ED25519_P or y in _ED25519_SMALL_ORDER_Y
+
+
+def _check_public_key(key: PublicKey) -> None:
+    """
+    Rejects public keys that are well-formed but unusable for verification.
+    Currently, this rejects non-canonical and small-order Ed25519 encodings.
+    """
+    if isinstance(key, ed25519.Ed25519PublicKey) and _is_weak_ed25519_key(key):
+        raise VerificationError(
+            "invalid Ed25519 public key: non-canonical or small-order encoding"
+        )
+
+
 def load_pem_public_key(
     key_pem: bytes,
     *,
@@ -83,6 +133,8 @@ def load_pem_public_key(
 
     if not isinstance(key, types):
         raise VerificationError(f"invalid key format: not one of {types}")
+
+    _check_public_key(key)
 
     return key
 
@@ -107,6 +159,8 @@ def load_der_public_key(
 
     if not isinstance(key, types):
         raise VerificationError(f"invalid key format: not one of {types}")
+
+    _check_public_key(key)
 
     return key
 

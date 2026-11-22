@@ -13,18 +13,27 @@
 # limitations under the License.
 
 
+import base64
 import hashlib
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pretend
 import pytest
 import rfc3161_client
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
+from cryptography.x509.oid import NameOID
+from sigstore_models.intoto import Envelope as _Envelope
+from sigstore_models.intoto import Signature as _Signature
 from sigstore_models.trustroot import v1 as trustroot_v1
 
+from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.trust import CertificateAuthority
-from sigstore.dsse import StatementBuilder, Subject
+from sigstore._utils import base64_encode_pem_cert, sha256_digest
+from sigstore.dsse import Envelope, StatementBuilder, Subject, _pae
 from sigstore.errors import CertValidationError, VerificationError
 from sigstore.models import Bundle, TrustedRoot
 from sigstore.verify import policy
@@ -461,3 +470,208 @@ class TestVerifierWithTimestamp:
             ts, asset("tsa/issue1482-message").read_bytes()
         )
         assert res is not None
+
+
+def _leaf_cert(public_key) -> x509.Certificate:
+    """
+    Returns a throwaway certificate for `public_key`. Steps (1)-(6) of
+    verification are stubbed out in the tests that use it, so only the
+    certificate's public key matters.
+    """
+    issuer_key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test")])
+    now = datetime.now(UTC)
+    return (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(public_key)
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + timedelta(minutes=10))
+        .sign(issuer_key, hashes.SHA256())
+    )
+
+
+def _log_entry(kind: str, version: str, body: str):
+    return pretend.stub(
+        _inner=pretend.stub(
+            kind_version=pretend.stub(kind=kind, version=version),
+            canonicalized_body=body.encode(),
+        )
+    )
+
+
+def _dsse_bundle(cert: x509.Certificate, payload: bytes, signature: bytes):
+    payload_type = "application/vnd.in-toto+json"
+    envelope = Envelope(
+        _Envelope(
+            payload=base64.b64encode(payload),
+            payload_type=payload_type,
+            signatures=[_Signature(sig=base64.b64encode(signature))],
+        )
+    )
+    body = {
+        "apiVersion": "0.0.1",
+        "kind": "dsse",
+        "spec": {
+            "envelopeHash": {"algorithm": "sha256", "value": "00" * 32},
+            "payloadHash": {
+                "algorithm": "sha256",
+                "value": hashlib.sha256(payload).hexdigest(),
+            },
+            "signatures": [
+                {
+                    "signature": base64.b64encode(signature).decode(),
+                    "verifier": base64_encode_pem_cert(cert),
+                }
+            ],
+        },
+    }
+    return pretend.stub(
+        signing_certificate=cert,
+        _dsse_envelope=envelope,
+        log_entry=_log_entry("dsse", "0.0.1", json.dumps(body)),
+    )
+
+
+def _message_bundle(cert: x509.Certificate, input_: bytes, signature: bytes):
+    body = _hashedrekord_from_parts(cert, signature, sha256_digest(input_))
+    return pretend.stub(
+        signing_certificate=cert,
+        _inner=pretend.stub(
+            message_signature=pretend.stub(signature=signature, message_digest=None)
+        ),
+        log_entry=_log_entry(
+            "hashedrekord", "0.0.1", body.model_dump_json(by_alias=True)
+        ),
+    )
+
+
+class TestSigningKeyTypes:
+    """
+    Step (7) of verification for each kind of signing certificate key.
+    Steps (1)-(6) don't depend on the signing key's type and are stubbed out.
+    """
+
+    payload = b'{"_type": "https://in-toto.io/Statement/v1"}'
+
+    @pytest.fixture
+    def verifier(self, monkeypatch) -> Verifier:
+        verifier = Verifier.staging(offline=True)
+        monkeypatch.setattr(
+            verifier, "_verify_common_signing_cert", lambda bundle, policy: None
+        )
+        return verifier
+
+    def test_ed25519_dsse(self, verifier, null_policy):
+        key = ed25519.Ed25519PrivateKey.generate()
+        cert = _leaf_cert(key.public_key())
+        signature = key.sign(_pae("application/vnd.in-toto+json", self.payload))
+
+        bundle = _dsse_bundle(cert, self.payload, signature)
+        assert verifier.verify_dsse(bundle, null_policy) == (
+            "application/vnd.in-toto+json",
+            self.payload,
+        )
+
+    def test_ed25519_dsse_tampered_payload(self, verifier, null_policy):
+        key = ed25519.Ed25519PrivateKey.generate()
+        cert = _leaf_cert(key.public_key())
+        signature = key.sign(_pae("application/vnd.in-toto+json", self.payload))
+
+        bundle = _dsse_bundle(cert, self.payload + b" ", signature)
+        with pytest.raises(VerificationError, match="DSSE: invalid signature"):
+            verifier.verify_dsse(bundle, null_policy)
+
+    def test_ed25519_dsse_rekor_v2_entry(self, verifier, null_policy):
+        # Rekor v2 records DSSE as a hashedrekord entry, which needs a
+        # prehashed signing algorithm; pure Ed25519 has none.
+        key = ed25519.Ed25519PrivateKey.generate()
+        cert = _leaf_cert(key.public_key())
+        signature = key.sign(_pae("application/vnd.in-toto+json", self.payload))
+
+        bundle = _dsse_bundle(cert, self.payload, signature)
+        bundle.log_entry = _log_entry("hashedrekord", "0.0.2", "{}")
+        with pytest.raises(VerificationError, match="no externalized prehash"):
+            verifier.verify_dsse(bundle, null_policy)
+
+    def test_ed25519_message_signature(self, verifier, null_policy):
+        key = ed25519.Ed25519PrivateKey.generate()
+        cert = _leaf_cert(key.public_key())
+        signature = key.sign(self.payload)
+
+        bundle = _message_bundle(cert, self.payload, signature)
+        verifier.verify_artifact(self.payload, bundle, null_policy)
+
+    def test_ed25519_message_signature_tampered_input(self, verifier, null_policy):
+        key = ed25519.Ed25519PrivateKey.generate()
+        cert = _leaf_cert(key.public_key())
+        signature = key.sign(self.payload)
+
+        bundle = _message_bundle(cert, self.payload, signature)
+        with pytest.raises(VerificationError, match="Signature is invalid for input"):
+            verifier.verify_artifact(self.payload + b" ", bundle, null_policy)
+
+    def test_ed25519_message_signature_prehashed_input(self, verifier, null_policy):
+        key = ed25519.Ed25519PrivateKey.generate()
+        cert = _leaf_cert(key.public_key())
+        signature = key.sign(self.payload)
+
+        bundle = _message_bundle(cert, self.payload, signature)
+        with pytest.raises(VerificationError, match="full input"):
+            verifier.verify_artifact(sha256_digest(self.payload), bundle, null_policy)
+
+    def test_weak_ed25519_signing_key(self, verifier, null_policy, weak_ed25519_key):
+        cert = _leaf_cert(ed25519.Ed25519PublicKey.from_public_bytes(weak_ed25519_key))
+        # The identity point encoding, with S = 0.
+        signature = bytes([1]) + bytes(63)
+
+        with pytest.raises(VerificationError, match="non-canonical or small-order"):
+            verifier.verify_dsse(
+                _dsse_bundle(cert, self.payload, signature), null_policy
+            )
+        with pytest.raises(VerificationError, match="non-canonical or small-order"):
+            verifier.verify_artifact(
+                self.payload,
+                _message_bundle(cert, self.payload, signature),
+                null_policy,
+            )
+
+    def test_ecdsa_dsse(self, verifier, null_policy):
+        key = ec.generate_private_key(ec.SECP256R1())
+        cert = _leaf_cert(key.public_key())
+        signature = key.sign(
+            _pae("application/vnd.in-toto+json", self.payload),
+            ec.ECDSA(hashes.SHA256()),
+        )
+
+        bundle = _dsse_bundle(cert, self.payload, signature)
+        assert verifier.verify_dsse(bundle, null_policy)[1] == self.payload
+
+        bundle = _dsse_bundle(cert, self.payload + b" ", signature)
+        with pytest.raises(VerificationError, match="DSSE: invalid signature"):
+            verifier.verify_dsse(bundle, null_policy)
+
+    def test_ecdsa_message_signature(self, verifier, null_policy):
+        key = ec.generate_private_key(ec.SECP256R1())
+        cert = _leaf_cert(key.public_key())
+        signature = key.sign(self.payload, ec.ECDSA(hashes.SHA256()))
+
+        bundle = _message_bundle(cert, self.payload, signature)
+        verifier.verify_artifact(self.payload, bundle, null_policy)
+        verifier.verify_artifact(sha256_digest(self.payload), bundle, null_policy)
+
+        with pytest.raises(VerificationError, match="Signature is invalid for input"):
+            verifier.verify_artifact(self.payload + b" ", bundle, null_policy)
+
+    def test_unsupported_signing_key(self, verifier, null_policy):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        cert = _leaf_cert(key.public_key())
+
+        with pytest.raises(VerificationError, match="unsupported signing certificate"):
+            verifier.verify_dsse(_dsse_bundle(cert, self.payload, b"sig"), null_policy)
+        with pytest.raises(VerificationError, match="unsupported signing certificate"):
+            verifier.verify_artifact(
+                self.payload, _message_bundle(cert, self.payload, b"sig"), null_policy
+            )

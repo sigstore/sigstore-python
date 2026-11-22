@@ -12,6 +12,9 @@ All versions prior to 0.9.0 are untracked.
 
 * HTTP clients (most importantly Rekor) now retry requests when that makes
   sense ([#1970](https://github.com/sigstore/sigstore-python/pull/1970))
+* Verification now supports Ed25519 signing certificates, for both DSSE
+  envelopes and message signatures. Ed25519 message signatures are verified
+  against the full input, so a prehashed input is rejected for them
 
 ### Changed
 
@@ -21,6 +24,11 @@ All versions prior to 0.9.0 are untracked.
   TLS certificates now come from OS certificate store and not certifi
   ([#1970](https://github.com/sigstore/sigstore-python/pull/1970))
   ([#1973](https://github.com/sigstore/sigstore-python/pull/1973))
+* Ed25519 public keys with non-canonical or small-order encodings are now
+  rejected, both in signing certificates and in trusted root keys
+* Signing certificates with a key type that cannot be used for verification
+  (such as RSA) now fail verification with a `VerificationError` instead of
+  an unhandled exception
 
 
 ## [4.5.1]

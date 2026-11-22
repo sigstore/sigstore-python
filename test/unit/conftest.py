@@ -128,6 +128,47 @@ def signing_bundle(asset) -> Callable[[str], tuple[Path, Bundle]]:
     return _signing_bundle
 
 
+# Ed25519 public key encodings that `_utils._check_public_key` must reject.
+# The first group are encodings of the eight small-order points, including
+# non-canonical aliases and x = 0 encodings with the sign bit set.
+_ED25519_SMALL_ORDER_KEYS = [
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000080",
+    "0100000000000000000000000000000000000000000000000000000000000000",
+    "0100000000000000000000000000000000000000000000000000000000000080",
+    "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+    "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",
+    "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+    "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa",
+    "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+    "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+    "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+    "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+]
+
+# Every encoding whose y-coordinate is not reduced modulo p, with either sign.
+_ED25519_P = 2**255 - 19
+_ED25519_NON_CANONICAL_KEYS = [
+    (y | (sign << 255)).to_bytes(32, "little").hex()
+    for y in range(_ED25519_P, 2**255)
+    for sign in (0, 1)
+]
+
+WEAK_ED25519_KEYS = list(
+    dict.fromkeys(_ED25519_SMALL_ORDER_KEYS + _ED25519_NON_CANONICAL_KEYS)
+)
+
+
+@pytest.fixture(params=WEAK_ED25519_KEYS)
+def weak_ed25519_key(request) -> bytes:
+    """
+    A raw 32-byte Ed25519 public key that should be rejected.
+    """
+    return bytes.fromhex(request.param)
+
+
 @pytest.fixture
 def null_policy():
     class NullPolicy:
