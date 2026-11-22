@@ -8,6 +8,8 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+## [4.6.0]
+
 ### Added
 
 * HTTP clients (most importantly Rekor) now retry requests when that makes
@@ -17,6 +19,7 @@ All versions prior to 0.9.0 are untracked.
   signatures are verified against the full input, so a prehashed input is
   rejected for them. Rekor v2 `hashedrekord` 0.0.2 entries are not supported
   for Ed25519, since pure Ed25519 has no external prehash
+  ([#1988](https://github.com/sigstore/sigstore-python/pull/1988))
 
 ### Changed
 
@@ -28,10 +31,17 @@ All versions prior to 0.9.0 are untracked.
   ([#1973](https://github.com/sigstore/sigstore-python/pull/1973))
 * Ed25519 public keys with non-canonical, small-order or off-curve encodings
   are now rejected, both in signing certificates and in trusted root keys
+  ([#1988](https://github.com/sigstore/sigstore-python/pull/1988))
 * Signing certificates with a key type that cannot be used for verification
   (such as RSA) now fail verification with a `VerificationError` instead of
   an unhandled exception
+  ([#1988](https://github.com/sigstore/sigstore-python/pull/1988))
 
+### Fixed
+
+* Fulcio certificate and trust-bundle requests now use finite connection and
+  read inactivity timeouts.
+  ([#1917](https://github.com/sigstore/sigstore-python/pull/1917))
 
 ## [4.5.1]
 
@@ -48,8 +58,6 @@ All versions prior to 0.9.0 are untracked.
 
 ### Fixed
 
-* Fulcio certificate and trust-bundle requests now use finite connection and
-  read inactivity timeouts.
 * Parsing a malformed in-toto statement now includes the underlying validation
   error, instead of discarding it. `StatementBuilder.build()` already did this;
   `Statement(contents=...)` did not, so a rejected digest algorithm, a missing
@@ -868,7 +876,8 @@ This is a corrective release for [2.1.1].
 
 
 <!--Release URLs -->
-[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.5.1...HEAD
+[Unreleased]: https://github.com/sigstore/sigstore-python/compare/v4.6.0...HEAD
+[4.6.0]: https://github.com/sigstore/sigstore-python/compare/v4.5.1...v4.6.0
 [4.5.1]: https://github.com/sigstore/sigstore-python/compare/v4.5.0...v4.5.1
 [4.5.0]: https://github.com/sigstore/sigstore-python/compare/v4.4.0...v4.5.0
 [4.4.0]: https://github.com/sigstore/sigstore-python/compare/v4.3.0...v4.4.0
