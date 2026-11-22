@@ -119,15 +119,15 @@ def test_is_weak_ed25519_key_rejects(weak_ed25519_key):
     key = ed25519.Ed25519PublicKey.from_public_bytes(weak_ed25519_key)
     assert utils._is_weak_ed25519_key(key)
 
-    with pytest.raises(VerificationError, match="non-canonical or small-order"):
+    with pytest.raises(VerificationError, match="invalid Ed25519 public key"):
         utils._check_public_key(key)
 
 
 def test_load_public_key_rejects_weak_ed25519(weak_ed25519_key):
-    with pytest.raises(VerificationError, match="non-canonical or small-order"):
+    with pytest.raises(VerificationError, match="invalid Ed25519 public key"):
         utils.load_der_public_key(_ed25519_der(weak_ed25519_key))
 
-    with pytest.raises(VerificationError, match="non-canonical or small-order"):
+    with pytest.raises(VerificationError, match="invalid Ed25519 public key"):
         utils.load_pem_public_key(_ed25519_pem(weak_ed25519_key))
 
 
@@ -138,14 +138,77 @@ def test_trust_key_rejects_weak_ed25519(weak_ed25519_key):
         valid_for=common_v1.TimeRange(start=datetime.now(UTC)),
     )
 
-    with pytest.raises(VerificationError, match="non-canonical or small-order"):
+    with pytest.raises(VerificationError, match="invalid Ed25519 public key"):
         Key(public_key)
 
 
+def test_ed25519_curve_constant():
+    # d from RFC 8032, section 5.1.
+    assert utils._ED25519_D == (
+        37095705934669439343138083508754565189542113879843219016388785533085940283555
+    )
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        # Public keys from the RFC 8032 section 7.1 test vectors.
+        "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+        "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c",
+        "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025",
+        # y = p - 3, the largest y below p with a point on the curve, with
+        # either sign of x.
+        "eaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+        "eaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    ],
+)
+def test_is_weak_ed25519_key_accepts_valid_points(raw):
+    key = ed25519.Ed25519PublicKey.from_public_bytes(bytes.fromhex(raw))
+    assert not utils._is_weak_ed25519_key(key)
+    utils._check_public_key(key)
+
+
 def test_is_weak_ed25519_key_accepts_generated_keys():
-    for _ in range(10_000):
+    for _ in range(256):
         key = ed25519.Ed25519PrivateKey.generate().public_key()
         assert not utils._is_weak_ed25519_key(key)
+
+
+def _rfc8032_decodes(raw: bytes) -> bool:
+    """
+    Point decoding from RFC 8032, section 5.1.3: whether `raw` is the
+    canonical encoding of a point on edwards25519.
+    """
+    p = 2**255 - 19
+    d = -121665 * pow(121666, -1, p) % p
+    encoded = int.from_bytes(raw, "little")
+    y, sign = encoded & ((1 << 255) - 1), encoded >> 255
+    if y >= p:
+        return False
+    x2 = (y * y - 1) * pow(d * y * y + 1, -1, p) % p
+    if x2 == 0:
+        return sign == 0
+    x = pow(x2, (p + 3) // 8, p)
+    if (x * x - x2) % p != 0:
+        x = x * pow(2, (p - 1) // 4, p) % p
+    return (x * x - x2) % p == 0
+
+
+def test_is_weak_ed25519_key_matches_rfc8032_decoding():
+    p = 2**255 - 19
+    small_order_y = {0, 1, p - 1} | {
+        int.from_bytes(bytes.fromhex(key), "little")
+        for key in (
+            "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+            "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+        )
+    }
+    for y in [*range(256), *range(p - 256, 2**255)]:
+        for sign in (0, 1):
+            raw = (y | (sign << 255)).to_bytes(32, "little")
+            expected = not _rfc8032_decodes(raw) or y in small_order_y
+            key = ed25519.Ed25519PublicKey.from_public_bytes(raw)
+            assert utils._is_weak_ed25519_key(key) == expected, raw.hex()
 
 
 def test_load_public_key_accepts_ed25519():

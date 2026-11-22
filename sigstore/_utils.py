@@ -64,6 +64,9 @@ A newtype for `bytes` objects that contain a key id.
 # Field prime for Curve25519 / edwards25519.
 _ED25519_P = 2**255 - 19
 
+# The edwards25519 curve constant d = -121665 / 121666 (RFC 8032, section 5.1).
+_ED25519_D = -121665 * pow(121666, -1, _ED25519_P) % _ED25519_P
+
 # The y-coordinates of the eight edwards25519 points of small order (1, 2, 4
 # and 8). Each y below covers both signs of x.
 _ED25519_SMALL_ORDER_Y = frozenset(
@@ -89,25 +92,34 @@ _ED25519_SMALL_ORDER_Y = frozenset(
 
 def _is_weak_ed25519_key(key: ed25519.Ed25519PublicKey) -> bool:
     """
-    Returns `True` if `key` is a non-canonical or small-order Ed25519 point
-    encoding, which no legitimate Ed25519 keypair produces.
+    Returns `True` if `key` is a non-canonical, small-order or off-curve
+    Ed25519 point encoding, which no legitimate Ed25519 keypair produces.
     """
     raw = key.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
     # The top bit of the encoding is the sign of x; the rest is y.
     y = int.from_bytes(raw, "little") & ((1 << 255) - 1)
     # y >= p is a non-canonical alias of y - p. Every point with x = 0 has
     # y in {1, p - 1}, so a set sign bit on those is caught by the y check too.
-    return y >= _ED25519_P or y in _ED25519_SMALL_ORDER_Y
+    if y >= _ED25519_P or y in _ED25519_SMALL_ORDER_Y:
+        return True
+
+    # The point is on the curve only if x^2 = (y^2 - 1) / (d * y^2 + 1) has a
+    # square root (Euler's criterion). The denominator is never zero, and the
+    # numerator is zero only for y = +-1, which is excluded above.
+    p, d = _ED25519_P, _ED25519_D
+    x2 = (y * y - 1) * pow(d * y * y + 1, -1, p) % p
+    return pow(x2, (p - 1) // 2, p) != 1
 
 
 def _check_public_key(key: PublicKey) -> None:
     """
-    Rejects public keys that are well-formed but unusable for verification.
-    Currently, this rejects non-canonical and small-order Ed25519 encodings.
+    Rejects Ed25519 public keys with a non-canonical, small-order or off-curve
+    encoding. Other key types are accepted unchanged.
     """
     if isinstance(key, ed25519.Ed25519PublicKey) and _is_weak_ed25519_key(key):
         raise VerificationError(
-            "invalid Ed25519 public key: non-canonical or small-order encoding"
+            "invalid Ed25519 public key: non-canonical, small-order or "
+            "off-curve encoding"
         )
 
 

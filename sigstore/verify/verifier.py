@@ -19,7 +19,9 @@ Verification API machinery.
 from __future__ import annotations
 
 import base64
+import hashlib
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 import rekor_types
@@ -619,10 +621,7 @@ def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
         )
 
     expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
-    try:
-        algorithm, hash_func = _get_prehash(expected_verifier.key_details)
-    except ValueError as exc:
-        raise VerificationError(str(exc)) from exc
+    algorithm, hash_func = _v2_prehash(expected_verifier)
     pae_digest = hash_func(envelope.pae()).digest()
 
     expected_body = v2.entry.Entry(
@@ -659,6 +658,9 @@ def _validate_hashedrekord_v002_entry_body(
         raise VerificationError(
             "invalid hashedrekord log entry: missing message signature"
         )
+    expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
+    # Rejects signing algorithms that can't be recorded as hashedrekord entries.
+    _v2_prehash(expected_verifier)
     v2_expected_body = v2.entry.Entry(
         kind=entry._inner.kind_version.kind,
         api_version=entry._inner.kind_version.version,
@@ -670,7 +672,7 @@ def _validate_hashedrekord_v002_entry_body(
                 ),
                 signature=v2.verifier.Signature(
                     content=base64.b64encode(bundle._inner.message_signature.signature),
-                    verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
+                    verifier=expected_verifier,
                 ),
             )
         ),
@@ -680,6 +682,19 @@ def _validate_hashedrekord_v002_entry_body(
         raise VerificationError(
             "transparency log entry is inconsistent with other materials"
         )
+
+
+def _v2_prehash(
+    verifier: v2.verifier.Verifier,
+) -> tuple[v1.HashAlgorithm, Callable[[bytes], hashlib._Hash]]:
+    """
+    Return the externalized hash function for a Rekor v2 verifier's signing
+    algorithm, or raise `VerificationError` if it has none (pure Ed25519).
+    """
+    try:
+        return _get_prehash(verifier.key_details)
+    except ValueError as exc:
+        raise VerificationError(str(exc)) from exc
 
 
 def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verifier:

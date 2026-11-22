@@ -156,8 +156,21 @@ _ED25519_NON_CANONICAL_KEYS = [
     for sign in (0, 1)
 ]
 
+# Canonical encodings whose y-coordinate has no matching x on the curve.
+_ED25519_OFF_CURVE_KEYS = [
+    "0200000000000000000000000000000000000000000000000000000000000000",
+    "0200000000000000000000000000000000000000000000000000000000000080",
+    "0700000000000000000000000000000000000000000000000000000000000000",
+    # y = p - 2
+    "ebffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+]
+
 WEAK_ED25519_KEYS = list(
-    dict.fromkeys(_ED25519_SMALL_ORDER_KEYS + _ED25519_NON_CANONICAL_KEYS)
+    dict.fromkeys(
+        _ED25519_SMALL_ORDER_KEYS
+        + _ED25519_NON_CANONICAL_KEYS
+        + _ED25519_OFF_CURVE_KEYS
+    )
 )
 
 

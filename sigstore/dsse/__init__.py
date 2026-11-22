@@ -306,8 +306,10 @@ def _verify(
         if isinstance(key, ed25519.Ed25519PublicKey):
             # Ed25519 signs the PAE directly, with no separate hash.
             key.verify(signature, pae)
-        else:
+        elif isinstance(key, ec.EllipticCurvePublicKey):
             key.verify(signature, pae, ec.ECDSA(hashes.SHA256()))
+        else:
+            raise VerificationError(f"DSSE: unsupported key type: {type(key).__name__}")
     except InvalidSignature:
         raise VerificationError("DSSE: invalid signature")
 
