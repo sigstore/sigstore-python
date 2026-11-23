@@ -16,7 +16,7 @@ import base64
 import json
 
 import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
 
 from sigstore import dsse
 from sigstore.dsse import Error, InvalidEnvelope
@@ -111,7 +111,20 @@ class TestStatement:
         assert "digest" in str(exc.value)
 
 
-def test_verify_unsupported_key_type():
+@pytest.mark.parametrize(
+    ("key", "expected_name"),
+    [
+        (
+            rsa.generate_private_key(public_exponent=65537, key_size=2048).public_key(),
+            "RSAPublicKey",
+        ),
+        (
+            ed25519.Ed25519PrivateKey.generate().public_key(),
+            "Ed25519PublicKey",
+        ),
+    ],
+)
+def test_verify_unsupported_key_type(key, expected_name):
     evp = dsse.Envelope._from_json(
         json.dumps(
             {
@@ -121,7 +134,9 @@ def test_verify_unsupported_key_type():
             }
         )
     )
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048).public_key()
 
-    with pytest.raises(VerificationError, match="DSSE: unsupported key type"):
+    with pytest.raises(
+        VerificationError,
+        match=f"DSSE: unsupported key type: {expected_name} \\(only ECDSA is supported\\)",
+    ):
         dsse._verify(key, evp)  # type: ignore[arg-type]

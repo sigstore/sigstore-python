@@ -8,6 +8,17 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Removed
+
+* Removed Ed25519 signing certificate verification support and the weak
+  Ed25519 public key checks added in 4.6.0.
+
+### Changed
+
+* Signing certificates with unsupported key algorithms, key types (such as
+  Ed25519 or RSA), or EC curves (anything other than `secp256r1`, `secp384r1`,
+  and `secp521r1`) now fail verification with a descriptive `VerificationError`.
+
 ## [4.6.0]
 
 ### Added
