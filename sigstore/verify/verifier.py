@@ -19,15 +19,13 @@ Verification API machinery.
 from __future__ import annotations
 
 import base64
-import hashlib
 import logging
-from collections.abc import Callable
 from datetime import UTC, datetime
 
 import rekor_types
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509 import (
     Certificate,
     ExtendedKeyUsage,
@@ -59,7 +57,7 @@ from sigstore._internal.sct import (
 )
 from sigstore._internal.timestamp import TimestampSource, TimestampVerificationResult
 from sigstore._internal.trust import KeyringPurpose
-from sigstore._utils import _check_public_key, base64_encode_pem_cert, sha256_digest
+from sigstore._utils import base64_encode_pem_cert, sha256_digest
 from sigstore.errors import CertValidationError, VerificationError
 from sigstore.hashes import Hashed
 from sigstore.models import Bundle, ClientTrustConfig, TrustedRoot
@@ -480,21 +478,11 @@ class Verifier:
         # (7): verify that the signature was signed by the public key in the signing certificate.
         signing_key = _get_signing_key(bundle)
         try:
-            if isinstance(signing_key, ed25519.Ed25519PublicKey):
-                # Ed25519 signs the message itself rather than a digest of it,
-                # so it can only be verified against the full input.
-                if not isinstance(input_, bytes):
-                    raise VerificationError(
-                        "Ed25519 signatures can only be verified against the "
-                        "full input, not a prehashed digest"
-                    )
-                signing_key.verify(bundle_signature.signature, input_)
-            else:
-                signing_key.verify(
-                    bundle_signature.signature,
-                    hashed_input.digest,
-                    ec.ECDSA(hashed_input._as_prehashed()),
-                )
+            signing_key.verify(
+                bundle_signature.signature,
+                hashed_input.digest,
+                ec.ECDSA(hashed_input._as_prehashed()),
+            )
         except InvalidSignature:
             raise VerificationError("Signature is invalid for input")
 
@@ -518,21 +506,32 @@ class Verifier:
             )
 
 
-def _get_signing_key(
-    bundle: Bundle,
-) -> ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey:
+_SUPPORTED_EC_CURVES = (ec.SECP256R1, ec.SECP384R1, ec.SECP521R1)
+
+
+def _get_signing_key(bundle: Bundle) -> ec.EllipticCurvePublicKey:
     """
-    Return the bundle's signing certificate's public key, if it is of a type
-    that can verify the bundle's signature.
+    Return the bundle's signing certificate's public key, if it is a supported
+    ECDSA key.
     """
-    signing_key = bundle.signing_certificate.public_key()
-    if not isinstance(
-        signing_key, (ec.EllipticCurvePublicKey, ed25519.Ed25519PublicKey)
-    ):
+    try:
+        signing_key = bundle.signing_certificate.public_key()
+    except UnsupportedAlgorithm as exc:
         raise VerificationError(
-            f"unsupported signing certificate key type: {type(signing_key).__name__}"
+            f"Unsupported signing certificate key algorithm: {exc} "
+            "(only ECDSA secp256r1, secp384r1, and secp521r1 are supported)"
+        ) from exc
+
+    if not isinstance(signing_key, ec.EllipticCurvePublicKey):
+        raise VerificationError(
+            f"Unsupported signing certificate key type: {type(signing_key).__name__} "
+            "(only ECDSA secp256r1, secp384r1, and secp521r1 are supported)"
         )
-    _check_public_key(signing_key)
+    if not isinstance(signing_key.curve, _SUPPORTED_EC_CURVES):
+        raise VerificationError(
+            f"Unsupported signing certificate EC curve: {signing_key.curve.name} "
+            "(only secp256r1, secp384r1, and secp521r1 are supported)"
+        )
     return signing_key
 
 
@@ -621,7 +620,7 @@ def _validate_hashedrekord_v002_dsse_entry_body(bundle: Bundle) -> None:
         )
 
     expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
-    algorithm, hash_func = _v2_prehash(expected_verifier)
+    algorithm, hash_func = _get_prehash(expected_verifier.key_details)
     pae_digest = hash_func(envelope.pae()).digest()
 
     expected_body = v2.entry.Entry(
@@ -658,9 +657,6 @@ def _validate_hashedrekord_v002_entry_body(
         raise VerificationError(
             "invalid hashedrekord log entry: missing message signature"
         )
-    expected_verifier = _v2_verifier_from_certificate(bundle.signing_certificate)
-    # Rejects signing algorithms that can't be recorded as hashedrekord entries.
-    _v2_prehash(expected_verifier)
     v2_expected_body = v2.entry.Entry(
         kind=entry._inner.kind_version.kind,
         api_version=entry._inner.kind_version.version,
@@ -672,7 +668,7 @@ def _validate_hashedrekord_v002_entry_body(
                 ),
                 signature=v2.verifier.Signature(
                     content=base64.b64encode(bundle._inner.message_signature.signature),
-                    verifier=expected_verifier,
+                    verifier=_v2_verifier_from_certificate(bundle.signing_certificate),
                 ),
             )
         ),
@@ -682,19 +678,6 @@ def _validate_hashedrekord_v002_entry_body(
         raise VerificationError(
             "transparency log entry is inconsistent with other materials"
         )
-
-
-def _v2_prehash(
-    verifier: v2.verifier.Verifier,
-) -> tuple[v1.HashAlgorithm, Callable[[bytes], hashlib._Hash]]:
-    """
-    Return the externalized hash function for a Rekor v2 verifier's signing
-    algorithm, or raise `VerificationError` if it has none (pure Ed25519).
-    """
-    try:
-        return _get_prehash(verifier.key_details)
-    except ValueError as exc:
-        raise VerificationError(str(exc)) from exc
 
 
 def _v2_verifier_from_certificate(certificate: Certificate) -> v2.verifier.Verifier:
