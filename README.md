@@ -36,7 +36,7 @@ else!
 ## Features
 
 * Support for keyless signature generation and verification with [Sigstore](https://www.sigstore.dev/)
-* Support for signing with ["ambient" OpenID Connect identities](https://github.com/sigstore/sigstore-python#signing-with-ambient-credentials)
+* Support for signing with ["ambient" OpenID Connect identities](https://sigstore.github.io/sigstore-python/signing/#signing-with-ambient-credentials)
 * A comprehensive [CLI](https://github.com/sigstore/sigstore-python#usage) and corresponding
   [importable Python API](https://sigstore.github.io/sigstore-python)
 
