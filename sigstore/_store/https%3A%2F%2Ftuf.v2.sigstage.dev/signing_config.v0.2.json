@@ -13,7 +13,7 @@
   "rekorTlogUrls": [
     {
       "url": "https://global-pqc.rekor.sigstage.dev",
-      "majorApiVersion": 2,
+      "majorApiVersion": 3,
       "validFor": {
         "start": "2026-10-30T00:00:00Z"
       },

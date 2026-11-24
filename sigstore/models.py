@@ -75,6 +75,7 @@ from sigstore.errors import Error, MetadataError, VerificationError
 
 # Versions supported by this client
 REKOR_VERSIONS = [1, 2]
+IDENTITY_REKOR_VERSIONS = [3]
 TSA_VERSIONS = [1]
 FULCIO_VERSIONS = [1]
 OIDC_VERSIONS = [1]
@@ -688,19 +689,9 @@ class SigningConfig:
         except ValueError:
             raise Error(f"unsupported signing config format: {self._inner.media_type}")
 
-        # Create lists of service protos that are valid, selected by the service
-        # configuration & supported by this client
-        if tlog_version is None:
-            tlog_versions = REKOR_VERSIONS
-        else:
-            tlog_versions = [tlog_version]
-        self._tlog_versions = tlog_versions
-
-        self._tlogs = self._get_valid_services(
-            self._inner.rekor_tlog_urls, tlog_versions, self._inner.rekor_tlog_config
-        )
-        if not self._tlogs:
-            raise Error("No valid Rekor transparency log found in signing config")
+        # Store optional tlog_version restriction; transparency log selection is
+        # performed per-API in get_tlogs() (v1/v2) and get_identity_tlogs() (v3).
+        self._tlog_version = tlog_version
 
         self._tsas = self._get_valid_services(
             self._inner.tsa_urls, TSA_VERSIONS, self._inner.tsa_config
@@ -772,10 +763,25 @@ class SigningConfig:
 
     def get_tlogs(self) -> list[RekorLogSubmitter]:
         """
-        Returns the rekor transparency log clients to sign with.
+        Returns the Rekor v1/v2 (`hashedrekord` / `dsse`) transparency log
+        clients to sign with.
         """
+        if self._tlog_version is None:
+            supported_versions = REKOR_VERSIONS
+        elif self._tlog_version in REKOR_VERSIONS:
+            supported_versions = [self._tlog_version]
+        else:
+            supported_versions = []
+        tlogs = self._get_valid_services(
+            self._inner.rekor_tlog_urls,
+            supported_versions,
+            self._inner.rekor_tlog_config,
+        )
+        if not tlogs:
+            raise Error("No valid Rekor transparency log found in signing config")
+
         result: list[RekorLogSubmitter] = []
-        for tlog in self._tlogs:
+        for tlog in tlogs:
             if tlog.major_api_version == 1:
                 from sigstore._internal.rekor.client import RekorClient
 
@@ -790,22 +796,23 @@ class SigningConfig:
 
     def get_identity_tlogs(self) -> list[IdentityRekorClient]:
         """
-        Returns the Rekor v2 identity transparency log clients to sign with.
-
-        NOTE: `SigningConfig` v0.2 uses `majorApiVersion == 2` for both Rekor v2
-        `serve` (`hashedrekord`) and `serve-identity` logs without a separate
-        service field; callers must only use this with signing configurations
-        whose v2 transparency logs expose the `serve-identity` API (such as
-        `ClientTrustConfig.staging_v2()`).
+        Returns the Rekor identity transparency log (`majorApiVersion == 3`)
+        clients to sign with.
         """
+        if self._tlog_version is None:
+            supported_versions = IDENTITY_REKOR_VERSIONS
+        elif self._tlog_version in IDENTITY_REKOR_VERSIONS:
+            supported_versions = [self._tlog_version]
+        else:
+            supported_versions = []
         tlogs = self._get_valid_services(
             self._inner.rekor_tlog_urls,
-            [v for v in self._tlog_versions if v == 2],
+            supported_versions,
             self._inner.rekor_tlog_config,
         )
         if not tlogs:
             raise Error(
-                "No valid Rekor v2 identity transparency log found in signing config"
+                "No valid Rekor identity transparency log found in signing config"
             )
         return [IdentityRekorClient(tlog.url) for tlog in tlogs]
 

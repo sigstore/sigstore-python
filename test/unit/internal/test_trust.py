@@ -219,58 +219,119 @@ class TestSigningConfig:
         with pytest.raises(ValueError):
             SigningConfig._get_valid_services(services, versions, config)
 
-    def test_get_identity_tlogs_v1_only_and_forced_v1_fail(self, asset):
+    def test_get_identity_tlogs_non_v3_and_forced_version_fail(self, asset):
         v1_only = SigningConfig.from_file(
             asset("signing_config/signingconfig-only-v1-rekor.v2.json")
         )
         with pytest.raises(
             Error,
-            match="No valid Rekor v2 identity transparency log found in signing config",
+            match="No valid Rekor identity transparency log found in signing config",
         ):
             v1_only.get_identity_tlogs()
 
-        mixed = SigningConfig(
-            SigningConfig.from_file(
-                asset("signing_config/signingconfig.v2.json")
-            )._inner,
-            tlog_version=1,
+        # Rekor v2 (hashedrekord) is NOT an identity log (majorApiVersion == 3)
+        v1_and_v2 = SigningConfig.from_file(
+            asset("signing_config/signingconfig.v2.json")
         )
         with pytest.raises(
             Error,
-            match="No valid Rekor v2 identity transparency log found in signing config",
+            match="No valid Rekor identity transparency log found in signing config",
         ):
-            mixed.get_identity_tlogs()
+            v1_and_v2.get_identity_tlogs()
 
-    def test_get_identity_tlogs_multi_operator_selectors(self):
+        v3_op1 = Service(
+            url="https://rekor-id.op1.example.com",
+            major_api_version=3,
+            operator="op1",
+        )
+        forced_v2 = SigningConfig(
+            _SigningConfig(
+                media_type=SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value,
+                rekor_tlog_urls=[v3_op1],
+                rekor_tlog_config=ServiceConfiguration(selector=ServiceSelector.ANY),
+            ),
+            tlog_version=2,
+        )
+        with pytest.raises(
+            Error,
+            match="No valid Rekor identity transparency log found in signing config",
+        ):
+            forced_v2.get_identity_tlogs()
+
+        # v3-only config loads cleanly, succeeds for get_identity_tlogs(), and fails for get_tlogs()
+        v3_only = SigningConfig(
+            _SigningConfig(
+                media_type=SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value,
+                rekor_tlog_urls=[v3_op1],
+                rekor_tlog_config=ServiceConfiguration(selector=ServiceSelector.ANY),
+            )
+        )
+        with pytest.raises(
+            Error,
+            match="No valid Rekor transparency log found in signing config",
+        ):
+            v3_only.get_tlogs()
+        id_tlogs = v3_only.get_identity_tlogs()
+        assert len(id_tlogs) == 1
+        assert id_tlogs[0].url == "https://rekor-id.op1.example.com/api/v2"
+
+    def test_get_identity_tlogs_multi_operator_and_hybrid_selectors(self):
         v1_op1 = Service(
             url="https://rekor-v1.op1.example.com",
             major_api_version=1,
             operator="op1",
         )
-        v2_op2 = Service(
-            url="https://rekor-v2.op2.example.com",
+        v2_op1 = Service(
+            url="https://rekor-v2.op1.example.com",
             major_api_version=2,
+            operator="op1",
+        )
+        v3_op1 = Service(
+            url="https://rekor-id.op1.example.com",
+            major_api_version=3,
+            operator="op1",
+        )
+        v3_op2 = Service(
+            url="https://rekor-id.op2.example.com",
+            major_api_version=3,
             operator="op2",
         )
 
-        # ANY: even when op1 (v1-only) comes first, get_identity_tlogs selects op2 (v2)
+        # Hybrid same-operator config: get_tlogs() selects v2, get_identity_tlogs() selects v3
+        sc_hybrid = SigningConfig(
+            _SigningConfig(
+                media_type=SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value,
+                rekor_tlog_urls=[v1_op1, v2_op1, v3_op1],
+                rekor_tlog_config=ServiceConfiguration(selector=ServiceSelector.ANY),
+            )
+        )
+        classic_tlogs = sc_hybrid.get_tlogs()
+        assert len(classic_tlogs) == 1
+        assert isinstance(classic_tlogs[0], RekorV2Client)
+        assert classic_tlogs[0].url == "https://rekor-v2.op1.example.com/api/v2"
+        id_tlogs = sc_hybrid.get_identity_tlogs()
+        assert len(id_tlogs) == 1
+        assert isinstance(id_tlogs[0], IdentityRekorClient)
+        assert id_tlogs[0].url == "https://rekor-id.op1.example.com/api/v2"
+
+        # ANY: even when op1 (v2-only) comes first, get_identity_tlogs selects op2 (v3)
         sc_any = SigningConfig(
             _SigningConfig(
                 media_type=SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value,
-                rekor_tlog_urls=[v1_op1, v2_op2],
+                rekor_tlog_urls=[v2_op1, v3_op2],
                 rekor_tlog_config=ServiceConfiguration(selector=ServiceSelector.ANY),
             )
         )
         tlogs = sc_any.get_identity_tlogs()
         assert len(tlogs) == 1
         assert isinstance(tlogs[0], IdentityRekorClient)
-        assert tlogs[0].url == "https://rekor-v2.op2.example.com/api/v2"
+        assert tlogs[0].url == "https://rekor-id.op2.example.com/api/v2"
 
-        # EXACT(count=2): fails closed when only 1 v2 operator exists
+        # EXACT(count=2): fails closed when only 1 v3 operator exists
         sc_exact = SigningConfig(
             _SigningConfig(
                 media_type=SigningConfig.SigningConfigType.SIGNING_CONFIG_0_2.value,
-                rekor_tlog_urls=[v1_op1, v2_op2],
+                rekor_tlog_urls=[v2_op1, v3_op2],
                 rekor_tlog_config=ServiceConfiguration(
                     selector=ServiceSelector.EXACT, count=2
                 ),
@@ -545,11 +606,24 @@ class TestClientTrustConfig:
         tlogs = config.signing_config.get_identity_tlogs()
         assert len(tlogs) == 1
         assert tlogs[0].url == "https://global-pqc.rekor.sigstage.dev/api/v2"
+        with pytest.raises(
+            Error, match="No valid Rekor transparency log found in signing config"
+        ):
+            config.signing_config.get_tlogs()
         assert (
             config.signing_config.get_oidc_url() == "https://oauth2.sigstage.dev/auth"
         )
         with pytest.raises(Error, match="No valid Fulcio CA found in signing config"):
             config.signing_config.get_fulcio()
+
+    def test_staging_offline_has_no_identity_tlogs(self, tuf_dirs):
+        # Classical staging only has v1/v2 Rekor logs, not v3 identity logs
+        v1_staging = ClientTrustConfig.staging(offline=True)
+        with pytest.raises(
+            Error,
+            match="No valid Rekor identity transparency log found in signing config",
+        ):
+            v1_staging.signing_config.get_identity_tlogs()
 
 
 class TestKeyringMLDSA:

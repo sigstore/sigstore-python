@@ -30,8 +30,10 @@ All versions prior to 0.9.0 are untracked.
   ([#1973](https://github.com/sigstore/sigstore-python/pull/1973))
 * Raised the minimum `cryptography` version from 47 to 48 and required
   `securesystemslib[crypto] >= 1.6.0, < 2`
-* `SigningConfig` now allows configurations without Fulcio CA URLs, deferring
-  the error until `SigningConfig.get_fulcio()` is called
+* `SigningConfig` now defers Fulcio CA and Rekor transparency log validation
+  until `get_fulcio()`, `get_tlogs()`, or `get_identity_tlogs()` is called,
+  allowing v2 identity-only configurations without Fulcio CAs or v1/v2 Rekor
+  logs
 
 
 ## [4.5.1]

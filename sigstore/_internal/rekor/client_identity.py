@@ -52,6 +52,8 @@ class IdentityRekorClient:
         """
         Create a new `IdentityRekorClient` from the given base URL.
         """
+        # SigningConfig identifies the serve-identity API with majorApiVersion == 3,
+        # while the HTTP endpoint path in rekor-tiles remains /api/v2/log/entries.
         self.url = f"{base_url.rstrip('/')}/api/v2"
         self._http = urllib3.PoolManager(
             headers={
