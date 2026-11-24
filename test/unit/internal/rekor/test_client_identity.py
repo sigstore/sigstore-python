@@ -61,12 +61,13 @@ def test_identity_rekor_client_init_and_pool_config():
     assert client._http.connection_pool_kw["maxsize"] == 32
 
 
-def test_create_oidc_entry_success():
+@pytest.mark.parametrize("status", [201, 200])
+def test_create_oidc_entry_success(status):
     client = IdentityRekorClient("https://global-pqc.rekor.sigstage.dev")
     digest = b"\x11" * 32
     expected_proof = _sample_tlog_proof()
 
-    mock_resp = urllib3.HTTPResponse(body=expected_proof.to_bytes(), status=201)
+    mock_resp = urllib3.HTTPResponse(body=expected_proof.to_bytes(), status=status)
 
     token = unittest.mock.MagicMock(spec=IdentityToken)
     token.__str__.return_value = "header.payload.sig"
