@@ -71,6 +71,10 @@ TSA_VERSIONS = [1]
 FULCIO_VERSIONS = [1]
 OIDC_VERSIONS = [1]
 
+# Limit the number of timestamps before decoding their contents.
+# From https://github.com/sigstore/sigstore-go/blob/e92142f0734064ebf6001f188b7330a1212245fe/pkg/verify/tsa.go#L29
+MAX_ALLOWED_TIMESTAMP = 32
+
 
 _logger = logging.getLogger(__name__)
 
@@ -260,6 +264,11 @@ class TimestampVerificationData:
         """
         if not (timestamps := self._inner.rfc3161_timestamps):
             timestamps = []
+
+        if len(timestamps) > MAX_ALLOWED_TIMESTAMP:
+            raise VerificationError(
+                f"too many signed timestamp: {len(timestamps)} > {MAX_ALLOWED_TIMESTAMP}"
+            )
 
         try:
             self._signed_ts = [

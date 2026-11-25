@@ -14,6 +14,7 @@
 
 import json
 from base64 import b64encode
+from unittest.mock import Mock
 
 import pytest
 from sigstore_models.rekor.v1 import KindVersion
@@ -21,6 +22,7 @@ from sigstore_models.rekor.v1 import TransparencyLogEntry as _TransparencyLogEnt
 
 from sigstore.errors import VerificationError
 from sigstore.models import (
+    MAX_ALLOWED_TIMESTAMP,
     Bundle,
     InvalidBundle,
     TimestampVerificationData,
@@ -105,6 +107,19 @@ class TestTimestampVerificationData:
         timestamp = {"rfc3161Timestamps": [{"signedTimestamp": "invalid-entry"}]}
         with pytest.raises(VerificationError, match="Invalid Timestamp"):
             TimestampVerificationData.from_json(json.dumps(timestamp))
+
+    def test_too_many_timestamps_skips_decoding(self, monkeypatch):
+        decode = Mock()
+        monkeypatch.setattr("sigstore.models.decode_timestamp_response", decode)
+        timestamp = {
+            "rfc3161Timestamps": [{"signedTimestamp": b64encode(b"invalid").decode()}]
+            * (MAX_ALLOWED_TIMESTAMP + 1)
+        }
+
+        with pytest.raises(VerificationError, match="too many signed timestamp"):
+            TimestampVerificationData.from_json(json.dumps(timestamp))
+
+        decode.assert_not_called()
 
 
 class TestVerificationMaterial:

@@ -65,10 +65,6 @@ from sigstore.verify.policy import VerificationPolicy
 
 _logger = logging.getLogger(__name__)
 
-# Limit the number of timestamps to prevent DoS
-# From https://github.com/sigstore/sigstore-go/blob/e92142f0734064ebf6001f188b7330a1212245fe/pkg/verify/tsa.go#L29
-MAX_ALLOWED_TIMESTAMP: int = 32
-
 # When verifying an entry, this threshold represents the minimum number of required
 # verified times to consider a signature valid.
 VERIFIED_TIME_THRESHOLD: int = 1
@@ -189,10 +185,6 @@ class Verifier:
             := bundle.verification_material.timestamp_verification_data
         ):
             timestamp_responses = timestamp_verification_data.rfc3161_timestamps
-
-        if len(timestamp_responses) > MAX_ALLOWED_TIMESTAMP:
-            msg = f"too many signed timestamp: {len(timestamp_responses)} > {MAX_ALLOWED_TIMESTAMP}"
-            raise VerificationError(msg)
 
         if len(set(timestamp_responses)) != len(timestamp_responses):
             msg = "duplicate timestamp found"
