@@ -18,6 +18,31 @@ the staging infrastructure of `sigstore`.
 $ sigstore --staging verify identity --cert-identity "a@tny.town" --cert-oidc-issuer "https://github.com/login/oauth" test/assets/bundle.txt
 ```
 
+## Verifying against one of several identities
+
+If an artifact may have been signed by any one of several identities, describe
+them in a TOML policy file and pass it with `--policy` instead of
+`--cert-identity` and `--cert-oidc-issuer`:
+
+```toml
+# policy.toml
+[[any-of]]
+identity = "alice@example.com"
+issuer = "https://accounts.google.com"
+
+[[any-of]]
+identity = "bob@example.com"
+issuer = "https://github.com/login/oauth"
+```
+
+```sh
+sigstore verify identity --policy policy.toml FILE_OR_DIGEST
+```
+
+A policy file is either a single `identity` and `issuer` pair, or an `any-of`
+array of such pairs. Both `identity` and `issuer` are required for every entry,
+and have the same meaning as `--cert-identity` and `--cert-oidc-issuer`.
+
 ## Verifying from GitHub Actions
 
 If your signatures are coming from GitHub Actions (e.g., a workflow that uses its [ambient credentials](./signing.md#signing-with-ambient-credentials)),

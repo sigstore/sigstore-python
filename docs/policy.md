@@ -62,9 +62,10 @@ Here's a summary of the key choices in the `sigstore-python` signing process:
 
 ## Verification
 
-`sigstore-python` supports configuring the verification process using policies
-but this must be done using the [api](./api/index.md). By default, the CLI uses
-the [`Identity`][sigstore.verify.policy] verification policy.
+`sigstore-python` supports configuring the verification process using policies,
+either via the [api](./api/index.md) or via a [policy file](./verify.md#verifying-against-one-of-several-identities)
+passed to the CLI. By default, the CLI uses the [`Identity`][sigstore.verify.policy]
+verification policy.
 
 ### Establishing a Time for the Signature
 
