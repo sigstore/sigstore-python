@@ -35,6 +35,7 @@ from sigstore_models.common.v1 import HashAlgorithm
 
 from sigstore import __version__, dsse
 from sigstore._internal.fulcio.client import ExpiredCertificate
+from sigstore._internal.policy_file import load_policy
 from sigstore._internal.rekor import _hashedrekord_from_parts
 from sigstore._internal.rekor.client import RekorClient
 from sigstore._utils import sha256_digest
@@ -477,16 +478,25 @@ def _parser() -> argparse.ArgumentParser:
         metavar="IDENTITY",
         type=str,
         default=os.getenv("SIGSTORE_CERT_IDENTITY"),
-        help="The identity to check for in the certificate's Subject Alternative Name",
-        required=True,
+        help="The identity to check for in the certificate's Subject Alternative Name; "
+        "required unless `--policy` is given",
     )
     verification_options.add_argument(
         "--cert-oidc-issuer",
         metavar="URL",
         type=str,
         default=os.getenv("SIGSTORE_CERT_OIDC_ISSUER"),
-        help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension",
-        required=True,
+        help="The OIDC issuer URL to check for in the certificate's OIDC issuer extension; "
+        "required unless `--policy` is given",
+    )
+    verification_options.add_argument(
+        "--policy",
+        metavar="FILE",
+        type=Path,
+        # An empty value means "unset", rather than `Path("")`.
+        default=os.getenv("SIGSTORE_POLICY") or None,
+        help="A TOML policy file describing the identities to accept; "
+        "cannot be combined with `--cert-identity` or `--cert-oidc-issuer`",
     )
 
     # `sigstore verify github`
@@ -1140,14 +1150,32 @@ def _collect_verification_state(
 
 
 def _verify_identity(args: argparse.Namespace) -> None:
-    verifier, materials = _collect_verification_state(args)
-
-    for file_or_digest, hashed, bundle in materials:
+    if args.policy is not None:
+        # A policy file fully describes what's being verified, so we refuse
+        # to also accept the single-identity options rather than guess at
+        # how the user wants them combined.
+        if args.cert_identity or args.cert_oidc_issuer:
+            _invalid_arguments(
+                args,
+                "--policy cannot be combined with --cert-identity or --cert-oidc-issuer",
+            )
+        _logger.debug(f"Using policy from: {args.policy}")
+        policy_ = load_policy(args.policy)
+    else:
+        if not (args.cert_identity and args.cert_oidc_issuer):
+            _invalid_arguments(
+                args,
+                "--cert-identity and --cert-oidc-issuer are required "
+                "unless --policy is given",
+            )
         policy_ = policy.Identity(
             identity=args.cert_identity,
             issuer=args.cert_oidc_issuer,
         )
 
+    verifier, materials = _collect_verification_state(args)
+
+    for file_or_digest, hashed, bundle in materials:
         try:
             statement = _verify_common(verifier, hashed, bundle, policy_)
             print(f"OK: {file_or_digest}", file=sys.stderr)

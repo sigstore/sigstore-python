@@ -225,8 +225,8 @@ Output options:
 ```
 usage: sigstore verify identity [-h] [-v] [--certificate FILE]
                                 [--signature FILE] [--bundle FILE] [--offline]
-                                --cert-identity IDENTITY --cert-oidc-issuer
-                                URL
+                                [--cert-identity IDENTITY]
+                                [--cert-oidc-issuer URL] [--policy FILE]
                                 FILE_OR_DIGEST [FILE_OR_DIGEST ...]
 
 options:
@@ -250,10 +250,15 @@ Verification options:
                         bundle (default: False)
   --cert-identity IDENTITY
                         The identity to check for in the certificate's Subject
-                        Alternative Name (default: None)
+                        Alternative Name; required unless `--policy` is given
+                        (default: None)
   --cert-oidc-issuer URL
                         The OIDC issuer URL to check for in the certificate's
-                        OIDC issuer extension (default: None)
+                        OIDC issuer extension; required unless `--policy` is
+                        given (default: None)
+  --policy FILE         A TOML policy file describing the identities to
+                        accept; cannot be combined with `--cert-identity` or
+                        `--cert-oidc-issuer` (default: None)
 ```
 <!-- @end-sigstore-verify-identity-help@ -->
 

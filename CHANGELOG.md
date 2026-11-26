@@ -8,6 +8,12 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* `sigstore verify identity` accepts a TOML policy file via `--policy`, so the
+  CLI can verify against any of several identities rather than a single identity
+  ([#1904](https://github.com/sigstore/sigstore-python/issues/1904))
+
 ### Removed
 
 * Removed Ed25519 signing certificate verification support and the weak

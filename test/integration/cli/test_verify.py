@@ -48,3 +48,155 @@ def test_regression_verify_legacy_bundle(capsys, caplog, asset_integration, sigs
         caplog.records[0].message
         == f"{artifact.absolute()}: {legacy_bundle.absolute()} should be named {bundle.absolute()}. Support for discovering 'bare' .sigstore inputs will be deprecated in a future release."
     )
+
+
+@pytest.mark.staging
+def test_verify_identity_policy_file(capsys, asset_integration, sigstore, tmp_path):
+    artifact = asset_integration("bundle_v3.txt")
+    policy_file = tmp_path / "policy.toml"
+    policy_file.write_text(
+        """
+        [[any-of]]
+        identity = "nobody@example.com"
+        issuer = "https://accounts.google.com"
+
+        [[any-of]]
+        identity = "william@yossarian.net"
+        issuer = "https://github.com/login/oauth"
+        """,
+        encoding="utf-8",
+    )
+
+    sigstore(
+        "--staging", "verify", "identity", "--policy", str(policy_file), str(artifact)
+    )
+
+    captures = capsys.readouterr()
+    assert captures.err == f"OK: {artifact.absolute()}\n"
+
+
+@pytest.mark.staging
+def test_verify_identity_policy_file_fails(
+    capsys, caplog, asset_integration, sigstore, tmp_path
+):
+    artifact = asset_integration("bundle_v3.txt")
+    policy_file = tmp_path / "policy.toml"
+    policy_file.write_text(
+        """
+        [[any-of]]
+        identity = "nobody@example.com"
+        issuer = "https://accounts.google.com"
+
+        [[any-of]]
+        identity = "william@yossarian.net"
+        issuer = "https://accounts.google.com"
+        """,
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        sigstore(
+            "--staging",
+            "verify",
+            "identity",
+            "--policy",
+            str(policy_file),
+            str(artifact),
+        )
+
+    assert excinfo.value.code == 1
+    assert any(
+        record.message == f"FAIL: {artifact.absolute()}" for record in caplog.records
+    )
+    assert any(
+        "0 of 2 policies succeeded" in record.message for record in caplog.records
+    )
+
+
+def test_verify_identity_policy_file_invalid(
+    caplog, asset_integration, sigstore, tmp_path
+):
+    artifact = asset_integration("bundle_v3.txt")
+    policy_file = tmp_path / "policy.toml"
+    policy_file.write_text("any-of = []", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as excinfo:
+        sigstore(
+            "--staging",
+            "verify",
+            "identity",
+            "--policy",
+            str(policy_file),
+            str(artifact),
+        )
+
+    assert excinfo.value.code == 1
+    assert any(
+        record.message.startswith(
+            f"{policy_file}: policy.any-of: expected a non-empty array of "
+            "identities, got an empty array"
+        )
+        for record in caplog.records
+    )
+
+
+@pytest.mark.parametrize(
+    ("extra_args", "message"),
+    [
+        (
+            ["--cert-identity", "william@yossarian.net"],
+            "--policy cannot be combined with --cert-identity or --cert-oidc-issuer",
+        ),
+        (
+            ["--cert-oidc-issuer", "https://github.com/login/oauth"],
+            "--policy cannot be combined with --cert-identity or --cert-oidc-issuer",
+        ),
+    ],
+)
+def test_verify_identity_policy_file_conflicting_options(
+    capsys, asset_integration, sigstore, tmp_path, extra_args, message
+):
+    artifact = asset_integration("bundle_v3.txt")
+    policy_file = tmp_path / "policy.toml"
+    policy_file.write_text(
+        'identity = "william@yossarian.net"\n'
+        'issuer = "https://github.com/login/oauth"\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        sigstore(
+            "--staging",
+            "verify",
+            "identity",
+            "--policy",
+            str(policy_file),
+            *extra_args,
+            str(artifact),
+        )
+
+    assert excinfo.value.code == 2
+    assert message in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "extra_args",
+    [
+        [],
+        ["--cert-identity", "william@yossarian.net"],
+        ["--cert-oidc-issuer", "https://github.com/login/oauth"],
+    ],
+)
+def test_verify_identity_requires_identity_and_issuer(
+    capsys, asset_integration, sigstore, extra_args
+):
+    artifact = asset_integration("bundle_v3.txt")
+
+    with pytest.raises(SystemExit) as excinfo:
+        sigstore("--staging", "verify", "identity", *extra_args, str(artifact))
+
+    assert excinfo.value.code == 2
+    assert (
+        "--cert-identity and --cert-oidc-issuer are required unless --policy is given"
+        in capsys.readouterr().err
+    )
