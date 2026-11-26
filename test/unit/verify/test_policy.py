@@ -152,6 +152,28 @@ class TestIdentity:
             policy_.verify(bundle.signing_certificate)
 
 
+class TestOIDCDeploymentEnvironment:
+    def test_checks_deployment_target(self, signing_bundle):
+        # From the wheel's PyPI publish attestation (PEP 740).
+        _, bundle = signing_bundle("pypi_attestations-0.0.32-py3-none-any.whl")
+        cert = bundle.signing_certificate
+
+        policy.OIDCDeploymentEnvironment("pypi").verify(cert)
+        with pytest.raises(
+            VerificationError, match="OIDCDeploymentEnvironment does not match"
+        ):
+            policy.OIDCDeploymentEnvironment("staging").verify(cert)
+
+    def test_missing_extension(self, signing_bundle):
+        _, bundle = signing_bundle("bundle_v3_github.whl")
+        with pytest.raises(
+            VerificationError, match="does not contain OIDCDeploymentEnvironment"
+        ):
+            policy.OIDCDeploymentEnvironment("production").verify(
+                bundle.signing_certificate
+            )
+
+
 class TestSingleExtPolicy:
     def test_succeeds(self, signing_bundle):
         _, bundle = signing_bundle("bundle_v3_github.whl")

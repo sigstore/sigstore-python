@@ -8,6 +8,11 @@ All versions prior to 0.9.0 are untracked.
 
 ## [Unreleased]
 
+### Added
+
+* Added the `OIDCDeploymentEnvironment` verification policy to require a specific
+  deployment environment in a Fulcio signing certificate.
+
 ### Removed
 
 * Removed Ed25519 signing certificate verification support and the weak
