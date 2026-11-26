@@ -63,6 +63,7 @@ _OIDC_BUILD_CONFIG_DIGEST_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.19")
 _OIDC_BUILD_TRIGGER_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.20")
 _OIDC_RUN_INVOCATION_URI_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.21")
 _OIDC_SOURCE_REPOSITORY_VISIBILITY_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.22")
+_OIDC_DEPLOYMENT_ENVIRONMENT_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.23")
 
 
 class _SingleX509ExtPolicy(ABC):
@@ -329,6 +330,15 @@ class OIDCSourceRepositoryVisibility(_SingleX509ExtPolicyV2):
     """
 
     oid = _OIDC_SOURCE_REPOSITORY_VISIBILITY_OID
+
+
+class OIDCDeploymentEnvironment(_SingleX509ExtPolicyV2):
+    """
+    Verifies the certificate's OIDC Deployment Environment, identified by
+    an X.509v3 extension tagged with `1.3.6.1.4.1.57264.1.23`.
+    """
+
+    oid = _OIDC_DEPLOYMENT_ENVIRONMENT_OID
 
 
 class VerificationPolicy(Protocol):
